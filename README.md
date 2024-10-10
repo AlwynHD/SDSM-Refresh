@@ -1,4 +1,4 @@
 # SDSM-Refresh
-Owned by me
+Owned by 2024/25 Lboro Computer Science MSci
+
 SDSM Refresh
-and me

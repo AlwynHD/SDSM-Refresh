@@ -1,0 +1,13 @@
+# created by virtualenv automatically
+
+# Ignore Lib directory
+Lib/
+
+# Ignore Scripts directory
+Scripts/
+
+# Ignore virtual environment configuration file
+pyvenv.cfg
+
+# Ignore License file
+LICENSE

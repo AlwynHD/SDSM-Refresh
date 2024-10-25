@@ -15,19 +15,21 @@ analysisPeriod = ["Annual", "Winter", "Spring", "Summer", "Autumn", "January", "
 analysisPeriodChosen = 0
 autoRegressionTick = True
 
-def pCorr(A, B, n, crossCorr, corrArrayList):
+def partialCorrelation(A, B, n, crossCorr, corrArrayList):
+    #print(f"A: {A} B: {B}, n: {n}, \n crossCorr: {crossCorr} \n CorrArrayList: {corrArrayList}")
     # Calculates partial correlation of the form r12.34567 etc.
     # In the form; rab.corrArrayList(n); where n signifies how many terms we want from global array
     r13 = 0
     r23 = 0
     denom = 0
+    result = ""
     if n == 1:
-        result = crossCorr[A][B] - (crossCorr[A][corrArrayList[1]] * crossCorr[B][corrArrayList[1]])
-        denom = (1 - crossCorr[A][corrArrayList[1]] ** 2) * (1 - crossCorr[B][corrArrayList[1]] ** 2)
+        result = crossCorr[A][B] - ( crossCorr[A][int(corrArrayList[0])] * crossCorr[B][int(corrArrayList[0])] )
+        denom = (1 - crossCorr[A][int(corrArrayList[0])] ** 2) * (1 - crossCorr[B][int(corrArrayList[0])] ** 2)
     else:                #r12.34567etc... case - calculate r12.3456, r17.3456, r27.3456 for example
-        result = pCorr(A, B, n - 1, crossCorr, corrArrayList)     #r12.3456 for r12.34567 for example
-        r13 = pCorr(A, corrArrayList[n], n - 1, crossCorr, corrArrayList) #r17.3456 for r12.34567 for example
-        r23 = pCorr(B, corrArrayList[n], n - 1, crossCorr, corrArrayList) #r27.3456 for r12.34567 for example
+        result = partialCorrelation(A, B, n - 1, crossCorr, corrArrayList)     #r12.3456 for r12.34567 for example
+        r13 = partialCorrelation(A, int(corrArrayList[n]), n - 1, crossCorr, corrArrayList) #r17.3456 for r12.34567 for example
+        r23 = partialCorrelation(B, int(corrArrayList[n]), n - 1, crossCorr, corrArrayList) #r27.3456 for r12.34567 for example
         result = result - (r13 * r23)
         denom = (1 - r13 ** 2) * (1 - r23 ** 2)
 
@@ -255,12 +257,21 @@ def correlation(predictandSelected, predictorSelected, fSDate, fEDate, autoRegre
         else:
             print("PARTIAL CORRELATIONS WITH", nameOfFiles[0])
             print()
-            print(f"{'Partial r':24}{'P value':12}")
-            print()
-            corrArrayList = [[j+1 for j in range(nVariables-1) if i+1 != j+1] for i in range(nVariables-1)]
-            for i in range(1, nVariables):
-                tempResult = pCorr(0, i, nVariables - 1, crossCorr, corrArrayList)
 
+            print(" " *24, end="")
+            print(f"{'Partial r':12}{'P value':12}")
+            print()
+            
+            for i in range(1, nVariables):
+                corrArrayList = np.zeros(nVariables + 1)
+                arrayCount = 0
+                for j in range(1, nVariables):
+                    if i != j:
+                        corrArrayList[arrayCount] = j
+                        arrayCount += 1
+                
+                tempResult = partialCorrelation(0, i, nVariables-2, crossCorr, corrArrayList)
+                
                 if abs(tempResult) < 0.999:
                     TTestValue = (tempResult * np.sqrt(totalNumbers - 2 - totalMissingRows - totalBelowThreshold)) / np.sqrt(1 - (tempResult ** 2))
                     PrValue = (((1 + ((TTestValue ** 2) / (totalNumbers - totalMissingRows - totalBelowThreshold))) ** -((totalNumbers + 1 - totalMissingRows - totalBelowThreshold) / 2))) / (np.sqrt((totalNumbers - totalMissingRows - totalBelowThreshold) * np.pi))
@@ -270,8 +281,8 @@ def correlation(predictandSelected, predictorSelected, fSDate, fEDate, autoRegre
                     PrValue = 1
                     tempResult = 0
 
-                tempY = f"{tempResult[0]:.3f}"
-                print(f"{nameOfFiles[i]:24}{tempY:12}{PrValue[0]:.4f}")
+                print(f"{nameOfFiles[i]:24}{tempResult:<12.3f}{PrValue:<12.3f}")
+                
                 
 
 

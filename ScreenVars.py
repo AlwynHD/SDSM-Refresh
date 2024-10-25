@@ -5,304 +5,36 @@ import os
 import re
 import numpy as np
 
-predictorSelected = ['C:/Code/SDSM/SDSM-Refresh/predictor files/test_dswr.dat'] #todo remove default
-predictandSelected = ['C:/Code/SDSM/SDSM-Refresh/predictand/NoviSadPrecOBS.dat'] #todo remove default
+predictorSelected = ['C:/Code/SDSM/SDSM-Refresh/predictor files/ncep_dswr.dat'] #todo remove default
+predictandSelected = ['C:/Code/SDSM/SDSM-Refresh/predictand files/NoviSadPrecOBS.dat'] #todo remove default
+nameOfFiles = ["NoviSadPrecOBS", "ncep_dswr"]
 globalSDate = datetime.datetime(1948, 1, 1)
 fSDate = datetime.datetime(1948, 1, 1)
 fEDate = datetime.datetime(2015, 12, 31)
 analysisPeriod = ["Annual", "Winter", "Spring", "Summer", "Autumn", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
 analysisPeriodChosen = 0
+autoRegressionTick = True
 
-def PCorr(A, B, n, CrossCorr, CorrArrayList):
+def pCorr(A, B, n, crossCorr, corrArrayList):
     # Calculates partial correlation of the form r12.34567 etc.
-    # In the form; rab.CorrArrayList(n); where n signifies how many terms we want from global array
-    results, r13, r23, denom = float()
+    # In the form; rab.corrArrayList(n); where n signifies how many terms we want from global array
+    r13 = 0
+    r23 = 0
+    denom = 0
     if n == 1:
-        result = CrossCorr(A, B) - (CrossCorr(A, CorrArrayList(1)) * CrossCorr(B, CorrArrayList(1)))
-        denom = (1 - CrossCorr(A, CorrArrayList(1)) ^ 2) * (1 - CrossCorr(B, CorrArrayList(1)) ^ 2)
+        result = crossCorr[A][B] - (crossCorr[A][corrArrayList[1]] * crossCorr[B][corrArrayList[1]])
+        denom = (1 - crossCorr[A][corrArrayList[1]] ** 2) * (1 - crossCorr[B][corrArrayList[1]] ** 2)
     else:                #r12.34567etc... case - calculate r12.3456, r17.3456, r27.3456 for example
-        result = PCorr(A, B, n - 1)     #r12.3456 for r12.34567 for example
-        r13 = PCorr(A, CorrArrayList(n), n - 1) #r17.3456 for r12.34567 for example
-        r23 = PCorr(B, CorrArrayList(n), n - 1) #r27.3456 for r12.34567 for example
+        result = pCorr(A, B, n - 1, crossCorr, corrArrayList)     #r12.3456 for r12.34567 for example
+        r13 = pCorr(A, corrArrayList[n], n - 1, crossCorr, corrArrayList) #r17.3456 for r12.34567 for example
+        r23 = pCorr(B, corrArrayList[n], n - 1, crossCorr, corrArrayList) #r27.3456 for r12.34567 for example
         result = result - (r13 * r23)
-        denom = (1 - r13 ^ 2) * (1 - r23 ^ 2)
+        denom = (1 - r13 ** 2) * (1 - r23 ** 2)
 
     if denom <= 0:                          #Trap errors - return -1 if a problem occurs
-        PCorr = -1
+        return -1
     else:
-        PCorr = result / math.sqrt(denom)
-
-""""
-def Correlation():                       #Calculates correlations and partial correlations
-    predictorfileNo, subloop, i, j, k = int()
-    tempResult = float()
-    x(21, 52000) = float()
-    dummy =  float()                        #Dummy to read in unwanted values
-    ProgValue = int()                     # for the progress bar
-    Sum = "None" * 21
-    sd(21)
-    XBAR(21)
-    resid(21)
-    sumresid(21)
-    sqresid(21)
-    prodresid(21, 21)
-    TTestValue = float()
-    PrValue = float()
-    MissingRows = int()       #Missing rows for all data
-    MissingFlag = bool()            #Missing marker
-    TotalMissing = int()            #Total missing altogether was long now int
-    BelowThresh = int()              #Total values read in below desired threshold
-    NVariables = int()             #number of variables to analyse = predictors+predictand
-    
-    if PTandFile == "":            #No predictand selected
-        print("You must select a predictand.", 0 + vbCritical, "Error Message")
-    elif NPredictors < 1:         #No predictors selected
-        print("You must select at least one predictor.", 0 + vbCritical, "Error Message")
-        File2.SetFocus
-    elif NPredictors > 12:         #No predictors selected
-        print( "Sorry - you are allowed a maximum of 12 predictors only.", 0 + vbCritical, "Error Message")
-        File2.SetFocus
-    else:
-        #todo make the mouse pointer look like an hour glass
-        # ScreenVarsFrm.MousePointer = 11     #Hour glass
-        for i in range(21):                     #Sum of each input variable
-            i += i
-        for i in range(50):                     #Make sure all files are closed
-            #todo close files
-            print("close files")
-        
-        Open PTandRoot for Input As 1      #Predictand file
-        FileList.Clear                      #Remove any predictors from FileList just in case
-        predictorfileNo = 2                 #File # of predictor file starts at 2
-        for subloop in File2:  #Check for selected files
-            if File2.Selected(subloop):     #if file is selected
-                FileList.AddItem File2.List(subloop)    #Add to list of selected files
-                Open File2.Path & "\" & File2.List(subloop) for Input As #predictorfileNo
-                predictorfileNo = predictorfileNo + 1
-        
-        NVariables = NPredictors + 1                    #1 predictand plus all predictors
-
-        TotalToreadIn = DateDiff("d", GlobalSDate, FSDate)       #Maximum values likely to read in at start
-        if TotalToreadIn > 0:                          #Need to discard some values so show progress bar
-            ProgressPicture.Visible = True                 #Show progress bar
-            NewProgressBar(ProgressPicture, 0, 100, "Skipping Unnecessary Data")
-        
-            
-        CurrentDay = Day(GlobalSDate)
-        CurrentMonth = Month(GlobalSDate)
-        CurrentYear = Year(GlobalSDate)
-        TotalNumbers = 0                                    #Total data read in so far
-        
-        #This block reads in unwanted data from start of file
-
-        while (DateDiff("d", DateSerial(CurrentYear, CurrentMonth, CurrentDay), FSDate)) <= 0:
-        #---------------------
-            DoEvents                                        #Check if user wants to escape processing
-            if ExitAnalyses:
-                miniReset()
-                # exit function todo
-        #---------------------
-            
-            for i in NVariables:
-                Input #i, dummy                        #todo Read in unwanted values
-
-            TotalNumbers = TotalNumbers + 1
-            increaseDate()                           #Increase current date
-            ProgValue = CInt((TotalNumbers / TotalToreadIn) * 100)
-            newProgressBar(ProgressPicture, ProgValue, 100, "Skipping Unnecessary Data")
-        Loop
-        #------------------------------
- 
-        TotalToreadIn = (DateDiff("d", FSDate, FEdate)) + 1     #Max values to possibly read in now
-        ProgressPicture.Visible = True                          #Show progress bar
-        newProgressBar(ProgressPicture, 0, 100, "Calculating Correlation Statistics")
-        CurrentDay = Day(FSDate)                                #Marker to date currently reading in
-        CurrentMonth = Month(FSDate)
-        CurrentYear = Year(FSDate)
-
-        #Get maximum likely size for progress bar
-        if DatesCombo.ListIndex == 0:                           #Case 0 - annual - need all data
-            ProgressBarMaximum = TotalToreadIn
-        elif DatesCombo.ListIndex in (1,2,3,4):                 #Seasonal - need 1/4 data
-            ProgressBarMaximum = TotalToreadIn / 4              #Rough estimate of max size
-        else:                                                   #Months - need 1/12 data
-            ProgressBarMaximum = TotalToreadIn / 12             #Rough estimate of max size
-
-        TotalNumbers = 0                                        #Total number we want to use
-        TotalMissing = 0
-        MissingRows = 0
-        BelowThresh = 0
-        while (DateDiff("d", DateSerial(CurrentYear, CurrentMonth, CurrentDay), FEdate)) < 0:
-
-            DoEvents                                        #Check if user wants to escape processing
-            if ExitAnalyses:
-                miniReset()
-                #todo pexit function
-            
-            if DateWanted():                            #Do we want this datum (eg January point)
-                TotalNumbers = TotalNumbers + 1
-                
-                MissingFlag = False
-                for i in NVariables:
-                    Input i, x(i, TotalNumbers)
-                    if x(i, TotalNumbers) == GlobalMissingCode:
-                        MissingFlag = True
-                        TotalMissing = TotalMissing + 1
-                
-                if ((x(1, TotalNumbers) <= Thresh) and (ParamOpt(0).value)) and (x(1, TotalNumbers) != GlobalMissingCode):
-                    BelowThresh = BelowThresh + 1
-                
-                if MissingFlag: 
-                    MissingRows = MissingRows + 1
-                
-                if ((ParmOpt(0).value) and (x(1, TotalNumbers) > Thresh)) or !(ParmOpt(0).value): 
-                    for i in NVariables:
-                        if not MissingFlag:
-                            i = i + x(i, TotalNumbers)
-                
-            else                                            #Else if date not wanted
-                for i in NVariables:                     #Date not needed so read in unwanted data
-                    Input i, dummy #todo what does this even do
-            
-            
-            increaseDate()                               #Increase date by one day
-            
-            ProgValue = CInt((TotalNumbers / ProgressBarMaximum) * 100)
-            newProgressBar(ProgressPicture, ProgValue, 100, "Calculating Correlation Statistics")                                            #Read in next data
-           
-        #All data now read in to x(i,j)
-        
-        
-        for i in NVariables:
-            Close i #todo fix this
-        
-        if AutoregressionTick.value == 1:            #does the user want to calculate autoregressive component
-            NVariables = NVariables + 1
-            x(NVariables, 1) = 0        #not sure ??
-            for i in TotalNumbers[2:]:
-                x(NVariables, i) = x(1, i - 1) #only add in last value if valid
-            if (x(1, TotalNumbers) != GlobalMissingCode) and not (x(1, TotalNumbers) <= Thresh) and (ParmOpt(0).value):
-                Sum(NVariables) = Sum(1) - x(1, TotalNumbers)
-            else:
-                Sum(NVariables) = Sum(1)
-            
-            FileList.AddItem "Autoregression"
-        
-        
-        Rem ** compute variable mean and sd **
-
-        for i in NVariables:
-            XBAR(i) = Sum(i) / (TotalNumbers - MissingRows - BelowThresh)
-
-        for i in TotalNumbers:
-            MissingFlag = False
-            for j in NVariables:
-                if x(j, i) == GlobalMissingCode: 
-                    MissingFlag = True
-            
-            for j in NVariables:
-                if ((ParmOpt(0).value) and (x(1, i) > Thresh)) or not (ParmOpt(0).value):
-                    if Not (MissingFlag):
-                        resid(j) = x(j, i) - XBAR(j)
-                        sumresid(j) = sumresid(j) + resid(j)
-                        sqresid(j) = sqresid(j) + (resid(j) ^ 2)
-            
-            for j in NVariables:
-                if ((ParmOpt(0).value) and (x(1, i) > Thresh)) or (Not (ParmOpt(0).value)):
-                    if Not (MissingFlag):
-                        for k in NVariables@
-                            prodresid(j, k) = prodresid(j, k) + (resid(j) * resid(k))
-                    
-    
-        for j in NVariables:
-            sd(j) = (sqresid(j) / (TotalNumbers - 1 - MissingRows - BelowThresh)) ^ 0.5
-        
-        Load ResultsFrm
-        ResultsFrm.ResPicture.Cls
-        ResultsFrm.HelpContext.Text = 2200      #Help context for correlation results
-    
-        ScreenVarsFrm.MousePointer = 0
-        ProgressPicture.Visible = False                     #Hide progress bar
-
-        for i in range(4):                        #Clear top menu bar
-            ResultsFrm.ResPicture.Print
-        
-        setSeason()                          #Set ChosenSeason string
-        ResultsFrm.ResPicture.Print "CorRELATION MATRIX"
-        ResultsFrm.ResPicture.Print
-        ResultsFrm.ResPicture.Print "Analysis Period: "; FSDate; " - "; FEdate; " ("; ChosenSeason; ")"
-        ResultsFrm.ResPicture.Print
-        ResultsFrm.ResPicture.Print "Missing values: "; TotalMissing
-        ResultsFrm.ResPicture.Print "Missing rows: "; MissingRows
-        if (ParmOpt(0).value):
-            ResultsFrm.ResPicture.Print "Values less than or equal to threshold: "; BelowThresh
-        
-        ResultsFrm.ResPicture.Print
-        ResultsFrm.ResPicture.foreColor = 500
-        for j in NVariables:
-            ResultsFrm.ResPicture.Print Tab((16 + (j * 8))); j;
-        ResultsFrm.ResPicture.Print
-        
-        for j in NVariables:
-            
-            if j == 1:
-                ResultsFrm.ResPicture.foreColor = 500
-                ResultsFrm.ResPicture.Print j;
-                ResultsFrm.ResPicture.foreColor = 0
-                ResultsFrm.ResPicture.Print Tab(6); PTandFile;
-            
-            if j > 1:
-                ResultsFrm.ResPicture.foreColor = 500
-                ResultsFrm.ResPicture.Print j;
-                ResultsFrm.ResPicture.foreColor = 0
-                ResultsFrm.ResPicture.Print Tab(6); FileList.List(j - 2);
-            
-            for k in NVariables:
-                CrossCorr(j, k) = prodresid(j, k) / ((TotalNumbers - 1 - MissingRows - BelowThresh) * sd(j) * sd(k))
-                tempY = format(CrossCorr(j, k), "0.000")
-                if k = j: tempY = format(1, "0")
-                ResultsFrm.ResPicture.Print Tab((16 + (k * 8))); tempY;
-            ResultsFrm.ResPicture.Print
-        ResultsFrm.ResPicture.Print
-        ResultsFrm.ResPicture.Print
-        
-        if NVariables < 3:
-            ResultsFrm.ResPicture.Print "NO PARTIAL CorRELATIONS TO CALCULATE"
-        else:
-            ResultsFrm.ResPicture.Print "PARTIAL CorRELATIONS WITH ";
-            ResultsFrm.ResPicture.Print PTandFile
-            ResultsFrm.ResPicture.Print
-            ResultsFrm.ResPicture.Print Tab(24); "Partial r"; Tab(36); "P value"
-           # ResultsFrm.ResPicture.Print
-        
-            for i in NVariables[2:]:
-                arraycount = 1
-                for j in NVariables[2:]:
-                    if i != j:
-                        CorrArrayList(arraycount) = j
-                        arraycount = arraycount + 1
-                    
-                ResultsFrm.ResPicture.Print FileList.List(i - 2); Tab(24);
-                tempResult = PCorr(1, i, NVariables - 2)
-                if Abs(tempResult) < 0.999:                   #Trap division by zero error
-                    TTestValue = (tempResult * Sqr(TotalNumbers - 2 - MissingRows - BelowThresh)) / Sqr(1 - (tempResult ^ 2))
-                    PrValue = (((1 + ((TTestValue ^ 2) / (TotalNumbers - MissingRows - BelowThresh))) ^ -((TotalNumbers + 1 - MissingRows - BelowThresh) / 2))) / (Sqr(((TotalNumbers - MissingRows - BelowThresh) * PI)))
-                    PrValue = PrValue * Sqr(TotalNumbers - MissingRows - BelowThresh)      #Correction for large N
-                else:
-                    TTestValue = 0
-                    PrValue = 1
-                    tempResult = 0
-                
-                tempY = format(tempResult, "0.000")
-                ResultsFrm.ResPicture.Print tempY; Tab(36);
-                tempY = format(PrValue, "0.0000")
-                ResultsFrm.ResPicture.Print tempY
-
-        
-        ResultsFrm.Show vbModal
-    
-    ScreenVarsFrm.MousePointer = 0
-"""
+        return result / math.sqrt(denom)
 
 def displayFiles(fileSelected):
     selected_files = selectFile()
@@ -346,8 +78,8 @@ def filesNames(fileName):
 def resetFiles(predictorSelected):
     return predictorSelected.clear()
 
-def increaseDate(currentDate): #todo check if the leap year thing was important
-    currentDate += datetime.timedelta(days=1)
+def increaseDate(currentDate, noDays): #todo check if the leap year thing was important
+    currentDate += datetime.timedelta(days=noDays)
     return currentDate
 
 def sigLevel_OK():
@@ -384,7 +116,7 @@ def fSDateOK(fSDate, feDate, globalDate):
         ouput = True 
     return output
 
-def correlation(predictandSelected, nVariables, fSDate, fEDate, predictorSelected):
+def correlation(predictandSelected, predictorSelected, fSDate, fEDate, autoRegressionTick):
     if predictandSelected == "":
         print("You must select a predictand.") # todo proper error message
     elif len(predictorSelected) < 1:
@@ -392,18 +124,157 @@ def correlation(predictandSelected, nVariables, fSDate, fEDate, predictorSelecte
     elif len(predictorSelected) > 12:
         print("Sorry - you are allowed a maximum of 12 predictors only.") #todo proper error message
     else:
-        predictor = np.loadtxt(predictorSelected[0])
-        print(predictor[0])
-        print(np.argwhere(predictor == 999))
         nVariables = len(predictorSelected) + 1
-        dateOfLoop = fSDate
 
         loadedFiles = []
         loadedFiles = loadFilesIntoMemory(predictorSelected, predictandSelected)
         
         #skip unwanted date
-        firstValid = findDataStart(loadedFiles[0])
+        # not needed here firstValid = findDataStart(loadedFiles[0])
         #todo progress bar
+
+        totalNumbers = 0
+        totalMissing = 0 
+        totalMissingRows = 0
+        totalBelowThreshold = 0
+
+        #todo imporant from settings
+        threshold = 0 
+        missingCode = -999
+        workingDate = fSDate
+        conditional = False
+
+        inputData = []
+        sumData = np.zeros(nVariables)
+
+        for i in range((fEDate - fSDate).days):
+        #for i in range(5000, 5010):
+            if dateWanted(workingDate, 0):
+                totalNumbers += 1    
+                row = [file[i] for file in loadedFiles]
+
+                missingNumber = row.count(missingCode)
+
+                # there are missingCodes
+                if missingNumber > 0:
+                    totalMissingRows += 1
+                    totalMissing += missingNumber
+
+                # there is no missingCodes
+                elif (conditional and row[0] > threshold) or not conditional:
+                    sumData += row
+
+                # the threshold only applies to the predictand file not the predictor files
+                if row[0] <= threshold and conditional and row[0] != missingCode:
+                    totalBelowThreshold +=1
+
+                # old code kept until proof current code is what was actually meant
+                # totalBelowThreshold += len([num for num in row if num <= threshold and conditional == True and num != missingCode])
+
+                inputData.append(row)
+            increaseDate(workingDate, 1)
+
+        inputData = np.array(inputData)
+        print(totalNumbers, totalMissing, totalMissingRows, totalBelowThreshold)
+
+        
+        if autoRegressionTick:
+            nVariables +=1
+            first_column = inputData[:, 0]
+
+            # create a new column for position 3 with the first element shifted down
+            new_column = np.roll(first_column, 1)
+            new_column[0] = 0  # Replace the first element with 0 or any placeholder value
+            
+            # Append the new column to the original array
+            inputData = np.hstack((inputData, new_column.reshape(-1, 1)))
+            
+            if inputData[totalNumbers - 1, 0] != missingCode and (not (inputData[totalNumbers - 1, 0] <= threshold) and conditional):
+                sumData = np.append(sumData, inputData[totalNumbers - 1, 0])
+                
+            else:
+                sumData = np.append(sumData, sumData[0])
+                nameOfFiles.append("Autoregression")
+            # FileList.AddItem "Autoregression"    
+
+
+        xBar = np.array([total/(totalNumbers - totalMissingRows - totalBelowThreshold) for total in sumData])
+
+        sumresid = sqresid = np.zeros(nVariables)
+        prodresid = np.zeros((nVariables, nVariables))
+
+        for i in range(totalNumbers):
+            row = inputData[i]
+
+            if not (missingCode in row) and ((conditional and row[0] > threshold) or not conditional):
+                sumData += row
+                resid = np.array([row[i]-xBar[i] for i in range(row.size)])
+                sumresid += resid
+                sqresid += [res**2 for res in resid]
+                prodresid += np.outer(resid, resid)
+        
+        sd = np.array([(number/(totalNumbers - 1 - totalMissingRows - totalBelowThreshold)) ** 0.5 for number in sqresid])
+
+        # Print Header Information
+        print("CORRELATION MATRIX")
+        print()
+        print(f"Analysis Period: {fSDate} - {fEDate} ({analysisPeriod[analysisPeriodChosen]})")
+        print()
+        print(f"Missing values: {totalMissing}")
+        print(f"Missing rows: {totalMissingRows}")
+        if conditional:
+            print(f"Values less than or equal to threshold: {totalBelowThreshold}")
+        print()
+
+        max_length = max(len(file) for file in nameOfFiles) + 1
+
+        # Print column headers
+        print(" ", end="")
+        for j in range(1, nVariables + 1):
+            print(f" {j:{max_length + 1}}", end="")
+        print()
+
+        # Print Cross Correlation Matrix
+        crossCorr = np.zeros((nVariables, nVariables))
+        for j in range(nVariables):
+            print(f"{j+1} ", end="")
+            print(f"{nameOfFiles[j]:{max_length}}", end="")
+            
+            for k in range(nVariables):
+                crossCorr[j, k] = prodresid[j, k] / ((totalNumbers - 1 - totalMissingRows - totalBelowThreshold) * sd[j] * sd[k])
+                tempY = f"{crossCorr[j, k]:.3f}"
+                if k == j:
+                    tempY = "1"
+                print(f"{tempY:{max_length + 2}}", end="")
+            print()
+        print()
+
+        # Check Partial Correlations
+        if nVariables < 3:
+            print("NO PARTIAL CORRELATIONS TO CALCULATE")
+        else:
+            print("PARTIAL CORRELATIONS WITH", nameOfFiles[0])
+            print()
+            print(f"{'Partial r':24}{'P value':12}")
+            print()
+            corrArrayList = [[j+1 for j in range(nVariables-1) if i+1 != j+1] for i in range(nVariables-1)]
+            for i in range(1, nVariables):
+                tempResult = pCorr(0, i, nVariables - 1, crossCorr, corrArrayList)
+
+                if abs(tempResult) < 0.999:
+                    TTestValue = (tempResult * np.sqrt(totalNumbers - 2 - totalMissingRows - totalBelowThreshold)) / np.sqrt(1 - (tempResult ** 2))
+                    PrValue = (((1 + ((TTestValue ** 2) / (totalNumbers - totalMissingRows - totalBelowThreshold))) ** -((totalNumbers + 1 - totalMissingRows - totalBelowThreshold) / 2))) / (np.sqrt((totalNumbers - totalMissingRows - totalBelowThreshold) * np.pi))
+                    PrValue = PrValue * np.sqrt(totalNumbers - totalMissingRows - totalBelowThreshold)  # Correction for large N
+                else:
+                    TTestValue = 0
+                    PrValue = 1
+                    tempResult = 0
+
+                tempY = f"{tempResult[0]:.3f}"
+                print(f"{nameOfFiles[i]:24}{tempY:12}{PrValue[0]:.4f}")
+                
+
+
  
 def loadFilesIntoMemory(predictorSelected, predictandSelected):
     loadedFiles = []
@@ -420,7 +291,6 @@ def findDataStart(predictandFile): # gets predictand numpy array then gets the p
 
 def dateWanted(date, analysisPeriodChosen):
     answer = False
-    
     if analysisPeriodChosen == 0:                #Annual selected so want all data
         answer = True
     elif analysisPeriodChosen == 1:            #Winter - DJF
@@ -438,15 +308,13 @@ def dateWanted(date, analysisPeriodChosen):
     else:
         if date == (analysisPeriodChosen - 4):
             answer = True     #Individual months
-    DateWanted = answer
+    return answer
 
 
 loadedFiles = []
 loadedFiles = loadFilesIntoMemory(predictorSelected, predictandSelected)
 firstValid = findDataStart(loadedFiles[0])
-print(loadedFiles[0][firstValid])
-#print(len(loadFilesIntoMemory(predictorSelected, predictandSelected)))
-#correlation("hi", 3, 4, datetime.datetime(1948, 1, 1), datetime.datetime.now(), predictorSelected)
+correlation(predictandSelected, predictorSelected, fSDate, fEDate, autoRegressionTick)
 
 
 

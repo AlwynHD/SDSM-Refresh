@@ -7,13 +7,13 @@ class ContentWidget(QWidget):
         super().__init__()
 
         # Content layout
-        content_layout = QVBoxLayout()
-        self.setLayout(content_layout)
+        contentLayout = QVBoxLayout()
+        self.setLayout(contentLayout)
 
         # Set background image for content area and fit to the page
-        background_image = QPixmap("sdsm_home_background.jpg").scaled(self.size(), Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
+        backgroundImage = QPixmap("sdsm_home_background.jpg").scaled(self.size(), Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
         palette = self.palette()
-        palette.setBrush(QPalette.Window, QBrush(background_image))
+        palette.setBrush(QPalette.Window, QBrush(backgroundImage))
         self.setAutoFillBackground(True)
         self.setPalette(palette)
 
@@ -21,12 +21,12 @@ class ContentWidget(QWidget):
         label = QLabel("Statistical DownScaling Model -\nDecision Centric\nSDSM-DC\nVersion X.Y", self)
         label.setAlignment(Qt.AlignCenter)
         label.setStyleSheet("font-size: 24px; color: black;")
-        content_layout.addWidget(label)
+        contentLayout.addWidget(label)
 
     def resizeEvent(self, event):
         # Resize background image to fit the window
-        background_image = QPixmap("sdsm_home_background.jpg").scaled(self.size(), Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
+        backgroundImage = QPixmap("sdsm_home_background.jpg").scaled(self.size(), Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
         palette = self.palette()
-        palette.setBrush(QPalette.Window, QBrush(background_image))
+        palette.setBrush(QPalette.Window, QBrush(backgroundImage))
         self.setPalette(palette)
         super().resizeEvent(event)

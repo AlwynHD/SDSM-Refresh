@@ -4,6 +4,7 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QMenuBar, Q
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon, QScreen
 from importlib import import_module
+import os
 
 class SDSMWindow(QMainWindow):
     def __init__(self):
@@ -74,14 +75,31 @@ class SDSMWindow(QMainWindow):
         self.centerOnScreen()
 
     def loadContent(self, index):
+        # Generate the module name as before
         moduleName = self.buttonNames[index].lower().replace(" ", "_")
+        
+        # Define a dictionary to simulate a switch-case structure
+        module_paths = {
+            "home": os.path.dirname(__file__),  # Home and main are in the same directory
+            "default": os.path.abspath(os.path.join(os.path.dirname(__file__), '../modules'))
+        }
+        
+        # Use the module path based on the module name, defaulting if not specifically defined
+        module_path = module_paths.get(moduleName, module_paths["default"])
+        
+        # Add the selected path to the system path if not already included
+        if module_path not in sys.path:
+            sys.path.append(module_path)
+
         try:
+            # Import the module using the adjusted path
             module = import_module(moduleName)
             if hasattr(module, 'ContentWidget'):
                 contentWidget = module.ContentWidget()
                 self.contentStack.addWidget(contentWidget)
                 self.contentStack.setCurrentWidget(contentWidget)
         except ModuleNotFoundError:
+            # Fallback widget if module is not found
             fallbackLabel = QLabel(f"Content for {self.buttonNames[index]} not available.")
             fallbackLabel.setAlignment(Qt.AlignCenter)
             fallbackLabel.setStyleSheet("font-size: 24px;")
@@ -91,6 +109,7 @@ class SDSMWindow(QMainWindow):
             fallbackWidget.setLayout(fallbackLayout)
             self.contentStack.addWidget(fallbackWidget)
             self.contentStack.setCurrentWidget(fallbackWidget)
+
 
     def centerOnScreen(self):
         screenGeometry = QScreen.availableGeometry(QApplication.primaryScreen())

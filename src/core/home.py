@@ -11,7 +11,7 @@ class ContentWidget(QWidget):
         self.setLayout(contentLayout)
 
         # Set background image for content area and fit to the page
-        backgroundImage = QPixmap("sdsm_home_background.jpg").scaled(self.size(), Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
+        backgroundImage = QPixmap("../images/sdsm_home_background.jpg").scaled(self.size(), Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
         palette = self.palette()
         palette.setBrush(QPalette.Window, QBrush(backgroundImage))
         self.setAutoFillBackground(True)
@@ -25,7 +25,7 @@ class ContentWidget(QWidget):
 
     def resizeEvent(self, event):
         # Resize background image to fit the window
-        backgroundImage = QPixmap("sdsm_home_background.jpg").scaled(self.size(), Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
+        backgroundImage = QPixmap("../images/sdsm_home_background.jpg").scaled(self.size(), Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
         palette = self.palette()
         palette.setBrush(QPalette.Window, QBrush(backgroundImage))
         self.setPalette(palette)

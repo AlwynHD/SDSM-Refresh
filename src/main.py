@@ -100,8 +100,8 @@ class SDSMWindow(QMainWindow):
         self.move(frameGeometry.topLeft())
 
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
     QApplication.setAttribute(Qt.AA_DisableHighDpiScaling, True)  # Disable scaling for consistent fixed size
+    app = QApplication(sys.argv)
     window = SDSMWindow()
     window.show()
     sys.exit(app.exec_())

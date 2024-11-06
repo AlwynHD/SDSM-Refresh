@@ -1,6 +1,7 @@
 import sys
+import subprocess
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QMenuBar, QPushButton, QWidget,
-                             QFrame, QSplitter, QLabel, QStackedWidget)
+                             QFrame, QSplitter, QLabel, QStackedWidget, QAction)
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon, QScreen
 from importlib import import_module
@@ -71,6 +72,11 @@ class SDSMWindow(QMainWindow):
         contactMenu = menuBar.addMenu("Contact")
         aboutMenu = menuBar.addMenu("About")
 
+        # Add action to Settings menu
+        openSettingsAction = QAction("Open Settings", self)
+        openSettingsAction.triggered.connect(self.loadSettingsContent)
+        settingsMenu.addAction(openSettingsAction)
+
         # Center the window on the screen
         self.centerOnScreen()
 
@@ -78,10 +84,18 @@ class SDSMWindow(QMainWindow):
         # Generate the module name as before
         moduleName = self.buttonNames[index].lower().replace(" ", "_")
         
+        # Load the module using the helper function
+        self.loadModule(moduleName, self.buttonNames[index])
+
+    def loadSettingsContent(self):
+        # Load the settings module
+        self.loadModule("settings", "Settings")
+
+    def loadModule(self, moduleName, displayName):
         # Define a dictionary to simulate a switch-case structure
         module_paths = {
             "home": os.path.dirname(__file__),  # Home and main are in the same directory
-            "default": os.path.abspath(os.path.join(os.path.dirname(__file__), '../modules'))
+            "default": os.path.join(os.path.dirname(__file__), '..', 'modules')
         }
         
         # Use the module path based on the module name, defaulting if not specifically defined
@@ -100,7 +114,7 @@ class SDSMWindow(QMainWindow):
                 self.contentStack.setCurrentWidget(contentWidget)
         except ModuleNotFoundError:
             # Fallback widget if module is not found
-            fallbackLabel = QLabel(f"Content for {self.buttonNames[index]} not available.")
+            fallbackLabel = QLabel(f"Content for {displayName} not available.")
             fallbackLabel.setAlignment(Qt.AlignCenter)
             fallbackLabel.setStyleSheet("font-size: 24px;")
             fallbackWidget = QWidget()
@@ -109,7 +123,6 @@ class SDSMWindow(QMainWindow):
             fallbackWidget.setLayout(fallbackLayout)
             self.contentStack.addWidget(fallbackWidget)
             self.contentStack.setCurrentWidget(fallbackWidget)
-
 
     def centerOnScreen(self):
         screenGeometry = QScreen.availableGeometry(QApplication.primaryScreen())

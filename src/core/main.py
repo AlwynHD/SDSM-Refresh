@@ -66,16 +66,15 @@ class SDSMWindow(QMainWindow):
         # Menu bar
         menuBar = QMenuBar(self)
         self.setMenuBar(menuBar)
-        settingsMenu = menuBar.addMenu("Settings")
+        # Settings button (acting as a clickable menu item)
+        settingsAction = QAction("Settings", self)
+        menuBar.addAction(settingsAction)
+        settingsAction.triggered.connect(self.loadSettingsContent)
         helpMenu = menuBar.addMenu("Help")
         literatureMenu = menuBar.addMenu("Literature")
         contactMenu = menuBar.addMenu("Contact")
         aboutMenu = menuBar.addMenu("About")
 
-        # Add action to Settings menu
-        openSettingsAction = QAction("Open Settings", self)
-        openSettingsAction.triggered.connect(self.loadSettingsContent)
-        settingsMenu.addAction(openSettingsAction)
 
         # Center the window on the screen
         self.centerOnScreen()

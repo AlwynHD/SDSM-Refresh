@@ -1,12 +1,13 @@
 import sys
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QMenuBar, QPushButton, QWidget,
-                             QFrame, QSplitter, QLabel, QStackedWidget)
+                             QFrame, QSplitter, QLabel, QStackedWidget, QAction)
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon, QScreen
 from importlib import import_module
 import os
 
 class SDSMWindow(QMainWindow):
+
     def __init__(self):
         super().__init__()
         self.setWindowTitle("SDSM Wireframe")
@@ -65,7 +66,13 @@ class SDSMWindow(QMainWindow):
         # Menu bar
         menuBar = QMenuBar(self)
         self.setMenuBar(menuBar)
-        settingsMenu = menuBar.addMenu("Settings")
+        
+        # Settings button (acting as a clickable menu item)
+        settingsAction = QAction("Settings", self)
+        menuBar.addAction(settingsAction)
+        settingsAction.triggered.connect(self.showSettings) 
+
+        # Other menus
         helpMenu = menuBar.addMenu("Help")
         literatureMenu = menuBar.addMenu("Literature")
         contactMenu = menuBar.addMenu("Contact")
@@ -73,6 +80,35 @@ class SDSMWindow(QMainWindow):
 
         # Center the window on the screen
         self.centerOnScreen()
+
+    def showSettings(self):
+        try:
+            # Import ContentWidget from settings.py
+            from settings import ContentWidget
+
+            # Check if a settings widget already exists in the stack
+            for i in range(self.contentStack.count()):
+                widget = self.contentStack.widget(i)
+                if isinstance(widget, ContentWidget):
+                    self.contentStack.setCurrentWidget(widget)
+                    return  # If already exists, switch to it and exit
+
+            # If no existing settings widget, create and add a new one
+            settingsWidget = ContentWidget()
+            self.contentStack.addWidget(settingsWidget)
+            self.contentStack.setCurrentWidget(settingsWidget)
+
+        except (ModuleNotFoundError, ImportError):
+            # Display a fallback message if settings.py or ContentWidget is missing
+            fallbackLabel = QLabel("Settings content not available.")
+            fallbackLabel.setAlignment(Qt.AlignCenter)
+            fallbackLabel.setStyleSheet("font-size: 24px;")
+            fallbackWidget = QWidget()
+            fallbackLayout = QVBoxLayout()
+            fallbackLayout.addWidget(fallbackLabel)
+            fallbackWidget.setLayout(fallbackLayout)
+            self.contentStack.addWidget(fallbackWidget)
+            self.contentStack.setCurrentWidget(fallbackWidget)
 
     def loadContent(self, index):
         # Generate the module name as before

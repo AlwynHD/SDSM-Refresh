@@ -9,6 +9,7 @@ predictorSelected = ['C:/Code/SDSM/SDSM-Refresh/predictor files/ncep_dswr.dat'] 
 predictandSelected = ['C:/Code/SDSM/SDSM-Refresh/predictand files/NoviSadPrecOBS.dat'] #todo remove default
 nameOfFiles = ["NoviSadPrecOBS", "ncep_dswr"]
 globalSDate = datetime.datetime(1948, 1, 1)
+globalEDate = datetime.datetime(2015, 12, 31)
 fSDate = datetime.datetime(1948, 1, 1)
 fEDate = datetime.datetime(2015, 12, 31)
 analysisPeriod = ["Annual", "Winter", "Spring", "Summer", "Autumn", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
@@ -84,39 +85,97 @@ def increaseDate(currentDate, noDays): #todo check if the leap year thing was im
     currentDate += datetime.timedelta(days=noDays)
     return currentDate
 
-def sigLevel_OK():
+def sigLevelOK(sigLevelInput):
     correctSigValue = False
-    sigLevelInput = 0.05 #todo get this from the user
+    sigLevel = 0.05
     if sigLevelInput == "" or not type(sigLevelInput) is int:              #SigLevelText is the input from the user
         #todo error message to user orgianl: MsgBox "Significance level must be a value.", 0 + vbCritical, "Error Message" 
-        sigLevelInput.Text = 0.05
+        print("Significance level must be a value.")
     else:
         if sigLevelInput > 0.999 or sigLevelInput < 0:
             #todo error message to user orginal: MsgBox "Significance level must be positive and less than 1.", 0 + vbCritical, "Error Message"
-            sigLevelInput = 0.05
+            print("Significance level must be positive and less than 1.")
         else:
             if sigLevelInput == 0.1111:
                 print("BlankFrm.Show") #todo figure out why this is here in the first place and what BlankFrm.Show does in vb
             else:
                 sigLevel = sigLevelInput
                 correctSigValue = True
-    return correctSigValue
+    return correctSigValue, sigLevel
 
-def fSDateOK(fSDate, feDate, globalDate):
+def fsDateOK(fSDate, feDate, globaSlDate):
 
     output = False
     if not isinstance(fSDate, datetime.datetime):
         #todo error message to user about correct date orginal MsgBox "Start date is invalid - it must be in the format dd/mm/yyyy.", 0 + vbCritical, "Error Message"
         fSDate = datetime.datetime.now() #todo figure out what GlobalSDate is pretty sure it might be record start date
-    elif (fSDate - feDate).days < 1:
+        print("Start date is invalid - it must be in the format dd/mm/yyyy")
+    elif (fSDate - feDate).days > 1:
         #todo error message to user about correct date orginal MsgBox "End date must be later than start date.", 0 + vbCritical, "Error Message"
         fSDate = fSDate = datetime.datetime.now() #todo figure out what GlobalSDate is 
-    elif (fSDate - globalDate).days < 0:
+        print("End date must be later than start date.")
+        print(fSDate - feDate)
+    elif (fSDate - globalSDate).days < 0:
         #todo error message to user about correct date orginal MsgBox "Fit start date must be later than record start date.", 0 + vbCritical, "Error Message"
-        fSDate = fSDate = datetime.datetime.now() #todo figure out what GlobalSDate is 
+        fSDate = fSDate = datetime.datetime.now() #todo figure out what GlobalSDate is '
+        print("Fit start date must be later than record start date.")
     else:
-        ouput = True 
+        output = True 
     return output
+
+def feDateOK(fsDate, feDate, globalEDate):
+
+    output = False
+    if not isinstance(feDate, datetime.datetime):
+        #todo error message to user about correct date orginal MsgBox "End date is invalid - it must be in the format dd/mm/yyyy.", 0 + vbCritical, "Error Message"
+        fsDate = globalEDate #todo figure out what GlobalSDate is pretty sure it might be record start date
+        print("End date is invalid - it must be in the format dd/mm/yyyy.")
+    elif (fsDate - feDate).days > 1:
+        #todo error message to user about correct date orginal MsgBox "End date must be later than start date.", 0 + vbCritical, "Error Message"
+        feDate = globalEDate #todo figure out what GlobalSDate is 
+        print("End date must be later than start date.")
+    elif (feDate - globalEDate).days > 0:
+        #todo error message to user about correct date orginal MsgBox "Fit end date must be earlier than record end date.", 0 + vbCritical, "Error Message"
+        feDate = globalEDate #todo figure out what GlobalSDate is 
+        print("Fit end date must be earlier than record end date.")
+        print(((feDate - globalEDate).days >= 0))
+    else:
+        output = True 
+    return output
+
+def loadFilesIntoMemory(predictorSelected, predictandSelected):
+    loadedFiles = []
+    loadedFiles.append(np.loadtxt(predictandSelected[0]))
+    for fileLocation in predictorSelected:
+        loadedFiles.append(np.loadtxt(fileLocation))
+    return loadedFiles
+    
+def findDataStart(predictandFile): # gets predictand numpy array then gets the position of the first data position
+    firstData = predictandFile[predictandFile != -999]
+    if firstData.size == 0:
+        return None  # All values are errors
+    return np.where(predictandFile == firstData[0])[0][0]
+
+def dateWanted(date, analysisPeriodChosen):
+    answer = False
+    if analysisPeriodChosen == 0:                #Annual selected so want all data
+        answer = True
+    elif analysisPeriodChosen == 1:            #Winter - DJF
+        if date.month == 12 or date.month == 1 or date.month == 2:
+            answer = True
+    elif analysisPeriodChosen == 2:            #Spring - MAM
+        if date.month == 3 or date.month == 4 or date.month == 5:
+            answer = True
+    elif analysisPeriodChosen == 3:             #Summer - JJA
+        if date.month == 6 or date.month == 7 or date.month == 8:
+            answer = True
+    elif analysisPeriodChosen == 4:            #Autumn - SON
+        if date.month == 9 or date.month == 10 or date.month == 11:
+            answer = True
+    else:
+        if date == (analysisPeriodChosen - 4):
+            answer = True     #Individual months
+    return answer
 
 def correlation(predictandSelected, predictorSelected, fSDate, fEDate, autoRegressionTick):
     if predictandSelected == "":
@@ -170,16 +229,13 @@ def correlation(predictandSelected, predictorSelected, fSDate, fEDate, autoRegre
                 if row[0] <= threshold and conditional and row[0] != missingCode:
                     totalBelowThreshold +=1
 
-                # old code kept until proof current code is what was actually meant
-                # totalBelowThreshold += len([num for num in row if num <= threshold and conditional == True and num != missingCode])
-
                 inputData.append(row)
             increaseDate(workingDate, 1)
 
         inputData = np.array(inputData)
         print(totalNumbers, totalMissing, totalMissingRows, totalBelowThreshold)
 
-        
+        inputData[1]
         if autoRegressionTick:
             nVariables +=1
             first_column = inputData[:, 0]
@@ -282,58 +338,77 @@ def correlation(predictandSelected, predictorSelected, fSDate, fEDate, autoRegre
                     tempResult = 0
 
                 print(f"{nameOfFiles[i]:24}{tempResult:<12.3f}{PrValue:<12.3f}")
-                
-                
 
-
- 
-def loadFilesIntoMemory(predictorSelected, predictandSelected):
-    loadedFiles = []
-    loadedFiles.append(np.loadtxt(predictandSelected[0]))
-    for fileLocation in predictorSelected:
-        loadedFiles.append(np.loadtxt(fileLocation))
-    return loadedFiles
-    
-def findDataStart(predictandFile): # gets predictand numpy array then gets the position of the first data position
-    firstData = predictandFile[predictandFile != -999]
-    if firstData.size == 0:
-        return None  # All values are errors
-    return np.where(predictandFile == firstData[0])[0][0]
-
-def dateWanted(date, analysisPeriodChosen):
-    answer = False
-    if analysisPeriodChosen == 0:                #Annual selected so want all data
-        answer = True
-    elif analysisPeriodChosen == 1:            #Winter - DJF
-        if date.month == 12 or date.month == 1 or date.month == 2:
-            answer = True
-    elif analysisPeriodChosen == 2:            #Spring - MAM
-        if date.month == 3 or date.month == 4 or date.month == 5:
-            answer = True
-    elif analysisPeriodChosen == 3:             #Summer - JJA
-        if date.month == 6 or date.month == 7 or date.month == 8:
-            answer = True
-    elif analysisPeriodChosen == 4:            #Autumn - SON
-        if date.month == 9 or date.month == 10 or date.month == 11:
-            answer = True
+def analyseData(predictandSelected, predictorSelected, fsDate, feDate, globalSDate, globalEDate, autoRegressionTick):
+    sigLevelInput = 0
+    if predictandSelected == "":
+        print("You must select a predictand.") # todo proper error message
+    elif len(predictorSelected) < 1 and not autoRegressionTick:
+        print("You must select at least one predictor.") # todo proper error message
+    elif not fsDateOK(fsDate, feDate, globalSDate):
+        print("file start date is not okay") #todo proper error message
+    elif not feDateOK(fsDate, feDate, globalEDate):
+        print("file end date is not okay") #todo proper error message
+    elif not sigLevelOK(sigLevelInput):
+        print("Sig level is not okay")
     else:
-        if date == (analysisPeriodChosen - 4):
-            answer = True     #Individual months
-    return answer
+        nVariables = len(predictorSelected) + 1
 
-
-loadedFiles = []
-loadedFiles = loadFilesIntoMemory(predictorSelected, predictandSelected)
-firstValid = findDataStart(loadedFiles[0])
-correlation(predictandSelected, predictorSelected, fSDate, fEDate, autoRegressionTick)
+        loadedFiles = []
+        loadedFiles = loadFilesIntoMemory(predictorSelected, predictandSelected)
+        
+        loadedFiles = [file[(fsDate - globalSDate).days:] for file in loadedFiles]
 
 
 
-def miniReset():
-    print("haha die")
+        workingDate = fSDate
+        lastMonth = workingDate.month - 1
+        missingCode = -999
+        totalNumbers = 0
+        totalFalseMissingCode = 0
 
-def newProgressBar(ProgressPicture, ProgValue, number, text):
-    print("haha die")
+        months = [[],[],[],[],[],[],[],[],[],[],[],[]]
+        monthCount = np.zeros(12, dtype=int)
 
-def setSeason():
-    print("haha die")
+        for i in range((fEDate - fSDate).days):
+        #for i in range(4749, 4905):
+            if lastMonth != workingDate.month -1:
+                other = np.full((1,2), missingCode, dtype=int)
+                months[lastMonth] = np.concatenate((months[lastMonth], other))
+                totalFalseMissingCode += 1
+                lastMonth = workingDate.month-1
+            
+            totalNumbers += 1
+            monthCount[workingDate.month-1] += 1
+
+            other = np.array([[file[i] for file in loadedFiles]])
+            if len(months[workingDate.month-1]) == 0:
+                months[workingDate.month-1] = other
+            else:
+                months[workingDate.month-1] = np.concatenate((months[workingDate.month-1], other))
+            
+            workingDate = increaseDate(workingDate, 1)
+        print(monthCount)
+
+        # data is in months (month, array of values from each file, the data points)
+
+        """------------------------
+        Calculate Stats
+        -----------------------"""
+        conditional = True
+        threshold = 0
+        if conditional:
+            for month in months:
+                month[:, 0] = np.where(month[:, 0] > threshold, 1, np.where(month[:, 0] != missingCode, 0, missingCode))
+        print(months[0])
+        
+        collapsed_array = np.vstack(months)
+        print(collapsed_array.shape) 
+
+        column_sums = np.sum(collapsed_array, axis=0)
+        print(column_sums)
+        squared_column_sums = np.sum(collapsed_array ** 2, axis=0)
+        print(squared_column_sums)
+        multiplication_sums = np.sum(collapsed_array * collapsed_array[0], axis=0)
+        print(multiplication_sums)
+analyseData(predictandSelected, predictorSelected, fSDate, fEDate, globalSDate, globalEDate, autoRegressionTick)

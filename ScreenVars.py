@@ -5,6 +5,10 @@ import os
 import re
 import numpy as np
 
+#Local version
+#predictorSelected = ['predictor files/ncep_dswr.dat']
+#predictandSelected = ['predictand files/NoviSadPrecOBS.dat']
+
 predictorSelected = ['C:/Code/SDSM/SDSM-Refresh/predictor files/ncep_dswr.dat'] #todo remove default
 predictandSelected = ['C:/Code/SDSM/SDSM-Refresh/predictand files/NoviSadPrecOBS.dat'] #todo remove default
 nameOfFiles = ["NoviSadPrecOBS", "ncep_dswr"]

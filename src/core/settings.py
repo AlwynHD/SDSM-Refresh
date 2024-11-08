@@ -9,24 +9,38 @@ import sys
 # Constants
 defaultIniFile = 'settings.ini'
 
+# Default Values for Reset
+defaultValues = {
+    'leapValue': 1,
+    'yearLength': 1,
+    'yearIndicator': 366,
+    'globalSDate': "01/01/1961",
+    'globalEDate': "31/12/1990",
+    'globalNDays': 0,
+    'allowNeg': True,
+    'randomSeed': True,
+    'thresh': 0,
+    'defaultDir': QDir.homePath(),
+    'globalMissingCode': -999
+}
+
 # Global Variables
-leapValue = 1
-yearLength = 1
-yearIndicator = 366
-globalSDate = "01/01/1961"
-globalEDate = "31/12/1990"
-globalNDays = 0
-allowNeg = True
-randomSeed = True
-thresh = 0
-defaultDir = QDir.homePath()
-globalMissingCode = -999
+leapValue = defaultValues['leapValue']
+yearLength = defaultValues['yearLength']
+yearIndicator = defaultValues['yearIndicator']
+globalSDate = defaultValues['globalSDate']
+globalEDate = defaultValues['globalEDate']
+globalNDays = defaultValues['globalNDays']
+allowNeg = defaultValues['allowNeg']
+randomSeed = defaultValues['randomSeed']
+thresh = defaultValues['thresh']
+defaultDir = defaultValues['defaultDir']
+globalMissingCode = defaultValues['globalMissingCode']
 
 # Main PyQt5 Widget Class
 class ContentWidget(QWidget):
     def __init__(self):
         super().__init__()
-
 
         # Main content layout
         mainLayout = QVBoxLayout()
@@ -77,6 +91,11 @@ class ContentWidget(QWidget):
 
         mainLayout.addWidget(miscGroupBox)
 
+        # Reset Button (moved outside the Miscellaneous Group Box)
+        resetButton = QPushButton("Reset")
+        resetButton.clicked.connect(self.resetSettings)
+        mainLayout.addWidget(resetButton)
+
         # Spacer to fill the rest of the layout
         mainLayout.addStretch()
 
@@ -100,7 +119,6 @@ class ContentWidget(QWidget):
         buttonLayout.addWidget(loadButton)
 
         mainLayout.addLayout(buttonLayout)
-
 
     def validateDate(self, dateStr):
         try:
@@ -162,7 +180,6 @@ class ContentWidget(QWidget):
             iniFile = QFileDialog.getExistingDirectory(None, "Select Directory to Save Settings", defaultDir)
 
         if not iniFile:
-            QMessageBox.critical(self, "Error", "Error: No directory selected for saving settings.")
             return
         iniFile = os.path.join(iniFile, 'settings.ini')
 
@@ -187,8 +204,9 @@ class ContentWidget(QWidget):
         except OSError as e:
             QMessageBox.critical(self, "Error", f"Error: Could not save settings to the specified location '{iniFile}'. Reason: {e}")
 
-    def loadSettingsIntoUi(self):
-        self.loadSettings()
+    def loadSettingsIntoUi(self, ini = True):
+        if ini == True:
+            self.loadSettings()
         self.startDateEdit.setText(globalSDate)
         self.endDateEdit.setText(globalEDate)
         self.eventThresholdEdit.setText(str(thresh))
@@ -245,7 +263,27 @@ class ContentWidget(QWidget):
         if iniFile and os.path.isfile(iniFile):
             self.loadSettings(iniFile)
             self.loadSettingsIntoUi()
-        
+
+    def resetSettings(self):
+        global leapValue, yearLength, yearIndicator, globalSDate, globalEDate, globalNDays
+        global allowNeg, randomSeed, thresh, defaultDir, globalMissingCode
+
+        # Reset to default values
+        leapValue = defaultValues['leapValue']
+        yearLength = defaultValues['yearLength']
+        yearIndicator = defaultValues['yearIndicator']
+        globalSDate = defaultValues['globalSDate']
+        globalEDate = defaultValues['globalEDate']
+        globalNDays = self.calculateDays(self.validateDate(globalSDate), self.validateDate(globalEDate))
+        allowNeg = defaultValues['allowNeg']
+        randomSeed = defaultValues['randomSeed']
+        thresh = defaultValues['thresh']
+        defaultDir = defaultValues['defaultDir']
+        globalMissingCode = defaultValues['globalMissingCode']
+
+        # Load the default values into the UI elements
+        self.loadSettingsIntoUi(False)
+
 # Main function for testing the UI
 def main():
     app = QApplication(sys.argv)

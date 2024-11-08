@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import os
 from PyQt5.QtWidgets import (QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, QFrame, QLabel, QLineEdit, QCheckBox, QFileSystemModel, QGroupBox, QApplication, QHeaderView, QFileDialog, QMessageBox)
 from PyQt5.QtCore import Qt, QDir
-from PyQt5.QtGui import QPalette, QColor, QIcon
+from PyQt5.QtGui import QPalette, QColor
 import sys
 
 # Constants
@@ -33,55 +33,6 @@ class ContentWidget(QWidget):
         mainLayout.setContentsMargins(10, 10, 10, 10)  # Set margins to create some padding
         mainLayout.setSpacing(20)  # Set spacing between elements
         self.setLayout(mainLayout)
-
-         # Top button bar layout
-        topBarLayout = QHBoxLayout()
-        topBarLayout.setSpacing(0)
-        topBarLayout.setContentsMargins(0, 0, 0, 0)
-        topBarLayout.setAlignment(Qt.AlignLeft)
-
-        # Placeholder buttons for top bar - These buttons are duplicatable based on page needs
-        buttonNames = ["Back","Reset","Load","Save","Advanced"] # Add name to list to create more buttons
-        for name in buttonNames:
-            button = QPushButton(name)  # Name buttons for clarity
-            button.setIcon(QIcon("placeholder_icon.png"))  # Assuming placeholder icons are available
-            button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-            button.setFixedSize(95, 50)  # Set a fixed size matching the height of the Home button
-            button.setStyleSheet("""
-                   QPushButton {
-                       background-color: #F5F5F5; /* Background color to match the window */
-                       color: black;
-                       padding: 8px;
-                       text-align: left;
-                       padding-left: 12px;
-                       border: 5px solid #C0C0C0; /* Border to give structure */
-                       border-style: groove;
-                       border-top-left-radius: 6px;
-                       border-bottom-right-radius: 6px; /* Angled corners for 3D look */
-                                          }
-                   QPushButton:hover {
-                       background-color: #FFFFFF; /* Slightly lighter color on hover */
-                       border: 2px solid #A0A0A0; /* Darker border on hover */
-                       
-                   }
-                   QPushButton:pressed {
-                       background-color: #D0D0D0; /* Darker to simulate pressing */
-                       padding-left: 14px; /* Slight "pressed" shift */
-                       padding-top: 6px;
-                       
-                    }
-               """)
-
-  # Match color with sidebar buttons
-            topBarLayout.addWidget(button)
-
-        # Top bar frame to add layout
-        topBarFrame = QFrame()
-        topBarFrame.setLayout(topBarLayout)
-        topBarFrame.setFrameShape(QFrame.NoFrame)
-        topBarFrame.setFixedHeight(50)  # Match height with sidebar buttons (Home button)
-        topBarFrame.setStyleSheet("background-color: #F5F5F5;")  # Dark Gray background for the top bar
-        mainLayout.addWidget(topBarFrame)
 
         # Set the background color to dark blue if dark mode, else light blue
         palette = QPalette()

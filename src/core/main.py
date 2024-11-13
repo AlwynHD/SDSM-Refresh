@@ -12,7 +12,6 @@ windowWidth = 900
 windowHeight = 600
 
 class SDSMWindow(QMainWindow):
-
     def __init__(self):
         """
         Initialize the main SDSM application window.
@@ -72,7 +71,6 @@ class SDSMWindow(QMainWindow):
         # Load the initial content for "Home"
         self.loadContent(0)
 
-<<<<<<< team-1
         # Toolbar setup
         toolbar = QMenuBar(self)  # Toolbar
         self.setMenuBar(toolbar)
@@ -88,54 +86,7 @@ class SDSMWindow(QMainWindow):
         settingsMenu.addAction(openSettingsAction)
 
         # Center the window on the user's screen
-=======
-        # Menu bar
-        menuBar = QMenuBar(self)
-        self.setMenuBar(menuBar)
-        
-        # Settings button (acting as a clickable menu item)
-        settingsAction = QAction("Settings", self)
-        menuBar.addAction(settingsAction)
-        settingsAction.triggered.connect(self.showSettings) 
-
-        # Other menus
-        helpMenu = menuBar.addMenu("Help")
-        literatureMenu = menuBar.addMenu("Literature")
-        contactMenu = menuBar.addMenu("Contact")
-        aboutMenu = menuBar.addMenu("About")
-
-        # Center the window on the screen
->>>>>>> main
         self.centerOnScreen()
-
-    def showSettings(self):
-        try:
-            # Import ContentWidget from settings.py
-            from settings import ContentWidget
-
-            # Check if a settings widget already exists in the stack
-            for i in range(self.contentStack.count()):
-                widget = self.contentStack.widget(i)
-                if isinstance(widget, ContentWidget):
-                    self.contentStack.setCurrentWidget(widget)
-                    return  # If already exists, switch to it and exit
-
-            # If no existing settings widget, create and add a new one
-            settingsWidget = ContentWidget()
-            self.contentStack.addWidget(settingsWidget)
-            self.contentStack.setCurrentWidget(settingsWidget)
-
-        except (ModuleNotFoundError, ImportError):
-            # Display a fallback message if settings.py or ContentWidget is missing
-            fallbackLabel = QLabel("Settings content not available.")
-            fallbackLabel.setAlignment(Qt.AlignCenter)
-            fallbackLabel.setStyleSheet("font-size: 24px;")
-            fallbackWidget = QWidget()
-            fallbackLayout = QVBoxLayout()
-            fallbackLayout.addWidget(fallbackLabel)
-            fallbackWidget.setLayout(fallbackLayout)
-            self.contentStack.addWidget(fallbackWidget)
-            self.contentStack.setCurrentWidget(fallbackWidget)
 
     def loadContent(self, index):
         """
@@ -209,4 +160,4 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = SDSMWindow()
     window.show()  # Display the main window
-    sys.exit(app.exec_())  # Start the application event loop // this is the entire file, how can i get rid of the 
+    sys.exit(app.exec_())  # Start the application event loop

@@ -1,15 +1,16 @@
 import sys
 import subprocess
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QMenuBar, QPushButton, QWidget,
-                             QFrame, QSplitter, QLabel, QStackedWidget, QAction, QSizePolicy)
+                             QFrame, QSplitter, QLabel, QStackedWidget, QAction, QSizePolicy,)
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QIcon, QScreen
+from PyQt5.QtGui import QIcon, QScreen, QFont
 from importlib import import_module
 import os
 
 # Global variables for window dimensions
 windowWidth = 1280
 windowHeight = 720
+
 
 class SDSMWindow(QMainWindow):
     def __init__(self):
@@ -21,10 +22,14 @@ class SDSMWindow(QMainWindow):
         
         # Configure main window properties
         self.setWindowTitle("SDSM - Beta V1")  # Title Bar
-        # self.setFixedSize(windowWidth, windowHeight)  # Fixed-size window,  Q no resizing allowed
 
         self.resize(windowWidth, windowHeight)  # Set initial size
-        # self.setMinimumSize(windowWidth // 2, windowHeight // 2)  # Set minimum size
+        
+        screen_geometry = QApplication.desktop().screenGeometry()
+        screen_width = screen_geometry.width()
+        screen_height = screen_geometry.height()
+        # Calculate the font size based on the screen size
+        font_size = max(10, min(16, int(screen_height * 0.025))) 
 
         # Set up the central widget, which contains the menu (sidebar) and content (main display area)
         centralWidget = QWidget()
@@ -51,13 +56,18 @@ class SDSMWindow(QMainWindow):
 
         # Create menu buttons dynamically
         self.menuButtons = []
+        # Calculate button height based on screen height (3% of screen height)
+        button_height = int(screen_height * 0.03)
+        # Calculate font size based on button height (40% of button height)
+        button_font_size = int(button_height * 0.5)
+
         for index, (name, icon) in enumerate(zip(self.menuButtonNames, self.menuButtonIcons)):
-            menuButton = QPushButton(name)  # Menu label
-            menuButton.setIcon(QIcon(icon))  # Menu icon
-            menuButton.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.MinimumExpanding)  # Allow both horizontal and vertical expansion
-            menuButton.setMinimumHeight(50)  # Set minimum height for visual comfort
-            menuButton.setStyleSheet("text-align: left; padding-left: 10px; border: 1px solid lightgray;")
-            menuButton.clicked.connect(lambda checked, idx=index: self.loadContent(idx))  # Connect to content loader
+            menuButton = QPushButton(name)
+            menuButton.setIcon(QIcon(icon))
+            menuButton.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.MinimumExpanding)
+            menuButton.setMinimumHeight(button_height)  # Dynamic button height
+            menuButton.setStyleSheet(f"text-align: left; padding-left: 10px; border: 1px solid lightgray; font-size: {button_font_size}px;")
+            menuButton.clicked.connect(lambda checked, idx=index: self.loadContent(idx))
             menuLayout.addWidget(menuButton)
             self.menuButtons.append(menuButton)
 

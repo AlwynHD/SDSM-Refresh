@@ -2,60 +2,75 @@ from PyQt5.QtWidgets import QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSiz
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPalette, QColor, QIcon
 
+# Define the name of the module for display in the content area
+moduleName = "Weather Generator"
+
 class ContentWidget(QWidget):
+    """
+    A widget to display the Weather Generator screen (UI/UX).
+    Includes a buttonBar at the top and a contentArea for displaying details.
+    """
     def __init__(self):
+        """
+        Initialize the Weather Generator screen UI/UX, setting up the layout, buttonBar, and contentArea.
+        """
         super().__init__()
 
-        # Main content layout
+        # Main layout for the entire widget
         mainLayout = QVBoxLayout()
-        mainLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the main layout
-        mainLayout.setSpacing(0)  # Remove spacing between elements
-        self.setLayout(mainLayout)
+        mainLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
+        mainLayout.setSpacing(0)  # No spacing between elements
+        self.setLayout(mainLayout)  # Apply the main layout to the widget
 
-        # Top button bar layout
-        topBarLayout = QHBoxLayout()
-        topBarLayout.setSpacing(0)
-        topBarLayout.setContentsMargins(0, 0, 0, 0)
-        topBarLayout.setAlignment(Qt.AlignLeft)
+        # --- Button Bar ---
+        # Layout for the buttonBar at the top of the screen
+        buttonBarLayout = QHBoxLayout()
+        buttonBarLayout.setSpacing(0)  # No spacing between buttons
+        buttonBarLayout.setContentsMargins(0, 0, 0, 0)  # No margins around the layout
+        buttonBarLayout.setAlignment(Qt.AlignLeft)  # Align buttons to the left
 
-        # Placeholder buttons for top bar - These buttons are duplicatable based on page needs
-        buttonNames = ["Reset", "Settings"] # Add name to list to create more buttons
+        # Create placeholder buttons for the buttonBar
+        buttonNames = ["Reset", "Settings"]  # Names of the buttons for clarity
         for name in buttonNames:
-            button = QPushButton(name)  # Name buttons for clarity
-            button.setIcon(QIcon("placeholder_icon.png"))  # Assuming placeholder icons are available
-            button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-            button.setFixedSize(50, 50)  # Set a fixed size matching the height of the Home button
-            button.setStyleSheet("border: 1px solid lightgray; background-color: #F0F0F0; text-align: left;")  # Match color with sidebar buttons
-            topBarLayout.addWidget(button)
+            button = QPushButton(name)  # Create a button with the given name
+            button.setIcon(QIcon("placeholder_icon.png"))  # Placeholder icon
+            button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)  # Fixed size policy
+            button.setFixedSize(50, 50)  # Set a fixed size for the button
+            button.setStyleSheet(
+                "border: 1px solid lightgray; background-color: #F0F0F0; text-align: left;"
+            )  # Style to match the overall design
+            buttonBarLayout.addWidget(button)  # Add the button to the buttonBar layout
 
-        # Top bar frame to add layout
-        topBarFrame = QFrame()
-        topBarFrame.setLayout(topBarLayout)
-        topBarFrame.setFrameShape(QFrame.NoFrame)
-        topBarFrame.setFixedHeight(50)  # Match height with sidebar buttons (Home button)
-        topBarFrame.setStyleSheet("background-color: #A9A9A9;")  # Dark Gray background for the top bar
-        mainLayout.addWidget(topBarFrame)
+        # Frame for the buttonBar
+        buttonBarFrame = QFrame()
+        buttonBarFrame.setLayout(buttonBarLayout)  # Apply the button layout to the frame
+        buttonBarFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
+        buttonBarFrame.setFixedHeight(50)  # Match height with other UI elements
+        buttonBarFrame.setStyleSheet("background-color: #A9A9A9;")  # Dark gray background
+        mainLayout.addWidget(buttonBarFrame)  # Add the buttonBar frame to the main layout
 
-        # Gradient background for content area (rest of the container)
-        contentFrame = QFrame()
-        contentFrame.setFrameShape(QFrame.NoFrame)
-        contentLayout = QVBoxLayout()
-        contentLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the content layout
-        contentLayout.setSpacing(0)  # Remove spacing between elements
-        contentFrame.setLayout(contentLayout)
+        # --- Content Area ---
+        # Frame for the contentArea
+        contentAreaFrame = QFrame()
+        contentAreaFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
 
-        # Set the background color to gray
-        palette = QPalette()
-        palette.setColor(QPalette.Window, QColor(211, 211, 211))  # Light Gray background
-        contentFrame.setAutoFillBackground(True)
-        contentFrame.setPalette(palette)
+        # Layout for the contentArea frame
+        contentAreaLayout = QVBoxLayout()
+        contentAreaLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
+        contentAreaLayout.setSpacing(0)  # No spacing between elements
+        contentAreaFrame.setLayout(contentAreaLayout)  # Apply the layout to the frame
 
-        # Add the content frame to the main layout
-        mainLayout.addWidget(contentFrame)
+        # Set the background color to light gray
+        contentAreaFrame.setStyleSheet("background-color: #D3D3D3;")
 
-        # Center label for content area (REMOVE LATER)
-        label = QLabel("Weather Generator", self)
-        contentLayout.addWidget(label)
+        # Add the contentArea frame to the main layout
+        mainLayout.addWidget(contentAreaFrame)
 
-        # Spacer to fill the rest of the layout
-        contentLayout.addStretch()
+        # --- Center Label (Placeholder) ---
+        # Label to display the name of the module (Weather Generator)
+        moduleLabel = QLabel(moduleName, self)
+        moduleLabel.setStyleSheet("font-size: 24px; color: black;")  # Style the label text
+        contentAreaLayout.addWidget(moduleLabel)  # Add the label to the contentArea layout
+
+        # Add a spacer to ensure content is properly spaced
+        contentAreaLayout.addStretch()

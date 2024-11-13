@@ -1,15 +1,15 @@
 import sys
 import subprocess
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QMenuBar, QPushButton, QWidget,
-                             QFrame, QSplitter, QLabel, QStackedWidget, QAction)
+                             QFrame, QSplitter, QLabel, QStackedWidget, QAction, QSizePolicy)
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon, QScreen
 from importlib import import_module
 import os
 
 # Global variables for window dimensions
-windowWidth = 900
-windowHeight = 600
+windowWidth = 1280
+windowHeight = 720
 
 class SDSMWindow(QMainWindow):
     def __init__(self):
@@ -21,7 +21,10 @@ class SDSMWindow(QMainWindow):
         
         # Configure main window properties
         self.setWindowTitle("SDSM - Beta V1")  # Title Bar
-        self.setFixedSize(windowWidth, windowHeight)  # Fixed-size window, no resizing allowed
+        # self.setFixedSize(windowWidth, windowHeight)  # Fixed-size window,  Q no resizing allowed
+
+        self.resize(windowWidth, windowHeight)  # Set initial size
+        # self.setMinimumSize(windowWidth // 2, windowHeight // 2)  # Set minimum size
 
         # Set up the central widget, which contains the menu (sidebar) and content (main display area)
         centralWidget = QWidget()
@@ -51,7 +54,8 @@ class SDSMWindow(QMainWindow):
         for index, (name, icon) in enumerate(zip(self.menuButtonNames, self.menuButtonIcons)):
             menuButton = QPushButton(name)  # Menu label
             menuButton.setIcon(QIcon(icon))  # Menu icon
-            menuButton.setFixedSize(180, 50)  # Fixed button dimensions
+            menuButton.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.MinimumExpanding)  # Allow both horizontal and vertical expansion
+            menuButton.setMinimumHeight(50)  # Set minimum height for visual comfort
             menuButton.setStyleSheet("text-align: left; padding-left: 10px; border: 1px solid lightgray;")
             menuButton.clicked.connect(lambda checked, idx=index: self.loadContent(idx))  # Connect to content loader
             menuLayout.addWidget(menuButton)
@@ -62,7 +66,7 @@ class SDSMWindow(QMainWindow):
         menuFrame.setLayout(menuLayout)
         menuFrame.setFrameShape(QFrame.NoFrame)  # No border around the menu
         menuContentSplitter.addWidget(menuFrame)
-        menuFrame.setFixedWidth(200)  # Menu width fixed at 200px
+        menuFrame.setFixedWidth(int(windowWidth * 0.15))  # Menu width as 15% of window width
 
         # Content area setup
         self.contentStack = QStackedWidget()  # Content container to manage and display screens

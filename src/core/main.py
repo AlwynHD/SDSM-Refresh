@@ -1,4 +1,5 @@
 import sys
+import subprocess
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QMenuBar, QPushButton, QWidget,
                              QFrame, QSplitter, QLabel, QStackedWidget, QAction)
 from PyQt5.QtCore import Qt
@@ -6,63 +7,88 @@ from PyQt5.QtGui import QIcon, QScreen
 from importlib import import_module
 import os
 
+# Global variables for window dimensions
+windowWidth = 900
+windowHeight = 600
+
 class SDSMWindow(QMainWindow):
 
     def __init__(self):
+        """
+        Initialize the main SDSM application window.
+        Sets up the UI layout: titleBar, toolbar, menu, content, and other configurations.
+        """
         super().__init__()
-        self.setWindowTitle("SDSM Wireframe")
-        self.setGeometry(100, 100, 900, 600)
-        self.setFixedSize(900, 600)  # Set fixed window size, no resizing
+        
+        # Configure main window properties
+        self.setWindowTitle("SDSM - Beta V1")  # Title Bar
+        self.setFixedSize(windowWidth, windowHeight)  # Fixed-size window, no resizing allowed
 
-        # Central widget
+        # Set up the central widget, which contains the menu (sidebar) and content (main display area)
         centralWidget = QWidget()
         self.setCentralWidget(centralWidget)
-
-        # Main layout
         mainLayout = QVBoxLayout()
         centralWidget.setLayout(mainLayout)
 
-        # Create a QSplitter to divide sidebar and content (vertically split)
-        splitter = QSplitter(Qt.Horizontal)
-        mainLayout.addWidget(splitter)
+        # Create a splitter to separate the menu and content
+        menuContentSplitter = QSplitter(Qt.Horizontal)
+        mainLayout.addWidget(menuContentSplitter)
 
-        # Sidebar (left)
-        sidebarLayout = QVBoxLayout()
-        sidebarLayout.setAlignment(Qt.AlignTop)
-        sidebarLayout.setSpacing(0)  # Remove spacing between buttons
-        sidebarLayout.setContentsMargins(0, 0, 0, 0)
+        # Menu setup
+        menuLayout = QVBoxLayout()
+        menuLayout.setAlignment(Qt.AlignTop)
+        menuLayout.setSpacing(0)  # No spacing between buttons for compact design
+        menuLayout.setContentsMargins(0, 0, 0, 0)  # Remove margins for a neat look
 
-        self.buttonNames = ["Home", "Quality Control", "Transform Data", "Screen Variables", "Calibrate Model", 
-                            "Weather Generator", "Scenario Generator", "Summary Statistics", "Compare Results", 
-                            "Frequency Analysis", "Time Series Analysis"]
-        self.buttonIcons = ["home.png", "arrow_down.png", "arrow_down.png", "arrow_down.png", "arrow_down.png",
-                            "arrow_down.png", "arrow_down.png", "arrow_down.png", "arrow_down.png", "arrow_down.png", "arrow_down.png"]
+        # Define menu buttons with names and icons
+        self.menuButtonNames = ["Home", "Quality Control", "Transform Data", "Screen Variables", "Calibrate Model", 
+                                 "Weather Generator", "Scenario Generator", "Summary Statistics", "Compare Results", 
+                                 "Frequency Analysis", "Time Series Analysis"]
+        self.menuButtonIcons = ["home.png", "arrow_down.png", "arrow_down.png", "arrow_down.png", "arrow_down.png",
+                                 "arrow_down.png", "arrow_down.png", "arrow_down.png", "arrow_down.png", "arrow_down.png", "arrow_down.png"]
 
-        # Create fixed-size buttons
-        self.buttons = []
-        for index, (name, icon) in enumerate(zip(self.buttonNames, self.buttonIcons)):
-            button = QPushButton(name)
-            button.setIcon(QIcon(icon))
-            button.setFixedSize(180, 50)  # Fixed button size for consistency
-            button.setStyleSheet("text-align: left; padding-left: 10px; border: 1px solid lightgray;")
-            button.clicked.connect(lambda checked, idx=index: self.loadContent(idx))
-            sidebarLayout.addWidget(button)
-            self.buttons.append(button)
+        # Create menu buttons dynamically
+        self.menuButtons = []
+        for index, (name, icon) in enumerate(zip(self.menuButtonNames, self.menuButtonIcons)):
+            menuButton = QPushButton(name)  # Menu label
+            menuButton.setIcon(QIcon(icon))  # Menu icon
+            menuButton.setFixedSize(180, 50)  # Fixed button dimensions
+            menuButton.setStyleSheet("text-align: left; padding-left: 10px; border: 1px solid lightgray;")
+            menuButton.clicked.connect(lambda checked, idx=index: self.loadContent(idx))  # Connect to content loader
+            menuLayout.addWidget(menuButton)
+            self.menuButtons.append(menuButton)
 
-        # Sidebar frame
-        sidebarFrame = QFrame()
-        sidebarFrame.setLayout(sidebarLayout)
-        sidebarFrame.setFrameShape(QFrame.NoFrame)
-        splitter.addWidget(sidebarFrame)
-        sidebarFrame.setFixedWidth(200)
+        # Menu frame to hold the buttons
+        menuFrame = QFrame()
+        menuFrame.setLayout(menuLayout)
+        menuFrame.setFrameShape(QFrame.NoFrame)  # No border around the menu
+        menuContentSplitter.addWidget(menuFrame)
+        menuFrame.setFixedWidth(200)  # Menu width fixed at 200px
 
-        # Content area
-        self.contentStack = QStackedWidget()
-        splitter.addWidget(self.contentStack)
+        # Content area setup
+        self.contentStack = QStackedWidget()  # Content container to manage and display screens
+        menuContentSplitter.addWidget(self.contentStack)
 
-        # Load initial content for Home
+        # Load the initial content for "Home"
         self.loadContent(0)
 
+<<<<<<< team-1
+        # Toolbar setup
+        toolbar = QMenuBar(self)  # Toolbar
+        self.setMenuBar(toolbar)
+        settingsMenu = toolbar.addMenu("Settings")
+        helpMenu = toolbar.addMenu("Help")
+        literatureMenu = toolbar.addMenu("Literature")
+        contactMenu = toolbar.addMenu("Contact")
+        aboutMenu = toolbar.addMenu("About")
+
+        # Add "Open Settings" action to the toolbar
+        openSettingsAction = QAction("Open Settings", self)
+        openSettingsAction.triggered.connect(self.loadSettingsContent)  # Connect to settings loader
+        settingsMenu.addAction(openSettingsAction)
+
+        # Center the window on the user's screen
+=======
         # Menu bar
         menuBar = QMenuBar(self)
         self.setMenuBar(menuBar)
@@ -79,6 +105,7 @@ class SDSMWindow(QMainWindow):
         aboutMenu = menuBar.addMenu("About")
 
         # Center the window on the screen
+>>>>>>> main
         self.centerOnScreen()
 
     def showSettings(self):
@@ -111,34 +138,55 @@ class SDSMWindow(QMainWindow):
             self.contentStack.setCurrentWidget(fallbackWidget)
 
     def loadContent(self, index):
-        # Generate the module name as before
-        moduleName = self.buttonNames[index].lower().replace(" ", "_")
-        
-        # Define a dictionary to simulate a switch-case structure
-        module_paths = {
-            "home": os.path.dirname(__file__),  # Home and main are in the same directory
-            "default": os.path.abspath(os.path.join(os.path.dirname(__file__), '../modules'))
+        """
+        Load the screen (UI/UX) for the selected menu option and initialize the associated module (functionality).
+
+        Args:
+            index (int): The index of the menu option clicked.
+        """
+        moduleName = self.menuButtonNames[index].lower().replace(" ", "_")  # Convert menu name to module name
+        self.loadModule(moduleName, self.menuButtonNames[index])  # Load the module and its corresponding screen
+
+    def loadSettingsContent(self):
+        """
+        Load the settings module into the content container.
+        """
+        self.loadModule("settings", "Settings")
+
+    def loadModule(self, moduleName, displayName):
+        """
+        Dynamically load a module (backend functionality) and display its corresponding screen (UI/UX) in the content area.
+        If the module is not found, display a fallback message.
+
+        Args:
+            moduleName (str): The name of the module to load (functionality).
+            displayName (str): The display name of the module, used for fallback messages and user-facing references.
+        """
+        # Define paths to search for modules
+        modulePaths = {
+            "home": os.path.dirname(__file__),  # "Home" is in the main directory
+            "default": os.path.join(os.path.dirname(__file__), '..', 'modules')  # Other modules in "modules" directory
         }
         
-        # Use the module path based on the module name, defaulting if not specifically defined
-        module_path = module_paths.get(moduleName, module_paths["default"])
+        # Determine the appropriate path for the module
+        modulePath = modulePaths.get(moduleName, modulePaths["default"])
         
         # Add the selected path to the system path if not already included
-        if module_path not in sys.path:
-            sys.path.append(module_path)
+        if modulePath not in sys.path:
+            sys.path.append(modulePath)
 
         try:
-            # Import the module using the adjusted path
+            # Import the module dynamically
             module = import_module(moduleName)
-            if hasattr(module, 'ContentWidget'):
-                contentWidget = module.ContentWidget()
-                self.contentStack.addWidget(contentWidget)
-                self.contentStack.setCurrentWidget(contentWidget)
+            if hasattr(module, 'ContentWidget'):  # Check if the module has a "ContentWidget" class
+                contentWidget = module.ContentWidget()  # Screen (UI/UX)
+                self.contentStack.addWidget(contentWidget)  # Add widget to the content container
+                self.contentStack.setCurrentWidget(contentWidget)  # Display the screen
         except ModuleNotFoundError:
-            # Fallback widget if module is not found
-            fallbackLabel = QLabel(f"Content for {self.buttonNames[index]} not available.")
-            fallbackLabel.setAlignment(Qt.AlignCenter)
-            fallbackLabel.setStyleSheet("font-size: 24px;")
+            # Display fallback content if the module isn't found
+            fallbackLabel = QLabel(f"{displayName} screen not available. (Module missing or failed to load.)")
+            fallbackLabel.setAlignment(Qt.AlignCenter)  # Center the fallback text
+            fallbackLabel.setStyleSheet("font-size: 24px;")  # Style the fallback text
             fallbackWidget = QWidget()
             fallbackLayout = QVBoxLayout()
             fallbackLayout.addWidget(fallbackLabel)
@@ -146,17 +194,19 @@ class SDSMWindow(QMainWindow):
             self.contentStack.addWidget(fallbackWidget)
             self.contentStack.setCurrentWidget(fallbackWidget)
 
-
     def centerOnScreen(self):
-        screenGeometry = QScreen.availableGeometry(QApplication.primaryScreen())
-        screenCenter = screenGeometry.center()
-        frameGeometry = self.frameGeometry()
-        frameGeometry.moveCenter(screenCenter)
-        self.move(frameGeometry.topLeft())
+        """
+        Center the application window on the user's primary screen.
+        """
+        screenGeometry = QScreen.availableGeometry(QApplication.primaryScreen())  # Get primary screen dimensions
+        screenCenter = screenGeometry.center()  # Calculate the screen center
+        frameGeometry = self.frameGeometry()  # Get current window geometry
+        frameGeometry.moveCenter(screenCenter)  # Move the window's center to the screen center
+        self.move(frameGeometry.topLeft())  # Adjust the window's top-left corner to reflect new position
 
 if __name__ == "__main__":
-    QApplication.setAttribute(Qt.AA_DisableHighDpiScaling, True)  # Disable scaling for consistent fixed size
+    # Create and launch the application
     app = QApplication(sys.argv)
     window = SDSMWindow()
-    window.show()
-    sys.exit(app.exec_())
+    window.show()  # Display the main window
+    sys.exit(app.exec_())  # Start the application event loop // this is the entire file, how can i get rid of the 

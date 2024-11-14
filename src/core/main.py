@@ -1,11 +1,11 @@
 import sys
-import subprocess
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QMenuBar, QPushButton, QWidget,
                              QFrame, QSplitter, QLabel, QStackedWidget, QAction)
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon, QScreen
 from importlib import import_module
 import os
+import webbrowser
 
 # Global variables for window dimensions
 windowWidth = 900
@@ -69,13 +69,17 @@ class SDSMWindow(QMainWindow):
         menuContentSplitter.addWidget(self.contentStack)
 
         # Load the initial content for "Home"
-        self.loadContent(0)
+        
 
         # Toolbar setup
         toolbar = QMenuBar(self)  # Toolbar
         self.setMenuBar(toolbar)
         settingsMenu = toolbar.addMenu("Settings")
-        helpMenu = toolbar.addMenu("Help")
+
+        # Help menu
+        self.helpMenu = toolbar.addMenu("Help")
+        self.addHelpActions()  # Call the helper function to populate the Help menu
+
         literatureMenu = toolbar.addMenu("Literature")
         contactMenu = toolbar.addMenu("Contact")
         aboutMenu = toolbar.addMenu("About")
@@ -84,6 +88,8 @@ class SDSMWindow(QMainWindow):
         openSettingsAction = QAction("Open Settings", self)
         openSettingsAction.triggered.connect(self.loadSettingsContent)  # Connect to settings loader
         settingsMenu.addAction(openSettingsAction)
+
+        self.loadContent(0)
 
         # Center the window on the user's screen
         self.centerOnScreen()
@@ -96,7 +102,10 @@ class SDSMWindow(QMainWindow):
             index (int): The index of the menu option clicked.
         """
         moduleName = self.menuButtonNames[index].lower().replace(" ", "_")  # Convert menu name to module name
-        self.loadModule(moduleName, self.menuButtonNames[index])  # Load the module and its corresponding screen
+        displayName = self.menuButtonNames[index]
+        self.loadModule(moduleName, displayName)  # Load the module and its corresponding screen
+        
+        self.updateHelpMenu(displayName)
 
     def loadSettingsContent(self):
         """
@@ -144,6 +153,64 @@ class SDSMWindow(QMainWindow):
             fallbackWidget.setLayout(fallbackLayout)
             self.contentStack.addWidget(fallbackWidget)
             self.contentStack.setCurrentWidget(fallbackWidget)
+
+    def addHelpActions(self):
+            """
+            Populate the Help menu with actions corresponding to each sidebar menu item.
+            """
+            # Define constant help URLs
+            help_contents_url = "https://example.com/help/contents"
+            sdsm_website_url = "https://www.sdsm.org.uk/"
+    
+            # Add constant Help Contents action
+            helpContentsAction = QAction("Help Contents", self)
+            helpContentsAction.triggered.connect(lambda: self.openHelpUrl(help_contents_url))
+            self.helpMenu.addAction(helpContentsAction)
+    
+            # Add constant SDSM Website action
+            sdsmWebsiteAction = QAction("SDSM Website", self)
+            sdsmWebsiteAction.triggered.connect(lambda: self.openHelpUrl(sdsm_website_url))
+            self.helpMenu.addAction(sdsmWebsiteAction)
+    
+    
+            # URL mapping based on menu names
+            self.help_urls = {
+                "Home": "https://example.com/help/home",
+                "Quality Control": "https://example.com/help/quality_control",
+                "Transform Data": "https://example.com/help/transform_data",
+                "Screen Variables": "https://example.com/help/screen_variables",
+                "Calibrate Model": "https://example.com/help/calibrate_model",
+                "Weather Generator": "https://example.com/help/weather_generator",
+                "Scenario Generator": "https://example.com/help/scenario_generator",
+                "Summary Statistics": "https://example.com/help/summary_statistics",
+                "Compare Results": "https://example.com/help/compare_results",
+                "Frequency Analysis": "https://example.com/help/frequency_analysis",
+                "Time Series Analysis": "https://example.com/help/time_series_analysis"
+            }
+            self.help_actions = {}
+            # Create a QAction for each help URL and add it to the Help menu
+            for name, url in self.help_urls.items():
+                action = QAction(f"{name} Help ", self)
+                action.triggered.connect(lambda checked, url=url: self.openHelpUrl(url))
+                self.help_actions[name] = action  # Store actions in a dictionary
+
+    def updateHelpMenu(self, page_name):
+     """
+     Update the Help menu to show only the relevant help content based on the current page.
+     """
+     # Clear current actions
+     self.helpMenu.clear()  
+     self.addHelpActions()
+     # Check if the page name is in the help URLs (this can be adjusted as needed)
+     if page_name in self.help_actions:
+         # Add the relevant help action to the Help menu
+         self.helpMenu.addAction(self.help_actions[page_name])
+   
+    def openHelpUrl(self, url):
+       """
+       Open the specified URL in the default web browser.
+      """
+       webbrowser.open(url)
 
     def centerOnScreen(self):
         """

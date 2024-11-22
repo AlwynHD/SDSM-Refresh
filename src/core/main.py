@@ -103,6 +103,11 @@ class SDSMWindow(QMainWindow):
         openSettingsAction.triggered.connect(self.loadSettingsContent)  # Connect to settings loader
         settingsMenu.addAction(openSettingsAction)
 
+        # Add "Open Advanced Settings" action to the toolbar
+        openSettingsAction = QAction("Open Advanced Settings", self)
+        openSettingsAction.triggered.connect(self.loadAdvancedSettingsContent)  # Connect to settings loader
+        settingsMenu.addAction(openSettingsAction)
+
         self.loadContent(0)
 
         # Center the window on the user's screen
@@ -126,6 +131,12 @@ class SDSMWindow(QMainWindow):
         Load the settings module into the content container.
         """
         self.loadModule("settings", "Settings")
+
+    def loadAdvancedSettingsContent(self):
+        """
+        Load the advanced settings module into the content container.
+        """
+        self.loadModule("advanced_settings", "Advanced Settings")
 
     def loadModule(self, moduleName, displayName):
         """

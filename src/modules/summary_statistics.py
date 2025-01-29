@@ -1,22 +1,17 @@
-from PyQt5.QtWidgets import QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, QFrame, QLabel
+from PyQt5.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QLineEdit, QRadioButton, QCheckBox, QSizePolicy, QFrame
+)
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QPalette, QColor, QIcon
-
-# Define the name of the module for display in the content area
-moduleName = "Summary Statistics"
+from PyQt5.QtGui import QFont
 
 class ContentWidget(QWidget):
     """
-    A widget to display the Summary Statistics screen (UI/UX).
-    Includes a buttonBar at the top and a contentArea for displaying details.
+    Summary Statistics UI replicating the exact layout and functionality from the provided image.
     """
     def __init__(self):
-        """
-        Initialize the Summary Statistics screen UI/UX, setting up the layout, buttonBar, and contentArea.
-        """
         super().__init__()
 
-        # Main layout for the entire widget
+        # --- Main Layout ---
         mainLayout = QVBoxLayout()
         mainLayout.setContentsMargins(10, 10, 10, 10)
         mainLayout.setSpacing(10)
@@ -82,7 +77,7 @@ class ContentWidget(QWidget):
         outputFileFrame = QFrame()
         outputFileFrame.setLayout(outputFileLayout)
         leftPanelLayout.addWidget(outputFileFrame)
- 
+
         # Analysis Period
         analysisPeriodLayout = QVBoxLayout()
         analysisPeriodLayout.setSpacing(5)
@@ -126,11 +121,23 @@ class ContentWidget(QWidget):
         modelledScenarioFrame.setLayout(modelledScenarioLayout)
         rightPanelLayout.addWidget(modelledScenarioFrame)
 
-        # --- Center Label (Placeholder) ---
-        # Label to display the name of the module (Summary Statistics)
-        moduleLabel = QLabel(moduleName, self)
-        moduleLabel.setStyleSheet("font-size: 24px; color: black;")  # Style the label text
-        contentAreaLayout.addWidget(moduleLabel)  # Add the label to the contentArea layout
+        # Ensemble Size
+        ensembleSizeLayout = QVBoxLayout()
+        ensembleSizeLayout.setSpacing(5)
+        ensembleSizeLabel = QLabel("Ensemble Size")
+        ensembleMeanCheckbox = QCheckBox("Use Ensemble Mean?")
+        ensembleMemberLabel = QLabel("Ensemble Member:")
+        ensembleMemberInput = QLineEdit("0")
+        ensembleSizeLayout.addWidget(ensembleSizeLabel)
+        ensembleSizeLayout.addWidget(ensembleMeanCheckbox)
+        ensembleSizeLayout.addWidget(ensembleMemberLabel)
+        ensembleSizeLayout.addWidget(ensembleMemberInput)
+        ensembleSizeFrame = QFrame()
+        ensembleSizeFrame.setLayout(ensembleSizeLayout)
+        rightPanelLayout.addWidget(ensembleSizeFrame)
 
-        # Add a spacer to ensure content is properly spaced
-        contentAreaLayout.addStretch()
+        contentAreaLayout.addLayout(rightPanelLayout)
+        mainLayout.addLayout(contentAreaLayout)
+
+        # Auto-resizing setup
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)

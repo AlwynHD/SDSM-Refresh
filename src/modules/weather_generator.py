@@ -1,7 +1,9 @@
-from PyQt5.QtWidgets import QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, QFrame, QLabel
+from PyQt5.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QSizePolicy, QFrame, QLabel, QFileDialog, QLineEdit
+)
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPalette, QColor, QIcon
- 
+
 # Define the name of the module for display in the content area
 moduleName = "Weather Generator"
 
@@ -22,55 +24,109 @@ class ContentWidget(QWidget):
         mainLayout.setSpacing(0)  # No spacing between elements
         self.setLayout(mainLayout)  # Apply the main layout to the widget
 
-        # --- Button Bar ---
-        # Layout for the buttonBar at the top of the screen
+        # --- Button Bar (Toolbar) ---
         buttonBarLayout = QHBoxLayout()
-        buttonBarLayout.setSpacing(0)  # No spacing between buttons
-        buttonBarLayout.setContentsMargins(0, 0, 0, 0)  # No margins around the layout
-        buttonBarLayout.setAlignment(Qt.AlignLeft)  # Align buttons to the left
+        buttonBarLayout.setSpacing(0)  
+        buttonBarLayout.setContentsMargins(0, 0, 0, 0)  
+        buttonBarLayout.setAlignment(Qt.AlignLeft)  
 
-        # Create placeholder buttons for the buttonBar
-        buttonNames = ["Reset", "Settings"]  # Names of the buttons for clarity
+        buttonNames = ["Reset", "Settings"]  
         for name in buttonNames:
-            button = QPushButton(name)  # Create a button with the given name
-            button.setIcon(QIcon("placeholder_icon.png"))  # Placeholder icon
-            button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)  # Fixed size policy
-            button.setFixedSize(50, 50)  # Set a fixed size for the button
+            button = QPushButton(name)  
+            button.setIcon(QIcon("placeholder_icon.png"))  
+            button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)  
+            button.setFixedSize(50, 50)  
             button.setStyleSheet(
                 "border: 1px solid lightgray; background-color: #F0F0F0; text-align: left;"
-            )  # Style to match the overall design
-            buttonBarLayout.addWidget(button)  # Add the button to the buttonBar layout
+            )  
+            buttonBarLayout.addWidget(button)  
 
-        # Frame for the buttonBar
         buttonBarFrame = QFrame()
-        buttonBarFrame.setLayout(buttonBarLayout)  # Apply the button layout to the frame
-        buttonBarFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
-        buttonBarFrame.setFixedHeight(50)  # Match height with other UI elements
-        buttonBarFrame.setStyleSheet("background-color: #A9A9A9;")  # Dark gray background
-        mainLayout.addWidget(buttonBarFrame)  # Add the buttonBar frame to the main layout
+        buttonBarFrame.setLayout(buttonBarLayout)  
+        buttonBarFrame.setFrameShape(QFrame.NoFrame)  
+        buttonBarFrame.setFixedHeight(50)  
+        buttonBarFrame.setStyleSheet("background-color: #A9A9A9;")  
+        mainLayout.addWidget(buttonBarFrame)  
 
         # --- Content Area ---
-        # Frame for the contentArea
         contentAreaFrame = QFrame()
-        contentAreaFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
+        contentAreaFrame.setFrameShape(QFrame.NoFrame)  
 
-        # Layout for the contentArea frame
         contentAreaLayout = QVBoxLayout()
-        contentAreaLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
-        contentAreaLayout.setSpacing(0)  # No spacing between elements
-        contentAreaFrame.setLayout(contentAreaLayout)  # Apply the layout to the frame
+        contentAreaLayout.setContentsMargins(20, 20, 20, 20)  
+        contentAreaLayout.setSpacing(10)  
+        contentAreaFrame.setLayout(contentAreaLayout)  
 
-        # Set the background color to light gray
         contentAreaFrame.setStyleSheet("background-color: #D3D3D3;")
+        mainLayout.addWidget(contentAreaFrame)  
 
-        # Add the contentArea frame to the main layout
-        mainLayout.addWidget(contentAreaFrame)
+        # --- Input File Selection ---
+        self.inputFileButton = QPushButton("Select Input File")
+        self.inputFileButton.clicked.connect(self.selectInputFile)
+        self.inputFileLabel = QLabel("File: Not selected")
 
-        # --- Center Label (Placeholder) ---
-        # Label to display the name of the module (Weather Generator)
-        moduleLabel = QLabel(moduleName, self)
-        moduleLabel.setStyleSheet("font-size: 24px; color: black;")  # Style the label text
-        contentAreaLayout.addWidget(moduleLabel)  # Add the label to the contentArea layout
+        contentAreaLayout.addWidget(self.inputFileButton)
+        contentAreaLayout.addWidget(self.inputFileLabel)
 
-        # Add a spacer to ensure content is properly spaced
-        contentAreaLayout.addStretch()
+        # --- Select Predictor Directory ---
+        self.predictorDirButton = QPushButton("Select Predictor Directory")
+        contentAreaLayout.addWidget(self.predictorDirButton)
+
+        # --- Predictor Information ---
+        self.numPredictorsLabel = QLabel("No. of predictors: 0")
+        self.autoRegressionLabel = QLabel("Autoregression: Unknown")
+        self.processLabel = QLabel("Process: Unknown")
+        self.recordStartLabel = QLabel("Record Start: Unknown")
+        self.recordLengthLabel = QLabel("Record Length: Unknown")
+
+        contentAreaLayout.addWidget(self.numPredictorsLabel)
+        contentAreaLayout.addWidget(self.autoRegressionLabel)
+        contentAreaLayout.addWidget(self.processLabel)
+        contentAreaLayout.addWidget(self.recordStartLabel)
+        contentAreaLayout.addWidget(self.recordLengthLabel)
+
+        # --- Synthesis Section ---
+        self.synthesisStartLabel = QLabel("Synthesis Start:")
+        self.synthesisStartInput = QLineEdit()
+        self.synthesisLengthLabel = QLabel("Synthesis Length:")
+        self.synthesisLengthInput = QLineEdit()
+
+        contentAreaLayout.addWidget(self.synthesisStartLabel)
+        contentAreaLayout.addWidget(self.synthesisStartInput)
+        contentAreaLayout.addWidget(self.synthesisLengthLabel)
+        contentAreaLayout.addWidget(self.synthesisLengthInput)
+
+        # --- Output File Selection ---
+        self.outputFileButton = QPushButton("Select Output File")
+        self.outputFileButton.clicked.connect(self.selectOutputFile)
+        self.outputFileLabel = QLabel("File: Not selected")
+
+        contentAreaLayout.addWidget(self.outputFileButton)
+        contentAreaLayout.addWidget(self.outputFileLabel)
+
+        # --- Control Buttons ---
+        controlLayout = QHBoxLayout()
+        self.runButton = QPushButton("Run Simulation")
+        self.cancelButton = QPushButton("Cancel")
+        controlLayout.addWidget(self.runButton)
+        controlLayout.addWidget(self.cancelButton)
+        contentAreaLayout.addLayout(controlLayout)
+
+        # --- Auto Resize ---
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
+    def selectInputFile(self):
+        """
+        Opens a file dialog to select an input file and updates the label.
+        """
+        filePath, _ = QFileDialog.getOpenFileName(self, "Select Input File", "", "All Files (*)")
+        if filePath:
+            self.inputFileLabel.setText(f"File: {filePath}")
+
+    def selectOutputFile(self):
+        """
+        Opens a file dialog to select an output file and updates the label.
+        """
+        filePath, _ = QFileDialog.getSaveFileName(self, "Select Output File", "", "All Files (*)")
+        if filePath:
+            self.outputFileLabel.setText(f"File: {filePath}")

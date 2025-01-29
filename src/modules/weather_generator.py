@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, QFrame, QLabel
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPalette, QColor, QIcon
-
+ 
 # Define the name of the module for display in the content area
 moduleName = "Weather Generator"
 

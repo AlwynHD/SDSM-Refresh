@@ -21,6 +21,15 @@ analysisPeriodChosen = 0
 autoRegressionTick = True
 
 def partialCorrelation(A, B, n, crossCorr, corrArrayList):
+    """
+    recursive function that gets the partial correlation
+    error is -1
+    A and B are positionals
+    n is step counter
+    crossCorr is the array to get values from
+    corrArrayList is used as index don't understand partial correlation enough to change it
+    """
+
     #print(f"A: {A} B: {B}, n: {n}, \n crossCorr: {crossCorr} \n CorrArrayList: {corrArrayList}")
     # Calculates partial correlation of the form r12.34567 etc.
     # In the form; rab.corrArrayList(n); where n signifies how many terms we want from global array
@@ -44,6 +53,10 @@ def partialCorrelation(A, B, n, crossCorr, corrArrayList):
         return result / math.sqrt(denom)
 
 def displayFiles(fileSelected):
+    """
+    takes files strips paths and prints that to user
+    takes entire path into filesSelected array returns array
+    """
     selected_files = selectFile()
     if selected_files:
         for file in selected_files:
@@ -55,6 +68,10 @@ def displayFiles(fileSelected):
     return fileSelected
 
 def selectFile():
+    """
+    pulls up the windows file explorer for user to select any file that ends in .Dat
+    returns file path
+    """
     app = QApplication([])
     file_dialog = QFileDialog()
     file_dialog.setFileMode(QFileDialog.ExistingFiles)
@@ -64,7 +81,9 @@ def selectFile():
         return files
 
 def filesNames(fileName):
-    
+    """
+    each of the predictor files represent different things this finds what they mean and return it
+    """
     # file name is the (i,0) and description is (i,1)
 
     fileDescriptionList = [["temp", "Mean temperature at 2m"], ["mslp", "Mean sea level pressure"], ["p500", "500 hPa geopotential height"], ["p850", "850 hPa geopotential height"],
@@ -83,13 +102,19 @@ def filesNames(fileName):
     return fileDescription
 
 def resetFiles(predictorSelected):
+    """
+    useless function does .clear()
+    """
     return predictorSelected.clear()
 
 def increaseDate(currentDate, noDays): #todo check if the leap year thing was important
+    """increases datatime object by noDays"""
+    # this might have to change back to orginal vb code as not sure why it was done the way it was
     currentDate += datetime.timedelta(days=noDays)
     return currentDate
 
 def sigLevelOK(sigLevelInput):
+    """checks if sigLevel is good returns default diglevel if not"""
     correctSigValue = False
     sigLevel = 0.05
     if sigLevelInput == "" or not type(sigLevelInput) is int:              #SigLevelText is the input from the user
@@ -108,46 +133,50 @@ def sigLevelOK(sigLevelInput):
     return correctSigValue, sigLevel
 
 def fsDateOK(fSDate, feDate, globaSlDate):
+    """if date is okay return true if not return false"""
 
     output = False
     if not isinstance(fSDate, datetime.datetime):
         #todo error message to user about correct date orginal MsgBox "Start date is invalid - it must be in the format dd/mm/yyyy.", 0 + vbCritical, "Error Message"
-        fSDate = datetime.datetime.now() #todo figure out what GlobalSDate is pretty sure it might be record start date
+        fSDate = globaSlDate
         print("Start date is invalid - it must be in the format dd/mm/yyyy")
     elif (fSDate - feDate).days > 1:
         #todo error message to user about correct date orginal MsgBox "End date must be later than start date.", 0 + vbCritical, "Error Message"
-        fSDate = fSDate = datetime.datetime.now() #todo figure out what GlobalSDate is 
+        fSDate = globaSlDate
         print("End date must be later than start date.")
         print(fSDate - feDate)
     elif (fSDate - globalSDate).days < 0:
         #todo error message to user about correct date orginal MsgBox "Fit start date must be later than record start date.", 0 + vbCritical, "Error Message"
-        fSDate = fSDate = datetime.datetime.now() #todo figure out what GlobalSDate is '
+        fSDate = globaSlDate
         print("Fit start date must be later than record start date.")
     else:
         output = True 
     return output
 
 def feDateOK(fsDate, feDate, globalEDate):
+    """if date is okay return true if not return false"""
 
     output = False
     if not isinstance(feDate, datetime.datetime):
         #todo error message to user about correct date orginal MsgBox "End date is invalid - it must be in the format dd/mm/yyyy.", 0 + vbCritical, "Error Message"
-        fsDate = globalEDate #todo figure out what GlobalSDate is pretty sure it might be record start date
+        fsDate = globalEDate 
         print("End date is invalid - it must be in the format dd/mm/yyyy.")
     elif (fsDate - feDate).days > 1:
         #todo error message to user about correct date orginal MsgBox "End date must be later than start date.", 0 + vbCritical, "Error Message"
-        feDate = globalEDate #todo figure out what GlobalSDate is 
+        feDate = globalEDate
         print("End date must be later than start date.")
     elif (feDate - globalEDate).days > 0:
         #todo error message to user about correct date orginal MsgBox "Fit end date must be earlier than record end date.", 0 + vbCritical, "Error Message"
-        feDate = globalEDate #todo figure out what GlobalSDate is 
+        feDate = globalEDate
         print("Fit end date must be earlier than record end date.")
-        print(((feDate - globalEDate).days >= 0))
+        print((feDate - globalEDate).days >= 0)
     else:
         output = True 
     return output
 
 def loadFilesIntoMemory(predictorSelected, predictandSelected):
+    """
+    create an array with shape (amount of files, length of files) return that"""
     loadedFiles = []
     loadedFiles.append(np.loadtxt(predictandSelected[0]))
     for fileLocation in predictorSelected:
@@ -155,13 +184,15 @@ def loadFilesIntoMemory(predictorSelected, predictandSelected):
     return loadedFiles
     
 def findDataStart(predictandFile): # gets predictand numpy array then gets the position of the first data position
-    firstData = predictandFile[predictandFile != -999]
+    """ this gets the first data index where the predictand is not a -999"""
+    firstData = predictandFile[predictandFile != -999] #todo change to missing code
     if firstData.size == 0:
         return None  # All values are errors
     return np.where(predictandFile == firstData[0])[0][0]
 
 def dateWanted(date, analysisPeriodChosen):
-    answer = False
+    """returns true  if analysis period chosen and date match otherwise false"""
+    answer = False 
     if analysisPeriodChosen == 0:                #Annual selected so want all data
         answer = True
     elif analysisPeriodChosen == 1:            #Winter - DJF
@@ -182,6 +213,7 @@ def dateWanted(date, analysisPeriodChosen):
     return answer
 
 def correlation(predictandSelected, predictorSelected, fSDate, fEDate, autoRegressionTick):
+    """checks the correlation between the predicant and predictors"""
     if predictandSelected == "":
         print("You must select a predictand.") # todo proper error message
     elif len(predictorSelected) < 1:
@@ -194,8 +226,6 @@ def correlation(predictandSelected, predictorSelected, fSDate, fEDate, autoRegre
         loadedFiles = []
         loadedFiles = loadFilesIntoMemory(predictorSelected, predictandSelected)
         
-        #skip unwanted date
-        # not needed here firstValid = findDataStart(loadedFiles[0])
         #todo progress bar
 
         totalNumbers = 0
@@ -203,18 +233,21 @@ def correlation(predictandSelected, predictorSelected, fSDate, fEDate, autoRegre
         totalMissingRows = 0
         totalBelowThreshold = 0
 
-        #todo imporant from settings
+        #todo import from settings
         threshold = 0 
         missingCode = -999
         workingDate = fSDate
         conditional = False
-
+        analysisPeriodChosen = 0
         inputData = []
         sumData = np.zeros(nVariables)
-
+        #todo check that it skips to file start date if file start is not global start date
+        #####################
+        # gets data into an array of shape (length of data, number of files)
+        # only puts data in if date is in the analysis period chosen
+        #####################
         for i in range((fEDate - fSDate).days):
-        #for i in range(5000, 5010):
-            if dateWanted(workingDate, 0):
+            if dateWanted(workingDate, analysisPeriodChosen):
                 totalNumbers += 1    
                 row = [file[i] for file in loadedFiles]
 
@@ -237,19 +270,19 @@ def correlation(predictandSelected, predictorSelected, fSDate, fEDate, autoRegre
             increaseDate(workingDate, 1)
 
         inputData = np.array(inputData)
-        print(totalNumbers, totalMissing, totalMissingRows, totalBelowThreshold)
 
-        inputData[1]
+        # auto regression
+        # change shape of array too (length of data, files +1)
         if autoRegressionTick:
             nVariables +=1
-            first_column = inputData[:, 0]
+            firstColumn = inputData[:, 0]
 
             # create a new column for position 3 with the first element shifted down
-            new_column = np.roll(first_column, 1)
-            new_column[0] = 0  # Replace the first element with 0 or any placeholder value
+            newColumn = np.roll(firstColumn, 1)
+            newColumn[0] = 0  # Replace the first element with 0 or any placeholder value
             
             # Append the new column to the original array
-            inputData = np.hstack((inputData, new_column.reshape(-1, 1)))
+            inputData = np.hstack((inputData, newColumn.reshape(-1, 1)))
             
             if inputData[totalNumbers - 1, 0] != missingCode and (not (inputData[totalNumbers - 1, 0] <= threshold) and conditional):
                 sumData = np.append(sumData, inputData[totalNumbers - 1, 0])
@@ -257,11 +290,10 @@ def correlation(predictandSelected, predictorSelected, fSDate, fEDate, autoRegre
             else:
                 sumData = np.append(sumData, sumData[0])
                 nameOfFiles.append("Autoregression")
-            # FileList.AddItem "Autoregression"    
 
 
         xBar = np.array([total/(totalNumbers - totalMissingRows - totalBelowThreshold) for total in sumData])
-
+        
         sumresid = sqresid = np.zeros(nVariables)
         prodresid = np.zeros((nVariables, nVariables))
 
@@ -277,7 +309,11 @@ def correlation(predictandSelected, predictorSelected, fSDate, fEDate, autoRegre
         
         sd = np.array([(number/(totalNumbers - 1 - totalMissingRows - totalBelowThreshold)) ** 0.5 for number in sqresid])
 
+
+        #############################
         # Print Header Information
+        #############################
+
         print("CORRELATION MATRIX")
         print()
         print(f"Analysis Period: {fSDate} - {fEDate} ({analysisPeriod[analysisPeriodChosen]})")
@@ -288,26 +324,26 @@ def correlation(predictandSelected, predictorSelected, fSDate, fEDate, autoRegre
             print(f"Values less than or equal to threshold: {totalBelowThreshold}")
         print()
 
-        max_length = max(len(file) for file in nameOfFiles) + 1
+        maxLength = max(len(file) for file in nameOfFiles) + 1
 
         # Print column headers
         print(" ", end="")
         for j in range(1, nVariables + 1):
-            print(f" {j:{max_length + 1}}", end="")
+            print(f" {j:{maxLength + 1}}", end="")
         print()
 
         # Print Cross Correlation Matrix
         crossCorr = np.zeros((nVariables, nVariables))
         for j in range(nVariables):
             print(f"{j+1} ", end="")
-            print(f"{nameOfFiles[j]:{max_length}}", end="")
+            print(f"{nameOfFiles[j]:{maxLength}}", end="")
             
             for k in range(nVariables):
                 crossCorr[j, k] = prodresid[j, k] / ((totalNumbers - 1 - totalMissingRows - totalBelowThreshold) * sd[j] * sd[k])
                 tempY = f"{crossCorr[j, k]:.3f}"
                 if k == j:
                     tempY = "1"
-                print(f"{tempY:{max_length + 2}}", end="")
+                print(f"{tempY:{maxLength + 2}}", end="")
             print()
         print()
 
@@ -344,6 +380,7 @@ def correlation(predictandSelected, predictorSelected, fSDate, fEDate, autoRegre
                 print(f"{nameOfFiles[i]:24}{tempResult:<12.3f}{PrValue:<12.3f}")
 
 def analyseData(predictandSelected, predictorSelected, fsDate, feDate, globalSDate, globalEDate, autoRegressionTick):
+    """analyses the data"""
     sigLevelInput = 0
     if predictandSelected == "":
         print("You must select a predictand.") # todo proper error message
@@ -394,7 +431,7 @@ def analyseData(predictandSelected, predictorSelected, fsDate, feDate, globalSDa
             workingDate = increaseDate(workingDate, 1)
         print(monthCount)
 
-        # data is in months (month, array of values from each file, the data points)
+        # data is in months (month, length of files, files)
 
         """------------------------
         Calculate Stats
@@ -406,13 +443,27 @@ def analyseData(predictandSelected, predictorSelected, fsDate, feDate, globalSDa
                 month[:, 0] = np.where(month[:, 0] > threshold, 1, np.where(month[:, 0] != missingCode, 0, missingCode))
         print(months[0])
         
-        collapsed_array = np.vstack(months)
-        print(collapsed_array.shape) 
 
-        column_sums = np.sum(collapsed_array, axis=0)
-        print(column_sums)
-        squared_column_sums = np.sum(collapsed_array ** 2, axis=0)
-        print(squared_column_sums)
-        multiplication_sums = np.sum(collapsed_array * collapsed_array[0], axis=0)
+
+        for month in months:
+            for i in range(len(month)):
+                row = month[i]
+                if row[0] == missingCode:
+                    row = [0 for data in row]
+                row = [0 if data == missingCode else data for data in row]
+                SumData += row
+                SumDataSquared += [data**2 for data in row]
+                sumDataPredictandPredicotr += [data*row[0] for data in row]
+        collapsedArray = np.vstack(months)
+        print(collapsedArray.shape) 
+
+        columnSums = np.sum(collapsedArray, axis=0)
+        print(columnSums)
+        squared_columnSums = np.sum(collapsedArray ** 2, axis=0)
+        print(squared_columnSums)
+        multiplication_sums = np.sum(collapsedArray * collapsedArray[0], axis=0)
         print(multiplication_sums)
-analyseData(predictandSelected, predictorSelected, fSDate, fEDate, globalSDate, globalEDate, autoRegressionTick)
+
+
+#analyseData(predictandSelected, predictorSelected, fSDate, fEDate, globalSDate, globalEDate, autoRegressionTick)
+correlation(predictandSelected, predictorSelected, fSDate, fEDate, autoRegressionTick)

@@ -51,7 +51,7 @@ def partialCorrelation(A, B, n, crossCorr, corrArrayList):
         return -1
     else:
         return result / math.sqrt(denom)
-
+#move to gui
 def displayFiles(fileSelected):
     """
     takes files strips paths and prints that to user
@@ -66,7 +66,7 @@ def displayFiles(fileSelected):
     else:
         print("No file selected.")
     return fileSelected
-
+#/move
 def selectFile():
     """
     pulls up the windows file explorer for user to select any file that ends in .Dat

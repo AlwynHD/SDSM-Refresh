@@ -1,7 +1,8 @@
 #Reset All
     #Reset all fields on the form to their default values
 
-#DMeans --> Calculate Daily Stats
+def dailyMeans():
+    #if selectedFile is empty, inform user
 
 #OutliersID --> Calulcate outliers
 

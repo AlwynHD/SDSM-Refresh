@@ -21,7 +21,16 @@ defaultValues = {
     'randomSeed': True,
     'thresh': 0,
     'defaultDir': QDir.homePath(),
-    'globalMissingCode': -999
+    'globalMissingCode': -999,
+    'varianceInflation': 12,
+    'biasCorrection': 1,
+    'fixedThreshold': 0.5,
+    'modelTransformation': 'None',
+    'optimizationAlgorithm': 'Ordinary Least Squares',
+    'criteriaType': 'AIC Criteria',
+    'stepwiseRegression': False,
+    'conditionalSelection': 'Stochastic',
+    'months': [0] * 12
 }
 
 # Global Variables
@@ -36,6 +45,15 @@ randomSeed = defaultValues['randomSeed']
 thresh = defaultValues['thresh']
 defaultDir = defaultValues['defaultDir']
 globalMissingCode = defaultValues['globalMissingCode']
+varianceInflation = defaultValues['varianceInflation']
+biasCorrection = defaultValues['biasCorrection']
+fixedThreshold = defaultValues['fixedThreshold']
+modelTransformation = defaultValues['modelTransformation']
+optimizationAlgorithm = defaultValues['optimizationAlgorithm']
+criteriaType = defaultValues['criteriaType']
+stepwiseRegression  = defaultValues['stepwiseRegression']
+conditionalSelection = defaultValues['conditionalSelection']
+months = defaultValues['months']
 
 # Main PyQt5 Widget Class
 class ContentWidget(QWidget):
@@ -142,8 +160,8 @@ class ContentWidget(QWidget):
         return (endDate - startDate).days + 1
 
     def loadSettings(self, iniFile=defaultIniFile):
-        global leapValue, yearLength, yearIndicator, globalSDate, globalEDate, globalNDays
-        global allowNeg, randomSeed, thresh, defaultDir, globalMissingCode
+        global leapValue, yearLength, yearIndicator, globalSDate, globalEDate, globalNDays, allowNeg, randomSeed, thresh, defaultDir, globalMissingCode
+        global varianceInflation, biasCorrection, fixedThreshold, modelTransformation, optimizationAlgorithm, criteriaType, stepwiseRegression, conditionalSelection, months
 
         if not os.path.exists(iniFile):
             return
@@ -152,28 +170,49 @@ class ContentWidget(QWidget):
         config.read(iniFile)
 
         try:
-            yearIndicator = config.getint('SDSM', 'YearIndicator', fallback=366)
-            globalSDate = config.get('SDSM', 'GlobalSDate', fallback="01/01/1961")
-            globalEDate = config.get('SDSM', 'GlobalEDate', fallback="31/12/1990")
-            allowNeg = config.getboolean('SDSM', 'AllowNeg', fallback=True)
-            randomSeed = config.getboolean('SDSM', 'RandomSeed', fallback=True)
-            thresh = config.getfloat('SDSM', 'Thresh', fallback=0)
-            globalMissingCode = int(float(config.get('SDSM', 'GlobalMissingCode', fallback='-999')))
-            defaultDir = config.get('SDSM', 'DefaultDir', fallback=QDir.homePath())
+            yearIndicator = self.safeGetInt(config, 'Settings', 'YearIndicator', defaultValues['yearIndicator'])
+            globalSDate = config.get('Settings', 'GlobalSDate', fallback=defaultValues['globalSDate'])
+            globalEDate = config.get('Settings', 'GlobalEDate', fallback=defaultValues['globalEDate'])
+            allowNeg = config.getboolean('Settings', 'AllowNeg', fallback=defaultValues['allowNeg'])
+            randomSeed = config.getboolean('Settings', 'RandomSeed', fallback=defaultValues['randomSeed'])
+            thresh = self.safeGetFloat(config, 'Settings', 'Thresh', defaultValues['thresh'])
+            globalMissingCode = self.safeGetInt(config, 'Settings', 'GlobalMissingCode', defaultValues['globalMissingCode'])
+            defaultDir = config.get('Settings', 'DefaultDir', fallback=defaultValues['defaultDir'])
+            varianceInflation = self.safeGetInt(config, 'Settings', 'VarianceInflation', defaultValues['varianceInflation'])
+            biasCorrection = self.safeGetInt(config, 'Settings', 'BiasCorrection', defaultValues['biasCorrection'])
+            fixedThreshold = self.safeGetFloat(config, 'Settings', 'FixedThreshold', defaultValues['fixedThreshold'])
+            modelTransformation = config.get('Settings', 'ModelTransformation', fallback=defaultValues['modelTransformation'])
+            optimizationAlgorithm = config.get('Settings', 'OptimizationAlgorithm', fallback=defaultValues['optimizationAlgorithm'])
+            criteriaType = config.get('Settings', 'CriteriaType', fallback=defaultValues['criteriaType'])
+            stepwiseRegression = config.getboolean('Settings', 'StepwiseRegression', fallback=defaultValues['stepwiseRegression'])
+            conditionalSelection = config.get('Settings', 'ConditionalSelection', fallback=defaultValues['conditionalSelection'])
+            months = [int(x) for x in config.get('Settings', 'Months', fallback=','.join(map(str, defaultValues['months']))).split(',')]
 
             startDate = self.validateDate(globalSDate)
             endDate = self.validateDate(globalEDate)
             if startDate and endDate:
                 if startDate > endDate:
                     QMessageBox.critical(self, "Error", "Error: Start date cannot be after end date. Using default values.")
-                    globalSDate = '01/01/1961'
-                    globalEDate = '31/12/1990'
+                    globalSDate = defaultValues['globalSDate']
+                    globalEDate = defaultValues['globalEDate']
                     startDate = self.validateDate(globalSDate)
                     endDate = self.validateDate(globalEDate)
                 globalNDays = self.calculateDays(startDate, endDate)
 
         except configparser.Error as e:
             QMessageBox.critical(self, "Error", f"Error loading settings: {e}")
+
+    def safeGetInt(self, config, section, option, fallback):
+        try:
+            return config.getint(section, option, fallback=fallback)
+        except ValueError:
+            return fallback
+
+    def safeGetFloat(self, config, section, option, fallback):
+        try:
+            return config.getfloat(section, option, fallback=fallback)
+        except ValueError:
+            return fallback
 
     def saveSettings(self, iniFile=None):
         if iniFile is None:
@@ -184,7 +223,7 @@ class ContentWidget(QWidget):
         iniFile = os.path.join(iniFile, 'settings.ini')
 
         config = configparser.ConfigParser()
-        config['SDSM'] = {
+        config['Settings'] = {
             'YearIndicator': str(yearIndicator),
             'GlobalSDate': globalSDate,
             'GlobalEDate': globalEDate,
@@ -192,7 +231,16 @@ class ContentWidget(QWidget):
             'RandomSeed': str(randomSeed),
             'Thresh': str(thresh),
             'GlobalMissingCode': str(int(globalMissingCode)),
-            'DefaultDir': defaultDir
+            'DefaultDir': defaultDir,
+            'VarianceInflation': str(varianceInflation),
+            'BiasCorrection': str(biasCorrection),
+            'FixedThreshold': str(fixedThreshold),
+            'ModelTransformation': modelTransformation,
+            'OptimizationAlgorithm': optimizationAlgorithm,
+            'CriteriaType': criteriaType,
+            'StepwiseRegression': str(stepwiseRegression),
+            'ConditionalSelection': conditionalSelection,
+            'Months': ','.join(map(str, months))
         }
 
         try:
@@ -204,8 +252,8 @@ class ContentWidget(QWidget):
         except OSError as e:
             QMessageBox.critical(self, "Error", f"Error: Could not save settings to the specified location '{iniFile}'. Reason: {e}")
 
-    def loadSettingsIntoUi(self, ini = True):
-        if ini == True:
+    def loadSettingsIntoUi(self, ini=True):
+        if ini:
             self.loadSettings()
         self.startDateEdit.setText(globalSDate)
         self.endDateEdit.setText(globalEDate)
@@ -265,9 +313,8 @@ class ContentWidget(QWidget):
             self.loadSettingsIntoUi()
 
     def resetSettings(self):
-        global leapValue, yearLength, yearIndicator, globalSDate, globalEDate, globalNDays
-        global allowNeg, randomSeed, thresh, defaultDir, globalMissingCode
-
+        global leapValue, yearLength, yearIndicator, globalSDate, globalEDate, globalNDays, allowNeg, randomSeed, thresh, defaultDir, globalMissingCode, varianceInflation, biasCorrection, fixedThreshold
+        
         # Reset to default values
         leapValue = defaultValues['leapValue']
         yearLength = defaultValues['yearLength']

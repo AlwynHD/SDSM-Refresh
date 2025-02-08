@@ -67,6 +67,7 @@ def displayFiles(fileSelected):
         print("No file selected.")
     return fileSelected
 #/move
+
 def selectFile():
     """
     pulls up the windows file explorer for user to select any file that ends in .Dat
@@ -113,6 +114,7 @@ def increaseDate(currentDate, noDays): #todo check if the leap year thing was im
     currentDate += datetime.timedelta(days=noDays)
     return currentDate
 
+#get stuff (sig levels, start and end date) from gui
 def sigLevelOK(sigLevelInput):
     """checks if sigLevel is good returns default diglevel if not"""
     correctSigValue = False
@@ -327,6 +329,7 @@ def correlation(predictandSelected, predictorSelected, fSDate, fEDate, autoRegre
         maxLength = max(len(file) for file in nameOfFiles) + 1
 
         # Print column headers
+        #literally just the 1 2 3 
         print(" ", end="")
         for j in range(1, nVariables + 1):
             print(f" {j:{maxLength + 1}}", end="")

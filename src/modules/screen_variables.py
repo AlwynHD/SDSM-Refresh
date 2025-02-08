@@ -1,6 +1,7 @@
 from PyQt5.QtWidgets import QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, QFrame, QLabel
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QPalette, QColor, QIcon
+from ScreenVars import correlation, analyseData
 
 # Define the name of the module for display in the content area
 moduleName = "Screen Variables"
@@ -30,12 +31,12 @@ class ContentWidget(QWidget):
         buttonBarLayout.setAlignment(Qt.AlignLeft)  # Align buttons to the left
 
         # Create placeholder buttons for the buttonBar
-        buttonNames = ["Reset", "Settings"]  # Names of the buttons for clarity
+        buttonNames = ["Reset", "Analyse", "Correlation", "Scatter", "Settings"]  # Names of the buttons for clarity
         for name in buttonNames:
             button = QPushButton(name)  # Create a button with the given name
             button.setIcon(QIcon("placeholder_icon.png"))  # Placeholder icon
-            button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)  # Fixed size policy
-            button.setFixedSize(50, 50)  # Set a fixed size for the button
+            button.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)  # Fixed size policy
+            button.sizeHint()  # Set a fixed size for the button
             button.setStyleSheet(
                 "border: 1px solid lightgray; background-color: #F0F0F0; text-align: left;"
             )  # Style to match the overall design

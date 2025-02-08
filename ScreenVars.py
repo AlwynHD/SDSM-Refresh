@@ -6,11 +6,11 @@ import re
 import numpy as np
 
 #Local version
-#predictorSelected = ['predictor files/ncep_dswr.dat']
-#predictandSelected = ['predictand files/NoviSadPrecOBS.dat']
+predictorSelected = ['predictor files/ncep_dswr.dat']
+predictandSelected = ['predictand files/NoviSadPrecOBS.dat']
 
-predictorSelected = ['C:/Code/SDSM/SDSM-Refresh/predictor files/ncep_dswr.dat'] #todo remove default
-predictandSelected = ['C:/Code/SDSM/SDSM-Refresh/predictand files/NoviSadPrecOBS.dat'] #todo remove default
+#predictorSelected = ['C:/Code/SDSM/SDSM-Refresh/predictor files/ncep_dswr.dat'] #todo remove default
+#predictandSelected = ['C:/Code/SDSM/SDSM-Refresh/predictand files/NoviSadPrecOBS.dat'] #todo remove default
 nameOfFiles = ["NoviSadPrecOBS", "ncep_dswr"]
 globalSDate = datetime.datetime(1948, 1, 1)
 globalEDate = datetime.datetime(2015, 12, 31)
@@ -468,5 +468,8 @@ def analyseData(predictandSelected, predictorSelected, fsDate, feDate, globalSDa
         print(multiplication_sums)
 
 
-#analyseData(predictandSelected, predictorSelected, fSDate, fEDate, globalSDate, globalEDate, autoRegressionTick)
-correlation(predictandSelected, predictorSelected, fSDate, fEDate, autoRegressionTick)
+
+
+if __name__ == '__main__':
+    #analyseData(predictandSelected, predictorSelected, fSDate, fEDate, globalSDate, globalEDate, autoRegressionTick)
+    correlation(predictandSelected, predictorSelected, fSDate, fEDate, autoRegressionTick)

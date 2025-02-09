@@ -279,10 +279,12 @@ class ContentWidget(QWidget):
 
 
         for predictor in listdir(self.predictorPath):
-            predictorScrollLabel = QPushButton(predictor)
-            predictorScrollLabel.setFlat = True
-            predictorScrollLabel.clicked.connect(self.predictorLabelClicked)
-            predictorsScrollLayout.addWidget(predictorScrollLabel) 
+            #These are functionally labels, but QLabels do not have an onclick function that emits a sender signal,
+            #so QPushButtons are used instead
+            predictorScrollLabelButton = QPushButton(predictor)
+            predictorScrollLabelButton.setFlat = True
+            predictorScrollLabelButton.clicked.connect(self.predictorLabelClicked)
+            predictorsScrollLayout.addWidget(predictorScrollLabelButton) 
         
         predictorsScrollArea.setWidget(predictorsScrollFrame)
 
@@ -321,7 +323,6 @@ class ContentWidget(QWidget):
             self.selectPredictandLabel.setText("No predictand selected")
 
     def predictorLabelClicked(self,*args):
-        print("You clicked a label")
         button = self.sender()
         predictor = button.text()
         if predictor not in self.predictorsSelected:
@@ -330,7 +331,6 @@ class ContentWidget(QWidget):
         else:
             self.predictorsSelected.remove(predictor)
             button.setStyleSheet("color: black; background-color: #D3D3D3")
-        print(self.predictorsSelected)
         #def selectPredictorsButtonClicked(self):
         #Will have to be changed soon, as it relies on known file "predictor files"
         #fileNames = QFileDialog.getOpenFileNames(self, "Select predictor files", 'predictor files', "DAT Files (*.DAT)")

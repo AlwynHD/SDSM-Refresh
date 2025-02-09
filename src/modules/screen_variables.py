@@ -83,6 +83,18 @@ class ContentWidget(QWidget):
 
         mainLayout.addWidget(contentAreaFrame)
 
+        #Frame that holds the selectPredictand frame and the selectDate frame
+        fileDateFrame = QFrame()
+        fileDateFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
+        fileDateFrame.setBaseSize(200,500)
+        fileDateFrame.setSizePolicy(QSizePolicy.Fixed,QSizePolicy.Expanding)
+
+        fileDateLayout = QVBoxLayout()
+        fileDateLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
+        fileDateLayout.setSpacing(0)  # No spacing between elements
+        fileDateFrame.setLayout(fileDateLayout)  # Apply the layout to the frame
+
+        contentAreaLayout.addWidget(fileDateFrame)
 
         #Create selectPredictandFile frame
         selectPredictandFileFrame = QFrame()
@@ -94,31 +106,126 @@ class ContentWidget(QWidget):
         selectPredictandFileLayout = QVBoxLayout()
         selectPredictandFileLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
         selectPredictandFileLayout.setSpacing(0)  # No spacing between elements
-        selectPredictandFileLayout.setAlignment(Qt.AlignLeft)
         selectPredictandFileFrame.setStyleSheet("background-color: #D3D3D3;")
 
 
         selectPredictandFileFrame.setLayout(selectPredictandFileLayout)
         
-        contentAreaLayout.addWidget(selectPredictandFileFrame)
+        fileDateLayout.addWidget(selectPredictandFileFrame)
+
+        #Create selectDate Frame
+        selectDateFrame = QFrame()
+        selectDateFrame.setFrameShape(QFrame.StyledPanel) 
+        selectDateFrame.setFixedSize(200,200)
+        selectDateFrame.setStyleSheet("background-color: #D3D3D3;")
+
+
+        selectDateLayout = QVBoxLayout()
+        selectDateLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
+        selectDateLayout.setSpacing(0)  # No spacing between elements
+        selectDateFrame.setLayout(selectDateLayout)  # Apply the layout to the frame
+
+        fileDateLayout.addWidget(selectDateFrame)
+
+
+
 
         #Create selectPredictor frame
         selectPredictorsFrame = QFrame()
         selectPredictorsFrame.setFrameShape(QFrame.StyledPanel)   
-        selectPredictorsFrame.setFixedSize(200,200)
+        selectPredictorsFrame.setFixedSize(200,400)
 
 
         #Layout for selectPredictors frame
         selectPredictorsLayout = QVBoxLayout()
         selectPredictorsLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
         selectPredictorsLayout.setSpacing(0)  # No spacing between elements
-        #selectPredictorsLayout.setAlignment(Qt.AlignLeft)
         selectPredictorsFrame.setStyleSheet("background-color: #D3D3D3;")
 
 
         selectPredictorsFrame.setLayout(selectPredictorsLayout)
         
         contentAreaLayout.addWidget(selectPredictorsFrame)
+
+        #Create description, autoregression, process, significance (DARPS) frame
+        selectDARPSFrame = QFrame()
+        selectDARPSFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
+        selectDARPSFrame.setBaseSize(200,500)
+        selectDARPSFrame.setSizePolicy(QSizePolicy.Fixed,QSizePolicy.Expanding)
+
+        #Create DARPS Layout
+
+        selectDARPSLayout = QVBoxLayout()
+        selectDARPSLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
+        selectDARPSLayout.setSpacing(0)  # No spacing between elements
+        selectDARPSFrame.setLayout(selectDARPSLayout)  # Apply the layout to the frame
+
+        contentAreaLayout.addWidget(selectDARPSFrame)
+
+        #Create predictorDescription frame
+        predictorDescriptionFrame = QFrame()
+        predictorDescriptionFrame.setFrameShape(QFrame.StyledPanel)   
+        predictorDescriptionFrame.setFixedSize(200,100)
+
+
+        #Layout for predictorDescription frame
+        predictorDescriptionLayout = QVBoxLayout()
+        predictorDescriptionLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
+        predictorDescriptionLayout.setSpacing(0)  # No spacing between elements
+        predictorDescriptionFrame.setStyleSheet("background-color: #D3D3D3;")
+        predictorDescriptionFrame.setLayout(predictorDescriptionLayout)
+
+        selectDARPSLayout.addWidget(predictorDescriptionFrame)
+
+        #Create autoregression frame
+        autoregressionFrame = QFrame()
+        autoregressionFrame.setFrameShape(QFrame.StyledPanel)   
+        autoregressionFrame.setFixedSize(200,100)
+
+
+        #Layout for autoregression frame
+        autoregressionLayout = QVBoxLayout()
+        autoregressionLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
+        autoregressionLayout.setSpacing(0)  # No spacing between elements
+        autoregressionFrame.setStyleSheet("background-color: #D3D3D3;")
+        autoregressionFrame.setLayout(autoregressionLayout)
+
+    
+
+        selectDARPSLayout.addWidget(autoregressionFrame)
+
+        #Create process frame
+        processFrame = QFrame()
+        processFrame.setFrameShape(QFrame.StyledPanel)   
+        processFrame.setFixedSize(200,100)
+
+
+        #Layout for process frame
+        processLayout = QVBoxLayout()
+        processLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
+        processLayout.setSpacing(0)  # No spacing between elements
+        processFrame.setStyleSheet("background-color: #D3D3D3;")
+        processFrame.setLayout(processLayout)
+
+
+        selectDARPSLayout.addWidget(processFrame)
+
+        #Create significance frame
+        significanceFrame = QFrame()
+        significanceFrame.setFrameShape(QFrame.StyledPanel)   
+        significanceFrame.setFixedSize(200,100)
+
+
+        #Layout for significance frame
+        significanceLayout = QVBoxLayout()
+        significanceLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
+        significanceLayout.setSpacing(0)  # No spacing between elements
+        significanceFrame.setStyleSheet("background-color: #D3D3D3;")
+        significanceFrame.setLayout(significanceLayout)
+
+
+        selectDARPSLayout.addWidget(significanceFrame)
+
         
 
 

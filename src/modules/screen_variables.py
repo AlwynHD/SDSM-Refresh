@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, QFrame, QLabel
+from PyQt5.QtWidgets import QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, QFrame, QLabel, QFileDialog
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QPalette, QColor, QIcon
 from ScreenVars import correlation, analyseData
@@ -16,7 +16,7 @@ class ContentWidget(QWidget):
         Initialize the Screen Variables screen UI/UX, setting up the layout, buttonBar, and contentArea.
         """
         super().__init__()
-
+        
         # Main layout for the entire widget
         mainLayout = QVBoxLayout()
         mainLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
@@ -54,6 +54,7 @@ class ContentWidget(QWidget):
         # Frame for the contentArea
         contentAreaFrame = QFrame()
         contentAreaFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
+        contentAreaFrame.setFixedHeight(100)
 
         # Layout for the contentArea frame
         contentAreaLayout = QVBoxLayout()
@@ -67,11 +68,51 @@ class ContentWidget(QWidget):
         # Add the contentArea frame to the main layout
         mainLayout.addWidget(contentAreaFrame)
 
+        #Create select file frame
+        selectFileFrame = QFrame(parent=contentAreaFrame)
+        selectFileFrame.setFrameShape(QFrame.StyledPanel)   
+        selectFileFrame.setFixedSize(200,200)
+
+
+        #Layout for selectFile frame
+        selectFileLayout = QVBoxLayout()
+        selectFileLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
+        selectFileLayout.setSpacing(0)  # No spacing between elements
+        selectFileLayout.setAlignment(Qt.AlignLeft)
+        selectFileFrame.setStyleSheet("background-color: #D3D3D3;")
+
+
+        selectFileFrame.setLayout(selectFileLayout)
+        
+        mainLayout.addWidget(selectFileFrame)
+        
+
+
         # --- Center Label (Placeholder) ---
         # Label to display the name of the module (Screen Variables)
         moduleLabel = QLabel(moduleName, self)
         moduleLabel.setStyleSheet("font-size: 24px; color: black;")  # Style the label text
         contentAreaLayout.addWidget(moduleLabel)  # Add the label to the contentArea layout
 
+        #File selector button
+        selectFileButton = QPushButton("Select predictand")
+        selectFileLayout.addWidget(selectFileButton)
+
+        #Blank frame to allow placement wherever I want
+        blankFrame = QFrame()
+        blankFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
+        blankFrame.setBaseSize(QSize(200,200))
+        blankFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding) #Allow our blank frame to fill the bottom of the screen
+
+        # Layout for the contentArea frame
+        blankLayout = QVBoxLayout()
+        blankLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
+        blankLayout.setSpacing(0)  # No spacing between elements
+        blankFrame.setLayout(blankLayout)  # Apply the layout to the frame
+
+        mainLayout.addWidget(blankFrame) #Is a bodge, hopefully figure it out later
+
         # Add a spacer to ensure content is properly spaced
+        
         contentAreaLayout.addStretch()
+        selectFileLayout.addStretch()

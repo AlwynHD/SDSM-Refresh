@@ -1,8 +1,9 @@
-from PyQt5.QtWidgets import QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, QFrame, QLabel, QFileDialog, QScrollArea
-from PyQt5.QtCore import Qt, QSize, pyqtSignal
+from PyQt5.QtWidgets import QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, QFrame, QLabel, QFileDialog, QScrollArea, QDateEdit
+from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QPalette, QColor, QIcon
 from ScreenVars import correlation, analyseData
 from os import listdir
+from datetime import datetime
 
 # Define the name of the module for display in the content area
 moduleName = "Screen Variables"
@@ -42,6 +43,7 @@ class ContentWidget(QWidget):
         for name in buttonNames:
             button = QPushButton(name)  # Create a button with the given name
             button.setIcon(QIcon("placeholder_icon.png"))  # Placeholder icon
+            button.clicked.connect(self.handleMenuButtonClicks)
             button.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)  # Fixed size policy
             button.sizeHint()  # Set a fixed size for the button
             button.setStyleSheet(
@@ -133,6 +135,32 @@ class ContentWidget(QWidget):
         selectDateFrame.setLayout(selectDateLayout)  # Apply the layout to the frame
 
         fileDateLayout.addWidget(selectDateFrame)
+
+        #Horizontal frames needed in selectDateFrame for labels to be attached to date selectors
+
+        fitStartDateFrame = QFrame()
+        fitStartDateFrame.setFrameShape(QFrame.NoFrame) 
+        fitStartDateFrame.setFixedSize(190,50)
+        fitStartDateFrame.setStyleSheet("background-color: #D3D3D3;")
+
+        fitStartDateLayout = QHBoxLayout()
+        fitStartDateLayout.setContentsMargins(10, 10, 10, 10)  # 10 Pixel padding
+        fitStartDateLayout.setSpacing(0)  # No spacing between elements
+        fitStartDateFrame.setLayout(fitStartDateLayout)  # Apply the layout to the frame
+
+        fitEndDateFrame = QFrame()
+        fitEndDateFrame.setFrameShape(QFrame.NoFrame) 
+        fitEndDateFrame.setFixedSize(190,50)
+        fitEndDateFrame.setStyleSheet("background-color: #D3D3D3;")
+
+        fitEndDateLayout = QHBoxLayout()
+        fitEndDateLayout.setContentsMargins(10, 10, 10, 10)  # 10 Pixel padding
+        fitEndDateLayout.setSpacing(0)  # No spacing between elements
+        fitEndDateFrame.setLayout(fitEndDateLayout)  # Apply the layout to the frame
+
+        selectDateLayout.addWidget(fitStartDateFrame)
+        selectDateLayout.addWidget(fitEndDateFrame)
+
 
 
 
@@ -250,14 +278,6 @@ class ContentWidget(QWidget):
         self.selectPredictandLabel = QLabel("No predictand selected")
         selectPredictandFileLayout.addWidget(self.selectPredictandLabel)
 
-        #Predictor files selector button
-        '''selectPredictorsButton = QPushButton("Select predictors")
-        selectPredictorsButton.clicked.connect(self.selectPredictorsButtonClicked)
-        selectPredictorsLayout.addWidget(selectPredictorsButton)
-
-        self.selectPredictorsLabel = QLabel("No predictors selected")
-        selectPredictorsLayout.addWidget(self.selectPredictorsLabel)'''
-
         #Create a scroll area for the predictors, and a frame for predictor labels to inhabit within the scroll area
         predictorsScrollArea = QScrollArea()
 
@@ -277,7 +297,6 @@ class ContentWidget(QWidget):
 
         #Get all predictors and populate scroll frame
 
-
         for predictor in listdir(self.predictorPath):
             #These are functionally labels, but QLabels do not have an onclick function that emits a sender signal,
             #so QPushButtons are used instead
@@ -287,6 +306,24 @@ class ContentWidget(QWidget):
             predictorsScrollLayout.addWidget(predictorScrollLabelButton) 
         
         predictorsScrollArea.setWidget(predictorsScrollFrame)
+
+
+        #Create a date edit box in the fitStart frame to choose start fit date
+
+        fitStartDateLabel = QLabel("Fit Start:")
+        fitStartDateLayout.addWidget(fitStartDateLabel)
+        self.fitStartDateChooser = QDateEdit(calendarPopup=True)
+        self.fitStartDateChooser.setMinimumWidth(100)
+
+        fitStartDateLayout.addWidget(self.fitStartDateChooser)
+
+        #Create a date edit box in the fitEnd frame to choose start fit date
+
+        fitEndDateLabel = QLabel("Fit End:")
+        fitEndDateLayout.addWidget(fitEndDateLabel)
+        self.fitEndDateChooser = QDateEdit(calendarPopup=True)
+        self.fitEndDateChooser.setMinimumWidth(100)
+        fitEndDateLayout.addWidget(self.fitEndDateChooser)
 
 
 
@@ -331,11 +368,28 @@ class ContentWidget(QWidget):
         else:
             self.predictorsSelected.remove(predictor)
             button.setStyleSheet("color: black; background-color: #D3D3D3")
-        #def selectPredictorsButtonClicked(self):
-        #Will have to be changed soon, as it relies on known file "predictor files"
-        #fileNames = QFileDialog.getOpenFileNames(self, "Select predictor files", 'predictor files', "DAT Files (*.DAT)")
-        #self.predictorsSelected = []
-        #for file in fileNames[0]:
-        #    self.predictorsSelected.append(file)
-        #print(self.predictorsSelected)
+    
+    def handleMenuButtonClicks(self):
+        button = self.sender().text()
+        if button == "Correlation":
+            #Get dates
+            rawStartDate = self.fitStartDateChooser.date()
+            print(str(rawStartDate))
+            #Tear the date apart and take what we need
+            date = str(rawStartDate).split('(')[1].split(")")[0].split(",") #yeah this seems robust
+            #Seriously though this will fall apart if anyone ever updates QDate, I should find a better way at some point
+            fitStartDate = datetime(int(date[0]),int(date[1]),int(date[2]))
 
+            rawEndDate = self.fitEndDateChooser.date()
+            #Tear the date apart and take what we need
+            date = str(rawEndDate).split('(')[1].split(")")[0].split(",") #yeah this seems robust
+            #Seriously though this will fall apart if anyone ever updates QDate, I should find a better way at some point
+            fitEndDate = datetime(int(date[0]),int(date[1]),int(date[2]))
+
+            #Perform correlation
+            #not sure if multiple variables works yet, also I need to do an autoregression gui element still
+            print(self.predictorsSelected)
+            print(self.predictorsSelected[0])            
+            correlation([self.predictandSelected], ["predictor files/"+self.predictorsSelected[0]], fitStartDate, fitEndDate, True)
+        else:
+            print("work in progress, pardon our dust")

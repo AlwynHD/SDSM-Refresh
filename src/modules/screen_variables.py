@@ -52,39 +52,73 @@ class ContentWidget(QWidget):
 
         # --- Content Area ---
         # Frame for the contentArea
-        contentAreaFrame = QFrame()
-        contentAreaFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
-        contentAreaFrame.setFixedHeight(100)
+        titleFrame = QFrame()
+        titleFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
+        titleFrame.setFixedHeight(100)
 
         # Layout for the contentArea frame
-        contentAreaLayout = QVBoxLayout()
+        titleLayout = QVBoxLayout()
+        titleLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
+        titleLayout.setSpacing(0)  # No spacing between elements
+        titleFrame.setLayout(titleLayout)  # Apply the layout to the frame
+
+        
+
+        # Set the background color to light gray
+        titleFrame.setStyleSheet("background-color: #D3D3D3;")
+
+        # Add the title frame to the main layout
+        mainLayout.addWidget(titleFrame)
+
+        contentAreaFrame = QFrame()
+        contentAreaFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
+        contentAreaFrame.setBaseSize(100,100)
+        contentAreaFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
+
+        # Layout for the contentArea frame
+        contentAreaLayout = QHBoxLayout()
         contentAreaLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
         contentAreaLayout.setSpacing(0)  # No spacing between elements
         contentAreaFrame.setLayout(contentAreaLayout)  # Apply the layout to the frame
 
-        # Set the background color to light gray
-        contentAreaFrame.setStyleSheet("background-color: #D3D3D3;")
-
-        # Add the contentArea frame to the main layout
         mainLayout.addWidget(contentAreaFrame)
 
-        #Create select file frame
-        selectFileFrame = QFrame(parent=contentAreaFrame)
-        selectFileFrame.setFrameShape(QFrame.StyledPanel)   
-        selectFileFrame.setFixedSize(200,200)
+
+        #Create selectPredictandFile frame
+        selectPredictandFileFrame = QFrame()
+        selectPredictandFileFrame.setFrameShape(QFrame.StyledPanel)   
+        selectPredictandFileFrame.setFixedSize(200,200)
 
 
-        #Layout for selectFile frame
-        selectFileLayout = QVBoxLayout()
-        selectFileLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
-        selectFileLayout.setSpacing(0)  # No spacing between elements
-        selectFileLayout.setAlignment(Qt.AlignLeft)
-        selectFileFrame.setStyleSheet("background-color: #D3D3D3;")
+        #Layout for selectPredictandFile frame
+        selectPredictandFileLayout = QVBoxLayout()
+        selectPredictandFileLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
+        selectPredictandFileLayout.setSpacing(0)  # No spacing between elements
+        selectPredictandFileLayout.setAlignment(Qt.AlignLeft)
+        selectPredictandFileFrame.setStyleSheet("background-color: #D3D3D3;")
 
 
-        selectFileFrame.setLayout(selectFileLayout)
+        selectPredictandFileFrame.setLayout(selectPredictandFileLayout)
         
-        mainLayout.addWidget(selectFileFrame)
+        contentAreaLayout.addWidget(selectPredictandFileFrame)
+
+        #Create selectPredictor frame
+        selectPredictorsFrame = QFrame()
+        selectPredictorsFrame.setFrameShape(QFrame.StyledPanel)   
+        selectPredictorsFrame.setFixedSize(200,200)
+
+
+        #Layout for selectPredictors frame
+        selectPredictorsLayout = QVBoxLayout()
+        selectPredictorsLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
+        selectPredictorsLayout.setSpacing(0)  # No spacing between elements
+        #selectPredictorsLayout.setAlignment(Qt.AlignLeft)
+        selectPredictorsFrame.setStyleSheet("background-color: #D3D3D3;")
+
+
+        selectPredictorsFrame.setLayout(selectPredictorsLayout)
+        
+        contentAreaLayout.addWidget(selectPredictorsFrame)
         
 
 
@@ -92,11 +126,11 @@ class ContentWidget(QWidget):
         # Label to display the name of the module (Screen Variables)
         moduleLabel = QLabel(moduleName, self)
         moduleLabel.setStyleSheet("font-size: 24px; color: black;")  # Style the label text
-        contentAreaLayout.addWidget(moduleLabel)  # Add the label to the contentArea layout
+        titleLayout.addWidget(moduleLabel)  # Add the label to the contentArea layout
 
         #File selector button
         selectFileButton = QPushButton("Select predictand")
-        selectFileLayout.addWidget(selectFileButton)
+        selectPredictandFileLayout.addWidget(selectFileButton)
 
         #Blank frame to allow placement wherever I want
         blankFrame = QFrame()
@@ -114,5 +148,5 @@ class ContentWidget(QWidget):
 
         # Add a spacer to ensure content is properly spaced
         
+        titleLayout.addStretch()
         contentAreaLayout.addStretch()
-        selectFileLayout.addStretch()

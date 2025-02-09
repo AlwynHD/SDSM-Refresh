@@ -229,15 +229,26 @@ class ContentWidget(QWidget):
         
 
 
-        # --- Center Label (Placeholder) ---
+        # ------------ ACTUAL CONTENT ------------
         # Label to display the name of the module (Screen Variables)
         moduleLabel = QLabel(moduleName, self)
         moduleLabel.setStyleSheet("font-size: 24px; color: black;")  # Style the label text
         titleLayout.addWidget(moduleLabel)  # Add the label to the contentArea layout
 
         #File selector button
-        selectFileButton = QPushButton("Select predictand")
-        selectPredictandFileLayout.addWidget(selectFileButton)
+        selectPredictandButton = QPushButton("Select predictand")
+        selectPredictandButton.clicked.connect(self.fileButtonClicked)
+        selectPredictandFileLayout.addWidget(selectPredictandButton)
+
+        self.selectPredictandLabel = QLabel("No predictand selected")
+        selectPredictandFileLayout.addWidget(self.selectPredictandLabel)
+
+
+
+
+
+
+
 
         #Blank frame to allow placement wherever I want
         blankFrame = QFrame()
@@ -257,3 +268,14 @@ class ContentWidget(QWidget):
         
         titleLayout.addStretch()
         contentAreaLayout.addStretch()
+
+    def fileButtonClicked(self):
+        print("look at me i just got clicked")
+        fileName = QFileDialog.getOpenFileName(self, "Open file", 'predictand files', "DAT Files (*.DAT)")
+        print(fileName)
+        if fileName[0] != '':
+            self.predictandSelected = fileName[0]
+            self.selectPredictandLabel.setText("File: "+self.predictandSelected.split("/")[-1]) #Only show the name of the file, not the whole path
+        else:
+            self.predictandSelected = None
+            self.selectPredictandLabel.setText("No predictand selected")

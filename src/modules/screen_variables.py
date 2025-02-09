@@ -1,11 +1,13 @@
-from PyQt5.QtWidgets import QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, QFrame, QLabel, QFileDialog
-from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtWidgets import QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, QFrame, QLabel, QFileDialog, QScrollArea
+from PyQt5.QtCore import Qt, QSize, pyqtSignal
 from PyQt5.QtGui import QPalette, QColor, QIcon
 from ScreenVars import correlation, analyseData
+from os import listdir
 
 # Define the name of the module for display in the content area
 moduleName = "Screen Variables"
 
+    
 class ContentWidget(QWidget):
     """
     A widget to display the Screen Variables screen (UI/UX).
@@ -16,6 +18,11 @@ class ContentWidget(QWidget):
         Initialize the Screen Variables screen UI/UX, setting up the layout, buttonBar, and contentArea.
         """
         super().__init__()
+
+        self.predictorPath = 'predictor files'
+
+        self.predictandSelected = ""
+        self.predictorsSelected = []
         
         # Main layout for the entire widget
         mainLayout = QVBoxLayout()
@@ -235,16 +242,49 @@ class ContentWidget(QWidget):
         moduleLabel.setStyleSheet("font-size: 24px; color: black;")  # Style the label text
         titleLayout.addWidget(moduleLabel)  # Add the label to the contentArea layout
 
-        #File selector button
+        #Predictand file selector button
         selectPredictandButton = QPushButton("Select predictand")
-        selectPredictandButton.clicked.connect(self.fileButtonClicked)
+        selectPredictandButton.clicked.connect(self.selectPredictandButtonClicked)
         selectPredictandFileLayout.addWidget(selectPredictandButton)
 
         self.selectPredictandLabel = QLabel("No predictand selected")
         selectPredictandFileLayout.addWidget(self.selectPredictandLabel)
 
+        #Predictor files selector button
+        '''selectPredictorsButton = QPushButton("Select predictors")
+        selectPredictorsButton.clicked.connect(self.selectPredictorsButtonClicked)
+        selectPredictorsLayout.addWidget(selectPredictorsButton)
+
+        self.selectPredictorsLabel = QLabel("No predictors selected")
+        selectPredictorsLayout.addWidget(self.selectPredictorsLabel)'''
+
+        #Create a scroll area for the predictors, and a frame for predictor labels to inhabit within the scroll area
+        predictorsScrollArea = QScrollArea()
+
+        predictorsScrollFrame = QFrame()
+        predictorsScrollFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
+        predictorsScrollFrame.setBaseSize(200,300)
+        predictorsScrollFrame.setSizePolicy(QSizePolicy.Fixed,QSizePolicy.Fixed)
 
 
+        predictorsScrollLayout = QVBoxLayout()
+        predictorsScrollLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
+        predictorsScrollLayout.setSpacing(0)  # No spacing between elements
+        predictorsScrollFrame.setLayout(predictorsScrollLayout)  # Apply the layout to the frame
+
+
+        selectPredictorsLayout.addWidget(predictorsScrollArea)
+
+        #Get all predictors and populate scroll frame
+
+
+        for predictor in listdir(self.predictorPath):
+            predictorScrollLabel = QPushButton(predictor)
+            predictorScrollLabel.setFlat = True
+            predictorScrollLabel.clicked.connect(self.predictorLabelClicked)
+            predictorsScrollLayout.addWidget(predictorScrollLabel) 
+        
+        predictorsScrollArea.setWidget(predictorsScrollFrame)
 
 
 
@@ -269,9 +309,9 @@ class ContentWidget(QWidget):
         titleLayout.addStretch()
         contentAreaLayout.addStretch()
 
-    def fileButtonClicked(self):
-        print("look at me i just got clicked")
-        fileName = QFileDialog.getOpenFileName(self, "Open file", 'predictand files', "DAT Files (*.DAT)")
+    def selectPredictandButtonClicked(self):
+        #Will have to be changed soon, as it relies on known file "predictand files"
+        fileName = QFileDialog.getOpenFileName(self, "Select predictand file", 'predictand files', "DAT Files (*.DAT)") 
         print(fileName)
         if fileName[0] != '':
             self.predictandSelected = fileName[0]
@@ -279,3 +319,23 @@ class ContentWidget(QWidget):
         else:
             self.predictandSelected = None
             self.selectPredictandLabel.setText("No predictand selected")
+
+    def predictorLabelClicked(self,*args):
+        print("You clicked a label")
+        button = self.sender()
+        predictor = button.text()
+        if predictor not in self.predictorsSelected:
+            self.predictorsSelected.append(predictor)
+            button.setStyleSheet("color: white; background-color: blue")
+        else:
+            self.predictorsSelected.remove(predictor)
+            button.setStyleSheet("color: black; background-color: #D3D3D3")
+        print(self.predictorsSelected)
+        #def selectPredictorsButtonClicked(self):
+        #Will have to be changed soon, as it relies on known file "predictor files"
+        #fileNames = QFileDialog.getOpenFileNames(self, "Select predictor files", 'predictor files', "DAT Files (*.DAT)")
+        #self.predictorsSelected = []
+        #for file in fileNames[0]:
+        #    self.predictorsSelected.append(file)
+        #print(self.predictorsSelected)
+

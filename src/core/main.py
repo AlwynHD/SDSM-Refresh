@@ -137,6 +137,7 @@ class SDSMWindow(QMainWindow):
         # Determine the appropriate path for the module
         modulePath = modulePaths.get(moduleName, modulePaths["default"])
         print(modulePath)
+        modulePath.replace("\\","/")
         # Add the selected path to the system path if not already included
         if modulePath not in sys.path:
             sys.path.append(modulePath)

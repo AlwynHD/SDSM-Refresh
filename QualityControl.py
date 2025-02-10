@@ -1,17 +1,20 @@
 import datetime
 import math
+import calendar
 
 #region Global Variables
 
 #Currently accessing local file, change as needed for your own version.
 selectedFile = r"C:\Users\ajs25\Downloads\test.txt"
-outlierFile = r""
+outlierFile = r"C:\Users\ajs25\Downloads\outlier.txt"
 
 globalSDate = datetime.datetime(1948, 1, 1)
 globalMissingCode = -999
 
 applyThresh = False
 thresh = 0
+
+standardDeviationLimits = 0
 
 #endregion
 
@@ -44,7 +47,7 @@ def dailyMeans():
             line = line.rstrip('\n')
             if line != str(globalMissingCode): #Unsure if cast is needed, could just write globalMissingCode as string
                 if not applyThresh or line > thresh:
-                    dailyStats[dayWorkingOn][0] += int(line) #Add to cumulative sum
+                    dailyStats[dayWorkingOn][0] += float(line) #Add to cumulative sum
                     dailyStats[dayWorkingOn][1] += 1         #Increase count of 'good' values read in on that day    
 
             #Iterate dayWorkingOn
@@ -52,6 +55,8 @@ def dailyMeans():
                 dayWorkingOn = 0
             else:
                 dayWorkingOn += 1
+
+    file.close()
 
     #Calulcate means for each day
     for i in range(7):
@@ -68,7 +73,7 @@ def dailyMeans():
             line = line.rstrip('\n')
             if line != str(globalMissingCode) and dailyStats[dayWorkingOn][3] != globalMissingCode:
                 if not applyThresh or line > thresh:
-                    dailyStats[dayWorkingOn][2] += (int(line) - dailyStats[dayWorkingOn][3]) ** 2
+                    dailyStats[dayWorkingOn][2] += (float(line) - dailyStats[dayWorkingOn][3]) ** 2
 
             #Iterate dayWorkingOn
             if dayWorkingOn == 6:
@@ -76,19 +81,17 @@ def dailyMeans():
             else:
                 dayWorkingOn += 1
 
+    file.close()
+
     for i in range(7):
         if dailyStats[i][1] > 0:
             dailyStats[i][2] = math.sqrt(dailyStats[i][2] / dailyStats[i][1])
         else:
             dailyStats[i][2] = globalMissingCode
 
-    output = "Sunday: Mean: " + str(round(dailyStats[6][3], 2)) + " SD: " + str(round(dailyStats[6][2], 2)) + "\n" +\
-             "Monday: Mean: " + str(round(dailyStats[0][3], 2)) + " SD: " + str(round(dailyStats[0][2], 2)) + "\n" +\
-             "Tuesday: Mean: " + str(round(dailyStats[1][3], 2)) + " SD: " + str(round(dailyStats[1][2], 2)) + "\n" +\
-             "Wednesday: Mean: " + str(round(dailyStats[2][3], 2)) + " SD: " + str(round(dailyStats[2][2], 2)) + "\n" +\
-             "Thursday: Mean: " + str(round(dailyStats[3][3], 2)) + " SD: " + str(round(dailyStats[3][2], 2)) + "\n" +\
-             "Friday: Mean: " + str(round(dailyStats[4][3], 2)) + " SD: " + str(round(dailyStats[4][2], 2)) + "\n" +\
-             "Saturday: Mean: " + str(round(dailyStats[5][3], 2)) + " SD: " + str(round(dailyStats[5][2], 2)) + "\n"
+    output = ""
+    for i in range(7):
+        output += str(calendar.day_name[i]) + ": Mean: " + str(round(dailyStats[i][3], 2)) + " SD: " + str(round(dailyStats[i][2], 2)) + "\n"
     
     print(output)
 
@@ -112,8 +115,10 @@ def outliersID():
             line = line.rstrip('\n')
             if line != str(globalMissingCode):
                 if not applyThresh or line > thresh:
-                    sum += line
+                    sum += float(line)
                     goodCount += 1
+
+    file.close()
 
     if goodCount > 0:
         mean = sum / goodCount
@@ -130,11 +135,31 @@ def outliersID():
                 line = line.rstrip('\n')
                 if line != str(globalMissingCode):
                     if not applyThresh or line > thresh:
-                        standardDeviation += (line - mean) ** 2
+                        standardDeviation += (float(line) - mean) ** 2
 
-        standardDeviation = math.sqrt
-        
-#OutliersID --> Calulcate outliers
+        file.close()
+
+        standardDeviation = math.sqrt(standardDeviation / goodCount)
+    else:
+        standardDeviation = globalMissingCode
+
+    #Go through data to pick outliers
+    standardDeviationRange = standardDeviation * standardDeviationLimits
+    outlierCount = 0
+    counter = 1
+    with open(selectedFile, "r") as file:
+        for line in file:
+            if line != str(globalMissingCode):
+                if not applyThresh or line > thresh:
+                    if float(line) > (mean + standardDeviationRange) or float(line) < (mean - standardDeviationRange):
+                        outFile = open(outlierFile, "a")
+                        outFile.write(str(counter) + "\t" * 3 + line)
+                        outFile.close()
+                        outlierCount += 1
+            counter += 1
+
+    message = str(outlierCount) + " outliers identified and saved to file."
+    print(message)
 
 #QualityCheck --> Check File
 

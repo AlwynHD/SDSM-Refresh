@@ -301,7 +301,7 @@ class ContentWidget(QWidget):
 
         #Get all predictors and populate scroll frame
 
-        '''for predictor in listdir(self.predictorPath):
+        for predictor in listdir(self.predictorPath):
             #These are functionally labels, but QLabels do not have an onclick function that emits a sender signal,
             #so QPushButtons are used instead
             predictorScrollLabelButton = QPushButton(predictor)
@@ -309,7 +309,7 @@ class ContentWidget(QWidget):
             predictorScrollLabelButton.clicked.connect(self.predictorLabelClicked)
             predictorsScrollLayout.addWidget(predictorScrollLabelButton) 
         
-        predictorsScrollArea.setWidget(predictorsScrollFrame)'''
+        predictorsScrollArea.setWidget(predictorsScrollFrame)
 
 
         #Create a date edit box in the fitStart frame to choose start fit date

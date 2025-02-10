@@ -1,10 +1,14 @@
-from PyQt5.QtWidgets import QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, QFrame, QLabel
-from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, QFrame, QLabel, QFileDialog, QScrollArea, QDateEdit, QCheckBox
+from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QPalette, QColor, QIcon
+from ScreenVars import correlation, analyseData
+from os import listdir
+from datetime import datetime
 
 # Define the name of the module for display in the content area
 moduleName = "Screen Variables"
 
+    
 class ContentWidget(QWidget):
     """
     A widget to display the Screen Variables screen (UI/UX).
@@ -16,6 +20,11 @@ class ContentWidget(QWidget):
         """
         super().__init__()
 
+        self.predictorPath = 'predictor files'
+
+        self.predictandSelected = ""
+        self.predictorsSelected = []
+        
         # Main layout for the entire widget
         mainLayout = QVBoxLayout()
         mainLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
@@ -30,12 +39,13 @@ class ContentWidget(QWidget):
         buttonBarLayout.setAlignment(Qt.AlignLeft)  # Align buttons to the left
 
         # Create placeholder buttons for the buttonBar
-        buttonNames = ["Reset", "Settings"]  # Names of the buttons for clarity
+        buttonNames = ["Reset", "Analyse", "Correlation", "Scatter", "Settings"]  # Names of the buttons for clarity
         for name in buttonNames:
             button = QPushButton(name)  # Create a button with the given name
             button.setIcon(QIcon("placeholder_icon.png"))  # Placeholder icon
-            button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)  # Fixed size policy
-            button.setFixedSize(50, 50)  # Set a fixed size for the button
+            button.clicked.connect(self.handleMenuButtonClicks)
+            button.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)  # Fixed size policy
+            button.sizeHint()  # Set a fixed size for the button
             button.setStyleSheet(
                 "border: 1px solid lightgray; background-color: #F0F0F0; text-align: left;"
             )  # Style to match the overall design
@@ -51,26 +61,347 @@ class ContentWidget(QWidget):
 
         # --- Content Area ---
         # Frame for the contentArea
-        contentAreaFrame = QFrame()
-        contentAreaFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
+        titleFrame = QFrame()
+        titleFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
+        titleFrame.setFixedHeight(100)
 
         # Layout for the contentArea frame
-        contentAreaLayout = QVBoxLayout()
+        titleLayout = QVBoxLayout()
+        titleLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
+        titleLayout.setSpacing(0)  # No spacing between elements
+        titleFrame.setLayout(titleLayout)  # Apply the layout to the frame
+
+        
+
+        # Set the background color to light gray
+        titleFrame.setStyleSheet("background-color: #D3D3D3;")
+
+        # Add the title frame to the main layout
+        mainLayout.addWidget(titleFrame)
+
+        contentAreaFrame = QFrame()
+        contentAreaFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
+        contentAreaFrame.setBaseSize(100,100)
+        contentAreaFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
+
+        # Layout for the contentArea frame
+        contentAreaLayout = QHBoxLayout()
         contentAreaLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
         contentAreaLayout.setSpacing(0)  # No spacing between elements
         contentAreaFrame.setLayout(contentAreaLayout)  # Apply the layout to the frame
 
-        # Set the background color to light gray
-        contentAreaFrame.setStyleSheet("background-color: #D3D3D3;")
-
-        # Add the contentArea frame to the main layout
         mainLayout.addWidget(contentAreaFrame)
 
-        # --- Center Label (Placeholder) ---
+        #Frame that holds the selectPredictand frame and the selectDate frame
+        fileDateFrame = QFrame()
+        fileDateFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
+        fileDateFrame.setBaseSize(200,500)
+        fileDateFrame.setSizePolicy(QSizePolicy.Fixed,QSizePolicy.Expanding)
+
+        fileDateLayout = QVBoxLayout()
+        fileDateLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
+        fileDateLayout.setSpacing(0)  # No spacing between elements
+        fileDateFrame.setLayout(fileDateLayout)  # Apply the layout to the frame
+
+        contentAreaLayout.addWidget(fileDateFrame)
+
+        #Create selectPredictandFile frame
+        selectPredictandFileFrame = QFrame()
+        selectPredictandFileFrame.setFrameShape(QFrame.StyledPanel)   
+        selectPredictandFileFrame.setFixedSize(200,200)
+
+
+        #Layout for selectPredictandFile frame
+        selectPredictandFileLayout = QVBoxLayout()
+        selectPredictandFileLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
+        selectPredictandFileLayout.setSpacing(0)  # No spacing between elements
+        selectPredictandFileFrame.setStyleSheet("background-color: #D3D3D3;")
+
+
+        selectPredictandFileFrame.setLayout(selectPredictandFileLayout)
+        
+        fileDateLayout.addWidget(selectPredictandFileFrame)
+
+        #Create selectDate Frame
+        selectDateFrame = QFrame()
+        selectDateFrame.setFrameShape(QFrame.StyledPanel) 
+        selectDateFrame.setFixedSize(200,200)
+        selectDateFrame.setStyleSheet("background-color: #D3D3D3;")
+
+
+        selectDateLayout = QVBoxLayout()
+        selectDateLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
+        selectDateLayout.setSpacing(0)  # No spacing between elements
+        selectDateFrame.setLayout(selectDateLayout)  # Apply the layout to the frame
+
+        fileDateLayout.addWidget(selectDateFrame)
+
+        #Horizontal frames needed in selectDateFrame for labels to be attached to date selectors
+
+        fitStartDateFrame = QFrame()
+        fitStartDateFrame.setFrameShape(QFrame.NoFrame) 
+        fitStartDateFrame.setFixedSize(190,50)
+        fitStartDateFrame.setStyleSheet("background-color: #D3D3D3;")
+
+        fitStartDateLayout = QHBoxLayout()
+        fitStartDateLayout.setContentsMargins(10, 10, 10, 10)  # 10 Pixel padding
+        fitStartDateLayout.setSpacing(0)  # No spacing between elements
+        fitStartDateFrame.setLayout(fitStartDateLayout)  # Apply the layout to the frame
+
+        fitEndDateFrame = QFrame()
+        fitEndDateFrame.setFrameShape(QFrame.NoFrame) 
+        fitEndDateFrame.setFixedSize(190,50)
+        fitEndDateFrame.setStyleSheet("background-color: #D3D3D3;")
+
+        fitEndDateLayout = QHBoxLayout()
+        fitEndDateLayout.setContentsMargins(10, 10, 10, 10)  # 10 Pixel padding
+        fitEndDateLayout.setSpacing(0)  # No spacing between elements
+        fitEndDateFrame.setLayout(fitEndDateLayout)  # Apply the layout to the frame
+
+        selectDateLayout.addWidget(fitStartDateFrame)
+        selectDateLayout.addWidget(fitEndDateFrame)
+
+
+
+
+
+        #Create selectPredictor frame
+        selectPredictorsFrame = QFrame()
+        selectPredictorsFrame.setFrameShape(QFrame.StyledPanel)   
+        selectPredictorsFrame.setFixedSize(200,400)
+
+
+        #Layout for selectPredictors frame
+        selectPredictorsLayout = QVBoxLayout()
+        selectPredictorsLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
+        selectPredictorsLayout.setSpacing(0)  # No spacing between elements
+        selectPredictorsFrame.setStyleSheet("background-color: #D3D3D3;")
+
+
+        selectPredictorsFrame.setLayout(selectPredictorsLayout)
+        
+        contentAreaLayout.addWidget(selectPredictorsFrame)
+
+        #Create description, autoregression, process, significance (DARPS) frame
+        selectDARPSFrame = QFrame()
+        selectDARPSFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
+        selectDARPSFrame.setBaseSize(200,500)
+        selectDARPSFrame.setSizePolicy(QSizePolicy.Fixed,QSizePolicy.Expanding)
+
+        #Create DARPS Layout
+
+        selectDARPSLayout = QVBoxLayout()
+        selectDARPSLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
+        selectDARPSLayout.setSpacing(0)  # No spacing between elements
+        selectDARPSFrame.setLayout(selectDARPSLayout)  # Apply the layout to the frame
+
+        contentAreaLayout.addWidget(selectDARPSFrame)
+
+        #Create predictorDescription frame
+        predictorDescriptionFrame = QFrame()
+        predictorDescriptionFrame.setFrameShape(QFrame.StyledPanel)   
+        predictorDescriptionFrame.setFixedSize(200,100)
+
+
+        #Layout for predictorDescription frame
+        predictorDescriptionLayout = QVBoxLayout()
+        predictorDescriptionLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
+        predictorDescriptionLayout.setSpacing(0)  # No spacing between elements
+        predictorDescriptionFrame.setStyleSheet("background-color: #D3D3D3;")
+        predictorDescriptionFrame.setLayout(predictorDescriptionLayout)
+
+        selectDARPSLayout.addWidget(predictorDescriptionFrame)
+
+        #Create autoregression frame
+        autoregressionFrame = QFrame()
+        autoregressionFrame.setFrameShape(QFrame.StyledPanel)   
+        autoregressionFrame.setFixedSize(200,100)
+
+
+        #Layout for autoregression frame
+        autoregressionLayout = QVBoxLayout()
+        autoregressionLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
+        autoregressionLayout.setSpacing(0)  # No spacing between elements
+        autoregressionFrame.setStyleSheet("background-color: #D3D3D3;")
+        autoregressionFrame.setLayout(autoregressionLayout)
+
+    
+
+        selectDARPSLayout.addWidget(autoregressionFrame)
+
+        #Create process frame
+        processFrame = QFrame()
+        processFrame.setFrameShape(QFrame.StyledPanel)   
+        processFrame.setFixedSize(200,100)
+
+
+        #Layout for process frame
+        processLayout = QVBoxLayout()
+        processLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
+        processLayout.setSpacing(0)  # No spacing between elements
+        processFrame.setStyleSheet("background-color: #D3D3D3;")
+        processFrame.setLayout(processLayout)
+
+
+        selectDARPSLayout.addWidget(processFrame)
+
+        #Create significance frame
+        significanceFrame = QFrame()
+        significanceFrame.setFrameShape(QFrame.StyledPanel)   
+        significanceFrame.setFixedSize(200,100)
+
+
+        #Layout for significance frame
+        significanceLayout = QVBoxLayout()
+        significanceLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
+        significanceLayout.setSpacing(0)  # No spacing between elements
+        significanceFrame.setStyleSheet("background-color: #D3D3D3;")
+        significanceFrame.setLayout(significanceLayout)
+
+
+        selectDARPSLayout.addWidget(significanceFrame)
+
+        
+
+
+        # ------------ ACTUAL CONTENT ------------
         # Label to display the name of the module (Screen Variables)
         moduleLabel = QLabel(moduleName, self)
         moduleLabel.setStyleSheet("font-size: 24px; color: black;")  # Style the label text
-        contentAreaLayout.addWidget(moduleLabel)  # Add the label to the contentArea layout
+        titleLayout.addWidget(moduleLabel)  # Add the label to the contentArea layout
+
+        #Predictand file selector button
+        selectPredictandButton = QPushButton("Select predictand")
+        selectPredictandButton.clicked.connect(self.selectPredictandButtonClicked)
+        selectPredictandFileLayout.addWidget(selectPredictandButton)
+
+        self.selectPredictandLabel = QLabel("No predictand selected")
+        selectPredictandFileLayout.addWidget(self.selectPredictandLabel)
+
+        #Create predictor label
+        predictorLabel = QLabel("Predictor Variables")
+        selectPredictorsLayout.addWidget(predictorLabel)
+
+        #Create a scroll area for the predictors, and a frame for predictor labels to inhabit within the scroll area
+        predictorsScrollArea = QScrollArea()
+
+        predictorsScrollFrame = QFrame()
+        predictorsScrollFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
+        predictorsScrollFrame.setBaseSize(200,300)
+        predictorsScrollFrame.setSizePolicy(QSizePolicy.Fixed,QSizePolicy.Fixed)
+
+
+        predictorsScrollLayout = QVBoxLayout()
+        predictorsScrollLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
+        predictorsScrollLayout.setSpacing(0)  # No spacing between elements
+        predictorsScrollFrame.setLayout(predictorsScrollLayout)  # Apply the layout to the frame
+
+
+        selectPredictorsLayout.addWidget(predictorsScrollArea)
+
+        #Get all predictors and populate scroll frame
+
+        for predictor in listdir(self.predictorPath):
+            #These are functionally labels, but QLabels do not have an onclick function that emits a sender signal,
+            #so QPushButtons are used instead
+            predictorScrollLabelButton = QPushButton(predictor)
+            predictorScrollLabelButton.setFlat = True
+            predictorScrollLabelButton.clicked.connect(self.predictorLabelClicked)
+            predictorsScrollLayout.addWidget(predictorScrollLabelButton) 
+        
+        predictorsScrollArea.setWidget(predictorsScrollFrame)
+
+
+        #Create a date edit box in the fitStart frame to choose start fit date
+
+        fitStartDateLabel = QLabel("Fit Start:")
+        fitStartDateLayout.addWidget(fitStartDateLabel)
+        self.fitStartDateChooser = QDateEdit(calendarPopup=True)
+        self.fitStartDateChooser.setMinimumWidth(100)
+
+        fitStartDateLayout.addWidget(self.fitStartDateChooser)
+
+        #Create a date edit box in the fitEnd frame to choose start fit date
+
+        fitEndDateLabel = QLabel("Fit End:")
+        fitEndDateLayout.addWidget(fitEndDateLabel)
+        self.fitEndDateChooser = QDateEdit(calendarPopup=True)
+        self.fitEndDateChooser.setMinimumWidth(100)
+        fitEndDateLayout.addWidget(self.fitEndDateChooser)
+
+        #Autoregression Button
+        autoregressionLabel = QLabel("Autoregression")
+        autoregressionLayout.addWidget(autoregressionLabel)
+
+        self.autoregressionCheckBox = QCheckBox("Autoregressive Term")
+        autoregressionLayout.addWidget(self.autoregressionCheckBox)
+
+
+
+        #Blank frame to allow placement wherever I want
+        blankFrame = QFrame()
+        blankFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
+        blankFrame.setBaseSize(QSize(200,200))
+        blankFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding) #Allow our blank frame to fill the bottom of the screen
+
+        # Layout for the blank frame
+        blankLayout = QVBoxLayout()
+        blankLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
+        blankLayout.setSpacing(0)  # No spacing between elements
+        blankFrame.setLayout(blankLayout)  # Apply the layout to the frame
+
+        mainLayout.addWidget(blankFrame) #Is a bodge, hopefully figure it out later
+
+        
+
 
         # Add a spacer to ensure content is properly spaced
+        
+        titleLayout.addStretch()
         contentAreaLayout.addStretch()
+
+    def selectPredictandButtonClicked(self):
+        #Will have to be changed soon, as it relies on known file "predictand files"
+        fileName = QFileDialog.getOpenFileName(self, "Select predictand file", 'predictand files', "DAT Files (*.DAT)") 
+        print(fileName)
+        if fileName[0] != '':
+            self.predictandSelected = fileName[0]
+            self.selectPredictandLabel.setText("File: "+self.predictandSelected.split("/")[-1]) #Only show the name of the file, not the whole path
+        else:
+            self.predictandSelected = None
+            self.selectPredictandLabel.setText("No predictand selected")
+
+    def predictorLabelClicked(self,*args):
+        button = self.sender()
+        predictor = button.text()
+        if predictor not in self.predictorsSelected:
+            self.predictorsSelected.append(predictor)
+            button.setStyleSheet("color: white; background-color: blue")
+        else:
+            self.predictorsSelected.remove(predictor)
+            button.setStyleSheet("color: black; background-color: #D3D3D3")
+    
+    def handleMenuButtonClicks(self):
+        button = self.sender().text()
+        if button == "Correlation":
+            #Get dates
+            rawStartDate = self.fitStartDateChooser.date()
+            print(str(rawStartDate))
+
+
+            fitStartDate = rawStartDate.toPyDate()
+            fitStartDate = datetime.combine(fitStartDate, datetime.min.time())
+
+            rawEndDate = self.fitEndDateChooser.date()
+
+            fitEndDate = rawEndDate.toPyDate()
+            fitEndDate = datetime.combine(fitEndDate, datetime.min.time())
+
+            #Get autoregression state
+            autoregression = self.autoregressionCheckBox.isChecked()
+
+            #Perform correlation
+            #not sure if multiple variables works yet, also I need to do an autoregression gui element still
+            correlation([self.predictandSelected], ["predictor files/"+self.predictorsSelected[0]], fitStartDate, fitEndDate, autoregression)
+        else:
+            print("work in progress, pardon our dust")

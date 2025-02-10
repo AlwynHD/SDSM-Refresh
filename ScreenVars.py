@@ -6,19 +6,19 @@ import re
 import numpy as np
 
 #Local version
-predictorSelected = ['predictor files/ncep_dswr.dat']
+predictorSelected = ['predictor files/ncep_dswr.dat', 'predictor files/ncep_p_th.dat']
 predictandSelected = ['predictand files/NoviSadPrecOBS.dat']
 
 #predictorSelected = ['C:/Code/SDSM/SDSM-Refresh/predictor files/ncep_dswr.dat'] #todo remove default
 #predictandSelected = ['C:/Code/SDSM/SDSM-Refresh/predictand files/NoviSadPrecOBS.dat'] #todo remove default
-nameOfFiles = ["NoviSadPrecOBS", "ncep_dswr"]
+nameOfFiles = ["NoviSadPrecOBS", "ncep_dswr", "ncep_p_th.dat"]
 globalSDate = datetime.datetime(1948, 1, 1)
 globalEDate = datetime.datetime(2015, 12, 31)
 fSDate = datetime.datetime(1948, 1, 1)
 fEDate = datetime.datetime(2015, 12, 31)
 analysisPeriod = ["Annual", "Winter", "Spring", "Summer", "Autumn", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
 analysisPeriodChosen = 0
-autoRegressionTick = True
+autoRegressionTick = False
 
 def partialCorrelation(A, B, n, crossCorr, corrArrayList):
     """
@@ -227,7 +227,8 @@ def correlation(predictandSelected, predictorSelected, fSDate, fEDate, autoRegre
 
         loadedFiles = []
         loadedFiles = loadFilesIntoMemory(predictorSelected, predictandSelected)
-        
+        print(loadedFiles)
+
         #todo progress bar
 
         totalNumbers = 0
@@ -487,4 +488,5 @@ def analyseData(predictandSelected, predictorSelected, fsDate, feDate, globalSDa
 
 if __name__ == '__main__':
     #analyseData(predictandSelected, predictorSelected, fSDate, fEDate, globalSDate, globalEDate, autoRegressionTick)
+    print(selectFile())
     correlation(predictandSelected, predictorSelected, fSDate, fEDate, autoRegressionTick)

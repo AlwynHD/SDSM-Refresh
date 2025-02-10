@@ -132,16 +132,18 @@ class SDSMWindow(QMainWindow):
             "home": os.path.dirname(__file__),  # "Home" is in the main directory
             "default": os.path.join(os.path.dirname(__file__), '..', 'modules')  # Other modules in "modules" directory
         }
+        print(modulePaths)
         
         # Determine the appropriate path for the module
         modulePath = modulePaths.get(moduleName, modulePaths["default"])
-        
+        print(modulePath)
         # Add the selected path to the system path if not already included
         if modulePath not in sys.path:
             sys.path.append(modulePath)
 
         try:
             # Import the module dynamically
+            print(moduleName)
             module = import_module(moduleName)
             if hasattr(module, 'ContentWidget'):  # Check if the module has a "ContentWidget" class
                 contentWidget = module.ContentWidget()  # Screen (UI/UX)

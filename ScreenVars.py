@@ -432,7 +432,7 @@ def analyseData(predictandSelected, predictorSelected, fsDate, feDate, globalSDa
                 months[workingDate.month-1] = np.concatenate((months[workingDate.month-1], other))
             
             workingDate = increaseDate(workingDate, 1)
-        print(monthCount)
+        
 
         # data is in months (month, length of files, files)
 
@@ -444,29 +444,44 @@ def analyseData(predictandSelected, predictorSelected, fsDate, feDate, globalSDa
         if conditional:
             for month in months:
                 month[:, 0] = np.where(month[:, 0] > threshold, 1, np.where(month[:, 0] != missingCode, 0, missingCode))
-        print(months[0])
-        
 
-
+        #TODO extract data and reset every month
+        #todo check if right line 806
         for month in months:
+            sumData = sumDataSquared = SumDataPredictandPredictor = np.zeros(nVariables)
             for i in range(len(month)):
                 row = month[i]
                 if row[0] == missingCode:
                     row = [0 for data in row]
                 row = [0 if data == missingCode else data for data in row]
-                SumData += row
-                SumDataSquared += [data**2 for data in row]
-                sumDataPredictandPredicotr += [data*row[0] for data in row]
-        collapsedArray = np.vstack(months)
-        print(collapsedArray.shape) 
+                #SUMX
+                sumData += row
+                #SUMXX
+                sumDataSquared += [data**2 for data in row]
+                #SUMXY
+                SumDataPredictandPredictor += [data*row[0] for data in row]
+                #SUMY not needed as in SUMX same with SUMYY
 
-        columnSums = np.sum(collapsedArray, axis=0)
-        print(columnSums)
-        squared_columnSums = np.sum(collapsedArray ** 2, axis=0)
-        print(squared_columnSums)
-        multiplication_sums = np.sum(collapsedArray * collapsedArray[0], axis=0)
-        print(multiplication_sums)
+            """
+            collapsedArray = np.vstack(months)
+            print("Collapsed array")
+            print(collapsedArray.shape) 
 
+            print(sumData, "SUMDATA")
+            columnSums = np.sum(collapsedArray, axis=0)
+            print(columnSums)
+            squared_columnSums = np.sum(collapsedArray ** 2, axis=0)
+            print(squared_columnSums)
+            multiplication_sums = np.sum(collapsedArray * collapsedArray[0], axis=0)
+            print(multiplication_sums)        
+            """
+            denomintor = [(len(month) - missing[i] * SumDataPredictandPredictor[i]) - (sumData[i] ** 2) for i in range(sumData.size)]
+            
+            CORR = [0 if denomintor[i] <= 0 else ((len(month)- missing[i] * SumDataPredictandPredictor[0])- sumData[i]*sumData[0])/(np.sqrt(denomintor[i]) * np.sqrt(denomintor[0]) ) for i in range(nVariables)]
+            RSQD = [COORvalue ** 2 for COORvalue in CORR]
+
+            T = [9999 if RSQD > 0.999 else (CORR[i] * np.sqrt(len(month) - missing[i]) - 2 ) / np.sqrt(1 - RSQD[i]) for i in range(nVariables)]
+            pr = [] # line 875
 
 
 

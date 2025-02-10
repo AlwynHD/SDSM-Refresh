@@ -1,12 +1,17 @@
 import datetime
+import math
 
 #region Global Variables
 
 #Currently accessing local file, change as needed for your own version.
 selectedFile = r"C:\Users\ajs25\Downloads\test.txt"
+outlierFile = r""
 
 globalSDate = datetime.datetime(1948, 1, 1)
 globalMissingCode = -999
+
+applyThresh = False
+thresh = 0
 
 #endregion
 
@@ -38,7 +43,7 @@ def dailyMeans():
         for line in file:
             line = line.rstrip('\n')
             if line != str(globalMissingCode): #Unsure if cast is needed, could just write globalMissingCode as string
-                if True: #There exist conditions in the original program that should be checked here. Need to update soon.
+                if not applyThresh or line > thresh:
                     dailyStats[dayWorkingOn][0] += int(line) #Add to cumulative sum
                     dailyStats[dayWorkingOn][1] += 1         #Increase count of 'good' values read in on that day    
 
@@ -61,8 +66,8 @@ def dailyMeans():
     with open(selectedFile, "r") as file:
         for line in file:
             line = line.rstrip('\n')
-            if line != str(globalMissingCode) and dailyStats[dayWorkingOn] != globalMissingCode:
-                if True: #If we are applying a threshold, check the input value is above it.
+            if line != str(globalMissingCode) and dailyStats[dayWorkingOn][3] != globalMissingCode:
+                if not applyThresh or line > thresh:
                     dailyStats[dayWorkingOn][2] += (int(line) - dailyStats[dayWorkingOn][3]) ** 2
 
             #Iterate dayWorkingOn
@@ -73,7 +78,7 @@ def dailyMeans():
 
     for i in range(7):
         if dailyStats[i][1] > 0:
-            dailyStats[i][2] = dailyStats[i][2] / dailyStats[i][1]
+            dailyStats[i][2] = math.sqrt(dailyStats[i][2] / dailyStats[i][1])
         else:
             dailyStats[i][2] = globalMissingCode
 
@@ -87,8 +92,48 @@ def dailyMeans():
     
     print(output)
 
-dailyMeans()
+def outliersID():
+    if selectedFile is None:
+        #Display error message asking user to select a file
+        print("You must select a file to check first.")
+        return
+    elif outlierFile is None:
+        print("You must select a file to save outliers to.")
+        return
+    
+    #Same process of checking if the file is formatted properly as in dailyMeans.
 
+    #Calculate mean
+    sum = 0
+    goodCount = 0
+
+    with open(selectedFile, "r") as file:
+        for line in file:
+            line = line.rstrip('\n')
+            if line != str(globalMissingCode):
+                if not applyThresh or line > thresh:
+                    sum += line
+                    goodCount += 1
+
+    if goodCount > 0:
+        mean = sum / goodCount
+    else:
+        mean = globalMissingCode
+
+
+    #Calculate standard deviation
+    standardDeviation = 0
+
+    if mean != globalMissingCode:
+        with open(selectedFile, "r") as file:
+            for line in file:
+                line = line.rstrip('\n')
+                if line != str(globalMissingCode):
+                    if not applyThresh or line > thresh:
+                        standardDeviation += (line - mean) ** 2
+
+        standardDeviation = math.sqrt
+        
 #OutliersID --> Calulcate outliers
 
 #QualityCheck --> Check File

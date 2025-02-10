@@ -387,25 +387,21 @@ class ContentWidget(QWidget):
             #Get dates
             rawStartDate = self.fitStartDateChooser.date()
             print(str(rawStartDate))
-            #Tear the date apart and take what we need
-            date = str(rawStartDate).split('(')[1].split(")")[0].split(",") #yeah this seems robust
-            #Seriously though this will fall apart if anyone ever updates QDate, I should find a better way at some point
-            fitStartDate = datetime(int(date[0]),int(date[1]),int(date[2]))
+
+
+            fitStartDate = rawStartDate.toPyDate()
+            fitStartDate = datetime.combine(fitStartDate, datetime.min.time())
 
             rawEndDate = self.fitEndDateChooser.date()
-            #Tear the date apart and take what we need
-            date = str(rawEndDate).split('(')[1].split(")")[0].split(",") #yeah this seems robust
-            #Seriously though this will fall apart if anyone ever updates QDate, I should find a better way at some point
-            fitEndDate = datetime(int(date[0]),int(date[1]),int(date[2]))
+
+            fitEndDate = rawEndDate.toPyDate()
+            fitEndDate = datetime.combine(fitEndDate, datetime.min.time())
 
             #Get autoregression state
             autoregression = self.autoregressionCheckBox.isChecked()
-            print(autoregression)
 
             #Perform correlation
             #not sure if multiple variables works yet, also I need to do an autoregression gui element still
-            print(self.predictorsSelected)
-            print(self.predictorsSelected[0])            
             correlation([self.predictandSelected], ["predictor files/"+self.predictorsSelected[0]], fitStartDate, fitEndDate, autoregression)
         else:
             print("work in progress, pardon our dust")

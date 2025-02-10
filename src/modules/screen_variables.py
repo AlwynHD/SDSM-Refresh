@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, QFrame, QLabel, QFileDialog, QScrollArea, QDateEdit
+from PyQt5.QtWidgets import QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, QFrame, QLabel, QFileDialog, QScrollArea, QDateEdit, QCheckBox
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QPalette, QColor, QIcon
 from ScreenVars import correlation, analyseData
@@ -278,6 +278,10 @@ class ContentWidget(QWidget):
         self.selectPredictandLabel = QLabel("No predictand selected")
         selectPredictandFileLayout.addWidget(self.selectPredictandLabel)
 
+        #Create predictor label
+        predictorLabel = QLabel("Predictor Variables")
+        selectPredictorsLayout.addWidget(predictorLabel)
+
         #Create a scroll area for the predictors, and a frame for predictor labels to inhabit within the scroll area
         predictorsScrollArea = QScrollArea()
 
@@ -325,7 +329,12 @@ class ContentWidget(QWidget):
         self.fitEndDateChooser.setMinimumWidth(100)
         fitEndDateLayout.addWidget(self.fitEndDateChooser)
 
+        #Autoregression Button
+        autoregressionLabel = QLabel("Autoregression")
+        autoregressionLayout.addWidget(autoregressionLabel)
 
+        self.autoregressionCheckBox = QCheckBox("Autoregressive Term")
+        autoregressionLayout.addWidget(self.autoregressionCheckBox)
 
 
 
@@ -335,13 +344,16 @@ class ContentWidget(QWidget):
         blankFrame.setBaseSize(QSize(200,200))
         blankFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding) #Allow our blank frame to fill the bottom of the screen
 
-        # Layout for the contentArea frame
+        # Layout for the blank frame
         blankLayout = QVBoxLayout()
         blankLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
         blankLayout.setSpacing(0)  # No spacing between elements
         blankFrame.setLayout(blankLayout)  # Apply the layout to the frame
 
         mainLayout.addWidget(blankFrame) #Is a bodge, hopefully figure it out later
+
+        
+
 
         # Add a spacer to ensure content is properly spaced
         
@@ -386,10 +398,14 @@ class ContentWidget(QWidget):
             #Seriously though this will fall apart if anyone ever updates QDate, I should find a better way at some point
             fitEndDate = datetime(int(date[0]),int(date[1]),int(date[2]))
 
+            #Get autoregression state
+            autoregression = self.autoregressionCheckBox.isChecked()
+            print(autoregression)
+
             #Perform correlation
             #not sure if multiple variables works yet, also I need to do an autoregression gui element still
             print(self.predictorsSelected)
             print(self.predictorsSelected[0])            
-            correlation([self.predictandSelected], ["predictor files/"+self.predictorsSelected[0]], fitStartDate, fitEndDate, True)
+            correlation([self.predictandSelected], ["predictor files/"+self.predictorsSelected[0]], fitStartDate, fitEndDate, autoregression)
         else:
             print("work in progress, pardon our dust")

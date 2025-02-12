@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, QFrame, QLabel, QFileDialog, QScrollArea, QDateEdit, QCheckBox
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QPalette, QColor, QIcon
-from ScreenVars import correlation, analyseData
+from ScreenVars import correlation, analyseData, filesNames
 from os import listdir
 from datetime import datetime
 
@@ -329,6 +329,10 @@ class ContentWidget(QWidget):
         self.fitEndDateChooser.setMinimumWidth(100)
         fitEndDateLayout.addWidget(self.fitEndDateChooser)
 
+        #Create a label that gets updated on predictandButtonClick
+        self.predictorDescriptionLabel = QLabel("No predictor selected")
+        predictorDescriptionLayout.addWidget(self.predictorDescriptionLabel)
+
         #Autoregression Button
         autoregressionLabel = QLabel("Autoregression")
         autoregressionLayout.addWidget(autoregressionLabel)
@@ -380,6 +384,9 @@ class ContentWidget(QWidget):
         else:
             self.predictorsSelected.remove(predictor)
             button.setStyleSheet("color: black; background-color: #D3D3D3")
+        predictorDescription = filesNames(predictor)
+        self.predictorDescriptionLabel.setText(predictorDescription[0])
+
     
     def handleMenuButtonClicks(self):
         button = self.sender().text()

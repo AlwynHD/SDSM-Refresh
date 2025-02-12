@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, QFrame, QLabel, QFileDialog, QScrollArea, QDateEdit, QCheckBox
-from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtCore import Qt, QSize, QDate
 from PyQt5.QtGui import QPalette, QColor, QIcon
 from ScreenVars import correlation, analyseData, filesNames
 from os import listdir
@@ -317,6 +317,7 @@ class ContentWidget(QWidget):
         fitStartDateLabel = QLabel("Fit Start:")
         fitStartDateLayout.addWidget(fitStartDateLabel)
         self.fitStartDateChooser = QDateEdit(calendarPopup=True)
+        self.fitStartDateChooser.setDate(QDate(1948,1,1))
         self.fitStartDateChooser.setMinimumWidth(100)
 
         fitStartDateLayout.addWidget(self.fitStartDateChooser)
@@ -327,6 +328,7 @@ class ContentWidget(QWidget):
         fitEndDateLayout.addWidget(fitEndDateLabel)
         self.fitEndDateChooser = QDateEdit(calendarPopup=True)
         self.fitEndDateChooser.setMinimumWidth(100)
+        self.fitEndDateChooser.setDate(QDate(2015,12,31))
         fitEndDateLayout.addWidget(self.fitEndDateChooser)
 
         #Create a label that gets updated on predictandButtonClick
@@ -376,8 +378,8 @@ class ContentWidget(QWidget):
             self.selectPredictandLabel.setText("No predictand selected")
 
     def predictorLabelClicked(self,*args):
-        button = self.sender()
-        predictor = button.text()
+        button = self.sender() #Get the buttonLabel that was clicked
+        predictor = button.text() #Get the name of the buttonLabel, so the predictor file
         if predictor not in self.predictorsSelected:
             self.predictorsSelected.append(predictor)
             button.setStyleSheet("color: white; background-color: blue")
@@ -392,17 +394,11 @@ class ContentWidget(QWidget):
         button = self.sender().text()
         if button == "Correlation":
             #Get dates
-            rawStartDate = self.fitStartDateChooser.date()
-            print(str(rawStartDate))
+            fitStartDate = self.QDateEditToDateTime(self.fitStartDateChooser)
 
 
-            fitStartDate = rawStartDate.toPyDate()
-            fitStartDate = datetime.combine(fitStartDate, datetime.min.time())
+            fitEndDate = self.QDateEditToDateTime(self.fitEndDateChooser)
 
-            rawEndDate = self.fitEndDateChooser.date()
-
-            fitEndDate = rawEndDate.toPyDate()
-            fitEndDate = datetime.combine(fitEndDate, datetime.min.time())
 
             #Get autoregression state
             autoregression = self.autoregressionCheckBox.isChecked()
@@ -412,3 +408,11 @@ class ContentWidget(QWidget):
             correlation([self.predictandSelected], ["predictor files/"+self.predictorsSelected[0]], fitStartDate, fitEndDate, autoregression)
         else:
             print("work in progress, pardon our dust")
+
+    def QDateEditToDateTime(self, dateEdit):
+        rawStartDate = dateEdit.date()
+        print(str(rawStartDate))
+        dateTime = rawStartDate.toPyDate()
+        dateTime = datetime.combine(dateTime, datetime.min.time())
+        return dateTime
+

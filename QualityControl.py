@@ -18,17 +18,28 @@ standardDeviationLimits = 0
 
 #endregion
 
+#region New Functions
+
+def checkForFile(selectedFile, errorMessage):
+    if selectedFile is None:
+        print(errorMessage)
+        return False
+    else:
+        return True
+    
+def checkThreshold(value):
+    return value > thresh or not applyThresh
+
+#endregion
+
 #Reset All
     #Reset all fields on the form to their default values
 
 def dailyMeans():
-    if selectedFile is None:
-        #Display error message asking user to select a file
-        print("You must select a file to check first.")
+    if not checkForFile(selectedFile, "You must select a file to check first"):
         return
     
-    #In original VB code, file is checked to see if it contains multiple columns or linux line breaks
-    #This is done by checking the first line only, unsure of how to convert.
+    #todo In original VB code, file is checked to see if it contains multiple columns or linux line break. This is done by checking the first line only, unsure of how to convert.
 
     #Initialise results to zero
     dailyStats = []
@@ -46,7 +57,7 @@ def dailyMeans():
         for line in file:
             line = line.rstrip('\n')
             if line != str(globalMissingCode): #Unsure if cast is needed, could just write globalMissingCode as string
-                if not applyThresh or line > thresh:
+                if checkThreshold(line):
                     dailyStats[dayWorkingOn][0] += float(line) #Add to cumulative sum
                     dailyStats[dayWorkingOn][1] += 1         #Increase count of 'good' values read in on that day    
 
@@ -72,7 +83,7 @@ def dailyMeans():
         for line in file:
             line = line.rstrip('\n')
             if line != str(globalMissingCode) and dailyStats[dayWorkingOn][3] != globalMissingCode:
-                if not applyThresh or line > thresh:
+                if checkThreshold(line):
                     dailyStats[dayWorkingOn][2] += (float(line) - dailyStats[dayWorkingOn][3]) ** 2
 
             #Iterate dayWorkingOn
@@ -96,15 +107,15 @@ def dailyMeans():
     print(output)
 
 def outliersID():
-    if selectedFile is None:
-        #Display error message asking user to select a file
-        print("You must select a file to check first.")
+    if not checkForFile(selectedFile, "You must select a file to check first"):
+        return
+    if not checkForFile(outlierFile, "You must select a file to save outliers to"):
         return
     elif outlierFile is None:
         print("You must select a file to save outliers to.")
         return
     
-    #Same process of checking if the file is formatted properly as in dailyMeans.
+    #todo Same process of checking if the file is formatted properly as in dailyMeans.
 
     #Calculate mean
     sum = 0
@@ -114,7 +125,7 @@ def outliersID():
         for line in file:
             line = line.rstrip('\n')
             if line != str(globalMissingCode):
-                if not applyThresh or line > thresh:
+                if checkThreshold(line):
                     sum += float(line)
                     goodCount += 1
 
@@ -134,7 +145,7 @@ def outliersID():
             for line in file:
                 line = line.rstrip('\n')
                 if line != str(globalMissingCode):
-                    if not applyThresh or line > thresh:
+                    if checkThreshold(line):
                         standardDeviation += (float(line) - mean) ** 2
 
         file.close()
@@ -150,7 +161,7 @@ def outliersID():
     with open(selectedFile, "r") as file:
         for line in file:
             if line != str(globalMissingCode):
-                if not applyThresh or line > thresh:
+                if checkThreshold(line):
                     if float(line) > (mean + standardDeviationRange) or float(line) < (mean - standardDeviationRange):
                         outFile = open(outlierFile, "a")
                         outFile.write(str(counter) + "\t" * 3 + line)
@@ -161,8 +172,39 @@ def outliersID():
     message = str(outlierCount) + " outliers identified and saved to file."
     print(message)
 
-#QualityCheck --> Check File
+def qualityCheck():
+    if not checkForFile(selectedFile, "You must select a file to check first."):
+        return
+    
+    #Todo Check if file is formatted correctly.
 
-#PettittTest --> Called when check file is run
+def pettittTest(petArray, totalOk, totalNumbers):
+    if (not applyThresh and totalOk < 10) or (applyThresh and thresh < 10):
+        pettitt = globalMissingCode
+        return
+    
+    currentDay = globalSDate.day
+    currenMonth = globalSDate.month
+    currentYear = globalSDate.year
 
-#IncreaseDate --> Called in PettittTest
+    annualMeans = []
+    annualCount = []
+
+    yearIndex = 1
+    for i in range(totalNumbers):
+        if petArray[i] != globalMissingCode:
+            if checkThreshold(petArray[i]):
+                annualMeans[yearIndex] += petArray[i]
+                annualCount[yearIndex] += 1
+
+        if i < totalNumbers:
+            increaseDate(currentDay, 1)
+            #todo placeholder numbers, will correct later
+    
+    
+
+def increaseDate(currentDate, noDays): #todo check if the leap year thing was important
+    """increases datatime object by noDays"""
+    #Taken from ScreenVars
+    currentDate += datetime.timedelta(days=noDays)
+    return currentDate

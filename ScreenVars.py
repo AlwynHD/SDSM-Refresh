@@ -6,12 +6,12 @@ import re
 import numpy as np
 
 #Local version
-predictorSelected = ['predictor files/ncep_dswr.dat', 'predictor files/ncep_p_th.dat']
+predictorSelected = ['predictor files/ncep_dswr.dat']
 predictandSelected = ['predictand files/NoviSadPrecOBS.dat']
 
 #predictorSelected = ['C:/Code/SDSM/SDSM-Refresh/predictor files/ncep_dswr.dat'] #todo remove default
 #predictandSelected = ['C:/Code/SDSM/SDSM-Refresh/predictand files/NoviSadPrecOBS.dat'] #todo remove default
-nameOfFiles = ["NoviSadPrecOBS", "ncep_dswr", "ncep_p_th.dat"]
+nameOfFiles = ["NoviSadPrecOBS", "ncep_dswr"]
 globalSDate = datetime.datetime(1948, 1, 1)
 globalEDate = datetime.datetime(2015, 12, 31)
 fSDate = datetime.datetime(1948, 1, 1)
@@ -414,11 +414,12 @@ def analyseData(predictandSelected, predictorSelected, fsDate, feDate, globalSDa
 
         months = [[],[],[],[],[],[],[],[],[],[],[],[]]
         monthCount = np.zeros(12, dtype=int)
+        missing = np.zeros(12, dtype=int)
 
         for i in range((fEDate - fSDate).days):
         #for i in range(4749, 4905):
             if lastMonth != workingDate.month -1:
-                other = np.full((1,2), missingCode, dtype=int)
+                other = np.full((1,nVariables), missingCode, dtype=int)
                 months[lastMonth] = np.concatenate((months[lastMonth], other))
                 totalFalseMissingCode += 1
                 lastMonth = workingDate.month-1
@@ -427,6 +428,8 @@ def analyseData(predictandSelected, predictorSelected, fsDate, feDate, globalSDa
             monthCount[workingDate.month-1] += 1
 
             other = np.array([[file[i] for file in loadedFiles]])
+            missing[workingDate.month-1] = np.count_nonzero(other == missingCode)
+
             if len(months[workingDate.month-1]) == 0:
                 months[workingDate.month-1] = other
             else:
@@ -448,12 +451,12 @@ def analyseData(predictandSelected, predictorSelected, fsDate, feDate, globalSDa
 
         #TODO extract data and reset every month
         #todo check if right line 806
-        for month in months:
+        for index, month in enumerate(months):
             sumData = sumDataSquared = SumDataPredictandPredictor = np.zeros(nVariables)
             for i in range(len(month)):
                 row = month[i]
                 if row[0] == missingCode:
-                    row = [0 for data in row]
+                    row = [0 for file in row]
                 row = [0 if data == missingCode else data for data in row]
                 #SUMX
                 sumData += row
@@ -476,17 +479,18 @@ def analyseData(predictandSelected, predictorSelected, fsDate, feDate, globalSDa
             multiplication_sums = np.sum(collapsedArray * collapsedArray[0], axis=0)
             print(multiplication_sums)        
             """
-            denomintor = [(len(month) - missing[i] * SumDataPredictandPredictor[i]) - (sumData[i] ** 2) for i in range(sumData.size)]
+            denomintor = [(len(month) - missing[i] * SumDataPredictandPredictor[i]) - (sumData[i] ** 2) for i in range(nVariables)]
             
             CORR = [0 if denomintor[i] <= 0 else ((len(month)- missing[i] * SumDataPredictandPredictor[0])- sumData[i]*sumData[0])/(np.sqrt(denomintor[i]) * np.sqrt(denomintor[0]) ) for i in range(nVariables)]
             RSQD = [COORvalue ** 2 for COORvalue in CORR]
 
-            T = [9999 if RSQD > 0.999 else (CORR[i] * np.sqrt(len(month) - missing[i]) - 2 ) / np.sqrt(1 - RSQD[i]) for i in range(nVariables)]
-            pr = [] # line 875
+            T = [9999 if RSQD[i] > 0.999 else (CORR[i] * np.sqrt(len(month) - missing[i]) - 2 ) / np.sqrt(1 - RSQD[i]) for i in range(nVariables)]
+
+            pr = [(((1 + ((T[i] ** 2) / (len(month) - missing[index]))) ** -(((len(month) - missing[index]) + 1) / 2))) / (np.sqrt(((len(month) - missing[index]) * math.pi))) * np.sqrt((len(month) - missing[index])) for i in range(nVariables)] # line 875
 
 
 
 if __name__ == '__main__':
-    #analyseData(predictandSelected, predictorSelected, fSDate, fEDate, globalSDate, globalEDate, autoRegressionTick)
-    print(selectFile())
-    correlation(predictandSelected, predictorSelected, fSDate, fEDate, autoRegressionTick)
+    analyseData(predictandSelected, predictorSelected, fSDate, fEDate, globalSDate, globalEDate, autoRegressionTick)
+    
+    #correlation(predictandSelected, predictorSelected, fSDate, fEDate, autoRegressionTick)

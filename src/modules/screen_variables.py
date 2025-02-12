@@ -24,12 +24,17 @@ class ContentWidget(QWidget):
 
         self.predictandSelected = ""
         self.predictorsSelected = []
+
+        self.setStyleSheet("background-color: #D3D3D3;")
+
         
         # Main layout for the entire widget
         mainLayout = QVBoxLayout()
         mainLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
         mainLayout.setSpacing(0)  # No spacing between elements
         self.setLayout(mainLayout)  # Apply the main layout to the widget
+
+
 
         # --- Button Bar ---
         # Layout for the buttonBar at the top of the screen
@@ -81,8 +86,8 @@ class ContentWidget(QWidget):
 
         contentAreaFrame = QFrame()
         contentAreaFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
-        contentAreaFrame.setBaseSize(100,100)
-        contentAreaFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
+        contentAreaFrame.setBaseSize(600,100)
+        contentAreaFrame.setSizePolicy(QSizePolicy.Preferred,QSizePolicy.Expanding)
 
         # Layout for the contentArea frame
         contentAreaLayout = QHBoxLayout()
@@ -108,7 +113,7 @@ class ContentWidget(QWidget):
         #Create selectPredictandFile frame
         selectPredictandFileFrame = QFrame()
         selectPredictandFileFrame.setFrameShape(QFrame.StyledPanel)   
-        selectPredictandFileFrame.setFixedSize(200,200)
+        selectPredictandFileFrame.setBaseSize(200,200)
 
 
         #Layout for selectPredictandFile frame
@@ -125,7 +130,7 @@ class ContentWidget(QWidget):
         #Create selectDate Frame
         selectDateFrame = QFrame()
         selectDateFrame.setFrameShape(QFrame.StyledPanel) 
-        selectDateFrame.setFixedSize(200,200)
+        selectDateFrame.setBaseSize(200,200)
         selectDateFrame.setStyleSheet("background-color: #D3D3D3;")
 
 
@@ -140,7 +145,7 @@ class ContentWidget(QWidget):
 
         fitStartDateFrame = QFrame()
         fitStartDateFrame.setFrameShape(QFrame.NoFrame) 
-        fitStartDateFrame.setFixedSize(190,50)
+        fitStartDateFrame.setBaseSize(190,50)
         fitStartDateFrame.setStyleSheet("background-color: #D3D3D3;")
 
         fitStartDateLayout = QHBoxLayout()
@@ -150,7 +155,7 @@ class ContentWidget(QWidget):
 
         fitEndDateFrame = QFrame()
         fitEndDateFrame.setFrameShape(QFrame.NoFrame) 
-        fitEndDateFrame.setFixedSize(190,50)
+        fitEndDateFrame.setBaseSize(190,50)
         fitEndDateFrame.setStyleSheet("background-color: #D3D3D3;")
 
         fitEndDateLayout = QHBoxLayout()
@@ -169,6 +174,7 @@ class ContentWidget(QWidget):
         selectPredictorsFrame = QFrame()
         selectPredictorsFrame.setFrameShape(QFrame.StyledPanel)   
         selectPredictorsFrame.setFixedSize(200,400)
+
 
 
         #Layout for selectPredictors frame
@@ -200,7 +206,7 @@ class ContentWidget(QWidget):
         #Create predictorDescription frame
         predictorDescriptionFrame = QFrame()
         predictorDescriptionFrame.setFrameShape(QFrame.StyledPanel)   
-        predictorDescriptionFrame.setFixedSize(200,100)
+        predictorDescriptionFrame.setBaseSize(200,100)
 
 
         #Layout for predictorDescription frame
@@ -215,7 +221,7 @@ class ContentWidget(QWidget):
         #Create autoregression frame
         autoregressionFrame = QFrame()
         autoregressionFrame.setFrameShape(QFrame.StyledPanel)   
-        autoregressionFrame.setFixedSize(200,100)
+        autoregressionFrame.setBaseSize(200,100)
 
 
         #Layout for autoregression frame
@@ -232,7 +238,7 @@ class ContentWidget(QWidget):
         #Create process frame
         processFrame = QFrame()
         processFrame.setFrameShape(QFrame.StyledPanel)   
-        processFrame.setFixedSize(200,100)
+        processFrame.setBaseSize(200,100)
 
 
         #Layout for process frame
@@ -248,7 +254,7 @@ class ContentWidget(QWidget):
         #Create significance frame
         significanceFrame = QFrame()
         significanceFrame.setFrameShape(QFrame.StyledPanel)   
-        significanceFrame.setFixedSize(200,100)
+        significanceFrame.setBaseSize(200,100)
 
 
         #Layout for significance frame
@@ -344,7 +350,7 @@ class ContentWidget(QWidget):
 
 
 
-        #Blank frame to allow placement wherever I want
+        #Blank frame to allow placement wherever I want, without it everything tries to expand down towards the footer, looks horrible
         blankFrame = QFrame()
         blankFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
         blankFrame.setBaseSize(QSize(200,200))

@@ -135,7 +135,6 @@ def modify_data(ctx: SDSMContext):
     for line in lines:
         process_line(line)
     ctx.no_of_days = len(ctx.data_array[0])
-    print(f"Read {ctx.no_of_days} days for {ctx.ensemble_size} ensemble member(s).")
 
     # --- Apply Treatments in Order ---
     if ctx.occurrence_check:

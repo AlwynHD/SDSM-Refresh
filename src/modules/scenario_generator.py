@@ -9,13 +9,11 @@ from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, QP
 from PyQt5.QtCore import Qt
 
 
-# =============================================================================
-#   SDSM Logic – Converted from VB to Python
-# =============================================================================
 
 class SDSMContext:
     """
     A context for storing parameters and data for scenario generation.
+    This will be changed in future to match the other module's data structutres
     """
     def __init__(self):
         # File paths
@@ -445,7 +443,7 @@ def apply_trend(ctx: SDSMContext):
 
 
 # =============================================================================
-#   NEW: Plotting the final data
+#   Plotting the final data
 # =============================================================================
 
 def plot_scenario(ctx: SDSMContext):

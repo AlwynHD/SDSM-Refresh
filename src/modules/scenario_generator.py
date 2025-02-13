@@ -2,18 +2,18 @@ import sys
 import math
 import random
 import datetime
-import matplotlib.pyplot as plt  # <-- NEW: For plotting
+import matplotlib.pyplot as plt 
+import numpy as np
 from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
-                             QFrame, QLabel, QLineEdit, QGridLayout, QCheckBox, QRadioButton,
+                             QLabel, QLineEdit, QGridLayout, QCheckBox, QRadioButton,
                              QButtonGroup, QFileDialog, QGroupBox, QMessageBox)
 from PyQt5.QtCore import Qt
-
 
 
 class SDSMContext:
     """
     A context for storing parameters and data for scenario generation.
-    This will be changed in future to match the other module's data structutres
+    This will be changed in future to match the other module's data structures.
     """
     def __init__(self):
         # File paths
@@ -26,7 +26,7 @@ class SDSMContext:
         self.local_thresh = 0.1
         # Ensemble and data array
         self.ensemble_size = 1
-        self.data_array = []   # will be a list (one per ensemble) of lists (one per day)
+        self.data_array = []   # a list (one per ensemble) of lists (one per day)
         self.no_of_days = 0
         self.mean_array = []   # list of (mean, sd) tuples for each ensemble
         # Occurrence treatment
@@ -64,6 +64,21 @@ def increase_date(date_obj):
     return date_obj + datetime.timedelta(days=1)
 
 
+def parse_value(str_val, ctx):
+    """
+    Parses a string value from the file.
+    If the value is "-999", returns the global missing code.
+    Otherwise, returns the float value.
+    """
+    val_str = str_val.strip()
+    if val_str == "-999":
+        return ctx.global_missing_code
+    try:
+        return float(val_str)
+    except ValueError:
+        return ctx.global_missing_code
+
+
 def check_settings(ctx: SDSMContext) -> bool:
     """Perform basic sanity checks on the context settings."""
     if not ctx.in_file or len(ctx.in_file) < 5:
@@ -78,7 +93,6 @@ def check_settings(ctx: SDSMContext) -> bool:
     if ctx.occurrence_check and not ctx.conditional_check:
         QMessageBox.critical(None, "Error", "Occurrence treatment cannot be applied to unconditional data.")
         return False
-    # (Additional checks can be added here)
     return True
 
 
@@ -99,7 +113,7 @@ def modify_data(ctx: SDSMContext):
         QMessageBox.critical(None, "Error", "Input file is empty.")
         return
 
-    # Simple check: if the first line is long then assume multi–column data
+    # Determine if multi-column (by checking length of first line)
     multi_column = len(lines[0]) > 14
 
     # Prepare data_array: a list of lists, one for each ensemble member.
@@ -107,20 +121,15 @@ def modify_data(ctx: SDSMContext):
 
     def process_line(line: str):
         if ctx.ensemble_size == 1 and not multi_column:
-            try:
-                num = float(line.strip())
-            except Exception:
-                num = ctx.global_missing_code
+            num = parse_value(line, ctx)
             ctx.data_array[0].append(num)
         else:
-            # Assume fixed–width fields of width 14 per ensemble member.
+            # Assume fixed-width fields of width 14 per ensemble member.
             for i in range(ctx.ensemble_size):
                 start = i * 14
                 end = start + 14
-                try:
-                    num = float(line[start:end].strip())
-                except Exception:
-                    num = ctx.global_missing_code
+                num_str = line[start:end]
+                num = parse_value(num_str, ctx)
                 ctx.data_array[i].append(num)
 
     for line in lines:
@@ -131,8 +140,6 @@ def modify_data(ctx: SDSMContext):
     # --- Apply Treatments in Order ---
     if ctx.occurrence_check:
         apply_occurrence(ctx)
-        if ctx.global_missing_code in [None]:
-            return  # error signaled inside function
     if ctx.variance_check:
         calc_means(ctx)
     if ctx.amount_check:
@@ -142,15 +149,18 @@ def modify_data(ctx: SDSMContext):
     if ctx.trend_check:
         apply_trend(ctx)
 
-    # --- Write Output File ---
+    # --- Write Output File (without showing -999 values) ---
     try:
         with open(ctx.out_root, "w") as f:
             for i in range(ctx.no_of_days):
-                line = ""
+                line_out = ""
                 for j in range(ctx.ensemble_size):
                     val = ctx.data_array[j][i]
-                    line += f"{val:8.3f}\t"
-                f.write(line + "\n")
+                    if val == ctx.global_missing_code:
+                        line_out += "\t"  # output blank instead of -999
+                    else:
+                        line_out += f"{val:8.3f}\t"
+                f.write(line_out + "\n")
     except Exception as e:
         QMessageBox.critical(None, "Error", f"Error writing output file:\n{e}")
         return
@@ -158,7 +168,7 @@ def modify_data(ctx: SDSMContext):
     QMessageBox.information(None, "Success",
                             f"Scenario generated.\n{ctx.no_of_days} days processed.")
 
-    # OPTIONAL: Plot the final data in memory
+    # Plot the final data
     plot_scenario(ctx)
 
 
@@ -179,7 +189,7 @@ def apply_occurrence(ctx: SDSMContext):
     """Apply occurrence treatment (adding or removing wet days)."""
     random.seed()
     for j in range(ctx.ensemble_size):
-        # Prepare per–month lists (months 1 to 12)
+        # Prepare per-month lists (months 1 to 12)
         DryCount = [0] * 12
         WetCount = [0] * 12
         DayCount = [0] * 12
@@ -216,7 +226,6 @@ def apply_occurrence(ctx: SDSMContext):
             if ctx.occurrence_factor_percent < 1:
                 DaysToDelete = int(TotalWetCount - (TotalWetCount * ctx.occurrence_factor_percent))
                 for _ in range(DaysToDelete):
-                    # Choose a month that has at least one wet day.
                     m = random.choice([ix for ix in range(12) if WetCount[ix] > 0])
                     idx = random.randint(0, WetCount[m] - 1)
                     day = WetArray[m][idx]
@@ -233,12 +242,9 @@ def apply_occurrence(ctx: SDSMContext):
                     m = random.choice([ix for ix in range(12) if DryCount[ix] > 0])
                     idx = random.randint(0, DryCount[m] - 1)
                     day = DryArray[m][idx]
-                    # Use a random wet day from the same month (if available)
                     if OrigWetCount[m] == 0:
-                        # Otherwise try a random month that has at least one wet day
                         possible_wet_months = [ix for ix in range(12) if WetCount[ix] > 0]
                         if not possible_wet_months:
-                            # No wet days anywhere, skip
                             continue
                         m2 = random.choice(possible_wet_months)
                         wet_day = random.choice(WetArray[m2])
@@ -249,7 +255,6 @@ def apply_occurrence(ctx: SDSMContext):
                     DryArray[m].pop(idx)
                     DryCount[m] -= 1
         else:
-            # Forced occurrence option – not fully implemented here.
             QMessageBox.information(None, "Info", "Forced occurrence treatment not implemented in this demo.")
 
 
@@ -266,7 +271,6 @@ def calc_means(ctx: SDSMContext):
                     total += val
                     count += 1
         mean = total / count if count > 0 else ctx.global_missing_code
-        # Calculate standard deviation:
         if mean != ctx.global_missing_code:
             ssum = 0.0
             for i in range(ctx.no_of_days):
@@ -322,10 +326,9 @@ def find_min_lambda(ctx: SDSMContext, ensemble: int, start: float, finish: float
             mean_val = sum(temp) / len(temp)
             temp.sort()
             median = temp[len(temp) // 2]
-            # for IQR, let's do a simple approach:
-            lower_index = len(temp)//4
+            lower_index = len(temp) // 4
             upper_index = len(temp) - lower_index
-            IQR = temp[upper_index-1] - temp[lower_index]
+            IQR = temp[upper_index - 1] - temp[lower_index]
             if IQR > 0:
                 d = abs((mean_val - median) / IQR)
                 if d < min_d:
@@ -345,7 +348,6 @@ def apply_variance(ctx: SDSMContext):
     """Apply variance treatment (using a Box–Cox transform for conditional processing)."""
     for j in range(ctx.ensemble_size):
         if not ctx.conditional_check:
-            # Unconditional: simply scale deviations by sqrt(factor)
             for i in range(ctx.no_of_days):
                 if ctx.data_array[j][i] != ctx.global_missing_code:
                     ctx.data_array[j][i] = (
@@ -354,12 +356,10 @@ def apply_variance(ctx: SDSMContext):
                         ctx.mean_array[j][0]
                     )
         else:
-            # Conditional: use Box–Cox transformation
             lamda = find_min_lambda(ctx, j, -2, 2, 0.25)
             lamda = find_min_lambda(ctx, j, lamda - 0.25, lamda + 0.25, 0.1)
             lamda = find_min_lambda(ctx, j, lamda - 0.1, lamda + 0.1, 0.01)
             ctx.lamda = lamda
-            # Transform data:
             trans_array = [ctx.global_missing_code] * ctx.no_of_days
             mean_trans = 0.0
             count = 0
@@ -373,7 +373,6 @@ def apply_variance(ctx: SDSMContext):
                     mean_trans += trans_array[i]
                     count += 1
             mean_trans = mean_trans / count if count > 0 else ctx.global_missing_code
-            # Find an inflation factor via bisection (simplified to 10 iterations)
             if ctx.variance_factor_percent > 1:
                 lower, higher = 1.0, 1.3
             else:
@@ -389,7 +388,6 @@ def apply_variance(ctx: SDSMContext):
                 else:
                     higher = middle
                 middle = (lower + higher) / 2
-            # Apply factor and un–transform
             for i in range(ctx.no_of_days):
                 if trans_array[i] != ctx.global_missing_code:
                     trans_array[i] = ((trans_array[i] - mean_trans) * middle) + mean_trans
@@ -399,7 +397,6 @@ def apply_variance(ctx: SDSMContext):
 def apply_trend(ctx: SDSMContext):
     """Apply trend treatment(s) to the data."""
     for j in range(ctx.ensemble_size):
-        # Linear Trend
         if ctx.trend_option[0]:
             year_days = 365
             increment = ctx.linear_trend / year_days
@@ -410,7 +407,6 @@ def apply_trend(ctx: SDSMContext):
                     else:
                         if ctx.data_array[j][i] > ctx.local_thresh:
                             ctx.data_array[j][i] *= (1 + (ctx.linear_trend / (year_days * 100)) * i)
-        # Exponential Trend
         if ctx.trend_option[1]:
             exp_abs = abs(ctx.exp_trend)
             A = ctx.no_of_days / math.log(exp_abs + 1) if exp_abs != 0 else 1
@@ -424,14 +420,12 @@ def apply_trend(ctx: SDSMContext):
                         if ctx.data_array[j][i] > ctx.local_thresh:
                             factor = (100 + delta) / 100 if add_option else (100 - delta) / 100
                             ctx.data_array[j][i] *= factor
-        # Logistic Trend
         if ctx.trend_option[2]:
             for i in range(ctx.no_of_days):
-                # Map day index to range [-6,6]
                 if ctx.no_of_days > 1:
                     x = ((i) / (ctx.no_of_days - 1)) * 12 - 6
                 else:
-                    x = 0  # trivial case
+                    x = 0
                 logistic = 1 / (1 + math.exp(-x))
                 delta = ctx.logistic_trend * logistic
                 if ctx.data_array[j][i] != ctx.global_missing_code:
@@ -449,18 +443,18 @@ def apply_trend(ctx: SDSMContext):
 def plot_scenario(ctx: SDSMContext):
     """
     Creates a simple time series plot of the final data in ctx.data_array.
+    Missing values (== -999) are converted to NaN so they are not plotted.
     One line per ensemble member.
     """
-    # We can plot from memory (ctx.data_array).
     if ctx.no_of_days == 0:
-        return  # no data
-
+        return
     plt.figure(figsize=(10, 5))
-    x_values = range(1, ctx.no_of_days + 1)
+    x_values = np.arange(1, ctx.no_of_days + 1)
     for j in range(ctx.ensemble_size):
-        y_values = ctx.data_array[j]
+        y_values = np.array(ctx.data_array[j], dtype=float)
+        # Replace missing values (-999) with NaN so matplotlib leaves a gap.
+        y_values[y_values == ctx.global_missing_code] = np.nan
         plt.plot(x_values, y_values, label=f"Ensemble {j+1}")
-
     plt.title("Scenario Output (Final Daily Values)")
     plt.xlabel("Day Index")
     plt.ylabel("Value (e.g., mm)")
@@ -479,10 +473,7 @@ class ContentWidget(QWidget):
     """
     def __init__(self):
         super().__init__()
-
         self.ctx = SDSMContext()  # Our processing context
-
-        # Main layout
         mainLayout = QVBoxLayout()
         mainLayout.setContentsMargins(30, 30, 30, 30)
         mainLayout.setSpacing(20)
@@ -491,15 +482,12 @@ class ContentWidget(QWidget):
         # --- File Selection Section ---
         fileSelectionGroup = QGroupBox("File Selection")
         fileSelectionLayout = QHBoxLayout()
-
         self.inputFileButton = QPushButton("📂 Select Input File")
         self.inputFileButton.clicked.connect(self.selectInputFile)
         self.inputFileLabel = QLabel("No file selected")
-
         self.outputFileButton = QPushButton("💾 Save To File")
         self.outputFileButton.clicked.connect(self.selectOutputFile)
         self.outputFileLabel = QLabel("No file selected")
-
         fileSelectionLayout.addWidget(self.inputFileButton)
         fileSelectionLayout.addWidget(self.inputFileLabel)
         fileSelectionLayout.addStretch()
@@ -511,16 +499,13 @@ class ContentWidget(QWidget):
         # --- General Parameters ---
         generalParamsGroup = QGroupBox("General Parameters")
         generalParamsLayout = QGridLayout()
-
         self.startDateInput = QLineEdit()
         self.startDateInput.setPlaceholderText("DD/MM/YYYY")
         self.ensembleSizeInput = QLineEdit()
         self.ensembleSizeInput.setPlaceholderText("Enter a number")
-
         self.conditionalProcessCheck = QCheckBox("Enable Conditional Processing?")
         self.eventThresholdInput = QLineEdit()
         self.eventThresholdInput.setPlaceholderText("Threshold Value")
-
         generalParamsLayout.addWidget(QLabel("📅 File Start Date:"), 0, 0)
         generalParamsLayout.addWidget(self.startDateInput, 0, 1)
         generalParamsLayout.addWidget(QLabel("📊 Ensemble Size:"), 0, 2)
@@ -534,7 +519,6 @@ class ContentWidget(QWidget):
         # --- Treatments Section ---
         treatmentsGroup = QGroupBox("Treatment Parameters")
         treatmentsLayout = QGridLayout()
-
         # Occurrence
         self.occurrenceCheck = QCheckBox("⚡ Occurrence")
         self.frequencyChangeInput = QLineEdit()
@@ -545,14 +529,12 @@ class ContentWidget(QWidget):
         occurrenceButtonGroup = QButtonGroup()
         occurrenceButtonGroup.addButton(self.stochasticRadio)
         occurrenceButtonGroup.addButton(self.forcedRadio)
-
         treatmentsLayout.addWidget(self.occurrenceCheck, 0, 0)
         treatmentsLayout.addWidget(QLabel("Frequency change:"), 0, 1)
         treatmentsLayout.addWidget(self.frequencyChangeInput, 0, 2)
         treatmentsLayout.addWidget(self.stochasticRadio, 0, 3)
         treatmentsLayout.addWidget(self.forcedRadio, 0, 4)
         treatmentsLayout.addWidget(self.preserveTotalCheck, 0, 5)
-
         # Variance
         self.varianceCheck = QCheckBox("📈 Variance")
         self.varianceFactorInput = QLineEdit()
@@ -560,7 +542,6 @@ class ContentWidget(QWidget):
         treatmentsLayout.addWidget(self.varianceCheck, 1, 0)
         treatmentsLayout.addWidget(QLabel("Factor:"), 1, 1)
         treatmentsLayout.addWidget(self.varianceFactorInput, 1, 2)
-
         # Amount (Mean) Treatment
         self.meanCheck = QCheckBox("📊 Mean (Amount)")
         self.meanFactorInput = QLineEdit()
@@ -572,7 +553,6 @@ class ContentWidget(QWidget):
         treatmentsLayout.addWidget(self.meanFactorInput, 2, 2)
         treatmentsLayout.addWidget(QLabel("Addition:"), 2, 3)
         treatmentsLayout.addWidget(self.meanAdditionInput, 2, 4)
-
         # Trend
         self.trendCheck = QCheckBox("📉 Trend")
         self.linearInput = QLineEdit()
@@ -588,7 +568,6 @@ class ContentWidget(QWidget):
         treatmentsLayout.addWidget(self.exponentialInput, 3, 4)
         treatmentsLayout.addWidget(QLabel("Logistic:"), 3, 5)
         treatmentsLayout.addWidget(self.logisticInput, 3, 6)
-
         treatmentsGroup.setLayout(treatmentsLayout)
         mainLayout.addWidget(treatmentsGroup)
 
@@ -622,7 +601,6 @@ class ContentWidget(QWidget):
 
     def generateScenario(self):
         """Collect parameters from the UI, update the context, and run the scenario generation."""
-        # General parameters
         try:
             dt = datetime.datetime.strptime(self.startDateInput.text(), "%d/%m/%Y")
             self.ctx.start_date = dt.date()
@@ -639,7 +617,6 @@ class ContentWidget(QWidget):
             thresh = float(self.eventThresholdInput.text())
             self.ctx.local_thresh = thresh
         except Exception:
-            # Use default if conversion fails.
             self.ctx.local_thresh = 0.1
 
         self.ctx.conditional_check = self.conditionalProcessCheck.isChecked()
@@ -673,7 +650,6 @@ class ContentWidget(QWidget):
             self.ctx.amount_addition = addition
         except Exception:
             self.ctx.amount_addition = 0.0
-        # Decide which option to use: if factor is nonzero, use factor; else if addition nonzero, use addition.
         if self.ctx.amount_factor != 0:
             self.ctx.amount_option = 0
         elif self.ctx.amount_addition != 0:
@@ -691,7 +667,6 @@ class ContentWidget(QWidget):
 
         # Trend treatment
         self.ctx.trend_check = self.trendCheck.isChecked()
-        # For each trend type, if a value is entered (and nonzero), mark that trend for processing.
         try:
             linear = float(self.linearInput.text())
             self.ctx.linear_trend = linear
@@ -714,7 +689,6 @@ class ContentWidget(QWidget):
             self.ctx.logistic_trend = 0.0
             self.ctx.trend_option[2] = False
 
-        # Finally, call the main processing routine.
         modify_data(self.ctx)
 
     def resetFields(self):

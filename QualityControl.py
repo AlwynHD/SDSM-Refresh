@@ -178,7 +178,7 @@ def qualityCheck():
     
     #Todo Check if file is formatted correctly.
 
-def pettittTest(petArray, totalOk, totalNumbers):
+def pettittTest(petArray, totalOk, totalNumbers, ptPercent):
     if (not applyThresh and totalOk < 10) or (applyThresh and thresh < 10):
         pettitt = globalMissingCode
         return
@@ -199,8 +199,62 @@ def pettittTest(petArray, totalOk, totalNumbers):
 
         if i < totalNumbers:
             increaseDate(currentDay, 1)
+            yearIndex = currentYear - globalSDate.year
             #todo placeholder numbers, will correct later
-    
+
+        yearsOk = 0
+        for i in range(yearIndex):
+            if annualCount[i] >= 3.65 * ptPercent and annualCount[i] > 0:
+                annualMeans[i] = annualMeans / annualCount[i]
+                yearsOk += 1
+            else:
+                annualMeans[i] = globalMissingCode
+
+        if yearsOk < 5:
+            pettitt = globalMissingCode
+        else:
+            petMatrix = []
+            yearsOk = 0
+            for i in range(yearIndex):
+                if annualMeans != globalMissingCode:
+                    petMatrix[yearsOk][0] = annualMeans[i]
+                    petMatrix[yearsOk][1] = yearsOk + 1
+                    petMatrix[yearsOk][5] = i + globalSDate.year #Might need to minus 1 from this
+
+                    yearsOk += 1
+
+            petMatrix.sort() #Need to compare how python and VB do sorting
+            for i in range(yearsOk - 1):
+                petMatrix[i][2] = i + 1
+                
+            for i in range(yearsOk - 1):
+                if petMatrix[i][0] == petMatrix[i - 1][0]:
+                    petMatrix[i][2] = petMatrix[i - 1][2]
+            
+            petMatrix.sort() #todo sort matrix by 2nd column
+
+            for i in range(yearsOk - 1):
+                petMatrix[i][3] = yearsOk + 1 - (2 * petMatrix(i, 2))
+
+            petMatrix[0][4] = petMatrix[0][3]
+
+            for i in range(yearsOk - 1):
+                petMatrix[i][4] = petMatrix[i - 1][4] + petMatrix[i][3]
+
+            for i in range(yearsOk - 1):
+                petMatrix[i][4] = abs(petMatrix[i][4])
+
+            kn = -1
+            maxPos = 0
+            for i in range(yearsOk - 1):
+                if petMatrix[i][4] > kn:
+                    kn = petMatrix[i][4]
+                    maxPos = i
+
+            pettitt = 2 * math.e ** ((-6 * (kn ** 2)) / ((yearsOk ** 3) + (yearsOk ** 2)))
+            #todo check this to ensure I wrote this formula correctly
+
+            #todo update results screen with all the data calculated
     
 
 def increaseDate(currentDate, noDays): #todo check if the leap year thing was important

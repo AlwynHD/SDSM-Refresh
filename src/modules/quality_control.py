@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import (QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, QFrame, QLabel, QFileDialog,
-                             QLineEdit)
+                             QLineEdit, QCheckBox)
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QPalette, QColor, QIcon
 
@@ -205,12 +205,17 @@ class ContentWidget(QWidget):
         self.selectedFileLabel = QLabel("No file selected")
         selectFileLayout.addWidget(self.selectedFileLabel)
 
-        #Pettitt test gui elements
+        #Pettitt Test input elements
 
         pettittLabel = QLabel("Minimum annual data threshold (%)")
         pettittLayout.addWidget(pettittLabel)
         pettittInput = QLineEdit("90")
         pettittLayout.addWidget(pettittInput)
+
+        #Threshold elements
+
+        thresholdCheckBox = QCheckBox("Apply Threshold")
+        thresholdLayout.addWidget(thresholdCheckBox)
 
 
         #Blank frame to allow placement wherever I want, without it everything tries to expand down towards the footer, looks horrible

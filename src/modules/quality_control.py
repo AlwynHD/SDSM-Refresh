@@ -246,6 +246,37 @@ class ContentWidget(QWidget):
         self.selectedOutlierLabel = QLabel("No file selected")
         outliersLayout.addWidget(self.selectedOutlierLabel)
 
+        #Results elements, just a lot of labels that need to be referenced from functions
+        self.minimumLabel = QLabel("Minimum: ")
+        resultsLayout.addWidget(self.minimumLabel)
+        self.maximumLabel = QLabel("Maximum: ")
+        resultsLayout.addWidget(self.maximumLabel)
+        self.meanLabel = QLabel("Mean: ")
+        resultsLayout.addWidget(self.meanLabel)
+        self.numOfValuesLabel = QLabel("Number of values in file: ")
+        resultsLayout.addWidget(self.numOfValuesLabel)
+        self.missingLabel = QLabel("Missing values: ")
+        resultsLayout.addWidget(self.missingLabel)
+        self.numOfOKValuesLabel = QLabel("Number of values ok: ")
+        resultsLayout.addWidget(self.numOfOKValuesLabel)
+        self.maximumDifferenceLabel = QLabel("Maximum difference: ")
+        resultsLayout.addWidget(self.maximumDifferenceLabel)
+        self.maximumDifferenceValOneLabel = QLabel("Maximum difference value 1: ")
+        resultsLayout.addWidget(self.maximumDifferenceValOneLabel)
+        self.maximumDifferenceValTwoLabel = QLabel("Maximum difference value 2: ")
+        resultsLayout.addWidget(self.maximumDifferenceValTwoLabel)
+        self.valueOverThreshLabel = QLabel("Values over threshold: ")
+        resultsLayout.addWidget(self.valueOverThreshLabel)
+        self.pettittSigLabel = QLabel("Pettitt test (significance): ")
+        resultsLayout.addWidget(self.pettittSigLabel)
+        self.pettittMax = QLabel("Pettitt max position: ")
+        resultsLayout.addWidget(self.pettittMax)
+        self.missingValCode = QLabel("Missing value code: ")
+        resultsLayout.addWidget(self.missingValCode)
+        self.eventThresh = QLabel("Event threshold: ")
+        resultsLayout.addWidget(self.eventThresh)
+
+
 
 
         #Blank frame to allow placement wherever I want, without it everything tries to expand down towards the footer, looks horrible

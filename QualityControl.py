@@ -20,26 +20,32 @@ standardDeviationLimits = 0
 
 #region New Functions
 
-def checkForFile(selectedFile, errorMessage):
-    if selectedFile is None:
+def checkForFile(file, errorMessage):
+    if file is None:
         print(errorMessage)
         return False
     else:
         return True
     
+def checkIfFileFormatted(file):
+    #Only checks the first line, not ideal but this is how it's done in the original
+    with open(file) as f:
+        firstLine = f.readline()
+        if len(firstLine) > 15:
+            print("File may contain multiple columns or non-Windows line breaks / carriage returns. This may cause problems in SDSM later.")
+        
+    return
+
 def checkThreshold(value):
-    return value > thresh or not applyThresh
+    return not applyThresh or value > thresh
 
 #endregion
-
-#Reset All
-    #Reset all fields on the form to their default values
 
 def dailyMeans():
     if not checkForFile(selectedFile, "You must select a file to check first"):
         return
     
-    #todo In original VB code, file is checked to see if it contains multiple columns or linux line break. This is done by checking the first line only, unsure of how to convert.
+    checkIfFileFormatted(selectedFile)
 
     #Initialise results to zero
     dailyStats = []
@@ -56,10 +62,9 @@ def dailyMeans():
     with open(selectedFile, "r") as file:
         for line in file:
             line = line.rstrip('\n')
-            if line != str(globalMissingCode): #Unsure if cast is needed, could just write globalMissingCode as string
-                if checkThreshold(line):
-                    dailyStats[dayWorkingOn][0] += float(line) #Add to cumulative sum
-                    dailyStats[dayWorkingOn][1] += 1         #Increase count of 'good' values read in on that day    
+            if line != str(globalMissingCode) and checkThreshold(float(line)):
+                dailyStats[dayWorkingOn][0] += float(line) #Add to cumulative sum
+                dailyStats[dayWorkingOn][1] += 1           #Increase count for that day
 
             #Iterate dayWorkingOn
             if dayWorkingOn == 6:
@@ -77,14 +82,13 @@ def dailyMeans():
             dailyStats[i][3] = globalMissingCode
     
     #Calculate standard deviation
-    dayWorkingOn = globalSDate.weekday() #reset dayWorkingOn
+    dayWorkingOn = globalSDate.weekday()
 
     with open(selectedFile, "r") as file:
         for line in file:
             line = line.rstrip('\n')
-            if line != str(globalMissingCode) and dailyStats[dayWorkingOn][3] != globalMissingCode:
-                if checkThreshold(line):
-                    dailyStats[dayWorkingOn][2] += (float(line) - dailyStats[dayWorkingOn][3]) ** 2
+            if line != str(globalMissingCode) and dailyStats[dayWorkingOn][3] != globalMissingCode and checkThreshold(float(line)):
+                dailyStats[dayWorkingOn][2] += (float(line) - dailyStats[dayWorkingOn][3]) ** 2
 
             #Iterate dayWorkingOn
             if dayWorkingOn == 6:
@@ -109,30 +113,26 @@ def dailyMeans():
 def outliersID():
     if not checkForFile(selectedFile, "You must select a file to check first"):
         return
-    if not checkForFile(outlierFile, "You must select a file to save outliers to"):
-        return
-    elif outlierFile is None:
-        print("You must select a file to save outliers to.")
+    elif not checkForFile(outlierFile, "You must select a file to save outliers to"):
         return
     
-    #todo Same process of checking if the file is formatted properly as in dailyMeans.
+    checkIfFileFormatted(selectedFile)
 
     #Calculate mean
     sum = 0
-    goodCount = 0
+    count = 0
 
     with open(selectedFile, "r") as file:
         for line in file:
             line = line.rstrip('\n')
-            if line != str(globalMissingCode):
-                if checkThreshold(line):
-                    sum += float(line)
-                    goodCount += 1
+            if line != str(globalMissingCode) and checkThreshold(float(line)):
+                sum += float(line)
+                count += 1
 
     file.close()
 
-    if goodCount > 0:
-        mean = sum / goodCount
+    if count > 0:
+        mean = sum / count
     else:
         mean = globalMissingCode
 
@@ -150,7 +150,7 @@ def outliersID():
 
         file.close()
 
-        standardDeviation = math.sqrt(standardDeviation / goodCount)
+        standardDeviation = math.sqrt(standardDeviation / count)
     else:
         standardDeviation = globalMissingCode
 
@@ -158,10 +158,11 @@ def outliersID():
     standardDeviationRange = standardDeviation * standardDeviationLimits
     outlierCount = 0
     counter = 1
+
     with open(selectedFile, "r") as file:
         for line in file:
             if line != str(globalMissingCode):
-                if checkThreshold(line):
+                if checkThreshold(float(line)):
                     if float(line) > (mean + standardDeviationRange) or float(line) < (mean - standardDeviationRange):
                         outFile = open(outlierFile, "a")
                         outFile.write(str(counter) + "\t" * 3 + line)
@@ -176,7 +177,67 @@ def qualityCheck():
     if not checkForFile(selectedFile, "You must select a file to check first."):
         return
     
-    #Todo Check if file is formatted correctly.
+    petArray = []
+    sum = 0
+    max = 0
+    min = 0
+    threshCount = 0
+    prevValue = globalMissingCode
+    maxDifference = 0
+    totalNumbers = 0
+    count = 0
+    missing = 0
+    
+    with open(selectedFile, "r") as file:
+        for line in file:
+            inputValue = float(line)
+
+            petArray.append(float(inputValue))
+            totalNumbers += 1
+
+            if inputValue == globalMissingCode:
+                missing += 1
+            else:
+                count += 1
+                if checkThreshold(inputValue):
+                    sum += inputValue
+
+                    if inputValue > max:
+                        max = inputValue
+
+                    if inputValue < min:
+                        min = inputValue
+
+                    if inputValue > thresh:
+                        threshCount += 1
+
+                    #Is there a way to do these if statements in one line?
+            
+            if prevValue != globalMissingCode and inputValue != globalMissingCode:
+                if checkThreshold(inputValue) and abs(prevValue - inputValue) > maxDifference:
+                    maxDifference = abs(prevValue - inputValue)
+                    maxDiffValue1 = prevValue
+                    maxDiffValue2 = inputValue
+
+            if checkThreshold(inputValue):
+                prevValue = inputValue
+
+    file.close()
+
+    if applyThresh:
+        if threshCount > 0:
+            mean = round(sum / threshCount, 5)
+        else:
+            mean = globalMissingCode
+    else:
+        if count > 0:
+            mean = round(sum / count, 5)
+        else:
+            mean = globalMissingCode
+
+    #Call pettittTest
+
+    print("Min: " + str(min) + "\nMax: " + str(max) + "\nTotal Values: " + str(count) + "\nMissing Values: " + str(missing) + "\nMean: " + str(mean))
 
 def pettittTest(petArray, totalOk, totalNumbers, ptPercent):
     if (not applyThresh and totalOk < 10) or (applyThresh and thresh < 10):
@@ -262,3 +323,5 @@ def increaseDate(currentDate, noDays): #todo check if the leap year thing was im
     #Taken from ScreenVars
     currentDate += datetime.timedelta(days=noDays)
     return currentDate
+
+qualityCheck()

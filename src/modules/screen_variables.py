@@ -1,4 +1,6 @@
-from PyQt5.QtWidgets import QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, QFrame, QLabel, QFileDialog, QScrollArea, QDateEdit, QCheckBox
+from PyQt5.QtWidgets import (QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, 
+                             QFrame, QLabel, QFileDialog, QScrollArea, QDateEdit, QCheckBox,
+                             QButtonGroup, QRadioButton, QLineEdit)
 from PyQt5.QtCore import Qt, QSize, QDate
 from PyQt5.QtGui import QPalette, QColor, QIcon
 from ScreenVars import correlation, analyseData, filesNames
@@ -348,6 +350,24 @@ class ContentWidget(QWidget):
         self.autoregressionCheckBox = QCheckBox("Autoregressive Term")
         autoregressionLayout.addWidget(self.autoregressionCheckBox)
 
+        #Process radio buttons
+        processRadioButtonGroup = QButtonGroup()
+        processRadioButtonGroup.setExclusive(True)
+        unconditionalRadioButton = QRadioButton("Unconditional")
+        unconditionalRadioButton.setChecked(True)
+        conditionalRadioButton = QRadioButton("Conditional")
+        processRadioButtonGroup.addButton(unconditionalRadioButton)
+        processRadioButtonGroup.addButton(conditionalRadioButton)
+
+        processLayout.addWidget(unconditionalRadioButton)
+        processLayout.addWidget(conditionalRadioButton)
+
+        #Significance input
+
+        significanceLabel = QLabel("Significance")
+        significanceLayout.addWidget(significanceLabel)
+        significanceInput = QLineEdit()
+        significanceLayout.addWidget(significanceInput)
 
 
         #Blank frame to allow placement wherever I want, without it everything tries to expand down towards the footer, looks horrible

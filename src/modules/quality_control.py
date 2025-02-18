@@ -1,4 +1,5 @@
-from PyQt5.QtWidgets import QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, QFrame, QLabel, QFileDialog
+from PyQt5.QtWidgets import (QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, QFrame, QLabel, QFileDialog,
+                             QLineEdit)
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QPalette, QColor, QIcon
 
@@ -143,9 +144,9 @@ class ContentWidget(QWidget):
 
 
         #Layout for pettitt frame
-        pettittLayout = QVBoxLayout()
+        pettittLayout = QHBoxLayout()
         pettittLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
-        pettittLayout.setSpacing(0)  # No spacing between elements
+        pettittLayout.setSpacing(10)  # 10 pixel spacing between elements
         pettittFrame.setStyleSheet("background-color: #D3D3D3;")
 
 
@@ -203,6 +204,13 @@ class ContentWidget(QWidget):
         selectFileLayout.addWidget(selectFileButton)
         self.selectedFileLabel = QLabel("No file selected")
         selectFileLayout.addWidget(self.selectedFileLabel)
+
+        #Pettitt test gui elements
+
+        pettittLabel = QLabel("Minimum annual data threshold (%)")
+        pettittLayout.addWidget(pettittLabel)
+        pettittInput = QLineEdit("90")
+        pettittLayout.addWidget(pettittInput)
 
 
         #Blank frame to allow placement wherever I want, without it everything tries to expand down towards the footer, looks horrible

@@ -366,7 +366,7 @@ class ContentWidget(QWidget):
 
         significanceLabel = QLabel("Significance")
         significanceLayout.addWidget(significanceLabel)
-        significanceInput = QLineEdit()
+        significanceInput = QLineEdit("0.05")
         significanceLayout.addWidget(significanceInput)
 
 

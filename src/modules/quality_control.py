@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, QFrame, QLabel
+from PyQt5.QtWidgets import QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, QFrame, QLabel, QFileDialog
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QPalette, QColor, QIcon
 
@@ -17,6 +17,8 @@ class ContentWidget(QWidget):
         super().__init__()
 
         self.setStyleSheet("background-color: #D3D3D3;")
+
+        self.selectedFile = ""
 
         # Main layout for the entire widget
         mainLayout = QVBoxLayout()
@@ -88,21 +90,22 @@ class ContentWidget(QWidget):
         SPTOFrame = QFrame()
         SPTOFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
         SPTOFrame.setBaseSize(200,400)
-        SPTOFrame.setSizePolicy(QSizePolicy.Fixed,QSizePolicy.Expanding)
+        SPTOFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
+        
 
         # Layout for the contentArea frame
         SPTOLayout = QVBoxLayout()
         SPTOLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
         SPTOLayout.setSpacing(0)  # No spacing between elements
         SPTOFrame.setLayout(SPTOLayout)  # Apply the layout to the frame
-
         contentAreaLayout.addWidget(SPTOFrame)
 
         #Results frame
 
         resultsFrame = QFrame()
         resultsFrame.setFrameShape(QFrame.StyledPanel)  # No border around the frame
-        resultsFrame.setFixedSize(400,400)
+        resultsFrame.setBaseSize(400,400)
+        resultsFrame.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
 
         # Layout for the results frame
@@ -118,7 +121,8 @@ class ContentWidget(QWidget):
         #Create selectFile frame
         selectFileFrame = QFrame()
         selectFileFrame.setFrameShape(QFrame.StyledPanel)   
-        selectFileFrame.setFixedSize(200,100)
+        selectFileFrame.setBaseSize(200,100)
+
 
 
         #Layout for selectFile frame
@@ -135,7 +139,7 @@ class ContentWidget(QWidget):
         #Create pettitt frame
         pettittFrame = QFrame()
         pettittFrame.setFrameShape(QFrame.StyledPanel)   
-        pettittFrame.setFixedSize(200,100)
+        pettittFrame.setBaseSize(200,100)
 
 
         #Layout for pettitt frame
@@ -152,7 +156,7 @@ class ContentWidget(QWidget):
         #Create threshold frame
         thresholdFrame = QFrame()
         thresholdFrame.setFrameShape(QFrame.StyledPanel)   
-        thresholdFrame.setFixedSize(200,100)
+        thresholdFrame.setBaseSize(200,100)
 
 
         #Layout for threshold frame
@@ -169,7 +173,7 @@ class ContentWidget(QWidget):
         #Create outliers frame
         outliersFrame = QFrame()
         outliersFrame.setFrameShape(QFrame.StyledPanel)   
-        outliersFrame.setFixedSize(200,100)
+        outliersFrame.setBaseSize(200,100)
 
 
         #Layout for selectFile frame
@@ -194,6 +198,13 @@ class ContentWidget(QWidget):
         titleLayout.addWidget(moduleLabel)  # Add the label to the contentArea layout
 
 
+        selectFileButton = QPushButton("Select File")
+        selectFileButton.clicked.connect(self.selectFile)
+        selectFileLayout.addWidget(selectFileButton)
+        self.selectedFileLabel = QLabel("No file selected")
+        selectFileLayout.addWidget(self.selectedFileLabel)
+
+
         #Blank frame to allow placement wherever I want, without it everything tries to expand down towards the footer, looks horrible
         blankFrame = QFrame()
         blankFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
@@ -211,6 +222,17 @@ class ContentWidget(QWidget):
         # Add a spacer to ensure content is properly spaced
         titleLayout.addStretch()
         contentAreaLayout.addStretch()
+
+    def selectFile(self):
+        #Don't know which files it needs to get, will figure out later
+        fileName = QFileDialog.getOpenFileName(self, "Select file", '', "Text Files (*.txt)")
+        print(fileName)
+        if fileName != '':
+            self.selectedFile = fileName[0]
+            self.selectedFileLabel.setText("Selected file: "+self.selectedFile.split("/")[-1])
+        else:
+            self.selectedFile = ""
+            self.selectedFileLabel.setText("No file selected")
     
     def handleMenuButtonClicks(self):
         button = self.sender().text()

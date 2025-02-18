@@ -20,6 +20,7 @@ class ContentWidget(QWidget):
         self.setStyleSheet("background-color: #D3D3D3;")
 
         self.selectedFile = ""
+        self.selectedOutlier = ""
 
         # Main layout for the entire widget
         mainLayout = QVBoxLayout()
@@ -200,6 +201,8 @@ class ContentWidget(QWidget):
 
 
         selectFileButton = QPushButton("Select File")
+        selectFileButton.setObjectName("check file")
+
         selectFileButton.clicked.connect(self.selectFile)
         selectFileLayout.addWidget(selectFileButton)
         self.selectedFileLabel = QLabel("No file selected")
@@ -216,6 +219,33 @@ class ContentWidget(QWidget):
 
         thresholdCheckBox = QCheckBox("Apply Threshold")
         thresholdLayout.addWidget(thresholdCheckBox)
+
+        #Outliers elements
+
+        #Need a separate frame for the input
+        standardDeviationFrame = QFrame()
+        standardDeviationFrame.setFrameShape(QFrame.NoFrame)
+
+        standardDeviationLayout = QHBoxLayout()
+        standardDeviationLayout.setContentsMargins(0,0,0,0)
+        standardDeviationLayout.setSpacing(0)
+
+        standardDeviationFrame.setLayout(standardDeviationLayout)
+
+        outliersLayout.addWidget(standardDeviationFrame)
+
+        standardDeviationLabel = QLabel("Standard Deviations: ")
+        standardDeviationLayout.addWidget(standardDeviationLabel)
+        standardDeviationInput = QLineEdit("0")
+        standardDeviationLayout.addWidget(standardDeviationInput)
+
+        selectOutlierFileButton = QPushButton("Select File")
+        selectOutlierFileButton.clicked.connect(self.selectFile)
+        selectOutlierFileButton.setObjectName("outlier file")
+        outliersLayout.addWidget(selectOutlierFileButton)
+        self.selectedOutlierLabel = QLabel("No file selected")
+        outliersLayout.addWidget(self.selectedOutlierLabel)
+
 
 
         #Blank frame to allow placement wherever I want, without it everything tries to expand down towards the footer, looks horrible
@@ -239,13 +269,20 @@ class ContentWidget(QWidget):
     def selectFile(self):
         #Don't know which files it needs to get, will figure out later
         fileName = QFileDialog.getOpenFileName(self, "Select file", '', "Text Files (*.txt)")
-        print(fileName)
+        #Update correct label depending on button pressed
+        if self.sender().objectName() == "check file":
+            self.selectedFile= self.updateLabels(self.selectedFileLabel, fileName[0])
+        elif self.sender().objectName() == "outlier file":
+            self.selectedOutlier = self.updateLabels(self.selectedOutlierLabel, fileName[0])
+
+    def updateLabels(self, label, fileName):
+        #Updates label passed to it with file name
         if fileName != '':
-            self.selectedFile = fileName[0]
-            self.selectedFileLabel.setText("Selected file: "+self.selectedFile.split("/")[-1])
+            label.setText("Selected file: "+fileName.split("/")[-1])
+            return fileName
         else:
-            self.selectedFile = ""
-            self.selectedFileLabel.setText("No file selected")
+            label.setText("No file selected")
+            return ""
     
     def handleMenuButtonClicks(self):
         button = self.sender().text()

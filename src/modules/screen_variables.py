@@ -412,7 +412,10 @@ class ContentWidget(QWidget):
         else:
             self.predictorsSelected.remove(predictor)
             button.setStyleSheet("color: black; background-color: #D3D3D3")
-        predictorDescription = filesNames(predictor)
+        try:
+            predictorDescription = filesNames(predictor)
+        except IndexError:
+            predictorDescription = "Description not found"
         self.predictorDescriptionLabel.setText(predictorDescription[0])
 
     
@@ -431,6 +434,8 @@ class ContentWidget(QWidget):
 
             #Perform correlation
             #not sure if multiple variables works yet, also I need to do an autoregression gui element still
+            #do multiple predictors
+            #crashes with ncep_prec
             correlation([self.predictandSelected], ["predictor files/"+self.predictorsSelected[0]], fitStartDate, fitEndDate, autoregression)
         else:
             print("work in progress, pardon our dust")

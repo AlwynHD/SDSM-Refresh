@@ -95,7 +95,7 @@ def filesNames(fileName):
                        ["p8_f", "850 hPa airflow strength"], ["p8_z", "850 hPa vorticity"], ["p8_v", "850 hPa meridional velocity"], ["p8_u", "850 hPa zonal velocity"],
                        ["p8th", "850 hPa wind direction"], ["p8zh", "850 hPa divergence"], ["shum", "Surface specific humidity"], ["s850", "Specific humidity at 850 hPa"],
                        ["s500", "Specific humidity at 500 hPa"], ["dswr", "Solar radiation"], ["lftx", "Surface lifted index"], ["pottmp", "Potential temperature"],
-                       ["pr_wtr", "Precipitable water"]]
+                       ["pr_wtr", "Precipitable water"], ["prec", "Pending Description"]]
 
     # will return file description e.g. Mean temperature at 2m if the fileName is found in the list file Description will be empty if it's not there
     fileDescription = [record[1] for record in fileDescriptionList if re.search(re.compile(record[0]),fileName) != None] # regex

@@ -299,7 +299,7 @@ class ContentWidget(QWidget):
 
     def selectFile(self):
         #Don't know which files it needs to get, will figure out later
-        fileName = QFileDialog.getOpenFileName(self, "Select file", '', "Text Files (*.txt)")
+        fileName = QFileDialog.getOpenFileName(self, "Select file", 'predictand files', "DAT Files (*.DAT)")
         #Update correct label depending on button pressed
         if self.sender().objectName() == "check file":
             self.selectedFile= self.updateLabels(self.selectedFileLabel, fileName[0])

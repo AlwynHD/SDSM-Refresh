@@ -103,7 +103,7 @@ class ContentWidget(QWidget):
         fileDateFrame = QFrame()
         fileDateFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
         fileDateFrame.setBaseSize(200,500)
-        fileDateFrame.setSizePolicy(QSizePolicy.Fixed,QSizePolicy.Expanding)
+        fileDateFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
 
         fileDateLayout = QVBoxLayout()
         fileDateLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
@@ -175,7 +175,7 @@ class ContentWidget(QWidget):
         #Create selectPredictor frame
         selectPredictorsFrame = QFrame()
         selectPredictorsFrame.setFrameShape(QFrame.StyledPanel)   
-        selectPredictorsFrame.setFixedSize(200,400)
+        selectPredictorsFrame.setBaseSize(200,400)
 
 
 
@@ -194,7 +194,7 @@ class ContentWidget(QWidget):
         selectDARPSFrame = QFrame()
         selectDARPSFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
         selectDARPSFrame.setBaseSize(200,500)
-        selectDARPSFrame.setSizePolicy(QSizePolicy.Fixed,QSizePolicy.Expanding)
+        selectDARPSFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
 
         #Create DARPS Layout
 
@@ -292,16 +292,18 @@ class ContentWidget(QWidget):
 
         #Create a scroll area for the predictors, and a frame for predictor labels to inhabit within the scroll area
         predictorsScrollArea = QScrollArea()
-
+        predictorsScrollArea.setWidgetResizable(True)
         predictorsScrollFrame = QFrame()
         predictorsScrollFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
-        predictorsScrollFrame.setBaseSize(200,300)
-        predictorsScrollFrame.setSizePolicy(QSizePolicy.Fixed,QSizePolicy.Fixed)
+        
+        #predictorsScrollFrame.setBaseSize(200,300)
+        #predictorsScrollFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Fixed)
 
 
         predictorsScrollLayout = QVBoxLayout()
         predictorsScrollLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
         predictorsScrollLayout.setSpacing(0)  # No spacing between elements
+        predictorsScrollLayout.setAlignment(Qt.AlignHCenter)
         predictorsScrollFrame.setLayout(predictorsScrollLayout)  # Apply the layout to the frame
 
 
@@ -314,7 +316,10 @@ class ContentWidget(QWidget):
             #so QPushButtons are used instead
             predictorScrollLabelButton = QPushButton(predictor)
             predictorScrollLabelButton.setFlat = True
+        
             predictorScrollLabelButton.clicked.connect(self.predictorLabelClicked)
+            predictorScrollLabelButton.setBaseSize(200, 20)
+            predictorScrollLabelButton.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             predictorsScrollLayout.addWidget(predictorScrollLabelButton) 
         
         predictorsScrollArea.setWidget(predictorsScrollFrame)
@@ -436,7 +441,8 @@ class ContentWidget(QWidget):
             #not sure if multiple variables works yet, also I need to do an autoregression gui element still
             #do multiple predictors
             #crashes with ncep_prec
-            correlation([self.predictandSelected], ["predictor files/"+self.predictorsSelected[0]], fitStartDate, fitEndDate, autoregression)
+            print(["predictor files/"+predictor for predictor in self.predictorsSelected])
+            correlation([self.predictandSelected], ["predictor files/"+predictor for predictor in self.predictorsSelected], fitStartDate, fitEndDate, autoregression)
         else:
             print("work in progress, pardon our dust")
 

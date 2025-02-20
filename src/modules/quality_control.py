@@ -6,6 +6,11 @@ from PyQt5.QtGui import QPalette, QColor, QIcon
 # Define the name of the module for display in the content area
 moduleName = "Quality Control"
 
+
+class borderedQFrame(QFrame):
+    def __init__(self):
+        super().__init__()
+
 class ContentWidget(QWidget):
     """
     A widget to display the Quality Control screen (UI/UX).
@@ -17,8 +22,16 @@ class ContentWidget(QWidget):
         """
         super().__init__()
 
-        self.setStyleSheet("background-color: #D3D3D3;")
-
+        self.setStyleSheet("""
+                           QFrame{
+                                background-color: #D3D3D3;}
+                           borderedQFrame{
+                                background-color: #D3D3D3;
+                                border : 1px solid black;
+                                border-top-left-radius : 20px;
+                                border-top-right-radius : 20px;
+                                border-bottom-left-radius : 20px;
+                                border-bottom-right-radius : 20px;}""")
         self.selectedFile = ""
         self.selectedOutlier = ""
 
@@ -83,7 +96,7 @@ class ContentWidget(QWidget):
         # Layout for the contentArea frame
         contentAreaLayout = QHBoxLayout()
         contentAreaLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
-        contentAreaLayout.setSpacing(0)  # No spacing between elements
+        contentAreaLayout.setSpacing(10)  # No spacing between elements
         contentAreaFrame.setLayout(contentAreaLayout)  # Apply the layout to the frame
 
         mainLayout.addWidget(contentAreaFrame)
@@ -97,14 +110,14 @@ class ContentWidget(QWidget):
 
         # Layout for the contentArea frame
         SPTOLayout = QVBoxLayout()
-        SPTOLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
-        SPTOLayout.setSpacing(0)  # No spacing between elements
+        SPTOLayout.setContentsMargins(10, 10, 10, 10)  # Remove padding from the layout
+        SPTOLayout.setSpacing(10)  # No spacing between elements
         SPTOFrame.setLayout(SPTOLayout)  # Apply the layout to the frame
         contentAreaLayout.addWidget(SPTOFrame)
 
         #Results frame
 
-        resultsFrame = QFrame()
+        resultsFrame = borderedQFrame()
         resultsFrame.setFrameShape(QFrame.StyledPanel)  # No border around the frame
         resultsFrame.setBaseSize(400,400)
         resultsFrame.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -112,7 +125,7 @@ class ContentWidget(QWidget):
 
         # Layout for the results frame
         resultsLayout = QVBoxLayout()
-        resultsLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
+        resultsLayout.setContentsMargins(10, 10, 10, 10)  # Remove padding from the layout
         resultsLayout.setSpacing(10)  # No spacing between elements
         resultsFrame.setStyleSheet("background-color: #D3D3D3;")
 
@@ -121,7 +134,7 @@ class ContentWidget(QWidget):
         contentAreaLayout.addWidget(resultsFrame)
 
         #Create selectFile frame
-        selectFileFrame = QFrame()
+        selectFileFrame = borderedQFrame()
         selectFileFrame.setFrameShape(QFrame.StyledPanel)   
         selectFileFrame.setBaseSize(200,100)
         selectFileFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
@@ -140,7 +153,7 @@ class ContentWidget(QWidget):
         SPTOLayout.addWidget(selectFileFrame)
 
         #Create pettitt frame
-        pettittFrame = QFrame()
+        pettittFrame = borderedQFrame()
         pettittFrame.setFrameShape(QFrame.StyledPanel)   
         pettittFrame.setBaseSize(200,100)
         pettittFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
@@ -158,7 +171,7 @@ class ContentWidget(QWidget):
         SPTOLayout.addWidget(pettittFrame)
 
         #Create threshold frame
-        thresholdFrame = QFrame()
+        thresholdFrame = borderedQFrame()
         thresholdFrame.setFrameShape(QFrame.StyledPanel)   
         thresholdFrame.setBaseSize(200,100)
         thresholdFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
@@ -176,7 +189,7 @@ class ContentWidget(QWidget):
         SPTOLayout.addWidget(thresholdFrame)
 
         #Create outliers frame
-        outliersFrame = QFrame()
+        outliersFrame = borderedQFrame()
         outliersFrame.setFrameShape(QFrame.StyledPanel)   
         outliersFrame.setBaseSize(200,100)
         outliersFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)

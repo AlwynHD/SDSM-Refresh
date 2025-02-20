@@ -10,7 +10,10 @@ from datetime import datetime
 # Define the name of the module for display in the content area
 moduleName = "Screen Variables"
 
-    
+class borderedQFrame(QFrame):
+    def __init__(self):
+        super().__init__()
+
 class ContentWidget(QWidget):
     """
     A widget to display the Screen Variables screen (UI/UX).
@@ -27,7 +30,6 @@ class ContentWidget(QWidget):
         self.predictandSelected = ""
         self.predictorsSelected = []
 
-        self.setStyleSheet("background-color: #D3D3D3;")
 
         
         # Main layout for the entire widget
@@ -36,6 +38,16 @@ class ContentWidget(QWidget):
         mainLayout.setSpacing(0)  # No spacing between elements
         self.setLayout(mainLayout)  # Apply the main layout to the widget
 
+        self.setStyleSheet("""
+                           QFrame{
+                                background-color: #D3D3D3;}
+                           borderedQFrame{
+                                background-color: #D3D3D3;
+                                border : 1px solid black;
+                                border-top-left-radius : 20px;
+                                border-top-right-radius : 20px;
+                                border-bottom-left-radius : 20px;
+                                border-bottom-right-radius : 20px;}""")
 
 
         # --- Button Bar ---
@@ -61,7 +73,7 @@ class ContentWidget(QWidget):
         # Frame for the buttonBar
         buttonBarFrame = QFrame()
         buttonBarFrame.setLayout(buttonBarLayout)  # Apply the button layout to the frame
-        buttonBarFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
+        buttonBarFrame.setFrameStyle(QFrame.NoFrame)  # No border around the frame
         buttonBarFrame.setFixedHeight(50)  # Match height with other UI elements
         buttonBarFrame.setStyleSheet("background-color: #A9A9A9;")  # Dark gray background
         mainLayout.addWidget(buttonBarFrame)  # Add the buttonBar frame to the main layout
@@ -69,7 +81,7 @@ class ContentWidget(QWidget):
         # --- Content Area ---
         # Frame for the contentArea
         titleFrame = QFrame()
-        titleFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
+        titleFrame.setFrameStyle(QFrame.NoFrame)  # No border around the frame
         titleFrame.setFixedHeight(100)
 
         # Layout for the contentArea frame
@@ -87,34 +99,34 @@ class ContentWidget(QWidget):
         mainLayout.addWidget(titleFrame)
 
         contentAreaFrame = QFrame()
-        contentAreaFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
+        contentAreaFrame.setFrameStyle(QFrame.NoFrame)  # No border around the frame
         contentAreaFrame.setBaseSize(600,100)
         contentAreaFrame.setSizePolicy(QSizePolicy.Preferred,QSizePolicy.Expanding)
 
         # Layout for the contentArea frame
         contentAreaLayout = QHBoxLayout()
-        contentAreaLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
-        contentAreaLayout.setSpacing(0)  # No spacing between elements
+        contentAreaLayout.setContentsMargins(10, 10, 10, 10)  # Remove padding from the layout
+        contentAreaLayout.setSpacing(10)  # No spacing between elements
         contentAreaFrame.setLayout(contentAreaLayout)  # Apply the layout to the frame
 
         mainLayout.addWidget(contentAreaFrame)
 
         #Frame that holds the selectPredictand frame and the selectDate frame
         fileDateFrame = QFrame()
-        fileDateFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
+        fileDateFrame.setFrameStyle(QFrame.NoFrame)  # No border around the frame
         fileDateFrame.setBaseSize(200,500)
         fileDateFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
 
         fileDateLayout = QVBoxLayout()
         fileDateLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
-        fileDateLayout.setSpacing(0)  # No spacing between elements
+        fileDateLayout.setSpacing(10)  # No spacing between elements
         fileDateFrame.setLayout(fileDateLayout)  # Apply the layout to the frame
 
         contentAreaLayout.addWidget(fileDateFrame)
 
         #Create selectPredictandFile frame
-        selectPredictandFileFrame = QFrame()
-        selectPredictandFileFrame.setFrameShape(QFrame.StyledPanel)   
+        selectPredictandFileFrame = borderedQFrame()
+        selectPredictandFileFrame.setFrameStyle(QFrame.StyledPanel | QFrame.Sunken)   
         selectPredictandFileFrame.setBaseSize(200,200)
 
 
@@ -130,14 +142,14 @@ class ContentWidget(QWidget):
         fileDateLayout.addWidget(selectPredictandFileFrame)
 
         #Create selectDate Frame
-        selectDateFrame = QFrame()
-        selectDateFrame.setFrameShape(QFrame.StyledPanel) 
+        selectDateFrame = borderedQFrame()
+        selectDateFrame.setFrameStyle(QFrame.StyledPanel | QFrame.Sunken) 
         selectDateFrame.setBaseSize(200,200)
         selectDateFrame.setStyleSheet("background-color: #D3D3D3;")
 
 
         selectDateLayout = QVBoxLayout()
-        selectDateLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
+        selectDateLayout.setContentsMargins(10, 10, 10, 10)  # Remove padding from the layout
         selectDateLayout.setSpacing(0)  # No spacing between elements
         selectDateFrame.setLayout(selectDateLayout)  # Apply the layout to the frame
 
@@ -146,7 +158,7 @@ class ContentWidget(QWidget):
         #Horizontal frames needed in selectDateFrame for labels to be attached to date selectors
 
         fitStartDateFrame = QFrame()
-        fitStartDateFrame.setFrameShape(QFrame.NoFrame) 
+        fitStartDateFrame.setFrameStyle(QFrame.NoFrame) 
         fitStartDateFrame.setBaseSize(190,50)
         fitStartDateFrame.setStyleSheet("background-color: #D3D3D3;")
 
@@ -156,7 +168,7 @@ class ContentWidget(QWidget):
         fitStartDateFrame.setLayout(fitStartDateLayout)  # Apply the layout to the frame
 
         fitEndDateFrame = QFrame()
-        fitEndDateFrame.setFrameShape(QFrame.NoFrame) 
+        fitEndDateFrame.setFrameStyle(QFrame.NoFrame) 
         fitEndDateFrame.setBaseSize(190,50)
         fitEndDateFrame.setStyleSheet("background-color: #D3D3D3;")
 
@@ -173,15 +185,15 @@ class ContentWidget(QWidget):
 
 
         #Create selectPredictor frame
-        selectPredictorsFrame = QFrame()
-        selectPredictorsFrame.setFrameShape(QFrame.StyledPanel)   
+        selectPredictorsFrame = borderedQFrame()
+        selectPredictorsFrame.setFrameStyle(QFrame.StyledPanel | QFrame.Sunken)   
         selectPredictorsFrame.setBaseSize(200,400)
 
 
 
         #Layout for selectPredictors frame
         selectPredictorsLayout = QVBoxLayout()
-        selectPredictorsLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
+        selectPredictorsLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
         selectPredictorsLayout.setSpacing(0)  # No spacing between elements
         selectPredictorsFrame.setStyleSheet("background-color: #D3D3D3;")
 
@@ -192,7 +204,7 @@ class ContentWidget(QWidget):
 
         #Create description, autoregression, process, significance (DARPS) frame
         selectDARPSFrame = QFrame()
-        selectDARPSFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
+        selectDARPSFrame.setFrameStyle(QFrame.NoFrame)  # No border around the frame
         selectDARPSFrame.setBaseSize(200,500)
         selectDARPSFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
 
@@ -200,20 +212,20 @@ class ContentWidget(QWidget):
 
         selectDARPSLayout = QVBoxLayout()
         selectDARPSLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
-        selectDARPSLayout.setSpacing(0)  # No spacing between elements
+        selectDARPSLayout.setSpacing(10)  # No spacing between elements
         selectDARPSFrame.setLayout(selectDARPSLayout)  # Apply the layout to the frame
 
         contentAreaLayout.addWidget(selectDARPSFrame)
 
         #Create predictorDescription frame
-        predictorDescriptionFrame = QFrame()
-        predictorDescriptionFrame.setFrameShape(QFrame.StyledPanel)   
+        predictorDescriptionFrame = borderedQFrame()
+        predictorDescriptionFrame.setFrameStyle(QFrame.StyledPanel | QFrame.Sunken)   
         predictorDescriptionFrame.setBaseSize(200,100)
 
 
         #Layout for predictorDescription frame
         predictorDescriptionLayout = QVBoxLayout()
-        predictorDescriptionLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
+        predictorDescriptionLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
         predictorDescriptionLayout.setSpacing(0)  # No spacing between elements
         predictorDescriptionFrame.setStyleSheet("background-color: #D3D3D3;")
         predictorDescriptionFrame.setLayout(predictorDescriptionLayout)
@@ -221,14 +233,14 @@ class ContentWidget(QWidget):
         selectDARPSLayout.addWidget(predictorDescriptionFrame)
 
         #Create autoregression frame
-        autoregressionFrame = QFrame()
-        autoregressionFrame.setFrameShape(QFrame.StyledPanel)   
+        autoregressionFrame = borderedQFrame()
+        autoregressionFrame.setFrameStyle(QFrame.StyledPanel | QFrame.Sunken)   
         autoregressionFrame.setBaseSize(200,100)
 
 
         #Layout for autoregression frame
         autoregressionLayout = QVBoxLayout()
-        autoregressionLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
+        autoregressionLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
         autoregressionLayout.setSpacing(0)  # No spacing between elements
         autoregressionFrame.setStyleSheet("background-color: #D3D3D3;")
         autoregressionFrame.setLayout(autoregressionLayout)
@@ -238,14 +250,14 @@ class ContentWidget(QWidget):
         selectDARPSLayout.addWidget(autoregressionFrame)
 
         #Create process frame
-        processFrame = QFrame()
-        processFrame.setFrameShape(QFrame.StyledPanel)   
+        processFrame = borderedQFrame()
+        processFrame.setFrameStyle(QFrame.StyledPanel | QFrame.Sunken)   
         processFrame.setBaseSize(200,100)
 
 
         #Layout for process frame
         processLayout = QVBoxLayout()
-        processLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
+        processLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
         processLayout.setSpacing(0)  # No spacing between elements
         processFrame.setStyleSheet("background-color: #D3D3D3;")
         processFrame.setLayout(processLayout)
@@ -254,14 +266,14 @@ class ContentWidget(QWidget):
         selectDARPSLayout.addWidget(processFrame)
 
         #Create significance frame
-        significanceFrame = QFrame()
-        significanceFrame.setFrameShape(QFrame.StyledPanel)   
+        significanceFrame = borderedQFrame()
+        significanceFrame.setFrameStyle(QFrame.StyledPanel | QFrame.Sunken)   
         significanceFrame.setBaseSize(200,100)
 
 
         #Layout for significance frame
         significanceLayout = QVBoxLayout()
-        significanceLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
+        significanceLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
         significanceLayout.setSpacing(0)  # No spacing between elements
         significanceFrame.setStyleSheet("background-color: #D3D3D3;")
         significanceFrame.setLayout(significanceLayout)
@@ -294,7 +306,7 @@ class ContentWidget(QWidget):
         predictorsScrollArea = QScrollArea()
         predictorsScrollArea.setWidgetResizable(True)
         predictorsScrollFrame = QFrame()
-        predictorsScrollFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
+        predictorsScrollFrame.setFrameStyle(QFrame.NoFrame)  # No border around the frame
         
         #predictorsScrollFrame.setBaseSize(200,300)
         #predictorsScrollFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Fixed)

@@ -6,12 +6,12 @@ import re
 import numpy as np
 
 #Local version
-predictorSelected = ['predictor files/ncep_dswr.dat']
-predictandSelected = ['predictand files/NoviSadPrecOBS.dat']
+#predictorSelected = ['predictor files/ncep_dswr.dat']
+#predictandSelected = ['predictand files/NoviSadPrecOBS.dat']
 
 #predictorSelected = ['C:/Code/SDSM/SDSM-Refresh/predictor files/ncep_dswr.dat'] #todo remove default
 #predictandSelected = ['C:/Code/SDSM/SDSM-Refresh/predictand files/NoviSadPrecOBS.dat'] #todo remove default
-nameOfFiles = ["NoviSadPrecOBS", "ncep_dswr"]
+#nameOfFiles = ["NoviSadPrecOBS", "ncep_dswr"]
 globalSDate = datetime.datetime(1948, 1, 1)
 globalEDate = datetime.datetime(2015, 12, 31)
 fSDate = datetime.datetime(1948, 1, 1)
@@ -52,17 +52,16 @@ def partialCorrelation(A, B, n, crossCorr, corrArrayList):
     else:
         return result / math.sqrt(denom)
 #move to gui
-def displayFiles(fileSelected):
+def displayFiles(selected_files):
     """
     takes files strips paths and prints that to user
     takes entire path into filesSelected array returns array
     """
-    selected_files = selectFile()
+    fileSelected = []
     if selected_files:
         for file in selected_files:
             fileName = os.path.basename(file)
-            print("Selected file: ", {fileName})
-            fileSelected.append(file)
+            fileSelected.append(fileName)
     else:
         print("No file selected.")
     return fileSelected
@@ -95,7 +94,7 @@ def filesNames(fileName):
                        ["p8_f", "850 hPa airflow strength"], ["p8_z", "850 hPa vorticity"], ["p8_v", "850 hPa meridional velocity"], ["p8_u", "850 hPa zonal velocity"],
                        ["p8th", "850 hPa wind direction"], ["p8zh", "850 hPa divergence"], ["shum", "Surface specific humidity"], ["s850", "Specific humidity at 850 hPa"],
                        ["s500", "Specific humidity at 500 hPa"], ["dswr", "Solar radiation"], ["lftx", "Surface lifted index"], ["pottmp", "Potential temperature"],
-                       ["pr_wtr", "Precipitable water"], ["prec", "Pending Description"]]
+                       ["pr_wtr", "Precipitable water"]]
 
     # will return file description e.g. Mean temperature at 2m if the fileName is found in the list file Description will be empty if it's not there
     fileDescription = [record[1] for record in fileDescriptionList if re.search(re.compile(record[0]),fileName) != None] # regex
@@ -227,7 +226,9 @@ def correlation(predictandSelected, predictorSelected, fSDate, fEDate, autoRegre
 
         loadedFiles = []
         loadedFiles = loadFilesIntoMemory(predictorSelected, predictandSelected)
-        print(loadedFiles)
+        nameOfFiles = displayFiles(predictandSelected + predictorSelected)
+        print("HERE", nameOfFiles)
+        print(predictorSelected + predictandSelected)
 
         #todo progress bar
 
@@ -329,6 +330,9 @@ def correlation(predictandSelected, predictorSelected, fSDate, fEDate, autoRegre
 
         maxLength = max(len(file) for file in nameOfFiles) + 1
 
+        print("SOMETHING")
+        print(nameOfFiles)
+
         # Print column headers
         #literally just the 1 2 3 
         print(" ", end="")
@@ -403,7 +407,7 @@ def analyseData(predictandSelected, predictorSelected, fsDate, feDate, globalSDa
         loadedFiles = loadFilesIntoMemory(predictorSelected, predictandSelected)
         
         loadedFiles = [file[(fsDate - globalSDate).days:] for file in loadedFiles]
-
+        nameOfFiles = displayFiles(predictandSelected + predictorSelected)
 
 
         workingDate = fSDate
@@ -487,10 +491,11 @@ def analyseData(predictandSelected, predictorSelected, fsDate, feDate, globalSDa
             T = [9999 if RSQD[i] > 0.999 else (CORR[i] * np.sqrt(len(month) - missing[i]) - 2 ) / np.sqrt(1 - RSQD[i]) for i in range(nVariables)]
 
             pr = [(((1 + ((T[i] ** 2) / (len(month) - missing[index]))) ** -(((len(month) - missing[index]) + 1) / 2))) / (np.sqrt(((len(month) - missing[index]) * math.pi))) * np.sqrt((len(month) - missing[index])) for i in range(nVariables)] # line 875
-
+        #
 
 
 if __name__ == '__main__':
-    analyseData(predictandSelected, predictorSelected, fSDate, fEDate, globalSDate, globalEDate, autoRegressionTick)
-    
-    #correlation(predictandSelected, predictorSelected, fSDate, fEDate, autoRegressionTick)
+    #analyseData(predictandSelected, predictorSelected, fSDate, fEDate, globalSDate, globalEDate, autoRegressionTick)
+    predictorSelected = selectFile()
+    predictandSelected = selectFile()
+    correlation(predictandSelected, predictorSelected, fSDate, fEDate, autoRegressionTick)

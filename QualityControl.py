@@ -5,8 +5,8 @@ import calendar
 #region Global Variables
 
 #Currently accessing local file, change as needed for your own version.
-selectedFile = r"C:\Users\ajs25\Downloads\test.txt"
-outlierFile = r"C:\Users\ajs25\Downloads\outlier.txt"
+selectedFile = "predictand files/NoviSadPrecOBS.dat"
+outlierFile = "outlier.txt"
 
 globalSDate = datetime.datetime(1948, 1, 1)
 globalMissingCode = -999
@@ -14,7 +14,7 @@ globalMissingCode = -999
 applyThresh = False
 thresh = 0
 
-standardDeviationLimits = 0
+standardDeviationLimits = 1
 
 #endregion
 
@@ -324,4 +324,4 @@ def increaseDate(currentDate, noDays): #todo check if the leap year thing was im
     currentDate += datetime.timedelta(days=noDays)
     return currentDate
 
-qualityCheck()
+outliersID()

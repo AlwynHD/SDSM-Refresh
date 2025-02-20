@@ -51,8 +51,8 @@ class ContentWidget(QWidget):
             button = QPushButton(name)  # Create a button with the given name
             button.setIcon(QIcon("placeholder_icon.png"))  # Placeholder icon
             button.clicked.connect(self.handleMenuButtonClicks)
-            button.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)  # Fixed size policy
-            button.sizeHint()  # Set a fixed size for the button
+            button.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)  # Expanding size policy
+            button.sizeHint()  # Set a Expanding size for the button
             button.setStyleSheet(
                 "border: 1px solid lightgray; background-color: #F0F0F0; text-align: left;"
             )  # Style to match the overall design
@@ -319,7 +319,7 @@ class ContentWidget(QWidget):
         
             predictorScrollLabelButton.clicked.connect(self.predictorLabelClicked)
             predictorScrollLabelButton.setBaseSize(200, 20)
-            predictorScrollLabelButton.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+            predictorScrollLabelButton.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
             predictorsScrollLayout.addWidget(predictorScrollLabelButton) 
         
         predictorsScrollArea.setWidget(predictorsScrollFrame)
@@ -376,20 +376,7 @@ class ContentWidget(QWidget):
 
 
         #Blank frame to allow placement wherever I want, without it everything tries to expand down towards the footer, looks horrible
-        blankFrame = QFrame()
-        blankFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
-        blankFrame.setBaseSize(QSize(200,200))
-        blankFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding) #Allow our blank frame to fill the bottom of the screen
 
-        # Layout for the blank frame
-        blankLayout = QVBoxLayout()
-        blankLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
-        blankLayout.setSpacing(0)  # No spacing between elements
-        blankFrame.setLayout(blankLayout)  # Apply the layout to the frame
-
-        mainLayout.addWidget(blankFrame) #Is a bodge, hopefully figure it out later
-
-        
 
 
         # Add a spacer to ensure content is properly spaced

@@ -113,7 +113,7 @@ class ContentWidget(QWidget):
         # Layout for the results frame
         resultsLayout = QVBoxLayout()
         resultsLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
-        resultsLayout.setSpacing(0)  # No spacing between elements
+        resultsLayout.setSpacing(10)  # No spacing between elements
         resultsFrame.setStyleSheet("background-color: #D3D3D3;")
 
         resultsFrame.setLayout(resultsLayout)  # Apply the layout to the frame
@@ -124,13 +124,14 @@ class ContentWidget(QWidget):
         selectFileFrame = QFrame()
         selectFileFrame.setFrameShape(QFrame.StyledPanel)   
         selectFileFrame.setBaseSize(200,100)
+        selectFileFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
 
 
 
         #Layout for selectFile frame
         selectFileLayout = QVBoxLayout()
         selectFileLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
-        selectFileLayout.setSpacing(0)  # No spacing between elements
+        selectFileLayout.setSpacing(10)  # No spacing between elements
         selectFileFrame.setStyleSheet("background-color: #D3D3D3;")
 
 
@@ -142,6 +143,7 @@ class ContentWidget(QWidget):
         pettittFrame = QFrame()
         pettittFrame.setFrameShape(QFrame.StyledPanel)   
         pettittFrame.setBaseSize(200,100)
+        pettittFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
 
 
         #Layout for pettitt frame
@@ -159,12 +161,13 @@ class ContentWidget(QWidget):
         thresholdFrame = QFrame()
         thresholdFrame.setFrameShape(QFrame.StyledPanel)   
         thresholdFrame.setBaseSize(200,100)
+        thresholdFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
 
 
         #Layout for threshold frame
         thresholdLayout = QVBoxLayout()
         thresholdLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
-        thresholdLayout.setSpacing(0)  # No spacing between elements
+        thresholdLayout.setSpacing(10)  # No spacing between elements
         thresholdFrame.setStyleSheet("background-color: #D3D3D3;")
 
 
@@ -176,12 +179,13 @@ class ContentWidget(QWidget):
         outliersFrame = QFrame()
         outliersFrame.setFrameShape(QFrame.StyledPanel)   
         outliersFrame.setBaseSize(200,100)
+        outliersFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
 
 
         #Layout for selectFile frame
         outliersLayout = QVBoxLayout()
         outliersLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
-        outliersLayout.setSpacing(0)  # No spacing between elements
+        outliersLayout.setSpacing(10)  # No spacing between elements
         outliersFrame.setStyleSheet("background-color: #D3D3D3;")
 
 
@@ -225,10 +229,11 @@ class ContentWidget(QWidget):
         #Need a separate frame for the input
         standardDeviationFrame = QFrame()
         standardDeviationFrame.setFrameShape(QFrame.NoFrame)
+        standardDeviationFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
 
         standardDeviationLayout = QHBoxLayout()
         standardDeviationLayout.setContentsMargins(0,0,0,0)
-        standardDeviationLayout.setSpacing(0)
+        standardDeviationLayout.setSpacing(10)
 
         standardDeviationFrame.setLayout(standardDeviationLayout)
 
@@ -280,19 +285,7 @@ class ContentWidget(QWidget):
 
 
         #Blank frame to allow placement wherever I want, without it everything tries to expand down towards the footer, looks horrible
-        blankFrame = QFrame()
-        blankFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
-        blankFrame.setBaseSize(QSize(200,200))
-        blankFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding) #Allow our blank frame to fill the bottom of the screen
-
-        # Layout for the blank frame
-        blankLayout = QVBoxLayout()
-        blankLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
-        blankLayout.setSpacing(0)  # No spacing between elements
-        blankFrame.setLayout(blankLayout)  # Apply the layout to the frame
-
-        mainLayout.addWidget(blankFrame) #Is a bodge, hopefully figure it out later
-
+       
         # Add a spacer to ensure content is properly spaced
         titleLayout.addStretch()
         contentAreaLayout.addStretch()

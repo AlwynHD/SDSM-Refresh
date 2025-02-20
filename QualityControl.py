@@ -1,16 +1,20 @@
+import calendar
 import datetime
 import math
-import calendar
+import numpy as np
+from ScreenVars import loadFilesIntoMemory, increaseDate
 
-#region Global Variables
+#Local version
+predictorSelected = ['predictor files/ncep_dswr.dat']
+predictandSelected = ['predictand files/NoviSadPrecOBS.dat']
 
 #Currently accessing local file, change as needed for your own version.
 selectedFile = "predictand files/NoviSadPrecOBS.dat"
 outlierFile = "outlier.txt"
 
+#Variables obtained from global settings
 globalSDate = datetime.datetime(1948, 1, 1)
 globalMissingCode = -999
-
 applyThresh = False
 thresh = 0
 
@@ -33,7 +37,8 @@ def checkIfFileFormatted(file):
         firstLine = f.readline()
         if len(firstLine) > 15:
             print("File may contain multiple columns or non-Windows line breaks / carriage returns. This may cause problems in SDSM later.")
-        
+    
+    f.close()
     return
 
 def checkThreshold(value):
@@ -48,13 +53,11 @@ def dailyMeans():
     checkIfFileFormatted(selectedFile)
 
     #Initialise results to zero
-    dailyStats = []
-    for i in range(0, 7):
-        dailyStats.append([0, 0, 0, 0])
-        #dailyStats[i][0] is running sum
-        #dailyStats[i][1] is count
-        #dailyStats[i][2] is standard deviation
-        #dailyStats[i][3] is mean
+    dailyStats = np.zeros((7, 4), float)
+    #dailyStats[i][0] is running sum
+    #dailyStats[i][1] is count
+    #dailyStats[i][2] is standard deviation
+    #dailyStats[i][3] is mean
 
     dayWorkingOn = globalSDate.weekday()
 
@@ -111,6 +114,8 @@ def dailyMeans():
     print(output)
 
 def outliersID():
+    #todo change python lists to numpy arrays
+
     if not checkForFile(selectedFile, "You must select a file to check first"):
         return
     elif not checkForFile(outlierFile, "You must select a file to save outliers to"):
@@ -178,15 +183,16 @@ def qualityCheck():
         return
     
     petArray = []
+    max = -9999
+    min = 9999
+    totalNumbers = 0
+    missing = 0
+    count = 0
     sum = 0
-    max = 0
-    min = 0
-    threshCount = 0
     prevValue = globalMissingCode
     maxDifference = 0
-    totalNumbers = 0
-    count = 0
-    missing = 0
+    threshCount = 0
+    
     
     with open(selectedFile, "r") as file:
         for line in file:
@@ -210,8 +216,6 @@ def qualityCheck():
 
                     if inputValue > thresh:
                         threshCount += 1
-
-                    #Is there a way to do these if statements in one line?
             
             if prevValue != globalMissingCode and inputValue != globalMissingCode:
                 if checkThreshold(inputValue) and abs(prevValue - inputValue) > maxDifference:
@@ -235,93 +239,88 @@ def qualityCheck():
         else:
             mean = globalMissingCode
 
-    #Call pettittTest
+    if count < 10 or applyThresh and threshCount < 10:
+        pettitt = globalMissingCode
+    else:
+        pettitt = pettittTest(petArray, 90)
 
     print("Min: " + str(min) + "\nMax: " + str(max) + "\nTotal Values: " + str(count) + "\nMissing Values: " + str(missing) + "\nMean: " + str(mean))
 
-def pettittTest(petArray, totalOk, totalNumbers, ptPercent):
-    if (not applyThresh and totalOk < 10) or (applyThresh and thresh < 10):
-        pettitt = globalMissingCode
-        return
+def pettittTest(pettittArray, ptPercent):
+    currentDate = globalSDate
+
+    annualMeans = [0] * 120
+    annualCount = [0] * 120
+    #I think it has 120 values is a placeholder for a range of 120 years
+    #Could probably be clever and do this in a list for potentially infinite range
+
+    yearIndex = 0
+    for i in range(len(pettittArray)):
+        value = pettittArray[i]
+        if value != globalMissingCode and checkThreshold(value):
+            annualMeans[yearIndex] += value
+            annualCount[yearIndex] += 1
+
+        currentDate = increaseDate(currentDate, 1)
+        yearIndex = currentDate.year - globalSDate.year
+
+    yearsOk = 0
+    for i in range(yearIndex):
+        if annualCount[i] > 0 and annualCount[i] >= (ptPercent * 3.65):
+            annualMeans[i] /= annualCount[i]
+            yearsOk += 1
+        else:
+            annualMeans[i] = globalMissingCode
     
-    currentDay = globalSDate.day
-    currenMonth = globalSDate.month
-    currentYear = globalSDate.year
-
-    annualMeans = []
-    annualCount = []
-
-    yearIndex = 1
-    for i in range(totalNumbers):
-        if petArray[i] != globalMissingCode:
-            if checkThreshold(petArray[i]):
-                annualMeans[yearIndex] += petArray[i]
-                annualCount[yearIndex] += 1
-
-        if i < totalNumbers:
-            increaseDate(currentDay, 1)
-            yearIndex = currentYear - globalSDate.year
-            #todo placeholder numbers, will correct later
-
+    if yearsOk < 5:
+        pettitt = globalMissingCode
+    else:
+        petMatrix = np.zeros((yearsOk, 7), float) 
         yearsOk = 0
         for i in range(yearIndex):
-            if annualCount[i] >= 3.65 * ptPercent and annualCount[i] > 0:
-                annualMeans[i] = annualMeans / annualCount[i]
+            if annualMeans[i] != globalMissingCode:
+                petMatrix[yearsOk][0] = annualMeans[i]
+                petMatrix[yearsOk][1] = yearsOk
+                petMatrix[yearsOk][5] = i + globalSDate.year
                 yearsOk += 1
-            else:
-                annualMeans[i] = globalMissingCode
+        
+        petMatrix[petMatrix[:, 0].argsort()]
+        #sort data on itself
 
-        if yearsOk < 5:
-            pettitt = globalMissingCode
-        else:
-            petMatrix = []
-            yearsOk = 0
-            for i in range(yearIndex):
-                if annualMeans != globalMissingCode:
-                    petMatrix[yearsOk][0] = annualMeans[i]
-                    petMatrix[yearsOk][1] = yearsOk + 1
-                    petMatrix[yearsOk][5] = i + globalSDate.year #Might need to minus 1 from this
+        for i in range(yearsOk):
+            petMatrix[i][2] = i + 1
+        
+        for i in range(1, yearsOk):
+            if petMatrix[i][0] == petMatrix[i - 1][0]:
+                petMatrix[i][2] = petMatrix[i][2]
+        
+        petMatrix[petMatrix[:, 1].argsort()]
+        #sort data back to original order
 
-                    yearsOk += 1
+        for i in range(yearsOk):
+            petMatrix[i][3] = yearsOk + 1 - (2 * petMatrix[i][2])
+            #create vi value
 
-            petMatrix.sort() #Need to compare how python and VB do sorting
-            for i in range(yearsOk - 1):
-                petMatrix[i][2] = i + 1
-                
-            for i in range(yearsOk - 1):
-                if petMatrix[i][0] == petMatrix[i - 1][0]:
-                    petMatrix[i][2] = petMatrix[i - 1][2]
-            
-            petMatrix.sort() #todo sort matrix by 2nd column
+        #create ui value:
+        petMatrix[0][4] = petMatrix[0][3]
+        for i in range(1, yearsOk - 1):
+            petMatrix[i][4] = petMatrix[i - 1][4] + petMatrix[i][3]
 
-            for i in range(yearsOk - 1):
-                petMatrix[i][3] = yearsOk + 1 - (2 * petMatrix(i, 2))
+        for i in range(yearsOk):
+            petMatrix[i][4] = abs(petMatrix[i][4])
 
-            petMatrix[0][4] = petMatrix[0][3]
+        kn = -1
+        maxPos = 0
+        for i in range(yearsOk):
+            if petMatrix[i][4] > kn:
+                kn = petMatrix[i][4]
+                maxPos = i
 
-            for i in range(yearsOk - 1):
-                petMatrix[i][4] = petMatrix[i - 1][4] + petMatrix[i][3]
+        pettitt = 2 * math.pow(math.e, ((-6 * kn ** 2) / ((yearsOk ** 3) + yearsOk ** 2)))
+        #todo, fix calculation
+        print("pettitt Value: " + str(pettitt))
 
-            for i in range(yearsOk - 1):
-                petMatrix[i][4] = abs(petMatrix[i][4])
-
-            kn = -1
-            maxPos = 0
-            for i in range(yearsOk - 1):
-                if petMatrix[i][4] > kn:
-                    kn = petMatrix[i][4]
-                    maxPos = i
-
-            pettitt = 2 * math.e ** ((-6 * (kn ** 2)) / ((yearsOk ** 3) + (yearsOk ** 2)))
-            #todo check this to ensure I wrote this formula correctly
-
-            #todo update results screen with all the data calculated
-    
-
-def increaseDate(currentDate, noDays): #todo check if the leap year thing was important
-    """increases datatime object by noDays"""
-    #Taken from ScreenVars
-    currentDate += datetime.timedelta(days=noDays)
-    return currentDate
-
-outliersID()
+        if pettitt < 0.05:
+            print("max position: " + str(petMatrix[maxPos][5]))
+        
+qualityCheck()

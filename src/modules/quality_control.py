@@ -6,13 +6,18 @@ from QualityControl import qualityCheck, outliersID, dailyMeans
 # Define the name of the module for display in the content area
 moduleName = "Quality Control"
 
-def throwError(errorType, errorInfo):
-    errorMessage = QMessageBox()
-    errorMessage.setIcon(QMessageBox.Critical)
-    errorMessage.setText(errorType)
-    errorMessage.setInformativeText(errorInfo)
-    errorMessage.setWindowTitle("Error")
-    errorMessage.exec_()
+def displayBox(messageType, messageInfo, messageTitle, isError=False):
+    messageBox = QMessageBox()
+    if isError:
+        messageBox.setIcon(QMessageBox.Critical)
+    else:
+        messageBox.setIcon(QMessageBox.Information)
+    messageBox.setText(messageType)
+    messageBox.setInformativeText(messageInfo)
+    messageBox.setWindowTitle(messageTitle)
+    messageBox.exec_()
+
+
 
 class borderedQFrame(QFrame):
     def __init__(self):
@@ -372,23 +377,22 @@ class ContentWidget(QWidget):
                 self.numOfValuesFrame.contentLabel.setText(count)
                 self.missingFrame.contentLabel.setText(missing)
             except FileNotFoundError:
-                throwError("File Error", "Please ensure a predictand file is selected and exists.")
+                displayBox("File Error", "Please ensure a predictand file is selected and exists.","Error", isError=True)
 
            
         elif button == "Outliers":
             try:
                 message = outliersID(self.selectedFile, self.selectedOutlier)
-                confirmBox = QMessageBox()
-                confirmBox.setWindowTitle("Outlier Results")
-                confirmBox.setText("Outliers Identified")
-                confirmBox.setIcon(QMessageBox.Information)
-                confirmBox.setInformativeText(message)
-                confirmBox.exec_()
-            except FileNotFoundError:
-                throwError("File Error", "Please ensure predictand and output files are selected.")
-        elif button == "Daily Stats":
-            print("woooo")
+                displayBox("Outliers Identified", message, "Outlier Results")
 
+            except FileNotFoundError:
+                displayBox("File Error", "Please ensure predictand and output files are selected.", "Error", isError=True)
+        elif button == "Daily Stats":
+            try:
+                stats = dailyMeans(self.selectedFile)
+                displayBox("Daily Stats:", stats, "Daily Results")
+            except FileNotFoundError:
+                displayBox("File Error", "Please ensure a predictand file is selected and exists.", "Error", isError=True)
             
         else:
             print("work in progress, pardon our dust")

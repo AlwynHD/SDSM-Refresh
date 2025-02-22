@@ -52,6 +52,8 @@ def dailyMeans(selectedFile):
     
     checkIfFileFormatted(selectedFile)
 
+    #returnOutput = [] this is here for if we decide to change how its displayed in GUI
+
     #Initialise results to zero
     dailyStats = np.zeros((7, 4), float)
     #dailyStats[i][0] is running sum
@@ -110,8 +112,10 @@ def dailyMeans(selectedFile):
     output = ""
     for i in range(7):
         output += str(calendar.day_name[i]) + ": Mean: " + str(round(dailyStats[i][3], 2)) + " SD: " + str(round(dailyStats[i][2], 2)) + "\n"
+        #returnOutput.append(str(calendar.day_name[i]) + ": Mean: " + str(round(dailyStats[i][3], 2)) + " SD: " + str(round(dailyStats[i][2], 2)))
     
     print(output)
+    return output
 
 def outliersID(selectedFile, outlierFile):
     #todo change python lists to numpy arrays

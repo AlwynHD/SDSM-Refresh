@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import (QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSi
                              QLineEdit, QCheckBox)
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QPalette, QColor, QIcon
-from QualityControl import qualityCheck
+from QualityControl import qualityCheck, outliersID
 # Define the name of the module for display in the content area
 moduleName = "Quality Control"
 
@@ -364,6 +364,8 @@ class ContentWidget(QWidget):
             self.meanFrame.contentLabel.setText(mean)
             self.numOfValuesFrame.contentLabel.setText(count)
             self.missingFrame.contentLabel.setText(missing)
+        elif button == "Outliers":
+            outliersID(self.selectedFile, self.selectedOutlier)
             
         else:
             print("work in progress, pardon our dust")

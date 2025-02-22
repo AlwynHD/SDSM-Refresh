@@ -113,7 +113,7 @@ def dailyMeans():
     
     print(output)
 
-def outliersID():
+def outliersID(selectedFile, outlierFile):
     #todo change python lists to numpy arrays
 
     if not checkForFile(selectedFile, "You must select a file to check first"):

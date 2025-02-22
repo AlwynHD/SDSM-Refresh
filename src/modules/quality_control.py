@@ -1,11 +1,18 @@
 from PyQt5.QtWidgets import (QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, QFrame, QLabel, QFileDialog,
-                             QLineEdit, QCheckBox)
+                             QLineEdit, QCheckBox, QMessageBox)
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QPalette, QColor, QIcon
 from QualityControl import qualityCheck, outliersID
 # Define the name of the module for display in the content area
 moduleName = "Quality Control"
 
+def throwError(errorType, errorInfo):
+    errorMessage = QMessageBox()
+    errorMessage.setIcon(QMessageBox.Critical)
+    errorMessage.setText(errorType)
+    errorMessage.setInformativeText(errorInfo)
+    errorMessage.setWindowTitle("Error")
+    errorMessage.exec_()
 
 class borderedQFrame(QFrame):
     def __init__(self):
@@ -357,15 +364,23 @@ class ContentWidget(QWidget):
         if button == "Check File":
             #https://www.youtube.com/watch?v=QY4KKG4TBFo im keeping this in the comments
             print("https://www.youtube.com/watch?v=QY4KKG4TBFo") #Are easter eggs allowed?
+            try:
+                min, max, count, missing, mean = qualityCheck(self.selectedFile)
+                self.minimumFrame.contentLabel.setText(min)
+                self.maximumFrame.contentLabel.setText(max)
+                self.meanFrame.contentLabel.setText(mean)
+                self.numOfValuesFrame.contentLabel.setText(count)
+                self.missingFrame.contentLabel.setText(missing)
+            except FileNotFoundError:
+                throwError("File Error", "Please ensure a predictand file is selected and exists.")
 
-            min, max, count, missing, mean = qualityCheck(self.selectedFile)
-            self.minimumFrame.contentLabel.setText(min)
-            self.maximumFrame.contentLabel.setText(max)
-            self.meanFrame.contentLabel.setText(mean)
-            self.numOfValuesFrame.contentLabel.setText(count)
-            self.missingFrame.contentLabel.setText(missing)
+           
         elif button == "Outliers":
-            outliersID(self.selectedFile, self.selectedOutlier)
+            try:
+                outliersID(self.selectedFile, self.selectedOutlier)
+            except FileNotFoundError:
+                throwError("File Error", "Please ensure predictand and output files are selected.")
+
             
         else:
             print("work in progress, pardon our dust")

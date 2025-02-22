@@ -418,10 +418,11 @@ class ContentWidget(QWidget):
             button.setStyleSheet("color: black; background-color: #D3D3D3")
         try:
             predictorDescription = filesNames(predictor)
-        except IndexError:
-            predictorDescription = "Description not found"
-        self.predictorDescriptionLabel.setText(predictorDescription[0])
+            self.predictorDescriptionLabel.setText(predictorDescription[0])
 
+        except IndexError:
+            self.predictorDescriptionLabel.setText("Description not found")
+        
     
     def handleMenuButtonClicks(self):
         button = self.sender().text()

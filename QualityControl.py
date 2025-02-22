@@ -245,6 +245,7 @@ def qualityCheck(selectedFile):
         pettitt = pettittTest(petArray, 90)
 
     print("Min: " + str(min) + "\nMax: " + str(max) + "\nTotal Values: " + str(count) + "\nMissing Values: " + str(missing) + "\nMean: " + str(mean))
+    return str(min), str(max), str(count), str(missing), str(mean)
 
 def pettittTest(pettittArray, ptPercent):
     currentDate = globalSDate

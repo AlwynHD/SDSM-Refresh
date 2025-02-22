@@ -11,6 +11,23 @@ class borderedQFrame(QFrame):
     def __init__(self):
         super().__init__()
 
+class resultsQFrame(QFrame):
+    '''Wraps two labels, one being aligned to the right of the results frame'''
+    def __init__(self, standardLabelText):
+        super().__init__()
+        self.standardLabel = QLabel(standardLabelText)
+        self.contentLabel = QLabel()
+        self.contentLabel.setAlignment(Qt.AlignRight)
+
+        self.resultsLayout = QHBoxLayout()
+        self.resultsLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
+        self.resultsLayout.setSpacing(0)  # No spacing between elements
+        self.setLayout(self.resultsLayout)  # Apply the layout to the frame
+
+        self.resultsLayout.addWidget(self.standardLabel)
+        self.resultsLayout.addWidget(self.contentLabel)
+
+
 class ContentWidget(QWidget):
     """
     A widget to display the Quality Control screen (UI/UX).
@@ -265,34 +282,47 @@ class ContentWidget(QWidget):
         outliersLayout.addWidget(self.selectedOutlierLabel)
 
         #Results elements, just a lot of labels that need to be referenced from functions
-        self.minimumLabel = QLabel("Minimum: ")
-        resultsLayout.addWidget(self.minimumLabel)
-        self.maximumLabel = QLabel("Maximum: ")
-        resultsLayout.addWidget(self.maximumLabel)
-        self.meanLabel = QLabel("Mean: ")
-        resultsLayout.addWidget(self.meanLabel)
-        self.numOfValuesLabel = QLabel("Number of values in file: ")
-        resultsLayout.addWidget(self.numOfValuesLabel)
-        self.missingLabel = QLabel("Missing values: ")
-        resultsLayout.addWidget(self.missingLabel)
-        self.numOfOKValuesLabel = QLabel("Number of values ok: ")
-        resultsLayout.addWidget(self.numOfOKValuesLabel)
-        self.maximumDifferenceLabel = QLabel("Maximum difference: ")
-        resultsLayout.addWidget(self.maximumDifferenceLabel)
-        self.maximumDifferenceValOneLabel = QLabel("Maximum difference value 1: ")
-        resultsLayout.addWidget(self.maximumDifferenceValOneLabel)
-        self.maximumDifferenceValTwoLabel = QLabel("Maximum difference value 2: ")
-        resultsLayout.addWidget(self.maximumDifferenceValTwoLabel)
-        self.valueOverThreshLabel = QLabel("Values over threshold: ")
-        resultsLayout.addWidget(self.valueOverThreshLabel)
-        self.pettittSigLabel = QLabel("Pettitt test (significance): ")
-        resultsLayout.addWidget(self.pettittSigLabel)
-        self.pettittMax = QLabel("Pettitt max position: ")
-        resultsLayout.addWidget(self.pettittMax)
-        self.missingValCode = QLabel("Missing value code: ")
-        resultsLayout.addWidget(self.missingValCode)
-        self.eventThresh = QLabel("Event threshold: ")
-        resultsLayout.addWidget(self.eventThresh)
+        self.minimumFrame = resultsQFrame("Minimum: ")
+        resultsLayout.addWidget(self.minimumFrame)
+
+        self.maximumFrame = resultsQFrame("Maximum: ")
+        resultsLayout.addWidget(self.maximumFrame)
+
+        self.meanFrame = resultsQFrame("Mean: ")
+        resultsLayout.addWidget(self.meanFrame)
+
+        self.numOfValuesFrame = resultsQFrame("Number of values in file: ")
+        resultsLayout.addWidget(self.numOfValuesFrame)
+
+        self.missingFrame = resultsQFrame("Missing values: ")
+        resultsLayout.addWidget(self.missingFrame)
+
+        self.numOfOKValuesFrame = resultsQFrame("Number of values ok: ")
+        resultsLayout.addWidget(self.numOfOKValuesFrame)
+
+        self.maximumDifferenceFrame = resultsQFrame("Maximum difference: ")
+        resultsLayout.addWidget(self.maximumDifferenceFrame)
+
+        self.maximumDifferenceValOneFrame = resultsQFrame("Maximum difference value 1: ")
+        resultsLayout.addWidget(self.maximumDifferenceValOneFrame)
+
+        self.maximumDifferenceValTwoFrame = resultsQFrame("Maximum difference value 2: ")
+        resultsLayout.addWidget(self.maximumDifferenceValTwoFrame)
+
+        self.valueOverThreshFrame = resultsQFrame("Values over threshold: ")
+        resultsLayout.addWidget(self.valueOverThreshFrame)
+
+        self.pettittSigFrame = resultsQFrame("Pettitt test (significance): ")
+        resultsLayout.addWidget(self.pettittSigFrame)
+
+        self.pettittMaxFrame = resultsQFrame("Pettitt max position: ")
+        resultsLayout.addWidget(self.pettittMaxFrame)
+
+        self.missingValCodeFrame = resultsQFrame("Missing value code: ")
+        resultsLayout.addWidget(self.missingValCodeFrame)
+
+        self.eventThreshFrame = resultsQFrame("Event threshold: ")
+        resultsLayout.addWidget(self.eventThreshFrame)
 
 
 
@@ -328,6 +358,12 @@ class ContentWidget(QWidget):
             #https://www.youtube.com/watch?v=QY4KKG4TBFo im keeping this in the comments
             print("https://www.youtube.com/watch?v=QY4KKG4TBFo") #Are easter eggs allowed?
 
-            qualityCheck(self.selectedFile)
+            min, max, count, missing, mean = qualityCheck(self.selectedFile)
+            self.minimumFrame.contentLabel.setText(min)
+            self.maximumFrame.contentLabel.setText(max)
+            self.meanFrame.contentLabel.setText(mean)
+            self.numOfValuesFrame.contentLabel.setText(count)
+            self.missingFrame.contentLabel.setText(missing)
+            
         else:
             print("work in progress, pardon our dust")

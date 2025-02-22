@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import (QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSi
                              QLineEdit, QCheckBox)
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QPalette, QColor, QIcon
-
+from QualityControl import qualityCheck
 # Define the name of the module for display in the content area
 moduleName = "Quality Control"
 
@@ -297,7 +297,6 @@ class ContentWidget(QWidget):
 
 
 
-        #Blank frame to allow placement wherever I want, without it everything tries to expand down towards the footer, looks horrible
        
         # Add a spacer to ensure content is properly spaced
         titleLayout.addStretch()
@@ -305,11 +304,13 @@ class ContentWidget(QWidget):
 
     def selectFile(self):
         #Don't know which files it needs to get, will figure out later
-        fileName = QFileDialog.getOpenFileName(self, "Select file", 'predictand files', "DAT Files (*.DAT)")
+        
         #Update correct label depending on button pressed
         if self.sender().objectName() == "check file":
+            fileName = QFileDialog.getOpenFileName(self, "Select file", 'predictand files', "DAT Files (*.DAT)")
             self.selectedFile= self.updateLabels(self.selectedFileLabel, fileName[0])
         elif self.sender().objectName() == "outlier file":
+            fileName = QFileDialog.getOpenFileName(self, "Select file", 'SDSM-REFRESH', "Text Files (*.txt)")
             self.selectedOutlier = self.updateLabels(self.selectedOutlierLabel, fileName[0])
 
     def updateLabels(self, label, fileName):
@@ -326,5 +327,7 @@ class ContentWidget(QWidget):
         if button == "Check File":
             #https://www.youtube.com/watch?v=QY4KKG4TBFo im keeping this in the comments
             print("https://www.youtube.com/watch?v=QY4KKG4TBFo") #Are easter eggs allowed?
+
+            qualityCheck(self.selectedFile)
         else:
             print("work in progress, pardon our dust")

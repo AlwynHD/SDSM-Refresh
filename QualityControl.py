@@ -178,7 +178,7 @@ def outliersID():
     message = str(outlierCount) + " outliers identified and saved to file."
     print(message)
 
-def qualityCheck():
+def qualityCheck(selectedFile):
     if not checkForFile(selectedFile, "You must select a file to check first."):
         return
     
@@ -322,5 +322,6 @@ def pettittTest(pettittArray, ptPercent):
 
         if pettitt < 0.05:
             print("max position: " + str(petMatrix[maxPos][5]))
-        
-qualityCheck()
+if __name__ == '__main__':
+    #Module tests go here
+    qualityCheck(selectedFile)

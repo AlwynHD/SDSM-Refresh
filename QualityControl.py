@@ -46,7 +46,7 @@ def checkThreshold(value):
 
 #endregion
 
-def dailyMeans():
+def dailyMeans(selectedFile):
     if not checkForFile(selectedFile, "You must select a file to check first"):
         return
     
@@ -177,6 +177,8 @@ def outliersID(selectedFile, outlierFile):
 
     message = str(outlierCount) + " outliers identified and saved to file."
     print(message)
+    return message
+    
 
 def qualityCheck(selectedFile):
     if not checkForFile(selectedFile, "You must select a file to check first."):

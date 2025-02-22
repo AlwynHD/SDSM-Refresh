@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import (QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSi
                              QLineEdit, QCheckBox, QMessageBox)
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QPalette, QColor, QIcon
-from QualityControl import qualityCheck, outliersID
+from QualityControl import qualityCheck, outliersID, dailyMeans
 # Define the name of the module for display in the content area
 moduleName = "Quality Control"
 
@@ -377,9 +377,17 @@ class ContentWidget(QWidget):
            
         elif button == "Outliers":
             try:
-                outliersID(self.selectedFile, self.selectedOutlier)
+                message = outliersID(self.selectedFile, self.selectedOutlier)
+                confirmBox = QMessageBox()
+                confirmBox.setWindowTitle("Outlier Results")
+                confirmBox.setText("Outliers Identified")
+                confirmBox.setIcon(QMessageBox.Information)
+                confirmBox.setInformativeText(message)
+                confirmBox.exec_()
             except FileNotFoundError:
                 throwError("File Error", "Please ensure predictand and output files are selected.")
+        elif button == "Daily Stats":
+            print("woooo")
 
             
         else:

@@ -8,6 +8,8 @@ from os import listdir
 # Define the name of the module for display in the content area
 moduleName = "Calibrate Model"
 
+
+
 class borderedQFrame(QFrame):
     def __init__(self):
         super().__init__()
@@ -219,6 +221,175 @@ class ContentWidget(QWidget):
         
         contentAreaLayout.addWidget(selectPredictorsFrame)
 
+        optionsFrame = QFrame()
+        optionsFrame.setFrameStyle(QFrame.NoFrame)   
+        optionsFrame.setBaseSize(200,400)
+
+
+
+        #Layout for selectPredictors frame
+        optionsLayout = QVBoxLayout()
+        optionsLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
+        optionsLayout.setSpacing(0)  # No spacing between elements
+        optionsFrame.setStyleSheet("background-color: #D3D3D3;")
+        optionsFrame.setLayout(optionsLayout)
+        
+        contentAreaLayout.addWidget(optionsFrame)
+
+        modelProcessFrame = QFrame()
+        modelProcessFrame.setFrameStyle(QFrame.NoFrame)   
+        modelProcessFrame.setBaseSize(200,100)
+
+        #Layout for selectPredictors frame
+        modelProcessLayout = QHBoxLayout()
+        modelProcessLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
+        modelProcessLayout.setSpacing(0)  # No spacing between elements
+        modelProcessFrame.setStyleSheet("background-color: #D3D3D3;")
+        modelProcessFrame.setLayout(modelProcessLayout)
+        
+        optionsLayout.addWidget(modelProcessFrame)
+
+        modelTypeFrame = borderedQFrame()
+        modelTypeFrame.setFrameStyle(QFrame.NoFrame)   
+        modelTypeFrame.setBaseSize(200,100)
+
+        #Layout for selectPredictors frame
+        modelTypeLayout = QVBoxLayout()
+        modelTypeLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
+        modelTypeLayout.setSpacing(0)  # No spacing between elements
+        modelTypeFrame.setStyleSheet("background-color: #D3D3D3;")
+        modelTypeFrame.setLayout(modelTypeLayout)
+        
+        modelProcessLayout.addWidget(modelTypeFrame)
+
+        processFrame = borderedQFrame()
+        processFrame.setFrameStyle(QFrame.NoFrame)   
+        processFrame.setBaseSize(200,100)
+
+        #Layout for selectPredictors frame
+        processLayout = QVBoxLayout()
+        processLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
+        processLayout.setSpacing(0)  # No spacing between elements
+        processFrame.setStyleSheet("background-color: #D3D3D3;")
+        processFrame.setLayout(processLayout)
+        
+        modelProcessLayout.addWidget(processFrame)
+
+
+        autoregressionResidualFrame = QFrame()
+        autoregressionResidualFrame.setFrameStyle(QFrame.NoFrame)   
+        autoregressionResidualFrame.setBaseSize(200,100)
+
+        #Layout for selectPredictors frame
+        autoregressionResidualLayout = QHBoxLayout()
+        autoregressionResidualLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
+        autoregressionResidualLayout.setSpacing(0)  # No spacing between elements
+        autoregressionResidualFrame.setStyleSheet("background-color: #D3D3D3;")
+        autoregressionResidualFrame.setLayout(autoregressionResidualLayout)
+        
+        optionsLayout.addWidget(autoregressionResidualFrame)
+
+        autoregressionFrame = borderedQFrame()
+        autoregressionFrame.setFrameStyle(QFrame.NoFrame)   
+        autoregressionFrame.setBaseSize(200,100)
+
+        #Layout for selectPredictors frame
+        autoregressionLayout = QHBoxLayout()
+        autoregressionLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
+        autoregressionLayout.setSpacing(0)  # No spacing between elements
+        autoregressionFrame.setStyleSheet("background-color: #D3D3D3;")
+        autoregressionFrame.setLayout(autoregressionLayout)
+        
+        autoregressionResidualLayout.addWidget(autoregressionFrame)
+
+        residualFrame = borderedQFrame()
+        residualFrame.setFrameStyle(QFrame.NoFrame)   
+        residualFrame.setBaseSize(200,100)
+
+        #Layout for selectPredictors frame
+        residualLayout = QHBoxLayout()
+        residualLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
+        residualLayout.setSpacing(0)  # No spacing between elements
+        residualFrame.setStyleSheet("background-color: #D3D3D3;")
+        residualFrame.setLayout(residualLayout)
+        
+        autoregressionResidualLayout.addWidget(residualFrame)
+
+        chowHistogramFrame = QFrame()
+        chowHistogramFrame.setFrameStyle(QFrame.NoFrame)   
+        chowHistogramFrame.setBaseSize(200,100)
+
+
+
+        #Layout for selectPredictors frame
+        chowHistogramLayout = QHBoxLayout()
+        chowHistogramLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
+        chowHistogramLayout.setSpacing(0)  # No spacing between elements
+        chowHistogramFrame.setStyleSheet("background-color: #D3D3D3;")
+        chowHistogramFrame.setLayout(chowHistogramLayout)
+        
+        optionsLayout.addWidget(chowHistogramFrame)
+
+        chowTestFrame = borderedQFrame()
+        chowTestFrame.setFrameStyle(QFrame.NoFrame)   
+        chowTestFrame.setBaseSize(200,100)
+
+        #Layout for selectPredictors frame
+        chowTestLayout = QHBoxLayout()
+        chowTestLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
+        chowTestLayout.setSpacing(0)  # No spacing between elements
+        chowTestFrame.setStyleSheet("background-color: #D3D3D3;")
+        chowTestFrame.setLayout(chowTestLayout)
+
+        chowHistogramLayout.addWidget(chowTestFrame)
+
+        histogramFrame = borderedQFrame()
+        histogramFrame.setFrameStyle(QFrame.NoFrame)   
+        histogramFrame.setBaseSize(200,100)
+
+        #Layout for selectPredictors frame
+        histogramLayout = QHBoxLayout()
+        histogramLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
+        histogramLayout.setSpacing(0)  # No spacing between elements
+        histogramFrame.setStyleSheet("background-color: #D3D3D3;")
+        histogramFrame.setLayout(histogramLayout)
+
+        chowHistogramLayout.addWidget(histogramFrame)
+
+        deTrendFrame = borderedQFrame()
+        deTrendFrame.setFrameStyle(QFrame.NoFrame)   
+        deTrendFrame.setBaseSize(200,100)
+        #Wait, I could just make a frame wrapper that does this for me
+
+
+        #Layout for selectPredictors frame
+        deTrendLayout = QHBoxLayout()
+        deTrendLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
+        deTrendLayout.setSpacing(0)  # No spacing between elements
+        deTrendFrame.setStyleSheet("background-color: #D3D3D3;")
+        deTrendFrame.setLayout(deTrendLayout)
+        
+        optionsLayout.addWidget(deTrendFrame)
+
+        crossValFrame = borderedQFrame()
+        crossValFrame.setFrameStyle(QFrame.NoFrame)   
+        crossValFrame.setBaseSize(200,100)
+        #Wait, I could just make a frame wrapper that does this for me
+
+
+        #Layout for selectPredictors frame
+        crossValLayout = QHBoxLayout()
+        crossValLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
+        crossValLayout.setSpacing(0)  # No spacing between elements
+        crossValFrame.setStyleSheet("background-color: #D3D3D3;")
+        crossValFrame.setLayout(crossValLayout)
+        
+        optionsLayout.addWidget(crossValFrame)
+
+
+
+
+
         #Actual Content
 
 
@@ -259,6 +430,35 @@ class ContentWidget(QWidget):
             predictorsScrollLayout.addWidget(predictorScrollLabelButton) 
         
         predictorsScrollArea.setWidget(predictorsScrollFrame)
+
+        #Radio buttons for model type
+
+        #Process radio buttons
+        modelRadioButtonGroup = QButtonGroup()
+        modelRadioButtonGroup.setExclusive(True)
+        monthlyRadioButton = QRadioButton("Monthly")
+        monthlyRadioButton.setChecked(True)
+        seasonalRadioButton = QRadioButton("Seasonal")
+        annualRadioButton = QRadioButton("Annual")
+        modelRadioButtonGroup.addButton(monthlyRadioButton)
+        modelRadioButtonGroup.addButton(seasonalRadioButton)
+        modelRadioButtonGroup.addButton(annualRadioButton)
+
+        modelTypeLayout.addWidget(monthlyRadioButton)
+        modelTypeLayout.addWidget(seasonalRadioButton)
+        modelTypeLayout.addWidget(annualRadioButton)
+
+        #Process radio buttons
+        processRadioButtonGroup = QButtonGroup()
+        processRadioButtonGroup.setExclusive(True)
+        unconditionalRadioButton = QRadioButton("Unconditional")
+        unconditionalRadioButton.setChecked(True)
+        conditionalRadioButton = QRadioButton("Conditional")
+        processRadioButtonGroup.addButton(unconditionalRadioButton)
+        processRadioButtonGroup.addButton(conditionalRadioButton)
+
+        processLayout.addWidget(unconditionalRadioButton)
+        processLayout.addWidget(conditionalRadioButton)
 
 
         # Add a spacer to ensure content is properly spaced

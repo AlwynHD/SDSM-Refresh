@@ -6,6 +6,13 @@ from datetime import date
 def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegression):
     """
         Core Calibrate Model Function (v0.1.1)
+        applyStepwise -> Stepwise Tickbox
+        modelType -> Monthly/Seasonal/Annual (0/1/2), can change easily according to the will of the GUI Developer Gods
+        detrendOption -> Detrend Options. 0-> None, 1/2 -> Options. Code currently (falsely) assumes boolean input
+        parmOpt -> Conditional / Unconditional model, True / False respectively
+        autoRegression -> Autoregression tickbox
+        ----------------------------------------
+        More parameters coming soon!
     """
 
     ##Real comments will be added later

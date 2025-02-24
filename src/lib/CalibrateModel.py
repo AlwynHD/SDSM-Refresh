@@ -816,6 +816,7 @@ def detrendData():
     """
     Detrend Data Function
     -- Currently a placeholder
+    ----> Might be Coming Soon
     """
 
 def propogateUnconditional():
@@ -857,8 +858,167 @@ def calculateParameters():
     -- Presumably calculates parameters
     """
 
-def transformData():
+def transformData(modelTrans, yMatrix):
     """
-    Transform Data function
-    -- Currently a placeholder
+        Transform data?
+        transforms data in Y Matrix according to transformation required.  Amends (reduces) X matrix too if some values are missing
+        modelTrans ->  Option from None (1), 4th Root (2), Natural Log (3), Inverse Normal (4), Box Con (5)
+        yMatrix -> 'Y Matrix - X declared globally so registration code entered
+        Likely doesn't work - was done right at the start
     """
+    ## N.B. Multiple brackets need changing from () to []
+
+    ### GLOBALS ###
+    GlobalMissingCode = -999
+    yMatrixAboveThreshPos = np.array()
+    xMatrix = np.array()
+    ### ####### ###
+
+    #If modelTrans = 1 then do nothing -> no transformation
+    if modelTrans == 2 or modelTrans == 3: #4th Root or Log selected
+        missing = 0
+        for i in range(len(yMatrix)):
+            #[arr[1] for arr in masterarr if cond = ???]
+            ##max(values, key=len)
+            if yMatrix[i] >= 0:
+                if modelTrans == 2:
+                    yMatrix[i] = yMatrix[i] ^ 0.25
+                else:
+                    yMatrix[i] = np.log(yMatrix[i])
+            else:
+                yMatrix[i] = GlobalMissingCode
+                yMatrixAboveThreshPos[i] = GlobalMissingCode   #     'this resords position of y values for detrend option - needs reducing too
+                missing = missing + 1
+            #next i
+        if missing > 0:  #Remove missing valus
+            if len(yMatrix) - missing > 10:   #'make sure there are enough data
+                newYMatrix = np.ndarray((len(yMatrix) - missing))
+                newXMatrix = np.array()
+                newYMatrixAbove = np.array()
+                count = 0
+                for i in range(len(yMatrix)): ##Drop unwanted arrayz
+                    if yMatrix[i] != GlobalMissingCode:
+                        newYMatrix[count] = yMatrix[i]
+                        newYMatrixAbove[count] = yMatrixAboveThreshPos[i]
+                        for j in range(len(xMatrix[0])): #XCols
+                            newXMatrix[count, j] = xMatrix(i, j)
+                       #Next j
+                        count += 1
+                    #End If
+                #Next i              'newXMatrix and newYMatrix and newYMatrixAbove now have good data in them
+                
+                yMatrix = newYMatrix.copy()
+                xMatrix = newXMatrix.copy()
+                yMatrixAboveThreshPos = newYMatrixAbove.copy()
+        
+        #End If
+    elif modelTrans == 5: #          'box cox - so need to find best lamda of YMatrix
+        #x = PeriodWorkingOn         'for testing!
+        minSoFar = 9999                 #'establish right shift for box cox transform as min value in y matrix if -ve.  Makes all values +ve
+        for i in range(1,len(yMatrix.Rows)):
+            if yMatrix[i, 0] < minSoFar:
+                minSoFar = yMatrix[i, 0]
+        #Next i
+        if minSoFar >= 0: 
+            ShiftRight = 0
+        if minSoFar < 0:
+            ShiftRight = np.abs(minSoFar)
+        for i in range(1, len(yMatrix)):              #'now shift all Y matrix data right to make sure it's +ve before we calculate lamda
+            yMatrix[i, 0] = yMatrix[i, 0] + ShiftRight
+        #Next i
+        insufficientData = False    #'assume enough data unless FindMinLamda tells us otherwise
+        lamda = findMinLamda(-2, 2, 0.25, yMatrix)  #'find a value between -2 to +2
+        if lamda != GlobalMissingCode: #  'now home in a bit more
+            lamda = findMinLamda((lamda - 0.25), (lamda + 0.25), 0.1, yMatrix)
+        else:
+            message = "Sorry an error has occurred calculating the optimum lamda transform."
+            if insufficientData: message = message & " There are insufficient data for a Box Cox transformation.  Try an alternative transformation."
+            #MsgBox message, 0 + vbCritical, "Error Message"
+            #insert error here
+        #End If
+        if lamda != GlobalMissingCode: #'home in a bit further
+            lamda = findMinLamda((lamda - 0.1), (lamda + 0.1), 0.01, yMatrix)
+        else:
+            message = "Sorry an error has occurred calculating the optimum lamda transform."
+            if insufficientData: message = message & " There are insufficient data for a Box Cox transformation.  Try an alternative transformation."
+            #MsgBox message, 0 + vbCritical, "Error Message"
+            #insert error here
+        #End If
+            
+        if lamda == GlobalMissingCode:
+            message = "Sorry an error has occurred calculating the optimum lamda transform."
+            if insufficientData: message = message & " There are insufficient data for a Box Cox transformation.  Try an alternative transformation."
+            #MsgBox message, 0 + vbCritical, "Error Message"
+            #insert error here
+        #End If
+        
+        for value in yMatrix:
+            if lamda == 0:                          # 'apply box cox lamda transform - do some checks for division by zero first
+                if value != 0:
+                    value = np.log(value) - ShiftRight         #'shift it back to left after transform
+                else:
+                    value = -5 - ShiftRight     #'cannot log zero so -5 represents log of a very small number
+                #End If
+            else:
+                value = (((value ^ lamda) - 1) / lamda) - ShiftRight     #'shift it back to left after transform
+            #End If
+        #Next i
+    else:        #'Inverse normal selected: model trans=4
+        
+        rankMatrix = np.zeros(2, len(yMatrix)) #'add an extra column     
+        rankMatrix[0] = yMatrix.copy()      #'copy Y matrix into RankMatrix
+        reSampleMatrix = yMatrix.copy()     #'save these data in global matrix so can be resampled when untransforming
+
+        for i in range(1, len(rankMatrix)):        #'set column two to a running count
+            rankMatrix[1, i - 1] = i
+        #Next i
+        
+        rankMatrix.sort(0)              #'sort ascending on first column ie. on data column
+        
+        #            'Locate lower bound to begin estimation of cdf
+        #            'cdf is computed as r/(n+1) where r is the rank and n is sample size
+        zStart = 1 / (len(rankMatrix) + 1)
+        delta = 0.0001
+        area = 0.5
+        fx = 0
+        fxOld = np.exp(-(fx ^ 2) / 2) / np.sqrt(2 * np.pi)         #'normal
+        i = 1 #Counter
+        while ((i <= 50000) and (area > zStart)):
+            fx = fx - delta
+            fxNew = np.exp(-(fx ^ 2) / 2) / np.sqrt(2 * np.pi)         #'normal
+            area = area - (delta * 0.5 * (fxOld + fxNew))
+            fxOld = fxNew
+            i = i + 1
+        #endwhile
+
+        #'Compute cdf between lower and upper limit
+        limit = fx
+        area = zStart
+        rankMatrix[0, 0] = limit
+        percentileChange = (1 - (area * 2)) / (len(rankMatrix[0]) - 1)
+        cp = area
+        fxOld = np.exp(-(fx ^ 2) / 2) / np.sqrt(2 * np.pi)         #'normal
+
+        for i in range(2, len(rankMatrix[0])): #2 To RankMatrix.Rows
+            cp = cp + percentileChange
+            j = 1
+            while ((j <= 50000) and (area < cp)):
+                fx = fx + delta
+                fxNew = np.exp(-(fx ^ 2) / 2) / np.sqrt(2 * np.pi)         #'normal
+                area = area + (delta * 0.5 * (fxOld + fxNew))
+                fxOld = fxNew
+                if area >= cp:
+                    rankMatrix[0, i - 1] = fx
+                j = j + 1
+            #Wend
+        #Next i
+        
+        rankMatrix.sort(1)       #'sort back into temporal sequence and copy data back to YMatrix
+        yMatrix = rankMatrix[0].copy
+        #For i = 1 To RankMatrix.Rows
+        #    YMatrix(i - 1, 0) = RankMatrix(i - 1, 0)
+        #Next i
+
+    #End If
+    
+    #return Something here

@@ -5,7 +5,7 @@ from datetime import date
 
 def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegression):
     """
-        Core Calibrate Model Function (v0.1.0)
+        Core Calibrate Model Function (v0.1.1)
     """
 
     ##Real comments will be added later

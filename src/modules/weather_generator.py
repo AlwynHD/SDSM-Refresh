@@ -1,132 +1,185 @@
-from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QSizePolicy, QFrame, QLabel, QFileDialog, QLineEdit
-)
+from PyQt5.QtWidgets import (QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, 
+                             QFrame, QLabel, QLineEdit, QFileDialog, QGroupBox, 
+                             QGridLayout, QListWidget)
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QPalette, QColor, QIcon
-
-# Define the name of the module for display in the content area
-moduleName = "Weather Generator"
+from PyQt5.QtGui import QFont
 
 class ContentWidget(QWidget):
     """
-    A widget to display the Weather Generator screen (UI/UX).
-    Includes a buttonBar at the top and a contentArea for displaying details.
+    A polished and modernized UI for the Weather Generator with an improved structure and user experience.
     """
     def __init__(self):
-        """
-        Initialize the Weather Generator screen UI/UX, setting up the layout, buttonBar, and contentArea.
-        """
         super().__init__()
 
-        # Main layout for the entire widget
+        # Main layout
         mainLayout = QVBoxLayout()
-        mainLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
-        mainLayout.setSpacing(0)  # No spacing between elements
-        self.setLayout(mainLayout)  # Apply the main layout to the widget
+        mainLayout.setContentsMargins(30, 30, 30, 30)
+        mainLayout.setSpacing(20)
+        self.setLayout(mainLayout)
 
-        # --- Button Bar (Toolbar) ---
-        buttonBarLayout = QHBoxLayout()
-        buttonBarLayout.setSpacing(0)  
-        buttonBarLayout.setContentsMargins(0, 0, 0, 0)  
-        buttonBarLayout.setAlignment(Qt.AlignLeft)  
+        # --- File Selection Section ---
+        fileSelectionGroup = QGroupBox("File Selection")
+        fileSelectionLayout = QGridLayout()
 
-        buttonNames = ["Reset", "Settings"]  
-        for name in buttonNames:
-            button = QPushButton(name)  
-            button.setIcon(QIcon("placeholder_icon.png"))  
-            button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)  
-            button.setFixedSize(50, 50)  
-            button.setStyleSheet(
-                "border: 1px solid lightgray; background-color: #F0F0F0; text-align: left;"
-            )  
-            buttonBarLayout.addWidget(button)  
+        self.parFileButton = QPushButton("📂 Select Parameter File")
+        self.parFileButton.clicked.connect(self.selectPARFile)
+        self.parFileText = QLabel("Not selected")
 
-        buttonBarFrame = QFrame()
-        buttonBarFrame.setLayout(buttonBarLayout)  
-        buttonBarFrame.setFrameShape(QFrame.NoFrame)  
-        buttonBarFrame.setFixedHeight(50)  
-        buttonBarFrame.setStyleSheet("background-color: #A9A9A9;")  
-        mainLayout.addWidget(buttonBarFrame)  
+        self.outFileButton = QPushButton("💾 Save To File")
+        self.outFileButton.clicked.connect(self.selectOutputFile)
+        self.outFileText = QLabel("Not selected")
 
-        # --- Content Area ---
-        contentAreaFrame = QFrame()
-        contentAreaFrame.setFrameShape(QFrame.NoFrame)  
+        fileSelectionLayout.addWidget(self.parFileButton, 0, 0)
+        fileSelectionLayout.addWidget(self.parFileText, 0, 1)
+        fileSelectionLayout.addWidget(self.outFileButton, 1, 0)
+        fileSelectionLayout.addWidget(self.outFileText, 1, 1)
 
-        contentAreaLayout = QVBoxLayout()
-        contentAreaLayout.setContentsMargins(20, 20, 20, 20)  
-        contentAreaLayout.setSpacing(10)  
-        contentAreaFrame.setLayout(contentAreaLayout)  
+        fileSelectionGroup.setLayout(fileSelectionLayout)
+        mainLayout.addWidget(fileSelectionGroup)
 
-        contentAreaFrame.setStyleSheet("background-color: #D3D3D3;")
-        mainLayout.addWidget(contentAreaFrame)  
+        # --- Predictor Information Section ---
+        predInfoGroup = QGroupBox("Predictor Information")
+        predInfoLayout = QGridLayout()
 
-        # --- Input File Selection ---
-        self.inputFileButton = QPushButton("Select Input File")
-        self.inputFileButton.clicked.connect(self.selectInputFile)
-        self.inputFileLabel = QLabel("File: Not selected")
+        self.noOfPredText = QLabel("📊 No. of predictors: 0")
+        self.autoRegressLabel = QLabel("🔄 Autoregression: Unknown")
+        self.processLabel = QLabel("⚙️ Process: Unknown")
+        self.rStartText = QLabel("📅 Record Start: Unknown")
+        self.rLengthText = QLabel("📏 Record Length: Unknown")
 
-        contentAreaLayout.addWidget(self.inputFileButton)
-        contentAreaLayout.addWidget(self.inputFileLabel)
+        self.viewPredictorsButton = QPushButton("👁️ View Predictors")
+        self.viewPredictorsButton.clicked.connect(self.viewPredictors)
+        
+        predInfoLayout.addWidget(self.noOfPredText, 0, 0)
+        predInfoLayout.addWidget(self.autoRegressLabel, 0, 1)
+        predInfoLayout.addWidget(self.processLabel, 1, 0)
+        predInfoLayout.addWidget(self.rStartText, 1, 1)
+        predInfoLayout.addWidget(self.rLengthText, 2, 0)
+        predInfoLayout.addWidget(self.viewPredictorsButton, 2, 1)
 
-        # --- Select Predictor Directory ---
-        self.predictorDirButton = QPushButton("Select Predictor Directory")
-        contentAreaLayout.addWidget(self.predictorDirButton)
+        predInfoGroup.setLayout(predInfoLayout)
+        mainLayout.addWidget(predInfoGroup)
 
-        # --- Predictor Information ---
-        self.numPredictorsLabel = QLabel("No. of predictors: 0")
-        self.autoRegressionLabel = QLabel("Autoregression: Unknown")
-        self.processLabel = QLabel("Process: Unknown")
-        self.recordStartLabel = QLabel("Record Start: Unknown")
-        self.recordLengthLabel = QLabel("Record Length: Unknown")
+        # --- Predictors List Section ---
+        predictorsGroup = QGroupBox("Predictors List")
+        predictorsLayout = QVBoxLayout()
+        
+        self.predictorList = QListWidget()
+        predictorsLayout.addWidget(self.predictorList)
+        
+        predictorsGroup.setLayout(predictorsLayout)
+        mainLayout.addWidget(predictorsGroup)
 
-        contentAreaLayout.addWidget(self.numPredictorsLabel)
-        contentAreaLayout.addWidget(self.autoRegressionLabel)
-        contentAreaLayout.addWidget(self.processLabel)
-        contentAreaLayout.addWidget(self.recordStartLabel)
-        contentAreaLayout.addWidget(self.recordLengthLabel)
+        # --- Synthesis Parameters ---
+        synthesisGroup = QGroupBox("Synthesis Parameters")
+        synthesisLayout = QGridLayout()
 
-        # --- Synthesis Section ---
-        self.synthesisStartLabel = QLabel("Synthesis Start:")
-        self.synthesisStartInput = QLineEdit()
-        self.synthesisLengthLabel = QLabel("Synthesis Length:")
-        self.synthesisLengthInput = QLineEdit()
+        self.fStartText = QLineEdit()
+        self.fStartText.setPlaceholderText("DD/MM/YYYY")
+        self.fLengthText = QLineEdit()
+        self.fLengthText.setPlaceholderText("Enter number of days")
+        
+        self.eSize = QLineEdit("20")
+        self.eSize.setPlaceholderText("1-100")
+        
+        synthesisLayout.addWidget(QLabel("📅 Synthesis Start Date:"), 0, 0)
+        synthesisLayout.addWidget(self.fStartText, 0, 1)
+        synthesisLayout.addWidget(QLabel("📏 Synthesis Length:"), 0, 2)
+        synthesisLayout.addWidget(self.fLengthText, 0, 3)
+        synthesisLayout.addWidget(QLabel("📊 Ensemble Size:"), 1, 0)
+        synthesisLayout.addWidget(self.eSize, 1, 1)
 
-        contentAreaLayout.addWidget(self.synthesisStartLabel)
-        contentAreaLayout.addWidget(self.synthesisStartInput)
-        contentAreaLayout.addWidget(self.synthesisLengthLabel)
-        contentAreaLayout.addWidget(self.synthesisLengthInput)
+        synthesisGroup.setLayout(synthesisLayout)
+        mainLayout.addWidget(synthesisGroup)
 
-        # --- Output File Selection ---
-        self.outputFileButton = QPushButton("Select Output File")
-        self.outputFileButton.clicked.connect(self.selectOutputFile)
-        self.outputFileLabel = QLabel("File: Not selected")
+        # --- Progress Bar (hidden by default) ---
+        self.progressPicture = QFrame()
+        self.progressPicture.setFrameShape(QFrame.Box)
+        self.progressPicture.setFixedHeight(30)
+        self.progressPicture.setVisible(False)
+        mainLayout.addWidget(self.progressPicture)
 
-        contentAreaLayout.addWidget(self.outputFileButton)
-        contentAreaLayout.addWidget(self.outputFileLabel)
+        # --- Buttons ---
+        buttonLayout = QHBoxLayout()
+        
+        self.synthesizeButton = QPushButton("🚀 Synthesize Data")
+        self.synthesizeButton.clicked.connect(self.synthesizeData)
+        self.synthesizeButton.setStyleSheet("background-color: #4CAF50; color: white; font-weight: bold;")
+        
+        self.resetButton = QPushButton("🔄 Reset")
+        self.resetButton.clicked.connect(self.reset_all)
+        self.resetButton.setStyleSheet("background-color: #F44336; color: white; font-weight: bold;")
+        
+        buttonLayout.addWidget(self.synthesizeButton)
+        buttonLayout.addWidget(self.resetButton)
+        mainLayout.addLayout(buttonLayout)
 
-        # --- Control Buttons ---
-        controlLayout = QHBoxLayout()
-        self.runButton = QPushButton("Run Simulation")
-        self.cancelButton = QPushButton("Cancel")
-        controlLayout.addWidget(self.runButton)
-        controlLayout.addWidget(self.cancelButton)
-        contentAreaLayout.addLayout(controlLayout)
-
-        # --- Auto Resize ---
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-
-    def selectInputFile(self):
-        """
-        Opens a file dialog to select an input file and updates the label.
-        """
-        filePath, _ = QFileDialog.getOpenFileName(self, "Select Input File", "", "All Files (*)")
-        if filePath:
-            self.inputFileLabel.setText(f"File: {filePath}")
+    def selectPARFile(self):
+        """Opens a file dialog to select a PAR file."""
+        file_name, _ = QFileDialog.getOpenFileName(self, "Select Parameter File", "", "PAR Files (*.PAR);;All Files (*.*)")
+        if file_name:
+            self.parFileText.setText(f"📂 {file_name}")
+            # In a real application, you would parse the PAR file and update the UI fields
 
     def selectOutputFile(self):
-        """
-        Opens a file dialog to select an output file and updates the label.
-        """
-        filePath, _ = QFileDialog.getSaveFileName(self, "Select Output File", "", "All Files (*)")
-        if filePath:
-            self.outputFileLabel.setText(f"File: {filePath}")
+        """Opens a file dialog to select an output file."""
+        file_name, _ = QFileDialog.getSaveFileName(self, "Save To File", "", "OUT Files (*.OUT);;All Files (*.*)")
+        if file_name:
+            self.outFileText.setText(f"💾 {file_name}")
+            
+    def viewPredictors(self):
+        """Loads and displays predictors from the PAR file."""
+        # In a real application, this would read the PAR file and populate the predictorList
+        if self.parFileText.text() != "Not selected":
+            self.predictorList.clear()
+            # Example items for demonstration
+            self.predictorList.addItem("Predictand.DAT")
+            self.predictorList.addItem("Predictor1.DAT")
+            self.predictorList.addItem("Predictor2.DAT")
+            
+            # Update predictor info
+            self.noOfPredText.setText("📊 No. of predictors: 2")
+            self.autoRegressLabel.setText("🔄 Autoregression: False")
+            self.processLabel.setText("⚙️ Processssss: Conditional")
+            self.rStartText.setText("📅 Record Start: 01/01/1961")
+            self.rLengthText.setText("📏 Record Length: 14610")
+    
+    def synthesizeData(self):
+        """Handles the synthesis of weather data."""
+        # Check input fields validity
+        if self.parFileText.text() == "Not selected":
+            # Show error message
+            print("You must select a parameter file first.")
+            return
+        
+        if self.outFileText.text() == "Not selected":
+            # Show error message
+            print("You must select a suitable output file to save to.")
+            return
+        
+        # Show progress
+        self.progressPicture.setVisible(True)
+        
+        # In a real application, this would process the data
+        # For now, just simulate progress
+        import time
+        time.sleep(1)
+        
+        # Hide progress
+        self.progressPicture.setVisible(False)
+        print("Synthesis completed.")
+    
+    def reset_all(self):
+        
+        """Resets all settings to default values."""
+        self.parFileText.setText("Not selected")
+        self.outFileText.setText("Not selected")
+        self.eSize.setText("20")
+        self.predictorList.clear()
+        self.noOfPredText.setText("📊 No. of predictors: 0")
+        self.autoRegressLabel.setText("🔄 Autoregression: Unknown")
+        self.processLabel.setText("⚙️ Process: Unknown")
+        self.rStartText.setText("📅 Record Start: Unknown")
+        self.rLengthText.setText("📏 Record Length: Unknown")
+        self.fStartText.setText("")
+        self.fLengthText.setText("")

@@ -244,7 +244,7 @@ def qualityCheck():
     else:
         pettitt = pettittTest(petArray, 90)
 
-    print("Min: " + str(min) + "\nMax: " + str(max) + "\nTotal Values: " + str(count) + "\nMissing Values: " + str(missing) + "\nMean: " + str(mean))
+    print("Min: " + str(min) + "\nMax: " + str(max) + "\nMean: " + str(mean) + "\nValues in file: " + str(count + missing) + "\nMissing Values: " + str(missing) + "\nGood Values: " + str(count) + "\nMean: " + str(mean) + "\nMax Difference: " + str(maxDifference) + "\nMax Differenece Value 1: " + str(maxDiffValue1) + "\nMax Differenece Value 2: " + str(maxDiffValue2) + "\nValues above threshold: " + str(threshCount) + "\nPettitt: " + str(pettitt) + "\nPettitt Max Pos: " + str(0) + "\nGlobal Missing Code: " + str(globalMissingCode) + "\nEvent Threshold: " + str(thresh))
 
 def pettittTest(pettittArray, ptPercent):
     currentDate = globalSDate

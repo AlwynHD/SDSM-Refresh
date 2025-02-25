@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>SDSM Help</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 20px; }
+      h1 { color: #00539C; }
+      h2 { color: #007ACC; }
+      ul { list-style-type: none; padding: 0; }
+      li { margin-bottom: 5px; }
+    </style>
+  </head>
+  <body>
+    <h1>SDSM Help Contents</h1>
+    <ul>
+      <li><a href="#IDH_Quality">Quality Control</a></li>
+      <li><a href="#IDH_Transform">Transform Data</a></li>
+      <li><a href="#IDH_Screen">Screen Variables</a></li>
+      <li><a href="#IDH_Calibrate">Calibrate Model</a></li>
+      <li><a href="#IDH_WeatherG">Weather Generator</a></li>
+      <li><a href="#IDH_SummaryStatistics">Summary Statistics</a></li>
+      <li><a href="#IDH_FrequencyAnalysis">Frequency Analysis</a></li>
+      <li><a href="#IDH_Generate">Scenario Generator</a></li>
+      <li><a href="#IDH_CompareResults">Compare Results</a></li>
+      <li><a href="#IDH_TimeSeries">Time Series Analysis</a></li>
+      <li><a href="#IDH_DataSettings">Data Settings</a></li>
+      <li><a href="#IDH_SystemSettings">System Settings</a></li>
+      <li><a href="#IDH_Literature">Literature</a></li>
+    </ul>
+    <hr>
+
+<div id="IDH_Quality">
+<h2>Quality Control</h2>
+<p>Identifies data file size, missing data codes, and calculates the mean, maximum and minimum values in the file.</p>
+<hr>
+</div>
+
+<div id="IDH_Transform">
+<h2>Transform Data</h2>
+<p>Transforms single or multi-column data files using standard functions (e.g., natural logs, squares, lags, binomials, etc.).  Also extracts ensemble members from a multi-column data file.</p>
+<hr>
+</div>
+
+<div id="IDH_Screen">
+  <h2>Screen Variables</h2>
+  <p>Identifying empirical relationships between gridded predictors (such as mean sea level pressure) and single site predictands (such as station precipitation) is central to all statistical downscaling methods.</p>
+  <p>The main purpose of the <strong>Screen Variables</strong> operation is to assist the user in the selection of appropriate downscaling predictor variables. This remains one of the most challenging stages in the development of any statistical downscaling model since the choice of predictors largely determines the character of the downscaled climate scenario. The decision process is also complicated by the fact that the explanatory power of individual predictor variables varies both spatially and temporally.</p>
+  <p><strong>Screen Variables</strong> performs three supporting tasks: seasonal correlation analysis, partial correlation analysis, and scatterplots. Ultimately, however, the User must decide whether or not the identified relationships are physically sensible for the site(s) in question.</p>
+  <p><strong>Select Predictand File</strong></p>
+  <p>The first step in the <strong>Screen Variables</strong> operation is the selection of the predictand and predictor files. The predictand file (e.g., observed daily maximum temperature, daily precipitation totals, etc.) must be supplied by the User, in SDSM format (i.e., single column, ASCII). Click on the <strong>Select Predictand File</strong> button. An <strong>Open</strong> file window will appear—browse through until the appropriate directory has been located. Then click on the required predictand data file.</p>
+  <p><strong>Data</strong></p>
+  <p>The <strong>Data</strong> menu on the left-hand side of the <strong>Screen Variables</strong> window allows the start and end dates of the analysis period to be changed. The default dates are held in the <strong>Settings</strong> page. If the start and end dates lie outside the permissible range, the User will be prompted to enter new values. Enter the start and end date of the required analysis period (this should fall between the first two dates). Note: the software assumes that the predictor and predictand files have the same start date and length.</p>
+  <p><strong>Select analysis period</strong></p>
+  <p>The User must choose a seasonal subset from the pull down window under <strong>Select analysis period</strong>. The available options are Annual (no seasonal sub-setting), Winter (December–February), Spring (March–May), Summer (June–August), Autumn (September–November), and individual months. The default analysis period is Annual.</p>
+  <p><strong>Predictor Variables</strong></p>
+  <p>Locate and select the desired predictor variables by choosing the correct drive from the pull down window in the centre of the screen. The directories available on this drive will then appear in the window directly above the drive window. Browse through until the appropriate directory is located. All files in this window are then listed above. To select a predictor, simply click on the file name—it will be highlighted in blue. To deselect a file, click on it again. The number of predictor variables chosen is shown beneath the window.</p>
+  <p><strong>Predictand</strong></p>
+  <p>The target variable, e.g., daily rainfall or maximum daily temperatures.</p>
+  <p><strong>Autoregression</strong></p>
+  <p>If the analysis is to include an autoregressive term, tick the Autoregressive term box. This forces SDSM to include the lagged predictand (one-day) as a predictor in the analysis.</p>
+  <p><strong>Process</strong></p>
+  <p>If the predictand depends on an intermediate occurrence process (e.g., precipitation amounts depend on wet-/dry-day occurrence) then click on <strong>Conditional</strong>; otherwise, select <strong>Unconditional</strong> (as in the case of maximum temperature).</p>
+  <p><strong>Significance Level</strong></p>
+  <p>Specify the significance level used to test the strength of predictor–predictand correlations. Insignificant correlation scores are omitted from the <strong>Results</strong> screen. The default is <em>p&lt;0.05 (5%)</em>.</p>
+  <p><strong>Analyse</strong></p>
+  <p>The <strong>Analyse</strong> button is used to investigate the percentage of variance explained by specific predictand–predictor pairs.</p>
+  <p><strong>Scatterplot</strong></p>
+  <p>The <strong>Scatter</strong> button is used for visual inspections of inter-variable behavior for specified sub-periods (annual, seasonal, or monthly). The resultant scatterplots indicate the nature of the association (linear, non-linear, etc.), whether data transformations may be needed, and the importance of outliers.</p>
+  <p><strong>Correlation</strong></p>
+  <p>The <strong>Correlation</strong> button is used to investigate the strength of inter-variable correlations for specified sub-periods (annual, seasonal, or monthly).</p>
+  <hr>
+</div>
+
+<div id="IDH_Calibrate">
+  <h2>Calibrate Model</h2>
+  <p>The <strong>Calibrate Model</strong> operation takes a user-specified predictand along with a set of predictor variables, and computes the parameters of multiple linear regression equations via the efficient dual simplex algorithm (forced entry method).</p>
+  <p>The User specifies the model structure: whether monthly, seasonal or annual sub-models are required; whether the process is unconditional or conditional. In <strong>Unconditional</strong> models a direct link is assumed between the predictors and predictand (e.g., local wind speeds may be a function of regional airflow indices). In <strong>Conditional</strong> models, there is an intermediate process between regional forcing and local weather (e.g., local precipitation amounts depend on wet-/dry-day occurrence, which in turn depend on regional-scale predictors such as humidity and atmospheric pressure). Furthermore, it is possible to apply standard transformations to the predictand in conditional models (see <strong>Advanced Settings</strong>), and/or to specific predictors (see <strong>Transform</strong>).</p>
+  <p><strong>Select Predictand File</strong></p>
+  <p>To begin model building, click on the <strong>Select Predictand File</strong> button in the top left-hand corner. An <strong>Open</strong> file window appears; browse through until the correct directory and file are reached, then click on the appropriate file name. The name of the file will then appear beneath the button. Note: predictand file names must have the extension *.DAT.</p>
+  <p><strong>Output File</strong></p>
+  <p>Opens the parameter file (*.PAR) to receive meta-data associated with the model calibration, along with downscaling model parameters.</p>
+  <p>To specify the name of the output parameter (*.PAR) file, click on the <strong>Output File</strong> button in the upper right-hand corner. A <strong>Save As</strong> file window appears. For maximum convenience, make sure that the parameter file is saved in the same directory as the predictor and predictand files for observed data. Type in an appropriate file name in the <strong>File name</strong> box then click on the <strong>Save</strong> button. The name of the parameter file will then be displayed beneath the <strong>Output File</strong> button.</p>
+  <p><strong>Data Period</strong></p>
+  <p>The <strong>Data Period</strong> menu on the left-hand side of the Screen Variables window allows the start and end dates of the analysis period to be changed. The default dates are held in the <strong>Settings</strong> page. If the start and end dates lie outside the permissible range, the User will be prompted to enter new values. Enter the start and end date of the required analysis period (this should fall between the first two dates). Note: the software assumes that the predictor and predictand files have the same start date and length.</p>
+  <p><strong>Predictor Variables</strong></p>
+  <p>Locate and select the desired predictor variables by choosing the correct drive from the pull down window in the centre of the screen. The directories available on this drive will then appear in the window directly above the drive window. Browse through until the appropriate directory is located. All files in this window are then listed in the window above. To select a predictor, simply click on the file name—it will be highlighted in blue. To deselect a file, click on it again, and it will no longer be highlighted. The number of predictor variables chosen is shown beneath this window.</p>
+  <p><strong>Model Type</strong></p>
+  <p>Specify whether individual downscaling models should be calibrated for each calendar month, climatological season or for the entire year. To determine the temporal resolution of the downscaling model, check either Monthly, Seasonal or Annual under the <strong>Model Type</strong> box. The default is Monthly. Note: the calibration procedure can take significantly longer for large data sets whenever Seasonal or Annual model types are selected.</p>
+  <p><strong>Process</strong></p>
+  <p>If the predictand depends on an intermediate occurrence process (e.g., precipitation amounts depend on wet-/dry-day occurrence) then click on <strong>Conditional</strong>, otherwise select <strong>Unconditional</strong> (as in the case of maximum temperature). Note: if the process is <strong>Conditional</strong> it is further possible to specify standard transformations in <strong>Advanced Settings</strong>.</p>
+  <p><strong>Autoregression</strong></p>
+  <p>If the model is to include an autoregressive term as a predictor (the lagged predictand by one day), the <strong>Include</strong> box should be ticked. This forces SDSM to include an autoregressive component in the model. If the model is conditional, the autoregressive component is only used for the unconditional part of the process—the conditional part does not include an autoregressive term as the autoregressive component may stem from several days previously.</p>
+  <p><strong>Residual Analysis</strong></p>
+  <p>Allows the User to select a number of residual statistics to be plotted once the calibration process has completed. The scatter plot produces a diagram showing residual versus modeled predictand; the histogram option produces a histogram chart of residuals (the number of bars can be adjusted by altering the value in the Number of categories box).</p>
+  <p><strong>Chow Test</strong></p>
+  <p>Calculates the Chow statistic for the model (i.e., tests for stationarity of the model).</p>
+  <p><strong>Cross Validation</strong></p>
+  <p>Applies a k-fold cross validation to the model. The data are split into <em>n</em> folds (<em>n</em> must be between 2 and 10). A model is constructed on <em>n</em>-1 of these folds and then tested on the excluded fold. This is repeated <em>n</em> times so that k-fold cross validation statistics can be calculated. These are the R-Squared, SE, Durbin-Watson, Spearman Rank and Bias for an unconditional model, and R-Squared, SE and proportion of days correctly identified as wet/dry; and the R-Squared, SE and Spearman Rank of wet days in a conditional process.</p>
+  <p><strong>Calibrate</strong></p>
+  <p>Click on the Calibrate button to initiate the model calibration algorithm. Hit <strong>Esc</strong> to abort the calibration process.</p>
+  <hr>
+</div>
+
+<div id="IDH_WeatherG">
+  <h2>Weather Generator</h2>
+  <p>The <strong>Weather Generator</strong> produces <u>ensembles</u> of synthetic daily weather series given <u>observed</u> (or re-analysis) atmospheric predictor variables. The procedure enables the verification of calibrated models (ideally using independent data) as well as the synthesis of artificial time series representing current climate conditions.</p>
+  <p>The User selects a calibrated model and SDSM automatically links all necessary predictor files to regression model weights. The User must also specify the period of record to be synthesized as well as the desired number of ensemble members. Synthetic time series are written to User defined output files for later statistical analysis and/or impacts modelling.</p>
+  <p><strong>Select Parameter File</strong></p>
+  <p>The first step in the synthesis process is the selection of the file containing model parameters and meta-data. Click on the <strong>Select Parameter File</strong> button in the top left-hand corner. An <strong>Open</strong> file window appears—browse through until the correct directory and file are reached, then click on the appropriate file. The file name will then appear beneath the button. Note: parameter file names must have the extension *.PAR.</p>
+  <p><strong>Select Predictor Directory</strong></p>
+  <p>Choose the appropriate directory where the predictors are located.</p>
+  <p><strong>Ensemble Size</strong></p>
+  <p>Decide how many ensembles of synthetic data are needed (up to a maximum of 100) and enter the desired value in the <strong>Ensemble Size</strong> box on the left-hand side of the window (the default is 20).</p>
+  <p><strong>View Details</strong></p>
+  <p>Lists the data files (*.DAT) containing the predictand (first line) and predictors (second line onwards) used to calibrate the statistical downscaling model. The number of predictor variables, <strong>Record Start</strong> date and <strong>Record Length</strong> (days) used for calibration are also displayed.</p>
+  <p><strong>Synthesis Start</strong></p>
+  <p>Enter the start date for simulation (this must be later than, or equal to, the predictor start date).</p>
+  <p><strong>Synthesis Length</strong></p>
+  <p>Enter the number of days for simulation (this must be less than, or equal to, the number of days in the predictor file(s)). The default values for <strong>Synthesis Start</strong> and <strong>Synthesis Length</strong> are used to simulate the period of record used for model calibration. If model verification is to be undertaken using independent data withheld from the calibration process, these values should be amended accordingly. If simulation of observed data based on the complete predictor record is needed, then the <strong>Record Start</strong> and <strong>Record Length</strong> values should be used.</p>
+  <p><strong>Select Output File</strong></p>
+  <p>To save synthetic data to a results file, select an appropriate directory and file name. Click on the <strong>Select Output File</strong> button in the top right-hand corner. An <strong>Open</strong> file window appears—browse until the correct directory is reached, then enter a suitable file name. The chosen file name will then appear beneath the button.</p>
+  <p><strong>Synthesize</strong></p>
+  <p>Click the button to initiate the downscaling model simulation. Press <strong>Esc</strong> to abort the process.</p>
+  <hr>
+</div>
+
+<div id="IDH_SummaryStatistics">
+  <h2>Summary Statistics</h2>
+  <p>Provides basic descriptive statistics for either SDSM derived scenarios or observed data. The <strong>Analyse Data</strong> screen can take as input downscaled climate data produced by either the <strong>Weather Generator</strong>, <strong>Scenario Generator</strong> options or <strong>observed</strong> data. In each case, the User must specify the required sub‐period and output file name (i.e. where the results will be saved). For model output, the ensemble member or mean must also be specified. In return, SDSM displays a suite of diagnostics (selected by the User from the <strong>Statistics</strong> page). The default statistics are monthly/seasonal/annual means, maxima, minima, sums, and variances. Note, sum is averaged by the number of years in the data set providing the monthly/seasonal/annual mean sum.</p>
+  <p>You can select the statistics you wish to generate by clicking on the Statistics button at the top of the screen. Note – to calculate monthly, seasonal, and annual statistics, the system begins by allocating the data to a number of ‘bins’ for each time period. These bins are then analysed to derive the selected statistics.</p>
+  <p><strong>Data Source</strong></p>
+  <p>Select whether modelled data or observed data are to be analysed – the default is modelled data.</p>
+  <p><strong>Select Input File</strong></p>
+  <p>The next step in the analysis process is the selection of an appropriate input file to analyse. This can be either a downscaled data (*.OUT) file or a data file containing observed data (for example, a *.TXT file). Click on the <strong>Select File</strong> button on the left-hand side. An <strong>Open</strong> file window appears; browse through until the correct directory and file are reached, then click on the appropriate file name. The file name will appear beneath the button.</p>
+  <p><strong>Select Output File</strong></p>
+  <p>Select an appropriate file to store the results of the analyses.</p>
+  <p><strong>Analysis start date</strong></p>
+  <p>Enter the start date for analysis (this must be later than, or equal to, the simulation start date when working with modelled data). The default is for the full simulation period.</p>
+  <p><strong>Analysis end date</strong></p>
+  <p>Enter the end date for analysis (this must be less than, or equal to, the end date of the modelled data, if appropriate). The default is the full simulation period.</p>
+  <p><strong>Modelled Scenario</strong></p>
+  <p>When analyzing modelled data there are some additional selections that can be made:</p>
+  <p><strong>View details</strong></p>
+  <p>Click the <strong>View Details</strong> button to display details of the simulation experiment (the number of predictors, the season and year length codes, the scenario start date, number of days in the simulation, and the ensemble size).</p>
+  <p><strong>Ensemble Size</strong></p>
+  <p>Check the <strong>Use Ensemble Mean?</strong> box if average statistics are required from all ensemble members, or enter an individual ensemble member number (integers 1 to 100) – up to the <strong>Ensemble Size</strong> specified in the simulation – in the <strong>Ensemble Member</strong> box. The default computes the ensemble mean of each statistic.</p>
+  <p><strong>Analyse</strong></p>
+  <p>Click on the <strong>Analyse</strong> button to initiate the statistical analysis of the data. Hit <strong>Esc</strong> to abort the process.</p>
+  <p><strong>Delta Statistics</strong></p>
+  <p>Click on the <strong>Delta Stats</strong> button to calculate Delta Statistics. Delta statistics take the form:</p>
+  <p><img src="HelpImages/1740510105_sdsmhelp-3.png" width="196" height="47" alt="" style="vertical-align:middle" /></p>
+  <p><img src="HelpImages/1740510105_sdsmhelp-4.png" width="198" height="47" alt="" style="vertical-align:middle" /></p>
+  <p><img src="HelpImages/1740510105_sdsmhelp-5.png" width="198" height="47" alt="" style="vertical-align:middle" /></p>
+  <p>If Percentage Difference is selected in <strong>Statistics</strong>, or:</p>
+  <p><img src="HelpImages/1740510105_sdsmhelp-6.png" width="147" height="24" alt="" style="vertical-align:middle" /></p>
+  <p><img src="HelpImages/1740510105_sdsmhelp-7.png" width="147" height="24" alt="" style="vertical-align:middle" /></p>
+  <p><img src="HelpImages/1740510105_sdsmhelp-8.png" width="147" height="24" alt="" style="vertical-align:middle" /></p>
+  <p>If Absolute Difference is selected.</p>
+  <p><em>V<sub>base</sub></em> is the mean of all ensembles (or a specific ensemble, if selected) for each statistic for the base period. Likewise, <em>V<sub>2020s</sub></em> is the mean of all ensembles (or a specific ensemble) for each statistic for period A, and so on for <em>V<sub>2050s</sub></em> and <em>V<sub>2080s</sub></em>.</p>
+  <hr>
+</div>
+
+<div id="IDH_FrequencyAnalysis">
+  <h2>Frequency Analysis</h2>
+  <p>The Frequency Analysis option allows the User to plot various distribution diagnostics for both modelled (ensembles) and observed data.</p>
+  <p><strong>File Selection</strong></p>
+  <p>The first stage in the process is to select an observed data file and/or modelled data file to analyse. By clicking on the appropriate selection button, an input dialogue window appears in which the desired files can be selected.</p>
+  <p><strong>Analysis Period</strong></p>
+  <p>The second stage of the process is to enter the analysis period by entering the appropriate start and end dates in the <strong>Analysis Period</strong> box. Note that observed data are assumed to follow natural calendar years (366 days every fourth year), while modelled data take their year length from the standard SDSM <strong>Settings</strong> page.</p>
+  <p><strong>Data Period</strong></p>
+  <p>Select the appropriate time period for the analysis: all the data, individual months, or seasons.</p>
+  <p><strong>Ensembles</strong></p>
+  <p>If modelled (ensemble) data are being analysed, the User can select which part of the ensemble to include in the analysis by selecting either All Ensembles, Ensemble Mean, Ensemble Member, or All + Ensemble Member in the Ensemble box.</p>
+  <p><strong>Threshold</strong></p>
+  <p>If the <strong>Apply Threshold?</strong> box is ticked, only data which are above the global threshold (see Settings) are included in the analysis.</p>
+  <p><strong>PDF Categories</strong></p>
+  <p>If the User wishes to plot a PDF chart as part of the analysis, the number of categories for the PDF plot can be entered in the <strong>PDF Categories</strong> box: the default is 20.</p>
+  <p><strong>Q-Q Plot</strong></p>
+  <p>A Quantile-Quantile plot is used to compare a modelled data set with an observed data file. The procedure works by sorting each of the data files into order and calculating the percentiles (1 to 99). These are then plotted against one another on a scatter chart with observed data on the y-axis and modelled data on the x-axis. Note, it is assumed that observed data are always based on calendar years (i.e. 365 days normally, 366 days in a leap year), while the length of the modelled data year is set using the Settings screen.</p>
+  <p><strong>PDF Plot</strong></p>
+  <p>The PDF plot provides a Probability Density Function of the selected data files. The data are first sorted into order, then a number of categories are defined (the default being 20) ranging from the smallest to the largest data point. The data are then sorted into these categories and a count is made of the number of data points in each category. The resultant density is plotted on a line chart.</p>
+  <p><strong>Line Plot</strong></p>
+  <p>This plots a simple line chart of the selected data. Note that only a maximum of ten year’s of data can be plotted using this option.</p>
+  <p><strong>Frequency Analysis</strong></p>
+  <p>Four statistical distributions can be fitted to the selected data by clicking on the appropriate selection in the Frequency Analysis box. These distributions can be fitted to the entire data range or to isolated time periods such as specific seasons or months according to the selection in the Data Period box.</p>
+  <p>The four distributions are: GEVs, stretched exponential, Empirical and Gumbel. Results can be viewed in either tabular form by selecting <strong>FA Tabular</strong> or as line charts by selecting <strong>FA Graphical</strong> from the menu buttons at the top of the screen. Results of modelled <strong>FA Tabular</strong> and <strong>FA Graphical</strong> are automatically saved to the main drive of the default directory for further analysis (for example, C: drive). This can cause an error if the default drive cannot be written to (on a shared machine, for example, where write access can be limited).</p>
+  <p><strong>Confidence (%)</strong></p>
+  <p>When plotting extreme value distributions for modelled data with a number of ensembles, it is possible to plot confidence limits (lower and upper percentiles) around the fitted line. For example, entering 5% in the Confidence (%) box provides a 95% confidence boundary on the fit by plotting the upper 97.5 percentile and lower 2.5 percentile around the line. Enter the required confidence percentage in the box. These percentiles are also calculated if <strong>FA Tabular</strong> is chosen.</p>
+  <p><strong>Empirical</strong></p>
+  <p>This option fits a simple empirical distribution to the data by sorting the annual maximums into ascending order and plotting these according to the return period.</p>
+  <p><strong>GEV</strong></p>
+  <p>This fits a Generalised Extreme Value distribution to the data of the form:</p>
+  <p><img src="HelpImages/1740510105_sdsmhelp-1.png" width="192" height="48" alt="" style="vertical-align:middle" /></p>
+  <p><strong>Gumbel</strong></p>
+  <p>Fits a Gumbel distribution to the data using the annual maximum series.</p>
+  <p><strong>Stretched Exponential</strong></p>
+  <p>Fits the data to a Stretched Exponential distribution of the form:</p>
+  <p><img src="HelpImages/1740510105_sdsmhelp-2.png" width="159" height="42" alt="" style="vertical-align:middle" /></p>
+  <p>It is used to calculate the probability that an event is greater than a threshold, <em>r</em>. <em>R</em>0 is the mean of all events while <em>c</em> is determined from the data fitting. The data are truncated to the User entered threshold value.</p>
+  <p><strong>Save Results To</strong></p>
+  <p>The results of the Frequency Analysis can be saved to a *.TXT for further analysis or presentation by clicking the Save Results To button at the bottom of the page and completing the <em>Save Dialogue</em> box that opens. This works with <strong>FA Tabular</strong> only.</p>
+  <hr>
+</div>
+
+<div id="IDH_Generate">
+  <h2>Scenario Generator</h2>
+  <p>To access the new functions click on the <em>Scenario Generator</em> tab at the top of the master menu.</p>
+  <p><strong>Select Input File</strong>: This is your text file containing the input daily weather series. This can be up to 200 years long and have up to 100 columns (i.e., ensemble members). The series may be observed data or direct output from the <em>Weather Generator</em>.</p>
+  <p><strong>File Start Date</strong>: This is the date of the first data value in the Input File (entered by the User in dd/mm/yyyy format). This information is needed so that SDSM can adjust settings and weights attached to individual months (see below). The default date is taken from the Standard Start Date in the master <em>Settings</em>.</p>
+  <p><strong>Ensemble Size</strong>: This is the number of ensemble members (columns) in the Input File. If the User enters, for example, 20 and there are 100 members, only the first 20 columns will be treated. If the User enters, for example, 50 and there are only 20 members within the Input File, an error message will be displayed.</p>
+  <p><strong>Output File</strong>: This is the User specified output file name and pathway for the generated daily weather series.</p>
+  <p><strong>Conditional Process</strong>: The box should be checked if the process is conditional (as in the case of precipitation). This enables simultaneous manipulation of the unconditional process (for rainfall – Occurrence of wet-days above the specified Event Threshold below). When left unchecked, only the Mean, Variance and Trend Treatments (see below) are activated.</p>
+  <p><strong>Event Threshold</strong>: This is the threshold that determines occurrence of the conditional process (see above). For example, the threshold might be used to discriminate between wet- and dry-days using zero and non-zero values. In this case, any values greater than the threshold (zero) would be treated as a wet day. Larger thresholds might be used where measurement precision is lower, or if the modelling is focusing on extreme values.</p>
+  <p><strong>Treatments</strong></p>
+  <p>The following Treatments adjust daily input values by User-defined factors and functions, including separate handling of Unconditional and Conditional Processes. Treatments may be applied in isolation or combination to create more complex transformations of the input series.</p>
+  <p><strong>Occurrence</strong></p>
+  <p><strong>Frequency change</strong>: This is the percentage by which the occurrence of the conditional process (e.g., rain days) should be changed. For example, 5 means increase the incidence of the process by 5% more days; -10 means reduce the incidence by 10%. When <em>Stochastic</em> is selected (see below) the days are randomly added or removed from each month relative to the initial frequency profile.</p>
+  <p><strong>Stochastic</strong>: Adds or removes rain days randomly based on the existing likelihood of events in each month. For example, if a month is particularly wet, it has a greater chance of a rain day being added. Conversely, if a month is relatively dry it has a greater chance of a rain day being removed (if the User inputs a negative value to the Frequency change box).</p>
+  <p><strong>Forced</strong>: This overrides the Frequency change value (see above) by forcing the creation or removal of rain days according to the percentages entered for each month in <em>Advanced Settings</em> (Wet Day Percentage Profile). For example, if the user enters 50 (percent) for January in the Advanced Settings and the observed record has only 30% wet days in January, SDSM generates wet days (randomly) for January until 50% of days are wet. Conversely, if January has 60% wet days, SDSM removes wet days (randomly) until 50% of days in January remain wet. SDSM randomly selects wet day amounts from the month when generating new wet days in that month. If there are no wet-days to sample in a given month, SDSM searches for wet-day amounts from neighbouring months.</p>
+  <p><strong>Preserve Total</strong>: When checked, SDSM preserves the original annual mean rainfall total by proportionately scaling all wet-day amounts. Note that if the User reduces the frequency of wet days, the remaining wet day amounts are automatically increased to preserve the annual total, and so too is the standard deviation of wet day amounts. However, if the User also selects a Mean change (see below) this becomes the new annual total that is preserved.</p>
+  <p><strong>Mean</strong></p>
+  <p><strong>Factor</strong>: This is the percentage by which data are changed. For example, 10 increases all values by 10%; conversely, -40 decreases values by 40%. In both cases, the factor is applied only to values larger than the Event Threshold when a Conditional Process is selected.</p>
+  <p><strong>Addition</strong>: This is the absolute amount by which data are changed. For example, 10 adds 10 to each day; -5 removes 5 from each day. In both cases, the factor is applied only to values larger than the Event Threshold when a Conditional Process is selected.</p>
+  <p><strong>Variance</strong></p>
+  <p><strong>Factor</strong>: This is the percentage by which the variance is changed. For example, 50 increases the variance by 50%. The algorithm subtracts the mean of the series from each value, then multiplies by the factor (e.g., 1.50 in this example), and then adds the mean. The factor is applied only to those values greater than the Event Threshold when a Conditional Process is selected. All Conditional variables are transformed to approximate a normal distribution using the Box-Cox method (Sakia, 1992; Hinkley, 1977).</p>
+  <p>Note that in order to change the variance but preserve the coefficient of variation (mean divided by standard deviation) the User needs only to apply the factor to the Mean (see above); the Variance will change by the same amount.</p>
+  <p><strong>Trend</strong></p>
+  <p><strong>Linear</strong>: The entered value is added (or subtracted) cumulatively each year. For example, 10 adds values from 0 to 10 in the first year, 10 to 20 in the second year, 20 to 30 the following year, etc. In this case, each day in the calendar year is adjusted 10/365.25 x the day number (1 to 365 or 366). For a Conditional Process only values exceeding the Event Threshold are adjusted. For example, if the User enters 5, wet-day amounts in the first year are increased from 0 to 5% linearly (for days 1 to 365); amounts in the second year are increased by 5% to 10% linearly; and so forth. This means that in the first year, the first day will be slightly changed; a value in the middle of the year will be increased by around 2.5%; and a value at the end of the year by 5%.</p>
+  <p><strong>Exponential</strong>: The entered value is added (or subtracted) following an exponential function across the entire span of the data. For example, entering +5 will add between 0 (for the first value) to +5 (for the final value) and points in between exponentially. A value of zero cannot be used. For a Conditional Process the treatment is multiplicative rather than additive. For example, +10 causes wet day amounts to be multiplied by 1 to 1.10 from start to end with values in between changing by 1 to 1.10 in an exponential manner.</p>
+  <p><strong>Logistic</strong>: The entered value is added (or subtracted) following a logistic (S-curve) function across the entire span of the data. The entered value is applied additively (unless a Conditional Process is chosen). For example, when 1 is entered the addition ranges between 0 at the start to +1 at the end following the S-curve. Negative values can also be used to deplete the series following an S-curve. For a Conditional Process the treatment is applied multiplicatively. For example, if 5 is entered, values exceeding the Event Threshold are scaled logistically between 1 to 1.05 across the length of the series.</p>
+  <p><strong>Generate</strong></p>
+  <p>Click on the button to apply the treatment. Hit <strong>Esc</strong> to abort the process.</p>
+  <hr>
+</div>
+
+<div id="IDH_CompareResults">
+<h2>Compare Results</h2>
+<p>Compares summary statistics produced by the Analyse operations using bar chart or line chart plots.</p>
+<hr>
+</div>
+
+<div id="IDH_TimeSeries">
+<h2>Time Series Analysis</h2>
+<p>Plots various times series data from modeled or observed data files.</p>
+<hr>
+</div>
+
+<div id="IDH_DataSettings">
+  <h2>Data Settings</h2>
+  <p>Before downscaling, the User should check the date ranges, type and integrity of all input data.</p>
+  <p><strong>Data</strong></p>
+  <p>Specify the <strong>Standard Data Start</strong> and <strong>End Date</strong> for all input data. These dates will appear throughout the operation of SDSM, but may be updated from any page.</p>
+  <p><strong>Miscellaneous</strong></p>
+  <p>The default setting of <strong>Allow Negative Values</strong> enables simulation of negative values by the downscaling model (e.g., for minimum temperature); deselection truncates values at zero (e.g., for sunshine hours).</p>
+  <p>For some variables it is necessary to specify an <strong>Event Threshold</strong>. For example, when calibrating daily precipitation models, the parameter might be set to 0.3 mm/day to treat trace rain days as dry days. Similarly, the threshold for sunny versus cloudy days might be set at 1.0 hours/day to discriminate between overcast and sunny conditions.</p>
+  <p>The <strong>Missing Data Identifier</strong> is a universal code assigned to missing data in all input series. Whenever SDSM encounters this code the value will be skipped (e.g., during model calibration or calculation of summary statistics).</p>
+  <p><strong>Random Number Seed</strong> should be set if you wish the randomly generated sequences (in Scenario Generator and Weather Generator) to be different each time. If you wish to replicate experiments, SDSM can regenerate the same sequence of randomly generated scenarios if you deselect this check box.</p>
+  <hr>
+</div>
+
+<div id="IDH_SystemSettings">
+  <h2>System Settings</h2>
+  <p>The <strong>System Settings</strong> page allows the User to change and save further downscaling model preferences.</p>
+  <p><strong>Model Transformation</strong></p>
+  <p>Specifies the transformation applied to the predictand in <strong>Conditional</strong> models. The default (None) is used whenever the predictand is normally distributed (this is often the case for daily temperature). Two of the alternatives (Fourth root and Natural log) are used whenever data are highly skewed (as in the case of daily precipitation). The Inverse Normal transformation converts any data distribution into a normal distribution and then applies a resampling procedure to the data. This means that the maximum simulated event can never exceed the observed maximum in the calibration data. The Box Cox transformation calculates the optimal lambda (λ) value for the data before transforming the data based on this value. The algorithm uses a trial-and-error approach to ‘home in’ on the optimal value – the search space being [-2, 2]. The optimal value is determined by the minimum of Hinkley’s (1977) equation:</p>
+  <p><img src="HelpImages/1740510105_sdsmhelp-9.png" width="188" height="44" alt="" style="vertical-align:middle" /></p>
+  <p>The Box Cox transformation applied is defined as:</p>
+  <p><img src="HelpImages/1740510105_sdsmhelp-10.png" width="71" height="44" alt="" style="vertical-align:middle" /></p>
+  <p>The transformation type is recorded in *.PAR and *.SIM files to ensure that data are consistently handled during subsequent scenario and data analysis operations.</p>
+  <p><strong>Variance Inflation</strong></p>
+  <p>Controls the magnitude of variance inflation in downscaled daily weather variables. This parameter changes the variance by adding or reducing the amount of “white noise” applied to regression model estimates of the local process. The default value produces approximately normal variance inflation (prior to any transformation). Variance inflation is de-activated by setting the parameter to zero. Note: for Fourth root and Natural log <strong>Model Transformations</strong> (see above), this parameter also affects changes in the mean estimate.</p>
+  <p><strong>Bias Correction</strong></p>
+  <p>Compensates for any tendency to over- or under-estimate the mean of conditional processes by the downscaling model (e.g., mean daily rainfall totals). The default value is 1.0, indicating no bias correction.</p>
+  <p><strong>Optimisation Algorithm</strong></p>
+  <p>SDSM provides two means of optimising the model: Dual Simplex (as in earlier versions of SDSM) and Ordinary Least Squares. Although both approaches give comparable results, Ordinary Least Squares is much faster. Stepwise regression works by progressively adding all parameters into the model and selecting the model which models the predictand most strongly according to one of two criteria: either AIC or BIC.</p>
+  <p><strong>Conditional Selection</strong></p>
+  <p>Adjusts the way in which the conditional process models a conditional event. The default (stochastic) setting ensures that events (e.g., wet days) are only modelled when a generated pseudo random number is less than the modelled threshold. Fixed threshold (which can be set by the user) ensures an event is modelled when the conditional process models a value greater than this threshold (i.e., the random nature of the stochastic process is removed).</p>
+  <p><strong>Wet Day Percentage Profile</strong></p>
+  <p>Sets the percentages for each month the User wants to force the conditional process to during Scenario Generator. For example, if the User enters 50 in January, it will force January to have 50% wet days. If January currently has, say, 30% wet days, it will add wet days randomly; if January currently has 60% wet days, SDSM will delete wet days randomly until only 50% of days remain wet.</p>
+  <p>You can save your settings (Data and System) to the same file and load this in from the Data and System Settings windows. Note that SDSM will always try to load from (Insert Here) when it is booted up; if it cannot load data from this file it uses the default SDSM settings.</p>
+  <hr>
+</div>
+
+<div id="IDH_Literature">
+<h2>Literature</h2>
+<hr>
+</div>
+
+</body>
+</html>

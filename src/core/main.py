@@ -1,255 +1,257 @@
 import sys
-from PyQt5.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QMenuBar, QPushButton, QWidget,
-                             QFrame, QSplitter, QLabel, QStackedWidget, QAction, QSizePolicy,)
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QIcon, QScreen, QFont
-from importlib import import_module
 import os
-import webbrowser
+from PyQt5.QtWidgets import (
+    QApplication, QMainWindow, QVBoxLayout, QMenuBar, QPushButton, QWidget,
+    QFrame, QSplitter, QLabel, QStackedWidget, QAction, QSizePolicy, QMessageBox,
+    QDialog, QTextBrowser
+)
+from PyQt5.QtCore import Qt, QUrl
+from PyQt5.QtGui import QIcon, QScreen, QDesktopServices  # Added QDesktopServices import
+from importlib import import_module
 
 # Global variables for window dimensions
 windowWidth = 1280
 windowHeight = 720
 
-
 class SDSMWindow(QMainWindow):
     def __init__(self):
         """
         Initialize the main SDSM application window.
-        Sets up the UI layout: titleBar, toolbar, menu, content, and other configurations.
+        Sets up the UI layout: title bar, sidebar menu, content area, settings, and help.
         """
         super().__init__()
         
-        # Configure main window properties
-        self.setWindowTitle("SDSM - Beta V1")  # Title Bar
-
-        self.resize(windowWidth, windowHeight)  # Set initial size
+        self.setWindowTitle("SDSM - Beta V1")
+        self.resize(windowWidth, windowHeight)
         
         screen_geometry = QApplication.desktop().screenGeometry()
-        screen_width = screen_geometry.width()
         screen_height = screen_geometry.height()
-        # Calculate the font size based on the screen size
-        font_size = max(10, min(16, int(screen_height * 0.025))) 
-
-        # Set up the central widget, which contains the menu (sidebar) and content (main display area)
+        
+        # Central widget and main layout
         centralWidget = QWidget()
         self.setCentralWidget(centralWidget)
         mainLayout = QVBoxLayout()
         centralWidget.setLayout(mainLayout)
-
-        # Create a splitter to separate the menu and content
+        
+        # Splitter for menu and content
         menuContentSplitter = QSplitter(Qt.Horizontal)
         mainLayout.addWidget(menuContentSplitter)
-
-        # Menu setup
+        
+        # Sidebar menu setup
         menuLayout = QVBoxLayout()
         menuLayout.setAlignment(Qt.AlignTop)
-        menuLayout.setSpacing(0)  # No spacing between buttons for compact design
-        menuLayout.setContentsMargins(0, 0, 0, 0)  # Remove margins for a neat look
-
-        # Define menu buttons with names and icons
-        self.menuButtonNames = ["Home", "Quality Control", "Transform Data", "Screen Variables", "Calibrate Model", 
-                                 "Weather Generator", "Scenario Generator", "Summary Statistics", "Compare Results", 
-                                 "Frequency Analysis", "Time Series Analysis"]
-        self.menuButtonIcons = ["home.png", "arrow_down.png", "arrow_down.png", "arrow_down.png", "arrow_down.png",
-                                 "arrow_down.png", "arrow_down.png", "arrow_down.png", "arrow_down.png", "arrow_down.png", "arrow_down.png"]
-
-        # Create menu buttons dynamically
+        menuLayout.setSpacing(0)
+        menuLayout.setContentsMargins(0, 0, 0, 0)
+        
+        self.menuButtonNames = [
+            "Home", "Quality Control", "Transform Data", "Screen Variables",
+            "Calibrate Model", "Weather Generator", "Scenario Generator",
+            "Summary Statistics", "Compare Results", "Frequency Analysis",
+            "Time Series Analysis"
+        ]
+        self.menuButtonIcons = [
+            "home.png", "arrow_down.png", "arrow_down.png", "arrow_down.png", "arrow_down.png",
+            "arrow_down.png", "arrow_down.png", "arrow_down.png", "arrow_down.png", "arrow_down.png",
+            "arrow_down.png"
+        ]
+        
         self.menuButtons = []
-        # Calculate button height based on screen height (3% of screen height)
         button_height = int(screen_height * 0.03)
-        # Calculate font size based on button height (40% of button height)
         button_font_size = int(button_height * 0.5)
-
+        
         for index, (name, icon) in enumerate(zip(self.menuButtonNames, self.menuButtonIcons)):
             menuButton = QPushButton(name)
             menuButton.setIcon(QIcon(icon))
             menuButton.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.MinimumExpanding)
-            menuButton.setMinimumHeight(button_height)  # Dynamic button height
-            menuButton.setStyleSheet(f"text-align: left; padding-left: 10px; border: 1px solid lightgray; font-size: {button_font_size}px;")
+            menuButton.setMinimumHeight(button_height)
+            menuButton.setStyleSheet(
+                f"text-align: left; padding-left: 10px; border: 1px solid lightgray; font-size: {button_font_size}px;"
+            )
             menuButton.clicked.connect(lambda checked, idx=index: self.loadContent(idx))
             menuLayout.addWidget(menuButton)
             self.menuButtons.append(menuButton)
-
-        # Menu frame to hold the buttons
+        
         menuFrame = QFrame()
         menuFrame.setLayout(menuLayout)
-        menuFrame.setFrameShape(QFrame.NoFrame)  # No border around the menu
+        menuFrame.setFrameShape(QFrame.NoFrame)
         menuContentSplitter.addWidget(menuFrame)
-        menuFrame.setFixedWidth(int(windowWidth * 0.15))  # Menu width as 15% of window width
-
-        # Content area setup
-        self.contentStack = QStackedWidget()  # Content container to manage and display screens
-        menuContentSplitter.addWidget(self.contentStack)
-
-        # Load the initial content for "Home"
+        menuFrame.setFixedWidth(int(windowWidth * 0.15))
         
-
-        # Toolbar setup
-        toolbar = QMenuBar(self)  # Toolbar
+        # Content area setup
+        self.contentStack = QStackedWidget()
+        menuContentSplitter.addWidget(self.contentStack)
+        
+        # Menu bar and toolbar
+        toolbar = QMenuBar(self)
         self.setMenuBar(toolbar)
         settingsMenu = toolbar.addMenu("Settings")
-
-        # Help menu
+        
+        # --- Help Menu Setup ---
         self.helpMenu = toolbar.addMenu("Help")
-        self.addHelpActions()  # Call the helper function to populate the Help menu
-
-        literatureMenu = toolbar.addMenu("Literature")
-        contactMenu = toolbar.addMenu("Contact")
-        aboutMenu = toolbar.addMenu("About")
-
-        # Add "Open Settings" action to the toolbar
-        openSettingsAction = QAction("Open Settings", self)
-        openSettingsAction.triggered.connect(self.loadSettingsContent)  # Connect to settings loader
+        self.addHelpActions()  # Populate the Help menu with help actions
+        
+        # Links Menu
+        linksMenu = toolbar.addMenu("Links")
+        
+        # Add links to Menu
+        link1Action = QAction("Official Webpage", self)
+        link1Action.triggered.connect(lambda: QDesktopServices.openUrl(QUrl("https://www.sdsm.org.uk/")))
+        linksMenu.addAction(link1Action)
+        
+        link2Action = QAction("SDSM Paper", self)
+        link2Action.triggered.connect(lambda: QDesktopServices.openUrl(QUrl("https://www.sciencedirect.com/science/article/abs/pii/S1364815201000603?via%3Dihub")))
+        linksMenu.addAction(link2Action)
+        
+        link3Action = QAction("SDSM-DC Paper", self)
+        link3Action.triggered.connect(lambda: QDesktopServices.openUrl(QUrl("https://www.int-res.com/abstracts/cr/v61/n3/p259-276/")))
+        linksMenu.addAction(link3Action)
+        
+        openSettingsAction = QAction("Open Data Settings", self)
+        openSettingsAction.triggered.connect(self.loadDataSettingsContent)
         settingsMenu.addAction(openSettingsAction)
-
-        # Add "Open Advanced Settings" action to the toolbar
-        openSettingsAction = QAction("Open Advanced Settings", self)
-        openSettingsAction.triggered.connect(self.loadAdvancedSettingsContent)  # Connect to settings loader
-        settingsMenu.addAction(openSettingsAction)
-
+        
+        openSettingsAction2 = QAction("Open System Settings", self)
+        openSettingsAction2.triggered.connect(self.loadSystemSettingsContent)
+        settingsMenu.addAction(openSettingsAction2)
+        
+        # Load initial content (Home screen)
         self.loadContent(0)
-
-        # Center the window on the user's screen
+        
+        # Center the window on the screen
         self.centerOnScreen()
-
+    
     def loadContent(self, index):
         """
-        Load the screen (UI/UX) for the selected menu option and initialize the associated module (functionality).
-
-        Args:
-            index (int): The index of the menu option clicked.
+        Load the content for the selected menu option.
         """
-        moduleName = self.menuButtonNames[index].lower().replace(" ", "_")  # Convert menu name to module name
+        moduleName = self.menuButtonNames[index].lower().replace(" ", "_")
         displayName = self.menuButtonNames[index]
-        self.loadModule(moduleName, displayName)  # Load the module and its corresponding screen
-        
+        self.loadModule(moduleName, displayName)
         self.updateHelpMenu(displayName)
-
-    def loadSettingsContent(self):
+    
+    def loadDataSettingsContent(self):
         """
-        Load the settings module into the content container.
+        Load the Data Settings module.
         """
-        self.loadModule("settings", "Settings")
-
-    def loadAdvancedSettingsContent(self):
+        self.loadModule("data_settings", "Data Settings")
+        self.updateHelpMenu("Settings")
+    
+    def loadSystemSettingsContent(self):
         """
-        Load the advanced settings module into the content container.
+        Load the System Settings module.
         """
-        self.loadModule("advanced_settings", "Advanced Settings")
-
+        self.loadModule("system_settings", "System Settings")
+        self.updateHelpMenu("Settings")
+    
     def loadModule(self, moduleName, displayName):
         """
-        Dynamically load a module (backend functionality) and display its corresponding screen (UI/UX) in the content area.
+        Dynamically load a module and display its screen.
         If the module is not found, display a fallback message.
-
-        Args:
-            moduleName (str): The name of the module to load (functionality).
-            displayName (str): The display name of the module, used for fallback messages and user-facing references.
         """
-        # Define paths to search for modules
         modulePaths = {
-            "home": os.path.dirname(__file__),  # "Home" is in the main directory
-            "default": os.path.join(os.path.dirname(__file__), '..', 'modules')  # Other modules in "modules" directory
+            "home": os.path.dirname(__file__),
+            "default": os.path.join(os.path.dirname(__file__), '..', 'modules')
         }
-        
-        # Determine the appropriate path for the module
         modulePath = modulePaths.get(moduleName, modulePaths["default"])
-        
-        # Add the selected path to the system path if not already included
         if modulePath not in sys.path:
             sys.path.append(modulePath)
-
         try:
-            # Import the module dynamically
             module = import_module(moduleName)
-            if hasattr(module, 'ContentWidget'):  # Check if the module has a "ContentWidget" class
-                contentWidget = module.ContentWidget()  # Screen (UI/UX)
-                self.contentStack.addWidget(contentWidget)  # Add widget to the content container
-                self.contentStack.setCurrentWidget(contentWidget)  # Display the screen
+            if hasattr(module, 'ContentWidget'):
+                contentWidget = module.ContentWidget()
+                self.contentStack.addWidget(contentWidget)
+                self.contentStack.setCurrentWidget(contentWidget)
         except ModuleNotFoundError:
-            # Display fallback content if the module isn't found
             fallbackLabel = QLabel(f"{displayName} screen not available. (Module missing or failed to load.)")
-            fallbackLabel.setAlignment(Qt.AlignCenter)  # Center the fallback text
-            fallbackLabel.setStyleSheet("font-size: 24px;")  # Style the fallback text
+            fallbackLabel.setAlignment(Qt.AlignCenter)
+            fallbackLabel.setStyleSheet("font-size: 24px;")
             fallbackWidget = QWidget()
             fallbackLayout = QVBoxLayout()
             fallbackLayout.addWidget(fallbackLabel)
             fallbackWidget.setLayout(fallbackLayout)
             self.contentStack.addWidget(fallbackWidget)
             self.contentStack.setCurrentWidget(fallbackWidget)
-
+    
     def addHelpActions(self):
-            """
-            Populate the Help menu with actions corresponding to each sidebar menu item.
-            """
-            # Define constant help URLs
-            help_contents_url = "https://example.com/help/contents"
-            sdsm_website_url = "https://www.sdsm.org.uk/"
+        """
+        Populate the Help menu with a general help option and specific help actions.
+        Uses the single HTML file 'SDSMHelp.html' (in the same folder as the code).
+        """
+        # Path to the single HTML help file
+        help_file_path = os.path.abspath("SDSMHelp.html")
+        
+        # General Help Contents action (opens the whole page)
+        helpContentsAction = QAction("Help Contents", self)
+        helpContentsAction.triggered.connect(lambda: self.openHelpFile())
+        self.helpMenu.addAction(helpContentsAction)
+        
+        # Mapping of page names to their anchor IDs within SDSMHelp.html
+        self.help_urls = {
+            "Home": None,  # No anchor; general page
+            "Quality Control": "IDH_Quality",
+            "Transform Data": "IDH_Transform",
+            "Screen Variables": "IDH_Screen",
+            "Calibrate Model": "IDH_Calibrate",
+            "Weather Generator": "IDH_WeatherG",
+            "Scenario Generator": "IDH_Generate",
+            "Summary Statistics": "IDH_SummaryStatistics",
+            "Compare Results": "IDH_CompareResults",
+            "Frequency Analysis": "IDH_FrequencyAnalysis",
+            "Time Series Analysis": "IDH_TimeSeries",
+            "Settings": "IDH_Settings"
+        }
+        self.help_actions = {}
+        for name, section in self.help_urls.items():
+            # Create an action for specific help topics
+            action = QAction(f"{name} Help", self)
+            # Use default argument binding in the lambda to capture section
+            action.triggered.connect(lambda checked, section=section: self.openHelpFile(section))
+            self.help_actions[name] = action
     
-            # Add constant Help Contents action
-            helpContentsAction = QAction("Help Contents", self)
-            helpContentsAction.triggered.connect(lambda: self.openHelpUrl(help_contents_url))
-            self.helpMenu.addAction(helpContentsAction)
-    
-            # Add constant SDSM Website action
-            sdsmWebsiteAction = QAction("SDSM Website", self)
-            sdsmWebsiteAction.triggered.connect(lambda: self.openHelpUrl(sdsm_website_url))
-            self.helpMenu.addAction(sdsmWebsiteAction)
-    
-    
-            # URL mapping based on menu names
-            self.help_urls = {
-                "Home": "https://example.com/help/home",
-                "Quality Control": "https://example.com/help/quality_control",
-                "Transform Data": "https://example.com/help/transform_data",
-                "Screen Variables": "https://example.com/help/screen_variables",
-                "Calibrate Model": "https://example.com/help/calibrate_model",
-                "Weather Generator": "https://example.com/help/weather_generator",
-                "Scenario Generator": "https://example.com/help/scenario_generator",
-                "Summary Statistics": "https://example.com/help/summary_statistics",
-                "Compare Results": "https://example.com/help/compare_results",
-                "Frequency Analysis": "https://example.com/help/frequency_analysis",
-                "Time Series Analysis": "https://example.com/help/time_series_analysis"
-            }
-            self.help_actions = {}
-            # Create a QAction for each help URL and add it to the Help menu
-            for name, url in self.help_urls.items():
-                action = QAction(f"{name} Help ", self)
-                action.triggered.connect(lambda checked, url=url: self.openHelpUrl(url))
-                self.help_actions[name] = action  # Store actions in a dictionary
-
     def updateHelpMenu(self, page_name):
-     """
-     Update the Help menu to show only the relevant help content based on the current page.
-     """
-     # Clear current actions
-     self.helpMenu.clear()  
-     self.addHelpActions()
-     # Check if the page name is in the help URLs (this can be adjusted as needed)
-     if page_name in self.help_actions:
-         # Add the relevant help action to the Help menu
-         self.helpMenu.addAction(self.help_actions[page_name])
-   
-    def openHelpUrl(self, url):
-       """
-       Open the specified URL in the default web browser.
-      """
-       webbrowser.open(url)
-
+        """
+        Update the Help menu to show the relevant help action for the current page.
+        """
+        self.helpMenu.clear()
+        self.addHelpActions()
+        if page_name in self.help_actions:
+            self.helpMenu.addAction(self.help_actions[page_name])
+    
+    def openHelpFile(self, section=None):
+        """
+        Open the help viewer.
+        If a section (anchor) is provided, jump to that part of SDSMHelp.html.
+        Otherwise, load the entire help file.
+        """
+        help_file = os.path.abspath("SDSMHelp.html")
+        url = QUrl.fromLocalFile(help_file)
+        if section:
+            # Set the fragment (anchor) for in-page navigation
+            url.setFragment(section)
+        try:
+            helpDialog = QDialog(self)
+            helpDialog.setWindowTitle("Help")
+            helpDialog.resize(800, 600)
+            layout = QVBoxLayout(helpDialog)
+            textBrowser = QTextBrowser(helpDialog)
+            layout.addWidget(textBrowser)
+            textBrowser.setSource(url)
+            helpDialog.exec_()
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Could not open help content: {str(e)}")
+    
     def centerOnScreen(self):
         """
-        Center the application window on the user's primary screen.
+        Center the application window on the primary screen.
         """
-        screenGeometry = QScreen.availableGeometry(QApplication.primaryScreen())  # Get primary screen dimensions
-        screenCenter = screenGeometry.center()  # Calculate the screen center
-        frameGeometry = self.frameGeometry()  # Get current window geometry
-        frameGeometry.moveCenter(screenCenter)  # Move the window's center to the screen center
-        self.move(frameGeometry.topLeft())  # Adjust the window's top-left corner to reflect new position
+        screenGeometry = QScreen.availableGeometry(QApplication.primaryScreen())
+        screenCenter = screenGeometry.center()
+        frameGeometry = self.frameGeometry()
+        frameGeometry.moveCenter(screenCenter)
+        self.move(frameGeometry.topLeft())
 
 if __name__ == "__main__":
-    # Create and launch the application
     app = QApplication(sys.argv)
     window = SDSMWindow()
-    window.show()  # Display the main window
-    sys.exit(app.exec_())  # Start the application event loop
+    window.show()
+    sys.exit(app.exec_())

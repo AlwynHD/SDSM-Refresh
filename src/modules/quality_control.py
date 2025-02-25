@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import (QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, QFrame, QLabel, QFileDialog,
-                             QLineEdit, QCheckBox, QMessageBox)
+                             QLineEdit, QCheckBox, QMessageBox, QGroupBox)
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QPalette, QColor, QIcon
 from QualityControl import qualityCheck, outliersID, dailyMeans
@@ -19,9 +19,10 @@ def displayBox(messageType, messageInfo, messageTitle, isError=False):
 
 
 
-class borderedQFrame(QFrame):
-    def __init__(self):
-        super().__init__()
+class borderedQGroupBox(QGroupBox):
+    def __init__(self,args):
+        super().__init__(args)
+
 
 class resultsQFrame(QFrame):
     '''Wraps two labels, one being aligned to the right of the results frame'''
@@ -54,7 +55,7 @@ class ContentWidget(QWidget):
         self.setStyleSheet("""
                            QFrame{
                                 background-color: #F0F0F0;}
-                           borderedQFrame{
+                           borderedQGroupBox{
                                 background-color: #F0F0F0;
                                 border : 1px solid black;
                                 border-top-left-radius : 20px;
@@ -147,15 +148,14 @@ class ContentWidget(QWidget):
 
         #Results frame
 
-        resultsFrame = borderedQFrame()
-        resultsFrame.setFrameShape(QFrame.StyledPanel)  # No border around the frame
+        resultsFrame = borderedQGroupBox("Results")
         resultsFrame.setBaseSize(400,400)
         resultsFrame.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
 
         # Layout for the results frame
         resultsLayout = QVBoxLayout()
-        resultsLayout.setContentsMargins(10, 10, 10, 10)  # Remove padding from the layout
+        resultsLayout.setContentsMargins(25, 25, 25, 25) 
         resultsLayout.setSpacing(10)  # No spacing between elements
         resultsFrame.setStyleSheet("background-color: #F0F0F0;")
 
@@ -164,8 +164,7 @@ class ContentWidget(QWidget):
         contentAreaLayout.addWidget(resultsFrame)
 
         #Create selectFile frame
-        selectFileFrame = borderedQFrame()
-        selectFileFrame.setFrameShape(QFrame.StyledPanel)   
+        selectFileFrame = borderedQGroupBox("Select File")
         selectFileFrame.setBaseSize(200,100)
         selectFileFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
 
@@ -183,8 +182,7 @@ class ContentWidget(QWidget):
         SPTOLayout.addWidget(selectFileFrame)
 
         #Create pettitt frame
-        pettittFrame = borderedQFrame()
-        pettittFrame.setFrameShape(QFrame.StyledPanel)   
+        pettittFrame = borderedQGroupBox("Pettitt Test")
         pettittFrame.setBaseSize(200,100)
         pettittFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
 
@@ -201,8 +199,7 @@ class ContentWidget(QWidget):
         SPTOLayout.addWidget(pettittFrame)
 
         #Create threshold frame
-        thresholdFrame = borderedQFrame()
-        thresholdFrame.setFrameShape(QFrame.StyledPanel)   
+        thresholdFrame = borderedQGroupBox("Threshold")
         thresholdFrame.setBaseSize(200,100)
         thresholdFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
 
@@ -219,8 +216,7 @@ class ContentWidget(QWidget):
         SPTOLayout.addWidget(thresholdFrame)
 
         #Create outliers frame
-        outliersFrame = borderedQFrame()
-        outliersFrame.setFrameShape(QFrame.StyledPanel)   
+        outliersFrame = borderedQGroupBox("Outliers")
         outliersFrame.setBaseSize(200,100)
         outliersFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
 

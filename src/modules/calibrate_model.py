@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import (QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, 
                              QFrame, QLabel, QFileDialog, QScrollArea, QDateEdit, QCheckBox,
-                             QButtonGroup, QRadioButton, QLineEdit)
+                             QButtonGroup, QRadioButton, QLineEdit, QGroupBox)
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPalette, QColor, QIcon
 from os import listdir
@@ -10,9 +10,9 @@ moduleName = "Calibrate Model"
 
 
 
-class borderedQFrame(QFrame):
-    def __init__(self):
-        super().__init__()
+class borderedQGroupBox(QGroupBox):
+    def __init__(self,args):
+        super().__init__(args)
 
 class ContentWidget(QWidget):
     """
@@ -40,7 +40,7 @@ class ContentWidget(QWidget):
         self.setStyleSheet("""
                            QFrame{
                                 background-color: #F0F0F0;}
-                           borderedQFrame{
+                           borderedQGroupBox{
                                 background-color: #F0F0F0;
                                 border : 1px solid black;
                                 border-top-left-radius : 20px;
@@ -128,8 +128,7 @@ class ContentWidget(QWidget):
         contentAreaLayout.addWidget(filesDateFrame)
 
         #Create selectPredictandFile frame
-        selectPredictandFileFrame = borderedQFrame()
-        selectPredictandFileFrame.setFrameStyle(QFrame.StyledPanel | QFrame.Sunken)   
+        selectPredictandFileFrame = borderedQGroupBox("Select Predictand")
         selectPredictandFileFrame.setBaseSize(200,200)
 
 
@@ -145,8 +144,7 @@ class ContentWidget(QWidget):
         filesDateLayout.addWidget(selectPredictandFileFrame)
 
         #Create selectPredictandFile frame
-        selectOutputFileFrame = borderedQFrame()
-        selectOutputFileFrame.setFrameStyle(QFrame.StyledPanel | QFrame.Sunken)   
+        selectOutputFileFrame = borderedQGroupBox("Select Output File")
         selectOutputFileFrame.setBaseSize(200,200)
 
 
@@ -162,8 +160,7 @@ class ContentWidget(QWidget):
         filesDateLayout.addWidget(selectPredictandFileFrame)
 
         #Create selectDate Frame
-        selectDateFrame = borderedQFrame()
-        selectDateFrame.setFrameStyle(QFrame.StyledPanel | QFrame.Sunken) 
+        selectDateFrame = borderedQGroupBox("Select Date")
         selectDateFrame.setBaseSize(200,200)
         selectDateFrame.setStyleSheet("background-color: #F0F0F0;")
 
@@ -205,8 +202,7 @@ class ContentWidget(QWidget):
 
 
         #Create selectPredictor frame
-        selectPredictorsFrame = borderedQFrame()
-        selectPredictorsFrame.setFrameStyle(QFrame.StyledPanel | QFrame.Sunken)   
+        selectPredictorsFrame = borderedQGroupBox("Select Predictors")
         selectPredictorsFrame.setBaseSize(200,400)
 
 
@@ -250,8 +246,7 @@ class ContentWidget(QWidget):
         
         optionsLayout.addWidget(modelProcessFrame)
 
-        modelTypeFrame = borderedQFrame()
-        modelTypeFrame.setFrameStyle(QFrame.NoFrame)   
+        modelTypeFrame = borderedQGroupBox("Select Model Type")
         modelTypeFrame.setBaseSize(200,100)
 
         #Layout for selectPredictors frame
@@ -263,8 +258,7 @@ class ContentWidget(QWidget):
         
         modelProcessLayout.addWidget(modelTypeFrame)
 
-        processFrame = borderedQFrame()
-        processFrame.setFrameStyle(QFrame.NoFrame)   
+        processFrame = borderedQGroupBox("Select Process")
         processFrame.setBaseSize(200,100)
 
         #Layout for selectPredictors frame
@@ -290,8 +284,7 @@ class ContentWidget(QWidget):
         
         optionsLayout.addWidget(autoregressionResidualFrame)
 
-        autoregressionFrame = borderedQFrame()
-        autoregressionFrame.setFrameStyle(QFrame.NoFrame)   
+        autoregressionFrame = borderedQGroupBox("Autoregression")
         autoregressionFrame.setBaseSize(200,100)
 
         #Layout for selectPredictors frame
@@ -303,8 +296,7 @@ class ContentWidget(QWidget):
         
         autoregressionResidualLayout.addWidget(autoregressionFrame)
 
-        residualFrame = borderedQFrame()
-        residualFrame.setFrameStyle(QFrame.NoFrame)   
+        residualFrame = borderedQGroupBox("Residual")
         residualFrame.setBaseSize(200,100)
 
         #Layout for selectPredictors frame
@@ -331,8 +323,7 @@ class ContentWidget(QWidget):
         
         optionsLayout.addWidget(chowHistogramFrame)
 
-        chowTestFrame = borderedQFrame()
-        chowTestFrame.setFrameStyle(QFrame.NoFrame)   
+        chowTestFrame = borderedQGroupBox("Chow Test")
         chowTestFrame.setBaseSize(200,100)
 
         #Layout for selectPredictors frame
@@ -344,8 +335,7 @@ class ContentWidget(QWidget):
 
         chowHistogramLayout.addWidget(chowTestFrame)
 
-        histogramFrame = borderedQFrame()
-        histogramFrame.setFrameStyle(QFrame.NoFrame)   
+        histogramFrame = borderedQGroupBox("Histogram")
         histogramFrame.setBaseSize(200,100)
 
         #Layout for selectPredictors frame
@@ -357,8 +347,7 @@ class ContentWidget(QWidget):
 
         chowHistogramLayout.addWidget(histogramFrame)
 
-        deTrendFrame = borderedQFrame()
-        deTrendFrame.setFrameStyle(QFrame.NoFrame)   
+        deTrendFrame = borderedQGroupBox("De Trend")
         deTrendFrame.setBaseSize(200,100)
         #Wait, I could just make a frame wrapper that does this for me
 
@@ -372,8 +361,7 @@ class ContentWidget(QWidget):
         
         optionsLayout.addWidget(deTrendFrame)
 
-        crossValFrame = borderedQFrame()
-        crossValFrame.setFrameStyle(QFrame.NoFrame)   
+        crossValFrame = borderedQGroupBox("Cross Validation")
         crossValFrame.setBaseSize(200,100)
         #Wait, I could just make a frame wrapper that does this for me
 
@@ -409,7 +397,7 @@ class ContentWidget(QWidget):
 
 
         predictorsScrollLayout = QVBoxLayout()
-        predictorsScrollLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
+        selectPredictorsLayout.setContentsMargins(25, 25, 25, 25) #Pad 10 pixels each way
         predictorsScrollLayout.setSpacing(0)  # No spacing between elements
         predictorsScrollLayout.setAlignment(Qt.AlignHCenter)
         predictorsScrollFrame.setLayout(predictorsScrollLayout)  # Apply the layout to the frame

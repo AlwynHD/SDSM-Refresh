@@ -46,11 +46,13 @@ def checkThreshold(value):
 
 #endregion
 
-def dailyMeans():
+def dailyMeans(selectedFile):
     if not checkForFile(selectedFile, "You must select a file to check first"):
         return
     
     checkIfFileFormatted(selectedFile)
+
+    #returnOutput = [] this is here for if we decide to change how its displayed in GUI
 
     #Initialise results to zero
     dailyStats = np.zeros((7, 4), float)
@@ -110,10 +112,12 @@ def dailyMeans():
     output = ""
     for i in range(7):
         output += str(calendar.day_name[i]) + ": Mean: " + str(round(dailyStats[i][3], 2)) + " SD: " + str(round(dailyStats[i][2], 2)) + "\n"
+        #returnOutput.append(str(calendar.day_name[i]) + ": Mean: " + str(round(dailyStats[i][3], 2)) + " SD: " + str(round(dailyStats[i][2], 2)))
     
     print(output)
+    return output
 
-def outliersID():
+def outliersID(selectedFile, outlierFile):
     #todo change python lists to numpy arrays
 
     if not checkForFile(selectedFile, "You must select a file to check first"):
@@ -177,8 +181,10 @@ def outliersID():
 
     message = str(outlierCount) + " outliers identified and saved to file."
     print(message)
+    return message
+    
 
-def qualityCheck():
+def qualityCheck(selectedFile):
     if not checkForFile(selectedFile, "You must select a file to check first."):
         return
     
@@ -244,7 +250,8 @@ def qualityCheck():
     else:
         pettitt = pettittTest(petArray, 90)
 
-    print("Min: " + str(min) + "\nMax: " + str(max) + "\nMean: " + str(mean) + "\nValues in file: " + str(count + missing) + "\nMissing Values: " + str(missing) + "\nGood Values: " + str(count) + "\nMean: " + str(mean) + "\nMax Difference: " + str(maxDifference) + "\nMax Differenece Value 1: " + str(maxDiffValue1) + "\nMax Differenece Value 2: " + str(maxDiffValue2) + "\nValues above threshold: " + str(threshCount) + "\nPettitt: " + str(pettitt) + "\nPettitt Max Pos: " + str(0) + "\nGlobal Missing Code: " + str(globalMissingCode) + "\nEvent Threshold: " + str(thresh))
+    print("Min: " + str(min) + "\nMax: " + str(max) + "\nTotal Values: " + str(count) + "\nMissing Values: " + str(missing) + "\nMean: " + str(mean))
+    return str(min), str(max), str(count), str(missing), str(mean)
 
 def pettittTest(pettittArray, ptPercent):
     currentDate = globalSDate
@@ -322,5 +329,6 @@ def pettittTest(pettittArray, ptPercent):
 
         if pettitt < 0.05:
             print("max position: " + str(petMatrix[maxPos][5]))
-        
-qualityCheck()
+if __name__ == '__main__':
+    #Module tests go here
+    qualityCheck(selectedFile)

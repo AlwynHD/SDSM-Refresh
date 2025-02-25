@@ -1,15 +1,44 @@
 from PyQt5.QtWidgets import (QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, QFrame, QLabel, QFileDialog,
-                             QLineEdit, QCheckBox)
+                             QLineEdit, QCheckBox, QMessageBox)
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QPalette, QColor, QIcon
-
+from QualityControl import qualityCheck, outliersID, dailyMeans
 # Define the name of the module for display in the content area
 moduleName = "Quality Control"
+
+def displayBox(messageType, messageInfo, messageTitle, isError=False):
+    messageBox = QMessageBox()
+    if isError:
+        messageBox.setIcon(QMessageBox.Critical)
+    else:
+        messageBox.setIcon(QMessageBox.Information)
+    messageBox.setText(messageType)
+    messageBox.setInformativeText(messageInfo)
+    messageBox.setWindowTitle(messageTitle)
+    messageBox.exec_()
+
 
 
 class borderedQFrame(QFrame):
     def __init__(self):
         super().__init__()
+
+class resultsQFrame(QFrame):
+    '''Wraps two labels, one being aligned to the right of the results frame'''
+    def __init__(self, standardLabelText):
+        super().__init__()
+        self.standardLabel = QLabel(standardLabelText)
+        self.contentLabel = QLabel()
+        self.contentLabel.setAlignment(Qt.AlignRight)
+
+        self.resultsLayout = QHBoxLayout()
+        self.resultsLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
+        self.resultsLayout.setSpacing(0)  # No spacing between elements
+        self.setLayout(self.resultsLayout)  # Apply the layout to the frame
+
+        self.resultsLayout.addWidget(self.standardLabel)
+        self.resultsLayout.addWidget(self.contentLabel)
+
 
 class ContentWidget(QWidget):
     """
@@ -265,39 +294,51 @@ class ContentWidget(QWidget):
         outliersLayout.addWidget(self.selectedOutlierLabel)
 
         #Results elements, just a lot of labels that need to be referenced from functions
-        self.minimumLabel = QLabel("Minimum: ")
-        resultsLayout.addWidget(self.minimumLabel)
-        self.maximumLabel = QLabel("Maximum: ")
-        resultsLayout.addWidget(self.maximumLabel)
-        self.meanLabel = QLabel("Mean: ")
-        resultsLayout.addWidget(self.meanLabel)
-        self.numOfValuesLabel = QLabel("Number of values in file: ")
-        resultsLayout.addWidget(self.numOfValuesLabel)
-        self.missingLabel = QLabel("Missing values: ")
-        resultsLayout.addWidget(self.missingLabel)
-        self.numOfOKValuesLabel = QLabel("Number of values ok: ")
-        resultsLayout.addWidget(self.numOfOKValuesLabel)
-        self.maximumDifferenceLabel = QLabel("Maximum difference: ")
-        resultsLayout.addWidget(self.maximumDifferenceLabel)
-        self.maximumDifferenceValOneLabel = QLabel("Maximum difference value 1: ")
-        resultsLayout.addWidget(self.maximumDifferenceValOneLabel)
-        self.maximumDifferenceValTwoLabel = QLabel("Maximum difference value 2: ")
-        resultsLayout.addWidget(self.maximumDifferenceValTwoLabel)
-        self.valueOverThreshLabel = QLabel("Values over threshold: ")
-        resultsLayout.addWidget(self.valueOverThreshLabel)
-        self.pettittSigLabel = QLabel("Pettitt test (significance): ")
-        resultsLayout.addWidget(self.pettittSigLabel)
-        self.pettittMax = QLabel("Pettitt max position: ")
-        resultsLayout.addWidget(self.pettittMax)
-        self.missingValCode = QLabel("Missing value code: ")
-        resultsLayout.addWidget(self.missingValCode)
-        self.eventThresh = QLabel("Event threshold: ")
-        resultsLayout.addWidget(self.eventThresh)
+        self.minimumFrame = resultsQFrame("Minimum: ")
+        resultsLayout.addWidget(self.minimumFrame)
+
+        self.maximumFrame = resultsQFrame("Maximum: ")
+        resultsLayout.addWidget(self.maximumFrame)
+
+        self.meanFrame = resultsQFrame("Mean: ")
+        resultsLayout.addWidget(self.meanFrame)
+
+        self.numOfValuesFrame = resultsQFrame("Number of values in file: ")
+        resultsLayout.addWidget(self.numOfValuesFrame)
+
+        self.missingFrame = resultsQFrame("Missing values: ")
+        resultsLayout.addWidget(self.missingFrame)
+
+        self.numOfOKValuesFrame = resultsQFrame("Number of values ok: ")
+        resultsLayout.addWidget(self.numOfOKValuesFrame)
+
+        self.maximumDifferenceFrame = resultsQFrame("Maximum difference: ")
+        resultsLayout.addWidget(self.maximumDifferenceFrame)
+
+        self.maximumDifferenceValOneFrame = resultsQFrame("Maximum difference value 1: ")
+        resultsLayout.addWidget(self.maximumDifferenceValOneFrame)
+
+        self.maximumDifferenceValTwoFrame = resultsQFrame("Maximum difference value 2: ")
+        resultsLayout.addWidget(self.maximumDifferenceValTwoFrame)
+
+        self.valueOverThreshFrame = resultsQFrame("Values over threshold: ")
+        resultsLayout.addWidget(self.valueOverThreshFrame)
+
+        self.pettittSigFrame = resultsQFrame("Pettitt test (significance): ")
+        resultsLayout.addWidget(self.pettittSigFrame)
+
+        self.pettittMaxFrame = resultsQFrame("Pettitt max position: ")
+        resultsLayout.addWidget(self.pettittMaxFrame)
+
+        self.missingValCodeFrame = resultsQFrame("Missing value code: ")
+        resultsLayout.addWidget(self.missingValCodeFrame)
+
+        self.eventThreshFrame = resultsQFrame("Event threshold: ")
+        resultsLayout.addWidget(self.eventThreshFrame)
 
 
 
 
-        #Blank frame to allow placement wherever I want, without it everything tries to expand down towards the footer, looks horrible
        
         # Add a spacer to ensure content is properly spaced
         titleLayout.addStretch()
@@ -305,11 +346,13 @@ class ContentWidget(QWidget):
 
     def selectFile(self):
         #Don't know which files it needs to get, will figure out later
-        fileName = QFileDialog.getOpenFileName(self, "Select file", 'predictand files', "DAT Files (*.DAT)")
+        
         #Update correct label depending on button pressed
         if self.sender().objectName() == "check file":
+            fileName = QFileDialog.getOpenFileName(self, "Select file", 'predictand files', "DAT Files (*.DAT)")
             self.selectedFile= self.updateLabels(self.selectedFileLabel, fileName[0])
         elif self.sender().objectName() == "outlier file":
+            fileName = QFileDialog.getOpenFileName(self, "Select file", 'SDSM-REFRESH', "Text Files (*.txt)")
             self.selectedOutlier = self.updateLabels(self.selectedOutlierLabel, fileName[0])
 
     def updateLabels(self, label, fileName):
@@ -326,5 +369,30 @@ class ContentWidget(QWidget):
         if button == "Check File":
             #https://www.youtube.com/watch?v=QY4KKG4TBFo im keeping this in the comments
             print("https://www.youtube.com/watch?v=QY4KKG4TBFo") #Are easter eggs allowed?
+            try:
+                min, max, count, missing, mean = qualityCheck(self.selectedFile)
+                self.minimumFrame.contentLabel.setText(min)
+                self.maximumFrame.contentLabel.setText(max)
+                self.meanFrame.contentLabel.setText(mean)
+                self.numOfValuesFrame.contentLabel.setText(count)
+                self.missingFrame.contentLabel.setText(missing)
+            except FileNotFoundError:
+                displayBox("File Error", "Please ensure a predictand file is selected and exists.","Error", isError=True)
+
+           
+        elif button == "Outliers":
+            try:
+                message = outliersID(self.selectedFile, self.selectedOutlier)
+                displayBox("Outliers Identified", message, "Outlier Results")
+
+            except FileNotFoundError:
+                displayBox("File Error", "Please ensure predictand and output files are selected.", "Error", isError=True)
+        elif button == "Daily Stats":
+            try:
+                stats = dailyMeans(self.selectedFile)
+                displayBox("Daily Stats:", stats, "Daily Results")
+            except FileNotFoundError:
+                displayBox("File Error", "Please ensure a predictand file is selected and exists.", "Error", isError=True)
+            
         else:
             print("work in progress, pardon our dust")

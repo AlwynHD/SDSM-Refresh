@@ -41,7 +41,7 @@ class ContentWidget(QWidget):
         Updates the background image to fit the current size of the Home screen widget.
         Ensures the image maintains its aspect ratio and smooth scaling for better quality.
         """
-        backgroundImage = QPixmap("src/images/sdsm_home_background.jpg").scaled(
+        backgroundImage = QPixmap("../images/sdsm_home_background.jpg").scaled(
             self.size(),  # Scale the image to match the widget's size
             Qt.KeepAspectRatioByExpanding,  # Maintain aspect ratio while expanding to fill
             Qt.SmoothTransformation  # Use smooth scaling for high-quality rendering

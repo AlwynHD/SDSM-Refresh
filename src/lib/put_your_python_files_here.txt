@@ -1,2 +1,0 @@
-Put your python files here instead of the root directory please
-thanks :-)

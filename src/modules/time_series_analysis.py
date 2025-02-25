@@ -1,191 +1,76 @@
-from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QFrame, QComboBox, 
-    QLineEdit, QListWidget, QFileDialog, QCheckBox, QRadioButton, QButtonGroup, 
-    QGridLayout, QGroupBox, QSizePolicy
-)
+from PyQt5.QtWidgets import QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, QFrame, QLabel
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QPalette, QColor, QIcon
+
+# Define the name of the module for display in the content area
+moduleName = "Time Series Analysis"
 
 class ContentWidget(QWidget):
     """
-    A well-optimized UI layout based on the user's feedback.
+    A widget to display the Time Series Analysis screen (UI/UX).
+    Includes a buttonBar at the top and a contentArea for displaying details.
     """
     def __init__(self):
+        """
+        Initialize the Time Series Analysis screen UI/UX, setting up the layout, buttonBar, and contentArea.
+        """
         super().__init__()
 
-        # --- Main Layout ---
+        # Main layout for the entire widget
         mainLayout = QVBoxLayout()
-        mainLayout.setContentsMargins(15, 15, 15, 15)  # Reduced margins to save space
-        mainLayout.setSpacing(12)  # Adjusted spacing for better layout flow
-        self.setLayout(mainLayout)
+        mainLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
+        mainLayout.setSpacing(0)  # No spacing between elements
+        self.setLayout(mainLayout)  # Apply the main layout to the widget
 
-        # --- Time Period Selection (Smaller) ---
-        timePeriodGroup = QGroupBox("Time Period")
-        timePeriodLayout = QHBoxLayout()
-        self.timePeriodDropdown = QComboBox()
-        self.timePeriodDropdown.addItems(["Raw Data", "Processed Data"])
-        self.timePeriodDropdown.setFixedHeight(25)  # Reduced height for better fit
-        timePeriodLayout.addWidget(self.timePeriodDropdown, alignment=Qt.AlignCenter)
-        timePeriodGroup.setLayout(timePeriodLayout)
-        mainLayout.addWidget(timePeriodGroup, alignment=Qt.AlignCenter)
+        # --- Button Bar ---
+        # Layout for the buttonBar at the top of the screen
+        buttonBarLayout = QHBoxLayout()
+        buttonBarLayout.setSpacing(0)  # No spacing between buttons
+        buttonBarLayout.setContentsMargins(0, 0, 0, 0)  # No margins around the layout
+        buttonBarLayout.setAlignment(Qt.AlignLeft)  # Align buttons to the left
 
-        # --- File Selection Section (Side-by-Side) ---
-        fileSelectionLayout = QHBoxLayout()
+        # Create placeholder buttons for the buttonBar
+        buttonNames = ["Reset", "Settings"]  # Names of the buttons for clarity
+        for name in buttonNames:
+            button = QPushButton(name)  # Create a button with the given name
+            button.setIcon(QIcon("placeholder_icon.png"))  # Placeholder icon
+            button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)  # Fixed size policy
+            button.setFixedSize(50, 50)  # Set a fixed size for the button
+            button.setStyleSheet(
+                "border: 1px solid lightgray; background-color: #F0F0F0; text-align: left;"
+            )  # Style to match the overall design
+            buttonBarLayout.addWidget(button)  # Add the button to the buttonBar layout
 
-        # Left File Selection (Reduced height)
-        self.fileSelectionLeft = self.createFileSelectionGroup("File Selection")
-        fileSelectionLayout.addWidget(self.fileSelectionLeft)
+        # Frame for the buttonBar
+        buttonBarFrame = QFrame()
+        buttonBarFrame.setLayout(buttonBarLayout)  # Apply the button layout to the frame
+        buttonBarFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
+        buttonBarFrame.setFixedHeight(50)  # Match height with other UI elements
+        buttonBarFrame.setStyleSheet("background-color: #A9A9A9;")  # Dark gray background
+        mainLayout.addWidget(buttonBarFrame)  # Add the buttonBar frame to the main layout
 
-        # Right File Selection
-        self.fileSelectionRight = self.createFileSelectionGroup("File Selection")
-        fileSelectionLayout.addWidget(self.fileSelectionRight)
+        # --- Content Area ---
+        # Frame for the contentArea
+        contentAreaFrame = QFrame()
+        contentAreaFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
 
-        mainLayout.addLayout(fileSelectionLayout)
+        # Layout for the contentArea frame
+        contentAreaLayout = QVBoxLayout()
+        contentAreaLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
+        contentAreaLayout.setSpacing(0)  # No spacing between elements
+        contentAreaFrame.setLayout(contentAreaLayout)  # Apply the layout to the frame
 
-        # --- Bottom Section (Data Range + Save Results) ---
-        bottomLayout = QHBoxLayout()
+        # Set the background color to light gray
+        contentAreaFrame.setStyleSheet("background-color: #D3D3D3;")
 
-        # Data Range Box (Smaller Height)
-        dataGroup = QGroupBox("Data")
-        dataLayout = QGridLayout()
+        # Add the contentArea frame to the main layout
+        mainLayout.addWidget(contentAreaFrame)
 
-        self.startDateInput = QLineEdit()
-        self.startDateInput.setPlaceholderText("01/01/1948")
-        self.startDateInput.setFixedHeight(25)
+        # --- Center Label (Placeholder) ---
+        # Label to display the name of the module (Time Series Analysis)
+        moduleLabel = QLabel(moduleName, self)
+        moduleLabel.setStyleSheet("font-size: 24px; color: black;")  # Style the label text
+        contentAreaLayout.addWidget(moduleLabel)  # Add the label to the contentArea layout
 
-        self.endDateInput = QLineEdit()
-        self.endDateInput.setPlaceholderText("31/12/2017")
-        self.endDateInput.setFixedHeight(25)
-
-        dataLayout.addWidget(QLabel("Start:"), 0, 0)
-        dataLayout.addWidget(self.startDateInput, 0, 1)
-        dataLayout.addWidget(QLabel("End:"), 1, 0)
-        dataLayout.addWidget(self.endDateInput, 1, 1)
-
-        dataGroup.setLayout(dataLayout)
-        dataGroup.setFixedHeight(80)  # Reduced height to fit better
-        bottomLayout.addWidget(dataGroup)
-
-        # Save Results Box (Aligned with Data Section)
-        saveGroup = QGroupBox("Save Results To")
-        saveLayout = QVBoxLayout()
-
-        saveButtonsLayout = QHBoxLayout()
-        self.selectSaveButton = QPushButton("📂 Select")
-        self.selectSaveButton.clicked.connect(self.selectSaveFile)
-        self.selectSaveButton.setFixedHeight(30)
-
-        self.clearSaveButton = QPushButton("❌ Clear")
-        self.clearSaveButton.clicked.connect(self.clearSaveFile)
-        self.clearSaveButton.setFixedHeight(30)
-
-        saveButtonsLayout.addWidget(self.selectSaveButton)
-        saveButtonsLayout.addWidget(self.clearSaveButton)
-
-        self.saveFileLabel = QLabel("File: *.CSV")
-        self.saveFileLabel.setStyleSheet("border: 1px solid gray; padding: 5px;")
-
-        saveLayout.addLayout(saveButtonsLayout)
-        saveLayout.addWidget(self.saveFileLabel)
-
-        saveGroup.setLayout(saveLayout)
-        bottomLayout.addWidget(saveGroup)
-
-        mainLayout.addLayout(bottomLayout)
-
-        # --- Statistics Selection (Better Organized) ---
-        statsGroup = QGroupBox("Select Statistics")
-        statsLayout = QGridLayout()
-
-        self.statsOptions = [
-            "Sum", "Mean", "Maximum", "Winter/Summer ratio",
-            "Maximum dry spell", "Maximum wet spell",
-            "Dry day persistence", "Wet day persistence",
-            "Partial Duration Series", "Percentile",
-            "Standard Precipitation Index", "Peaks Over Threshold"
-        ]
-
-        self.statCheckboxes = []
-        for i, stat in enumerate(self.statsOptions):
-            checkbox = QCheckBox(stat)
-            self.statCheckboxes.append(checkbox)
-            statsLayout.addWidget(checkbox, i // 2, i % 2)  # Two columns
-
-        # --- Spell Duration Selection (Smaller to Fit) ---
-        spellGroup = QGroupBox("Spell Duration Selection")
-        spellLayout = QVBoxLayout()
-        self.spellOptions = [
-            "Mean dry spell", "Mean wet spell",
-            "Median dry spell", "Median wet spell",
-            "SD dry spell", "SD wet spell", "Spell length correlation"
-        ]
-        self.spellGroup = QButtonGroup()
-
-        for option in self.spellOptions:
-            radio = QRadioButton(option)
-            self.spellGroup.addButton(radio)
-            spellLayout.addWidget(radio)
-
-        spellGroup.setLayout(spellLayout)
-        spellGroup.setFixedHeight(150)  # Reduced height to fit better
-        statsLayout.addWidget(spellGroup, 0, 2, len(self.spellOptions) // 2, 1)
-
-        # --- Threshold Inputs (Now Fits Properly) ---
-        thresholdLayout = QGridLayout()
-
-        self.percentileInput = QLineEdit()
-        self.percentileInput.setPlaceholderText("90")
-        self.percentileInput.setFixedHeight(25)
-
-        self.precipLongTermInput = QLineEdit()
-        self.precipLongTermInput.setPlaceholderText("90")
-        self.precipLongTermInput.setFixedHeight(25)
-
-        self.numEventsInput = QLineEdit()
-        self.numEventsInput.setPlaceholderText("90")
-        self.numEventsInput.setFixedHeight(25)
-
-        thresholdLayout.addWidget(QLabel("%Prec > annual %ile:"), 0, 0)
-        thresholdLayout.addWidget(self.percentileInput, 0, 1)
-
-        thresholdLayout.addWidget(QLabel("% All precip from events > long-term %ile:"), 1, 0)
-        thresholdLayout.addWidget(self.precipLongTermInput, 1, 1)
-
-        thresholdLayout.addWidget(QLabel("No. of events > long-term %ile:"), 2, 0)
-        thresholdLayout.addWidget(self.numEventsInput, 2, 1)
-
-        statsLayout.addLayout(thresholdLayout, 6, 0, 1, 2)
-        statsGroup.setLayout(statsLayout)
-        mainLayout.addWidget(statsGroup)
-
-        # --- Action Buttons (Smaller & Aligned) ---
-        buttonLayout = QHBoxLayout()
-        generateButton = QPushButton("🚀 Generate")
-        generateButton.setStyleSheet("background-color: #4CAF50; color: white; font-size: 14px; padding: 8px;")
-
-        resetButton = QPushButton("🔄 Reset")
-        resetButton.setStyleSheet("background-color: #F44336; color: white; font-size: 14px; padding: 8px;")
-
-        buttonLayout.addWidget(generateButton)
-        buttonLayout.addWidget(resetButton)
-        mainLayout.addLayout(buttonLayout)
-
-    def createFileSelectionGroup(self, title):
-        group = QGroupBox(title)
-        layout = QVBoxLayout()
-        fileList = QListWidget()
-        fileList.setFixedHeight(80)
-        directoryBrowser = QListWidget()
-        directoryBrowser.setFixedHeight(80)
-        layout.addWidget(fileList)
-        layout.addWidget(directoryBrowser)
-        group.setLayout(layout)
-        return group
-
-    def selectSaveFile(self):
-        file_name, _ = QFileDialog.getSaveFileName(self, "Save To File", filter="CSV Files (*.csv)")
-        if file_name:
-            self.saveFileLabel.setText(f"File: {file_name}")
-
-    def clearSaveFile(self):
-        self.saveFileLabel.setText("File: *.CSV")
+        # Add a spacer to ensure content is properly spaced
+        contentAreaLayout.addStretch()

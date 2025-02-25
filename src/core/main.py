@@ -247,9 +247,12 @@ class SDSMWindow(QMainWindow):
         frameGeometry.moveCenter(screenCenter)  # Move the window's center to the screen center
         self.move(frameGeometry.topLeft())  # Adjust the window's top-left corner to reflect new position
 
-if __name__ == "__main__":
+def run():
     # Create and launch the application
     app = QApplication(sys.argv)
     window = SDSMWindow()
     window.show()  # Display the main window
     sys.exit(app.exec_())  # Start the application event loop
+
+if __name__ == "__main__":
+    run()

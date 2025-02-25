@@ -71,15 +71,19 @@ class SDSMWindow(QMainWindow):
             menuLayout.addWidget(menuButton)
             self.menuButtons.append(menuButton)
         
+        # Menu Frame
         menuFrame = QFrame()
         menuFrame.setLayout(menuLayout)
         menuFrame.setFrameShape(QFrame.NoFrame)
         menuContentSplitter.addWidget(menuFrame)
-        menuFrame.setFixedWidth(int(windowWidth * 0.15))
+        menuContentSplitter.setStretchFactor(0, 1)
         
         # Content area setup
         self.contentStack = QStackedWidget()
+        self.contentStack.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.contentStack.setMinimumSize(0, 0)
         menuContentSplitter.addWidget(self.contentStack)
+        menuContentSplitter.setStretchFactor(1, 4)
         
         # Menu bar and toolbar
         toolbar = QMenuBar(self)
@@ -134,14 +138,14 @@ class SDSMWindow(QMainWindow):
         Load the Data Settings module.
         """
         self.loadModule("data_settings", "Data Settings")
-        self.updateHelpMenu("Data Settings")
+        self.updateHelpMenu("Settings")
     
     def loadSystemSettingsContent(self):
         """
         Load the System Settings module.
         """
         self.loadModule("system_settings", "System Settings")
-        self.updateHelpMenu("System Settings")
+        self.updateHelpMenu("Settings")
     
     def loadModule(self, moduleName, displayName):
         """
@@ -155,10 +159,16 @@ class SDSMWindow(QMainWindow):
         modulePath = modulePaths.get(moduleName, modulePaths["default"])
         if modulePath not in sys.path:
             sys.path.append(modulePath)
+        while self.contentStack.count() > 0:
+            widget_to_remove = self.contentStack.widget(0)
+            self.contentStack.removeWidget(widget_to_remove)
+            widget_to_remove.deleteLater()
         try:
             module = import_module(moduleName)
             if hasattr(module, 'ContentWidget'):
                 contentWidget = module.ContentWidget()
+                contentWidget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+                contentWidget.setMinimumSize(0, 0)
                 self.contentStack.addWidget(contentWidget)
                 self.contentStack.setCurrentWidget(contentWidget)
         except ModuleNotFoundError:
@@ -197,8 +207,7 @@ class SDSMWindow(QMainWindow):
             "Compare Results": "IDH_CompareResults",
             "Frequency Analysis": "IDH_FrequencyAnalysis",
             "Time Series Analysis": "IDH_TimeSeries",
-            "Data Settings": "IDH_DataSettings",
-            "System Settings": "IDH_SystemSettings"
+            "Settings": "IDH_Settings"
         }
         self.help_actions = {}
         for name, section in self.help_urls.items():

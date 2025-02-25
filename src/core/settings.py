@@ -72,42 +72,71 @@ class ContentWidget(QWidget):
         self.setAutoFillBackground(True)
         self.setPalette(palette)
 
+        # Create a horizontal layout to hold both groups
+        groupLayout = QHBoxLayout()
+
         # Data Group Box
         dataGroupBox = QGroupBox("Data")
         dataGroupBox.setStyleSheet("color: white;")
         dataLayout = QVBoxLayout()
         dataGroupBox.setLayout(dataLayout)
-
+        
+        # Create a layout for the Start and End Date fields (Label & Input stacked vertically)
+        dateLayout = QVBoxLayout()
+        
+        # Start Date Layout (Label & Input side by side)
+        startDateLayout = QHBoxLayout()
+        startLabel = QLabel("Start Date:")
         self.startDateEdit = QLineEdit()
+        self.startDateEdit.setFixedWidth(80)
+        self.startDateEdit.setAlignment(Qt.AlignCenter)
+        startDateLayout.addWidget(startLabel)
+        startDateLayout.addWidget(self.startDateEdit)
+        
+        # End Date Layout (Label & Input below Start Date)
+        endDateLayout = QHBoxLayout()
+        endLabel = QLabel("End Date:")
         self.endDateEdit = QLineEdit()
-        dataLayout.addWidget(QLabel("Standard Start Date:"))
-        dataLayout.addWidget(self.startDateEdit)
-        dataLayout.addWidget(QLabel("Standard End Date:"))
-        dataLayout.addWidget(self.endDateEdit)
-
-        mainLayout.addWidget(dataGroupBox)
-
+        self.endDateEdit.setFixedWidth(80)
+        self.endDateEdit.setAlignment(Qt.AlignCenter)
+        endDateLayout.addWidget(endLabel)
+        endDateLayout.addWidget(self.endDateEdit)
+        
+        # Add start & end date layouts to the main vertical layout
+        dateLayout.addLayout(startDateLayout)
+        dateLayout.addLayout(endDateLayout)
+        
+        # Add the vertical layout to the data group
+        dataLayout.addLayout(dateLayout)
+        
         # Miscellaneous Group Box
         miscGroupBox = QGroupBox("Miscellaneous")
         miscGroupBox.setStyleSheet("color: white;")
         miscLayout = QVBoxLayout()
         miscGroupBox.setLayout(miscLayout)
-
+        
         self.allowNegativeCheckBox = QCheckBox("Allow Negative Values")
         self.allowNegativeCheckBox.setChecked(True)
         self.eventThresholdEdit = QLineEdit()
         self.missingDataEdit = QLineEdit()
         self.randomSeedCheckBox = QCheckBox("Random Number Seed")
         self.randomSeedCheckBox.setChecked(True)
-
+        
         miscLayout.addWidget(self.allowNegativeCheckBox)
         miscLayout.addWidget(QLabel("Event Threshold:"))
         miscLayout.addWidget(self.eventThresholdEdit)
         miscLayout.addWidget(QLabel("Missing Data Identifier:"))
         miscLayout.addWidget(self.missingDataEdit)
         miscLayout.addWidget(self.randomSeedCheckBox)
+        
+        # Add the group boxes to the horizontal layout with proportional sizing
+        groupLayout.addWidget(dataGroupBox, 1)  # 1/3rd width for data group
+        groupLayout.addWidget(miscGroupBox, 2)  # 2/3rd width for misc group
+        
+        # Add the horizontal group layout to the main layout
+        mainLayout.addLayout(groupLayout)
+        
 
-        mainLayout.addWidget(miscGroupBox)
 
         # Reset Button (moved outside the Miscellaneous Group Box)
         resetButton = QPushButton("Reset")

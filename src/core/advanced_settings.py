@@ -1,6 +1,7 @@
 from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, QRadioButton, QLineEdit, QLabel, QGroupBox, QPushButton, QCheckBox, QFileDialog, QButtonGroup, QMessageBox)
 from PyQt5.QtGui import QPalette, QColor
-from PyQt5.QtCore import QDir
+from PyQt5.QtCore import Qt,QDir
+
 import configparser
 import os
 import sys
@@ -73,9 +74,14 @@ class ContentWidget(QWidget):
         # Model Transformation Group Box
         modelTransGroupBox = QGroupBox("Model Transformation")
         modelTransGroupBox.setStyleSheet("color: white;")
-        modelTransLayout = QVBoxLayout()
+        modelTransLayout = QHBoxLayout()
         modelTransGroupBox.setLayout(modelTransLayout)
-
+        
+        # Reduce unnecessary space
+        modelTransLayout.setSpacing(5)  # Adjust spacing between buttons
+        modelTransLayout.setContentsMargins(5, 0, 5, 0)
+        
+        # Create radio buttons
         self.transNone = QRadioButton("None")
         self.transFourthRoot = QRadioButton("Fourth root")
         self.transNaturalLog = QRadioButton("Natural log")
@@ -90,43 +96,57 @@ class ContentWidget(QWidget):
         modelTransLayout.addWidget(self.transBoxCox)
 
         mainLayout.addWidget(modelTransGroupBox)
-
-        # Variance Inflation and Bias Correction Group
-        varianceBiasGroup = QGroupBox("Variance Inflation & Bias Correction")
-        varianceBiasGroup.setStyleSheet("color: white;")
-        varianceBiasLayout = QHBoxLayout()
-        varianceBiasGroup.setLayout(varianceBiasLayout)
-
-        varianceBiasLayout.addWidget(QLabel("Variance Inflation:"))
+        
+        # Parent layout to hold all three group boxes horizontally
+        groupContainer = QHBoxLayout()
+        
+        # Variance Inflation Group
+        varianceInflationGroup = QGroupBox("Variance Inflation")
+        varianceInflationGroup.setStyleSheet("color: white;")
+        varianceInflationLayout = QHBoxLayout()
+        varianceInflationGroup.setLayout(varianceInflationLayout)
+        
+        varianceInflationLayout.addWidget(QLabel("Value:"))
         self.varianceInflationEdit = QLineEdit()
         self.varianceInflationEdit.setFixedWidth(60)
-        varianceBiasLayout.addWidget(self.varianceInflationEdit)
-
-        varianceBiasLayout.addWidget(QLabel("Bias Correction:"))
+        varianceInflationLayout.addWidget(self.varianceInflationEdit)
+        
+        groupContainer.addWidget(varianceInflationGroup)
+        
+        # Bias Correction Group
+        biasCorrectionGroup = QGroupBox("Bias Correction")
+        biasCorrectionGroup.setStyleSheet("color: white;")
+        biasCorrectionLayout = QHBoxLayout()
+        biasCorrectionGroup.setLayout(biasCorrectionLayout)
+        
+        biasCorrectionLayout.addWidget(QLabel("Value:"))
         self.biasCorrectionEdit = QLineEdit()
         self.biasCorrectionEdit.setFixedWidth(60)
-        varianceBiasLayout.addWidget(self.biasCorrectionEdit)
-
-        mainLayout.addWidget(varianceBiasGroup)
-
+        biasCorrectionLayout.addWidget(self.biasCorrectionEdit)
+        
+        groupContainer.addWidget(biasCorrectionGroup)
+        
         # Conditional Selection Group Box
         conditionalGroupBox = QGroupBox("Conditional Selection")
         conditionalGroupBox.setStyleSheet("color: white;")
         conditionalLayout = QHBoxLayout()
         conditionalGroupBox.setLayout(conditionalLayout)
-
+        
         self.conditionalStochastic = QRadioButton("Stochastic")
         self.conditionalFixedThreshold = QRadioButton("Fixed Threshold:")
         self.fixedThresholdEdit = QLineEdit()
         self.fixedThresholdEdit.setFixedWidth(50)
-
+        
         conditionalLayout.addWidget(self.conditionalStochastic)
         conditionalLayout.addWidget(self.conditionalFixedThreshold)
         conditionalLayout.addWidget(self.fixedThresholdEdit)
-
+        
         self.conditionalStochastic.setChecked(True)
-
-        mainLayout.addWidget(conditionalGroupBox)
+        
+        groupContainer.addWidget(conditionalGroupBox)
+        
+        # Add the entire horizontal row to the main layout
+        mainLayout.addLayout(groupContainer)
 
         # Optimization Algorithm Group Box
         optimGroupBox = QGroupBox("Optimization Algorithm")
@@ -165,19 +185,28 @@ class ContentWidget(QWidget):
         # Wet Day Percentage Profile Group Box
         wetDayGroupBox = QGroupBox("Wet Day Percentage Profile")
         wetDayGroupBox.setStyleSheet("color: white;")
-        wetDayLayout = QHBoxLayout()
+        wetDayLayout = QHBoxLayout()  # Horizontal layout for all months
         wetDayGroupBox.setLayout(wetDayLayout)
-
+        
         self.wetDayEdits = []
+        
         for month in ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]:
+            monthLayout = QVBoxLayout()  # Vertical layout for label & textbox
+            
             monthLabel = QLabel(month)
-            monthLabel.setStyleSheet("margin-right: 5px;")
-            wetDayLayout.addWidget(monthLabel)
+            monthLabel.setAlignment(Qt.AlignCenter)  # Center text for better alignment
+            
             monthEdit = QLineEdit()
-            monthEdit.setFixedWidth(30)
+            monthEdit.setFixedWidth(40)
+            monthEdit.setAlignment(Qt.AlignCenter)  # Center text inside input box
+            
             self.wetDayEdits.append(monthEdit)
-            wetDayLayout.addWidget(monthEdit)
-
+            
+            monthLayout.addWidget(monthLabel)
+            monthLayout.addWidget(monthEdit)
+            
+            wetDayLayout.addLayout(monthLayout)  # Add vertical layout to horizontal layout
+        
         mainLayout.addWidget(wetDayGroupBox)
 
         # Reset Button

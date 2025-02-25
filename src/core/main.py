@@ -187,7 +187,6 @@ class SDSMWindow(QMainWindow):
         
         # Mapping of page names to their anchor IDs within SDSMHelp.html
         self.help_urls = {
-            "Home": None,  # No anchor; general page
             "Quality Control": "IDH_Quality",
             "Transform Data": "IDH_Transform",
             "Screen Variables": "IDH_Screen",

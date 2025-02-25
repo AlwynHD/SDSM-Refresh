@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import (QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, 
                              QFrame, QLabel, QFileDialog, QScrollArea, QDateEdit, QCheckBox,
-                             QButtonGroup, QRadioButton, QLineEdit)
+                             QButtonGroup, QRadioButton, QLineEdit, QGroupBox)
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPalette, QColor, QIcon
 from os import listdir
@@ -10,9 +10,9 @@ moduleName = "Calibrate Model"
 
 
 
-class borderedQFrame(QFrame):
-    def __init__(self):
-        super().__init__()
+class borderedQGroupBox(QGroupBox):
+    def __init__(self,args):
+        super().__init__(args)
 
 class ContentWidget(QWidget):
     """
@@ -39,9 +39,9 @@ class ContentWidget(QWidget):
 
         self.setStyleSheet("""
                            QFrame{
-                                background-color: #D3D3D3;}
-                           borderedQFrame{
-                                background-color: #D3D3D3;
+                                background-color: #F0F0F0;}
+                           borderedQGroupBox{
+                                background-color: #F0F0F0;
                                 border : 1px solid black;
                                 border-top-left-radius : 20px;
                                 border-top-right-radius : 20px;
@@ -73,11 +73,12 @@ class ContentWidget(QWidget):
         buttonBarFrame.setLayout(buttonBarLayout)  # Apply the button layout to the frame
         buttonBarFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
         buttonBarFrame.setFixedHeight(50)  # Match height with other UI elements
-        buttonBarFrame.setStyleSheet("background-color: #A9A9A9;")  # Dark gray background
+        buttonBarFrame.setStyleSheet("background-color: #F0F0F0;")  # Dark gray background
         mainLayout.addWidget(buttonBarFrame)  # Add the buttonBar frame to the main layout
 
         # --- Content Area ---
         # Frame for the contentArea
+        '''
         titleFrame = QFrame()
         titleFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
 
@@ -88,16 +89,16 @@ class ContentWidget(QWidget):
         titleFrame.setLayout(titleLayout)  # Apply the layout to the frame
 
         # Set a light gray background color for the contentArea
-        titleFrame.setStyleSheet("background-color: #D3D3D3;")
+        titleFrame.setStyleSheet("background-color: #F0F0F0;")
 
         # Add the contentArea frame to the main layout
         mainLayout.addWidget(titleFrame)
-
+        '''
         # --- Center Label (Placeholder) ---
         # Label to display the name of the module (Calibrate Model)
-        moduleLabel = QLabel(moduleName, self)
+        '''moduleLabel = QLabel(moduleName, self)
         moduleLabel.setStyleSheet("font-size: 24px; color: black;")  # Style the label text
-        titleLayout.addWidget(moduleLabel)  # Add the label to the contentArea layout
+        titleLayout.addWidget(moduleLabel)  # Add the label to the contentArea layout'''
 
 
         contentAreaFrame = QFrame()
@@ -127,8 +128,7 @@ class ContentWidget(QWidget):
         contentAreaLayout.addWidget(filesDateFrame)
 
         #Create selectPredictandFile frame
-        selectPredictandFileFrame = borderedQFrame()
-        selectPredictandFileFrame.setFrameStyle(QFrame.StyledPanel | QFrame.Sunken)   
+        selectPredictandFileFrame = borderedQGroupBox("Select Predictand")
         selectPredictandFileFrame.setBaseSize(200,200)
 
 
@@ -136,7 +136,7 @@ class ContentWidget(QWidget):
         selectPredictandFileLayout = QVBoxLayout()
         selectPredictandFileLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
         selectPredictandFileLayout.setSpacing(0)  # No spacing between elements
-        selectPredictandFileFrame.setStyleSheet("background-color: #D3D3D3;")
+        selectPredictandFileFrame.setStyleSheet("background-color: #F0F0F0;")
 
 
         selectPredictandFileFrame.setLayout(selectPredictandFileLayout)
@@ -144,8 +144,7 @@ class ContentWidget(QWidget):
         filesDateLayout.addWidget(selectPredictandFileFrame)
 
         #Create selectPredictandFile frame
-        selectOutputFileFrame = borderedQFrame()
-        selectOutputFileFrame.setFrameStyle(QFrame.StyledPanel | QFrame.Sunken)   
+        selectOutputFileFrame = borderedQGroupBox("Select Output File")
         selectOutputFileFrame.setBaseSize(200,200)
 
 
@@ -153,7 +152,7 @@ class ContentWidget(QWidget):
         selectOutputFileLayout = QVBoxLayout()
         selectOutputFileLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
         selectOutputFileLayout.setSpacing(0)  # No spacing between elements
-        selectOutputFileFrame.setStyleSheet("background-color: #D3D3D3;")
+        selectOutputFileFrame.setStyleSheet("background-color: #F0F0F0;")
 
 
         selectOutputFileFrame.setLayout(selectOutputFileLayout)
@@ -161,10 +160,9 @@ class ContentWidget(QWidget):
         filesDateLayout.addWidget(selectPredictandFileFrame)
 
         #Create selectDate Frame
-        selectDateFrame = borderedQFrame()
-        selectDateFrame.setFrameStyle(QFrame.StyledPanel | QFrame.Sunken) 
+        selectDateFrame = borderedQGroupBox("Select Date")
         selectDateFrame.setBaseSize(200,200)
-        selectDateFrame.setStyleSheet("background-color: #D3D3D3;")
+        selectDateFrame.setStyleSheet("background-color: #F0F0F0;")
 
 
         selectDateLayout = QVBoxLayout()
@@ -179,7 +177,7 @@ class ContentWidget(QWidget):
         fitStartDateFrame = QFrame()
         fitStartDateFrame.setFrameStyle(QFrame.NoFrame) 
         fitStartDateFrame.setBaseSize(190,50)
-        fitStartDateFrame.setStyleSheet("background-color: #D3D3D3;")
+        fitStartDateFrame.setStyleSheet("background-color: #F0F0F0;")
 
         fitStartDateLayout = QHBoxLayout()
         fitStartDateLayout.setContentsMargins(10, 10, 10, 10)  # 10 Pixel padding
@@ -189,7 +187,7 @@ class ContentWidget(QWidget):
         fitEndDateFrame = QFrame()
         fitEndDateFrame.setFrameStyle(QFrame.NoFrame) 
         fitEndDateFrame.setBaseSize(190,50)
-        fitEndDateFrame.setStyleSheet("background-color: #D3D3D3;")
+        fitEndDateFrame.setStyleSheet("background-color: #F0F0F0;")
 
         fitEndDateLayout = QHBoxLayout()
         fitEndDateLayout.setContentsMargins(10, 10, 10, 10)  # 10 Pixel padding
@@ -204,8 +202,7 @@ class ContentWidget(QWidget):
 
 
         #Create selectPredictor frame
-        selectPredictorsFrame = borderedQFrame()
-        selectPredictorsFrame.setFrameStyle(QFrame.StyledPanel | QFrame.Sunken)   
+        selectPredictorsFrame = borderedQGroupBox("Select Predictors")
         selectPredictorsFrame.setBaseSize(200,400)
 
 
@@ -214,7 +211,7 @@ class ContentWidget(QWidget):
         selectPredictorsLayout = QVBoxLayout()
         selectPredictorsLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
         selectPredictorsLayout.setSpacing(0)  # No spacing between elements
-        selectPredictorsFrame.setStyleSheet("background-color: #D3D3D3;")
+        selectPredictorsFrame.setStyleSheet("background-color: #F0F0F0;")
 
 
         selectPredictorsFrame.setLayout(selectPredictorsLayout)
@@ -231,7 +228,7 @@ class ContentWidget(QWidget):
         optionsLayout = QVBoxLayout()
         optionsLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
         optionsLayout.setSpacing(0)  # No spacing between elements
-        optionsFrame.setStyleSheet("background-color: #D3D3D3;")
+        optionsFrame.setStyleSheet("background-color: #F0F0F0;")
         optionsFrame.setLayout(optionsLayout)
         
         contentAreaLayout.addWidget(optionsFrame)
@@ -244,33 +241,31 @@ class ContentWidget(QWidget):
         modelProcessLayout = QHBoxLayout()
         modelProcessLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
         modelProcessLayout.setSpacing(0)  # No spacing between elements
-        modelProcessFrame.setStyleSheet("background-color: #D3D3D3;")
+        modelProcessFrame.setStyleSheet("background-color: #F0F0F0;")
         modelProcessFrame.setLayout(modelProcessLayout)
         
         optionsLayout.addWidget(modelProcessFrame)
 
-        modelTypeFrame = borderedQFrame()
-        modelTypeFrame.setFrameStyle(QFrame.NoFrame)   
+        modelTypeFrame = borderedQGroupBox("Select Model Type")
         modelTypeFrame.setBaseSize(200,100)
 
         #Layout for selectPredictors frame
         modelTypeLayout = QVBoxLayout()
         modelTypeLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
         modelTypeLayout.setSpacing(0)  # No spacing between elements
-        modelTypeFrame.setStyleSheet("background-color: #D3D3D3;")
+        modelTypeFrame.setStyleSheet("background-color: #F0F0F0;")
         modelTypeFrame.setLayout(modelTypeLayout)
         
         modelProcessLayout.addWidget(modelTypeFrame)
 
-        processFrame = borderedQFrame()
-        processFrame.setFrameStyle(QFrame.NoFrame)   
+        processFrame = borderedQGroupBox("Select Process")
         processFrame.setBaseSize(200,100)
 
         #Layout for selectPredictors frame
         processLayout = QVBoxLayout()
         processLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
         processLayout.setSpacing(0)  # No spacing between elements
-        processFrame.setStyleSheet("background-color: #D3D3D3;")
+        processFrame.setStyleSheet("background-color: #F0F0F0;")
         processFrame.setLayout(processLayout)
         
         modelProcessLayout.addWidget(processFrame)
@@ -284,33 +279,31 @@ class ContentWidget(QWidget):
         autoregressionResidualLayout = QHBoxLayout()
         autoregressionResidualLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
         autoregressionResidualLayout.setSpacing(0)  # No spacing between elements
-        autoregressionResidualFrame.setStyleSheet("background-color: #D3D3D3;")
+        autoregressionResidualFrame.setStyleSheet("background-color: #F0F0F0;")
         autoregressionResidualFrame.setLayout(autoregressionResidualLayout)
         
         optionsLayout.addWidget(autoregressionResidualFrame)
 
-        autoregressionFrame = borderedQFrame()
-        autoregressionFrame.setFrameStyle(QFrame.NoFrame)   
+        autoregressionFrame = borderedQGroupBox("Autoregression")
         autoregressionFrame.setBaseSize(200,100)
 
         #Layout for selectPredictors frame
         autoregressionLayout = QHBoxLayout()
         autoregressionLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
         autoregressionLayout.setSpacing(0)  # No spacing between elements
-        autoregressionFrame.setStyleSheet("background-color: #D3D3D3;")
+        autoregressionFrame.setStyleSheet("background-color: #F0F0F0;")
         autoregressionFrame.setLayout(autoregressionLayout)
         
         autoregressionResidualLayout.addWidget(autoregressionFrame)
 
-        residualFrame = borderedQFrame()
-        residualFrame.setFrameStyle(QFrame.NoFrame)   
+        residualFrame = borderedQGroupBox("Residual")
         residualFrame.setBaseSize(200,100)
 
         #Layout for selectPredictors frame
         residualLayout = QHBoxLayout()
         residualLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
         residualLayout.setSpacing(0)  # No spacing between elements
-        residualFrame.setStyleSheet("background-color: #D3D3D3;")
+        residualFrame.setStyleSheet("background-color: #F0F0F0;")
         residualFrame.setLayout(residualLayout)
         
         autoregressionResidualLayout.addWidget(residualFrame)
@@ -325,39 +318,36 @@ class ContentWidget(QWidget):
         chowHistogramLayout = QHBoxLayout()
         chowHistogramLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
         chowHistogramLayout.setSpacing(0)  # No spacing between elements
-        chowHistogramFrame.setStyleSheet("background-color: #D3D3D3;")
+        chowHistogramFrame.setStyleSheet("background-color: #F0F0F0;")
         chowHistogramFrame.setLayout(chowHistogramLayout)
         
         optionsLayout.addWidget(chowHistogramFrame)
 
-        chowTestFrame = borderedQFrame()
-        chowTestFrame.setFrameStyle(QFrame.NoFrame)   
+        chowTestFrame = borderedQGroupBox("Chow Test")
         chowTestFrame.setBaseSize(200,100)
 
         #Layout for selectPredictors frame
         chowTestLayout = QHBoxLayout()
         chowTestLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
         chowTestLayout.setSpacing(0)  # No spacing between elements
-        chowTestFrame.setStyleSheet("background-color: #D3D3D3;")
+        chowTestFrame.setStyleSheet("background-color: #F0F0F0;")
         chowTestFrame.setLayout(chowTestLayout)
 
         chowHistogramLayout.addWidget(chowTestFrame)
 
-        histogramFrame = borderedQFrame()
-        histogramFrame.setFrameStyle(QFrame.NoFrame)   
+        histogramFrame = borderedQGroupBox("Histogram")
         histogramFrame.setBaseSize(200,100)
 
         #Layout for selectPredictors frame
         histogramLayout = QHBoxLayout()
         histogramLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
         histogramLayout.setSpacing(0)  # No spacing between elements
-        histogramFrame.setStyleSheet("background-color: #D3D3D3;")
+        histogramFrame.setStyleSheet("background-color: #F0F0F0;")
         histogramFrame.setLayout(histogramLayout)
 
         chowHistogramLayout.addWidget(histogramFrame)
 
-        deTrendFrame = borderedQFrame()
-        deTrendFrame.setFrameStyle(QFrame.NoFrame)   
+        deTrendFrame = borderedQGroupBox("De Trend")
         deTrendFrame.setBaseSize(200,100)
         #Wait, I could just make a frame wrapper that does this for me
 
@@ -366,13 +356,12 @@ class ContentWidget(QWidget):
         deTrendLayout = QHBoxLayout()
         deTrendLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
         deTrendLayout.setSpacing(0)  # No spacing between elements
-        deTrendFrame.setStyleSheet("background-color: #D3D3D3;")
+        deTrendFrame.setStyleSheet("background-color: #F0F0F0;")
         deTrendFrame.setLayout(deTrendLayout)
         
         optionsLayout.addWidget(deTrendFrame)
 
-        crossValFrame = borderedQFrame()
-        crossValFrame.setFrameStyle(QFrame.NoFrame)   
+        crossValFrame = borderedQGroupBox("Cross Validation")
         crossValFrame.setBaseSize(200,100)
         #Wait, I could just make a frame wrapper that does this for me
 
@@ -381,7 +370,7 @@ class ContentWidget(QWidget):
         crossValLayout = QHBoxLayout()
         crossValLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
         crossValLayout.setSpacing(0)  # No spacing between elements
-        crossValFrame.setStyleSheet("background-color: #D3D3D3;")
+        crossValFrame.setStyleSheet("background-color: #F0F0F0;")
         crossValFrame.setLayout(crossValLayout)
         
         optionsLayout.addWidget(crossValFrame)
@@ -408,7 +397,7 @@ class ContentWidget(QWidget):
 
 
         predictorsScrollLayout = QVBoxLayout()
-        predictorsScrollLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
+        selectPredictorsLayout.setContentsMargins(25, 25, 25, 25) #Pad 10 pixels each way
         predictorsScrollLayout.setSpacing(0)  # No spacing between elements
         predictorsScrollLayout.setAlignment(Qt.AlignHCenter)
         predictorsScrollFrame.setLayout(predictorsScrollLayout)  # Apply the layout to the frame
@@ -462,7 +451,7 @@ class ContentWidget(QWidget):
 
 
         # Add a spacer to ensure content is properly spaced
-        titleLayout.addStretch()
+        #titleLayout.addStretch()
     def predictorLabelClicked(self,*args):
         button = self.sender() #Get the buttonLabel that was clicked
         predictor = button.text() #Get the name of the buttonLabel, so the predictor file
@@ -471,7 +460,7 @@ class ContentWidget(QWidget):
             button.setStyleSheet("color: white; background-color: blue")
         else:
             self.predictorsSelected.remove(predictor)
-            button.setStyleSheet("color: black; background-color: #D3D3D3")
+            button.setStyleSheet("color: black; background-color: #F0F0F0")
 
         
     

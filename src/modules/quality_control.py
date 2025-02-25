@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import (QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, QFrame, QLabel, QFileDialog,
-                             QLineEdit, QCheckBox, QMessageBox)
+                             QLineEdit, QCheckBox, QMessageBox, QGroupBox)
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QPalette, QColor, QIcon
 from QualityControl import qualityCheck, outliersID, dailyMeans
@@ -19,9 +19,10 @@ def displayBox(messageType, messageInfo, messageTitle, isError=False):
 
 
 
-class borderedQFrame(QFrame):
-    def __init__(self):
-        super().__init__()
+class borderedQGroupBox(QGroupBox):
+    def __init__(self,args):
+        super().__init__(args)
+
 
 class resultsQFrame(QFrame):
     '''Wraps two labels, one being aligned to the right of the results frame'''
@@ -53,9 +54,9 @@ class ContentWidget(QWidget):
 
         self.setStyleSheet("""
                            QFrame{
-                                background-color: #D3D3D3;}
-                           borderedQFrame{
-                                background-color: #D3D3D3;
+                                background-color: #F0F0F0;}
+                           borderedQGroupBox{
+                                background-color: #F0F0F0;
                                 border : 1px solid black;
                                 border-top-left-radius : 20px;
                                 border-top-right-radius : 20px;
@@ -95,14 +96,15 @@ class ContentWidget(QWidget):
         buttonBarFrame.setLayout(buttonBarLayout)  # Apply the button layout to the frame
         buttonBarFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
         buttonBarFrame.setFixedHeight(50)  # Match height with other UI elements
-        buttonBarFrame.setStyleSheet("background-color: #A9A9A9;")  # Dark gray background
+        buttonBarFrame.setStyleSheet("background-color: #F0F0F0;")  
         mainLayout.addWidget(buttonBarFrame)  # Add the buttonBar frame to the main layout
 
         # --- Content Frames ---
         # Frame for the title
-        titleFrame = QFrame()
+        '''titleFrame = QFrame()
         titleFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
-        titleFrame.setFixedHeight(100)
+        titleFrame.setBaseSize(10,50)
+        titleFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Maximum)
 
         # Layout for the title frame
         titleLayout = QVBoxLayout()
@@ -111,10 +113,10 @@ class ContentWidget(QWidget):
         titleFrame.setLayout(titleLayout)  # Apply the layout to the frame
 
         # Set the background color to light gray
-        titleFrame.setStyleSheet("background-color: #D3D3D3;")
+        titleFrame.setStyleSheet("background-color: #F0F0F0;")
 
         # Add the contentArea frame to the main layout
-        mainLayout.addWidget(titleFrame)
+        mainLayout.addWidget(titleFrame)'''
 
         #Frame that holds all content
         contentAreaFrame = QFrame()
@@ -146,25 +148,23 @@ class ContentWidget(QWidget):
 
         #Results frame
 
-        resultsFrame = borderedQFrame()
-        resultsFrame.setFrameShape(QFrame.StyledPanel)  # No border around the frame
+        resultsFrame = borderedQGroupBox("Results")
         resultsFrame.setBaseSize(400,400)
         resultsFrame.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
 
         # Layout for the results frame
         resultsLayout = QVBoxLayout()
-        resultsLayout.setContentsMargins(10, 10, 10, 10)  # Remove padding from the layout
+        resultsLayout.setContentsMargins(25, 25, 25, 25) 
         resultsLayout.setSpacing(10)  # No spacing between elements
-        resultsFrame.setStyleSheet("background-color: #D3D3D3;")
+        resultsFrame.setStyleSheet("background-color: #F0F0F0;")
 
         resultsFrame.setLayout(resultsLayout)  # Apply the layout to the frame
 
         contentAreaLayout.addWidget(resultsFrame)
 
         #Create selectFile frame
-        selectFileFrame = borderedQFrame()
-        selectFileFrame.setFrameShape(QFrame.StyledPanel)   
+        selectFileFrame = borderedQGroupBox("Select File")
         selectFileFrame.setBaseSize(200,100)
         selectFileFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
 
@@ -174,7 +174,7 @@ class ContentWidget(QWidget):
         selectFileLayout = QVBoxLayout()
         selectFileLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
         selectFileLayout.setSpacing(10)  # No spacing between elements
-        selectFileFrame.setStyleSheet("background-color: #D3D3D3;")
+        selectFileFrame.setStyleSheet("background-color: #F0F0F0;")
 
 
         selectFileFrame.setLayout(selectFileLayout)
@@ -182,8 +182,7 @@ class ContentWidget(QWidget):
         SPTOLayout.addWidget(selectFileFrame)
 
         #Create pettitt frame
-        pettittFrame = borderedQFrame()
-        pettittFrame.setFrameShape(QFrame.StyledPanel)   
+        pettittFrame = borderedQGroupBox("Pettitt Test")
         pettittFrame.setBaseSize(200,100)
         pettittFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
 
@@ -192,7 +191,7 @@ class ContentWidget(QWidget):
         pettittLayout = QHBoxLayout()
         pettittLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
         pettittLayout.setSpacing(10)  # 10 pixel spacing between elements
-        pettittFrame.setStyleSheet("background-color: #D3D3D3;")
+        pettittFrame.setStyleSheet("background-color: #F0F0F0;")
 
 
         pettittFrame.setLayout(pettittLayout)
@@ -200,8 +199,7 @@ class ContentWidget(QWidget):
         SPTOLayout.addWidget(pettittFrame)
 
         #Create threshold frame
-        thresholdFrame = borderedQFrame()
-        thresholdFrame.setFrameShape(QFrame.StyledPanel)   
+        thresholdFrame = borderedQGroupBox("Threshold")
         thresholdFrame.setBaseSize(200,100)
         thresholdFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
 
@@ -210,7 +208,7 @@ class ContentWidget(QWidget):
         thresholdLayout = QVBoxLayout()
         thresholdLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
         thresholdLayout.setSpacing(10)  # No spacing between elements
-        thresholdFrame.setStyleSheet("background-color: #D3D3D3;")
+        thresholdFrame.setStyleSheet("background-color: #F0F0F0;")
 
 
         thresholdFrame.setLayout(thresholdLayout)
@@ -218,8 +216,7 @@ class ContentWidget(QWidget):
         SPTOLayout.addWidget(thresholdFrame)
 
         #Create outliers frame
-        outliersFrame = borderedQFrame()
-        outliersFrame.setFrameShape(QFrame.StyledPanel)   
+        outliersFrame = borderedQGroupBox("Outliers")
         outliersFrame.setBaseSize(200,100)
         outliersFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
 
@@ -228,7 +225,7 @@ class ContentWidget(QWidget):
         outliersLayout = QVBoxLayout()
         outliersLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
         outliersLayout.setSpacing(10)  # No spacing between elements
-        outliersFrame.setStyleSheet("background-color: #D3D3D3;")
+        outliersFrame.setStyleSheet("background-color: #F0F0F0;")
 
 
         outliersFrame.setLayout(outliersLayout)
@@ -241,9 +238,9 @@ class ContentWidget(QWidget):
         # ------------ ACTUAL CONTENT ------------
         # --- Center Label (Placeholder) ---
         # Label to display the name of the module (Quality Control)
-        moduleLabel = QLabel(moduleName, self)
+        '''moduleLabel = QLabel(moduleName, self)
         moduleLabel.setStyleSheet("font-size: 24px; color: black;")  # Style the label text
-        titleLayout.addWidget(moduleLabel)  # Add the label to the contentArea layout
+        titleLayout.addWidget(moduleLabel)  # Add the label to the contentArea layout'''
 
 
         selectFileButton = QPushButton("Select File")
@@ -341,8 +338,8 @@ class ContentWidget(QWidget):
 
        
         # Add a spacer to ensure content is properly spaced
-        titleLayout.addStretch()
-        contentAreaLayout.addStretch()
+        #titleLayout.addStretch()
+        #contentAreaLayout.addStretch()
 
     def selectFile(self):
         #Don't know which files it needs to get, will figure out later

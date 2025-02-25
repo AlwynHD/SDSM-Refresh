@@ -57,7 +57,7 @@ class ContentWidget(QWidget):
                                 background-color: #F0F0F0;}
                            borderedQGroupBox{
                                 background-color: #F0F0F0;
-                                border : 1px solid black;
+                                border : 1px solid #CECECE;
                                 border-top-left-radius : 20px;
                                 border-top-right-radius : 20px;
                                 border-bottom-left-radius : 20px;

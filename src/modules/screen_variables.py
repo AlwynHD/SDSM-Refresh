@@ -38,16 +38,16 @@ class ContentWidget(QWidget):
         mainLayout.setSpacing(0)  # No spacing between elements
         self.setLayout(mainLayout)  # Apply the main layout to the widget
 
-        '''self.setStyleSheet("""
+        self.setStyleSheet("""
                            QFrame{
                                 background-color: #F0F0F0;}
                            borderedQGroupBox{
                                 background-color: #F0F0F0;
-                                border : 1px solid black;
+                                border : 1px solid #CECECE;
                                 border-top-left-radius : 20px;
                                 border-top-right-radius : 20px;
                                 border-bottom-left-radius : 20px;
-                                border-bottom-right-radius : 20px;}""")'''
+                                border-bottom-right-radius : 20px;}""")
 
 
         # --- Button Bar ---

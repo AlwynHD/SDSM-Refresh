@@ -38,7 +38,7 @@ class ContentWidget(QWidget):
         mainLayout.setSpacing(0)  # No spacing between elements
         self.setLayout(mainLayout)  # Apply the main layout to the widget
 
-        self.setStyleSheet("""
+        '''self.setStyleSheet("""
                            QFrame{
                                 background-color: #F0F0F0;}
                            borderedQGroupBox{
@@ -47,7 +47,7 @@ class ContentWidget(QWidget):
                                 border-top-left-radius : 20px;
                                 border-top-right-radius : 20px;
                                 border-bottom-left-radius : 20px;
-                                border-bottom-right-radius : 20px;}""")
+                                border-bottom-right-radius : 20px;}""")'''
 
 
         # --- Button Bar ---
@@ -138,7 +138,6 @@ class ContentWidget(QWidget):
         selectPredictandFileLayout = QVBoxLayout()
         selectPredictandFileLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
         selectPredictandFileLayout.setSpacing(0)  # No spacing between elements
-        selectPredictandFileFrame.setStyleSheet("background-color: #F0F0F0;")
 
 
         selectPredictandFileFrame.setLayout(selectPredictandFileLayout)
@@ -148,7 +147,6 @@ class ContentWidget(QWidget):
         #Create selectDate Frame
         selectDateFrame = borderedQGroupBox("Select Start/End Date")
         selectDateFrame.setBaseSize(200,200)
-        selectDateFrame.setStyleSheet("background-color: #F0F0F0;")
         selectDateFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
 
 
@@ -165,7 +163,6 @@ class ContentWidget(QWidget):
         fitStartDateFrame.setFrameStyle(QFrame.NoFrame) 
         fitStartDateFrame.setBaseSize(190,50)
         fitStartDateFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
-        fitStartDateFrame.setStyleSheet("background-color: #F0F0F0;")
 
         fitStartDateLayout = QHBoxLayout()
         fitStartDateLayout.setContentsMargins(25, 25, 25, 25)  # 10 Pixel padding
@@ -176,7 +173,6 @@ class ContentWidget(QWidget):
         fitEndDateFrame.setFrameStyle(QFrame.NoFrame) 
         fitEndDateFrame.setBaseSize(190,50)
         fitEndDateFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
-        fitEndDateFrame.setStyleSheet("background-color: #F0F0F0;")
 
         fitEndDateLayout = QHBoxLayout()
         fitEndDateLayout.setContentsMargins(25, 25, 25, 25)  # 10 Pixel padding
@@ -201,7 +197,6 @@ class ContentWidget(QWidget):
         selectPredictorsLayout = QVBoxLayout()
         selectPredictorsLayout.setContentsMargins(25, 25, 25, 25) #Pad 10 pixels each way
         selectPredictorsLayout.setSpacing(0)  # No spacing between elements
-        selectPredictorsFrame.setStyleSheet("background-color: #F0F0F0;")
 
 
         selectPredictorsFrame.setLayout(selectPredictorsLayout)
@@ -233,7 +228,6 @@ class ContentWidget(QWidget):
         predictorDescriptionLayout = QVBoxLayout()
         predictorDescriptionLayout.setContentsMargins(25, 25, 25, 25) #Pad 10 pixels each way
         predictorDescriptionLayout.setSpacing(0)  # No spacing between elements
-        predictorDescriptionFrame.setStyleSheet("background-color: #F0F0F0;")
         predictorDescriptionFrame.setLayout(predictorDescriptionLayout)
 
         selectDARPSLayout.addWidget(predictorDescriptionFrame)
@@ -248,7 +242,6 @@ class ContentWidget(QWidget):
         autoregressionLayout = QVBoxLayout()
         autoregressionLayout.setContentsMargins(25, 25, 25, 25) #Pad 10 pixels each way
         autoregressionLayout.setSpacing(0)  # No spacing between elements
-        autoregressionFrame.setStyleSheet("background-color: #F0F0F0;")
         autoregressionFrame.setLayout(autoregressionLayout)
 
     
@@ -265,7 +258,6 @@ class ContentWidget(QWidget):
         processLayout = QVBoxLayout()
         processLayout.setContentsMargins(25, 25, 25, 25) #Pad 10 pixels each way
         processLayout.setSpacing(0)  # No spacing between elements
-        processFrame.setStyleSheet("background-color: #F0F0F0;")
         processFrame.setLayout(processLayout)
 
 
@@ -281,7 +273,6 @@ class ContentWidget(QWidget):
         significanceLayout = QVBoxLayout()
         significanceLayout.setContentsMargins(25, 25, 25, 25) #Pad 10 pixels each way
         significanceLayout.setSpacing(0)  # No spacing between elements
-        significanceFrame.setStyleSheet("background-color: #F0F0F0;")
         significanceFrame.setLayout(significanceLayout)
 
 
@@ -297,7 +288,7 @@ class ContentWidget(QWidget):
         titleLayout.addWidget(moduleLabel)  # Add the label to the contentArea layout '''
 
         #Predictand file selector button
-        selectPredictandButton = QPushButton("Select predictand")
+        selectPredictandButton = QPushButton("📂 Select Predictand File")
         selectPredictandButton.clicked.connect(self.selectPredictandButtonClicked)
         selectPredictandFileLayout.addWidget(selectPredictandButton)
 
@@ -337,6 +328,7 @@ class ContentWidget(QWidget):
         
             predictorScrollLabelButton.clicked.connect(self.predictorLabelClicked)
             predictorScrollLabelButton.setBaseSize(200, 20)
+            predictorScrollLabelButton.setStyleSheet("color: black; background-color: #F0F0F0")
             predictorScrollLabelButton.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
             predictorsScrollLayout.addWidget(predictorScrollLabelButton) 
         

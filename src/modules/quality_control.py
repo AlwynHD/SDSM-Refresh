@@ -157,7 +157,6 @@ class ContentWidget(QWidget):
         resultsLayout = QVBoxLayout()
         resultsLayout.setContentsMargins(25, 25, 25, 25) 
         resultsLayout.setSpacing(10)  # No spacing between elements
-        resultsFrame.setStyleSheet("background-color: #F0F0F0;")
 
         resultsFrame.setLayout(resultsLayout)  # Apply the layout to the frame
 
@@ -174,7 +173,6 @@ class ContentWidget(QWidget):
         selectFileLayout = QVBoxLayout()
         selectFileLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
         selectFileLayout.setSpacing(10)  # No spacing between elements
-        selectFileFrame.setStyleSheet("background-color: #F0F0F0;")
 
 
         selectFileFrame.setLayout(selectFileLayout)
@@ -191,7 +189,6 @@ class ContentWidget(QWidget):
         pettittLayout = QHBoxLayout()
         pettittLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
         pettittLayout.setSpacing(10)  # 10 pixel spacing between elements
-        pettittFrame.setStyleSheet("background-color: #F0F0F0;")
 
 
         pettittFrame.setLayout(pettittLayout)
@@ -208,7 +205,6 @@ class ContentWidget(QWidget):
         thresholdLayout = QVBoxLayout()
         thresholdLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
         thresholdLayout.setSpacing(10)  # No spacing between elements
-        thresholdFrame.setStyleSheet("background-color: #F0F0F0;")
 
 
         thresholdFrame.setLayout(thresholdLayout)
@@ -225,7 +221,6 @@ class ContentWidget(QWidget):
         outliersLayout = QVBoxLayout()
         outliersLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
         outliersLayout.setSpacing(10)  # No spacing between elements
-        outliersFrame.setStyleSheet("background-color: #F0F0F0;")
 
 
         outliersFrame.setLayout(outliersLayout)

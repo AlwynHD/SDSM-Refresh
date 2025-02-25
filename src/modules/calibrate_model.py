@@ -136,7 +136,6 @@ class ContentWidget(QWidget):
         selectPredictandFileLayout = QVBoxLayout()
         selectPredictandFileLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
         selectPredictandFileLayout.setSpacing(0)  # No spacing between elements
-        selectPredictandFileFrame.setStyleSheet("background-color: #F0F0F0;")
 
 
         selectPredictandFileFrame.setLayout(selectPredictandFileLayout)
@@ -152,7 +151,6 @@ class ContentWidget(QWidget):
         selectOutputFileLayout = QVBoxLayout()
         selectOutputFileLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
         selectOutputFileLayout.setSpacing(0)  # No spacing between elements
-        selectOutputFileFrame.setStyleSheet("background-color: #F0F0F0;")
 
 
         selectOutputFileFrame.setLayout(selectOutputFileLayout)
@@ -162,7 +160,6 @@ class ContentWidget(QWidget):
         #Create selectDate Frame
         selectDateFrame = borderedQGroupBox("Select Date")
         selectDateFrame.setBaseSize(200,200)
-        selectDateFrame.setStyleSheet("background-color: #F0F0F0;")
 
 
         selectDateLayout = QVBoxLayout()
@@ -177,7 +174,6 @@ class ContentWidget(QWidget):
         fitStartDateFrame = QFrame()
         fitStartDateFrame.setFrameStyle(QFrame.NoFrame) 
         fitStartDateFrame.setBaseSize(190,50)
-        fitStartDateFrame.setStyleSheet("background-color: #F0F0F0;")
 
         fitStartDateLayout = QHBoxLayout()
         fitStartDateLayout.setContentsMargins(10, 10, 10, 10)  # 10 Pixel padding
@@ -187,7 +183,6 @@ class ContentWidget(QWidget):
         fitEndDateFrame = QFrame()
         fitEndDateFrame.setFrameStyle(QFrame.NoFrame) 
         fitEndDateFrame.setBaseSize(190,50)
-        fitEndDateFrame.setStyleSheet("background-color: #F0F0F0;")
 
         fitEndDateLayout = QHBoxLayout()
         fitEndDateLayout.setContentsMargins(10, 10, 10, 10)  # 10 Pixel padding
@@ -211,7 +206,6 @@ class ContentWidget(QWidget):
         selectPredictorsLayout = QVBoxLayout()
         selectPredictorsLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
         selectPredictorsLayout.setSpacing(0)  # No spacing between elements
-        selectPredictorsFrame.setStyleSheet("background-color: #F0F0F0;")
 
 
         selectPredictorsFrame.setLayout(selectPredictorsLayout)
@@ -228,7 +222,6 @@ class ContentWidget(QWidget):
         optionsLayout = QVBoxLayout()
         optionsLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
         optionsLayout.setSpacing(0)  # No spacing between elements
-        optionsFrame.setStyleSheet("background-color: #F0F0F0;")
         optionsFrame.setLayout(optionsLayout)
         
         contentAreaLayout.addWidget(optionsFrame)
@@ -241,7 +234,6 @@ class ContentWidget(QWidget):
         modelProcessLayout = QHBoxLayout()
         modelProcessLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
         modelProcessLayout.setSpacing(0)  # No spacing between elements
-        modelProcessFrame.setStyleSheet("background-color: #F0F0F0;")
         modelProcessFrame.setLayout(modelProcessLayout)
         
         optionsLayout.addWidget(modelProcessFrame)
@@ -253,7 +245,6 @@ class ContentWidget(QWidget):
         modelTypeLayout = QVBoxLayout()
         modelTypeLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
         modelTypeLayout.setSpacing(0)  # No spacing between elements
-        modelTypeFrame.setStyleSheet("background-color: #F0F0F0;")
         modelTypeFrame.setLayout(modelTypeLayout)
         
         modelProcessLayout.addWidget(modelTypeFrame)
@@ -265,7 +256,6 @@ class ContentWidget(QWidget):
         processLayout = QVBoxLayout()
         processLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
         processLayout.setSpacing(0)  # No spacing between elements
-        processFrame.setStyleSheet("background-color: #F0F0F0;")
         processFrame.setLayout(processLayout)
         
         modelProcessLayout.addWidget(processFrame)
@@ -279,7 +269,6 @@ class ContentWidget(QWidget):
         autoregressionResidualLayout = QHBoxLayout()
         autoregressionResidualLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
         autoregressionResidualLayout.setSpacing(0)  # No spacing between elements
-        autoregressionResidualFrame.setStyleSheet("background-color: #F0F0F0;")
         autoregressionResidualFrame.setLayout(autoregressionResidualLayout)
         
         optionsLayout.addWidget(autoregressionResidualFrame)
@@ -291,7 +280,6 @@ class ContentWidget(QWidget):
         autoregressionLayout = QHBoxLayout()
         autoregressionLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
         autoregressionLayout.setSpacing(0)  # No spacing between elements
-        autoregressionFrame.setStyleSheet("background-color: #F0F0F0;")
         autoregressionFrame.setLayout(autoregressionLayout)
         
         autoregressionResidualLayout.addWidget(autoregressionFrame)
@@ -303,7 +291,6 @@ class ContentWidget(QWidget):
         residualLayout = QHBoxLayout()
         residualLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
         residualLayout.setSpacing(0)  # No spacing between elements
-        residualFrame.setStyleSheet("background-color: #F0F0F0;")
         residualFrame.setLayout(residualLayout)
         
         autoregressionResidualLayout.addWidget(residualFrame)
@@ -318,7 +305,6 @@ class ContentWidget(QWidget):
         chowHistogramLayout = QHBoxLayout()
         chowHistogramLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
         chowHistogramLayout.setSpacing(0)  # No spacing between elements
-        chowHistogramFrame.setStyleSheet("background-color: #F0F0F0;")
         chowHistogramFrame.setLayout(chowHistogramLayout)
         
         optionsLayout.addWidget(chowHistogramFrame)
@@ -330,7 +316,6 @@ class ContentWidget(QWidget):
         chowTestLayout = QHBoxLayout()
         chowTestLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
         chowTestLayout.setSpacing(0)  # No spacing between elements
-        chowTestFrame.setStyleSheet("background-color: #F0F0F0;")
         chowTestFrame.setLayout(chowTestLayout)
 
         chowHistogramLayout.addWidget(chowTestFrame)
@@ -342,7 +327,6 @@ class ContentWidget(QWidget):
         histogramLayout = QHBoxLayout()
         histogramLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
         histogramLayout.setSpacing(0)  # No spacing between elements
-        histogramFrame.setStyleSheet("background-color: #F0F0F0;")
         histogramFrame.setLayout(histogramLayout)
 
         chowHistogramLayout.addWidget(histogramFrame)
@@ -356,7 +340,6 @@ class ContentWidget(QWidget):
         deTrendLayout = QHBoxLayout()
         deTrendLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
         deTrendLayout.setSpacing(0)  # No spacing between elements
-        deTrendFrame.setStyleSheet("background-color: #F0F0F0;")
         deTrendFrame.setLayout(deTrendLayout)
         
         optionsLayout.addWidget(deTrendFrame)
@@ -370,7 +353,6 @@ class ContentWidget(QWidget):
         crossValLayout = QHBoxLayout()
         crossValLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
         crossValLayout.setSpacing(0)  # No spacing between elements
-        crossValFrame.setStyleSheet("background-color: #F0F0F0;")
         crossValFrame.setLayout(crossValLayout)
         
         optionsLayout.addWidget(crossValFrame)
@@ -412,7 +394,7 @@ class ContentWidget(QWidget):
             #so QPushButtons are used instead
             predictorScrollLabelButton = QPushButton(predictor)
             predictorScrollLabelButton.setFlat = True
-        
+            predictorScrollLabelButton.setStyleSheet("color: black; background-color: #F0F0F0")
             predictorScrollLabelButton.clicked.connect(self.predictorLabelClicked)
             predictorScrollLabelButton.setBaseSize(200, 20)
             predictorScrollLabelButton.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)

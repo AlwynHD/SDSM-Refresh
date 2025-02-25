@@ -138,14 +138,14 @@ class SDSMWindow(QMainWindow):
         Load the Data Settings module.
         """
         self.loadModule("data_settings", "Data Settings")
-        self.updateHelpMenu("Settings")
+        self.updateHelpMenu("Data Settings")
     
     def loadSystemSettingsContent(self):
         """
         Load the System Settings module.
         """
         self.loadModule("system_settings", "System Settings")
-        self.updateHelpMenu("Settings")
+        self.updateHelpMenu("System Settings")
     
     def loadModule(self, moduleName, displayName):
         """
@@ -207,7 +207,8 @@ class SDSMWindow(QMainWindow):
             "Compare Results": "IDH_CompareResults",
             "Frequency Analysis": "IDH_FrequencyAnalysis",
             "Time Series Analysis": "IDH_TimeSeries",
-            "Settings": "IDH_Settings"
+            "Data Settings": "IDH_DataSettings",
+            "System Settings": "IDH_SystemSettings"
         }
         self.help_actions = {}
         for name, section in self.help_urls.items():

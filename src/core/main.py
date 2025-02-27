@@ -259,9 +259,13 @@ class SDSMWindow(QMainWindow):
         frameGeometry = self.frameGeometry()
         frameGeometry.moveCenter(screenCenter)
         self.move(frameGeometry.topLeft())
-
-if __name__ == "__main__":
+        
+def run():
+    # Create and launch the application
     app = QApplication(sys.argv)
     window = SDSMWindow()
-    window.show()
-    sys.exit(app.exec_())
+    window.show()  # Display the main window
+    sys.exit(app.exec_())  # Start the application event loop
+
+if __name__ == "__main__":
+    run()

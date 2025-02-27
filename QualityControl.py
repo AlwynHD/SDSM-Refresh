@@ -328,7 +328,7 @@ def pettittTest(pettittArray, ptPercent):
                 maxPos = i
 
         pettitt = 2 * math.pow(math.e, ((-6 * kn ** 2) / ((yearsOk ** 3) + yearsOk ** 2)))
-        print("pettitt Value: " + str(pettitt))
+        print("pettitt Value: " + "%.20f" % pettitt)
 
         if pettitt < 0.05:
             print("max position: " + str(petMatrix[maxPos][5]))

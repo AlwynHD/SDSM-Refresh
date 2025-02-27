@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import (QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, 
                              QFrame, QLabel, QFileDialog, QScrollArea, QDateEdit, QCheckBox,
                              QButtonGroup, QRadioButton, QLineEdit, QGroupBox)
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QDate
 from PyQt5.QtGui import QPalette, QColor, QIcon
 from os import listdir
 
@@ -12,7 +12,7 @@ moduleName = "Calibrate Model"
 
 class borderedQGroupBox(QGroupBox):
     def __init__(self,args):
-        super().__init__(args)
+         super().__init__(args)
 
 class ContentWidget(QWidget):
     """
@@ -28,6 +28,7 @@ class ContentWidget(QWidget):
         self.predictorPath = 'predictor files'
         self.predictandSelected = ""
         self.predictorsSelected = []
+        self.outputSelected = ""
 
 
 
@@ -48,33 +49,7 @@ class ContentWidget(QWidget):
                                 border-bottom-left-radius : 20px;
                                 border-bottom-right-radius : 20px;}""")
 
-        # --- Button Bar ---
-        # Layout for the buttonBar at the top of the screen
-        buttonBarLayout = QHBoxLayout()
-        buttonBarLayout.setSpacing(0)  # No spacing between buttons
-        buttonBarLayout.setContentsMargins(0, 0, 0, 0)  # No margins around the layout
-        buttonBarLayout.setAlignment(Qt.AlignLeft)  # Align buttons to the left
-
-        # Create placeholder buttons for the buttonBar
-        buttonNames = ["Reset", "Calibrate", "Settings"]  # Names of the buttons for clarity
-        for name in buttonNames:
-            button = QPushButton(name)  # Create a button with the given name
-            button.setIcon(QIcon("placeholder_icon.png"))  # Placeholder icon
-            button.clicked.connect(self.handleMenuButtonClicks)
-            button.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)  # Expanding size policy
-            button.sizeHint()  # Set a Expanding size for the button
-            button.setStyleSheet(
-                "border: 1px solid lightgray; background-color: #F0F0F0; text-align: left;"
-            )  # Style to match the overall design
-            buttonBarLayout.addWidget(button)  # Add the button to the buttonBar layout
-
-        # Frame for the buttonBar
-        buttonBarFrame = QFrame()
-        buttonBarFrame.setLayout(buttonBarLayout)  # Apply the button layout to the frame
-        buttonBarFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
-        buttonBarFrame.setFixedHeight(50)  # Match height with other UI elements
-        buttonBarFrame.setStyleSheet("background-color: #F0F0F0;")  # Dark gray background
-        mainLayout.addWidget(buttonBarFrame)  # Add the buttonBar frame to the main layout
+        
 
         # --- Content Area ---
         # Frame for the contentArea
@@ -108,7 +83,7 @@ class ContentWidget(QWidget):
 
         # Layout for the contentArea frame
         contentAreaLayout = QHBoxLayout()
-        contentAreaLayout.setContentsMargins(10, 10, 10, 10)  # Remove padding from the layout
+        contentAreaLayout.setContentsMargins(25, 25, 25, 25)  # Remove padding from the layout
         contentAreaLayout.setSpacing(10)  # No spacing between elements
         contentAreaFrame.setLayout(contentAreaLayout)  # Apply the layout to the frame
 
@@ -155,15 +130,15 @@ class ContentWidget(QWidget):
 
         selectOutputFileFrame.setLayout(selectOutputFileLayout)
         
-        filesDateLayout.addWidget(selectPredictandFileFrame)
+        filesDateLayout.addWidget(selectOutputFileFrame)
 
         #Create selectDate Frame
-        selectDateFrame = borderedQGroupBox("Select Date")
+        selectDateFrame = borderedQGroupBox("Select Data Period")
         selectDateFrame.setBaseSize(200,200)
 
 
         selectDateLayout = QVBoxLayout()
-        selectDateLayout.setContentsMargins(10, 10, 10, 10)  # Remove padding from the layout
+        selectDateLayout.setContentsMargins(25, 25, 25, 25)  # Remove padding from the layout
         selectDateLayout.setSpacing(0)  # No spacing between elements
         selectDateFrame.setLayout(selectDateLayout)  # Apply the layout to the frame
 
@@ -176,7 +151,7 @@ class ContentWidget(QWidget):
         fitStartDateFrame.setBaseSize(190,50)
 
         fitStartDateLayout = QHBoxLayout()
-        fitStartDateLayout.setContentsMargins(10, 10, 10, 10)  # 10 Pixel padding
+        fitStartDateLayout.setContentsMargins(25, 25, 25, 25)  # 10 Pixel padding
         fitStartDateLayout.setSpacing(0)  # No spacing between elements
         fitStartDateFrame.setLayout(fitStartDateLayout)  # Apply the layout to the frame
 
@@ -185,7 +160,7 @@ class ContentWidget(QWidget):
         fitEndDateFrame.setBaseSize(190,50)
 
         fitEndDateLayout = QHBoxLayout()
-        fitEndDateLayout.setContentsMargins(10, 10, 10, 10)  # 10 Pixel padding
+        fitEndDateLayout.setContentsMargins(25, 25, 25, 25)  # 10 Pixel padding
         fitEndDateLayout.setSpacing(0)  # No spacing between elements
         fitEndDateFrame.setLayout(fitEndDateLayout)  # Apply the layout to the frame
 
@@ -204,7 +179,7 @@ class ContentWidget(QWidget):
 
         #Layout for selectPredictors frame
         selectPredictorsLayout = QVBoxLayout()
-        selectPredictorsLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
+        selectPredictorsLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
         selectPredictorsLayout.setSpacing(0)  # No spacing between elements
 
 
@@ -220,8 +195,8 @@ class ContentWidget(QWidget):
 
         #Layout for selectPredictors frame
         optionsLayout = QVBoxLayout()
-        optionsLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
-        optionsLayout.setSpacing(0)  # No spacing between elements
+        optionsLayout.setContentsMargins(0,0,0,0) #Pad 10 pixels each way
+        optionsLayout.setSpacing(10)  # No spacing between elements
         optionsFrame.setLayout(optionsLayout)
         
         contentAreaLayout.addWidget(optionsFrame)
@@ -232,8 +207,8 @@ class ContentWidget(QWidget):
 
         #Layout for selectPredictors frame
         modelProcessLayout = QHBoxLayout()
-        modelProcessLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
-        modelProcessLayout.setSpacing(0)  # No spacing between elements
+        modelProcessLayout.setContentsMargins(0,0,0,0) #Pad 10 pixels each way
+        modelProcessLayout.setSpacing(10)  # No spacing between elements
         modelProcessFrame.setLayout(modelProcessLayout)
         
         optionsLayout.addWidget(modelProcessFrame)
@@ -243,7 +218,7 @@ class ContentWidget(QWidget):
 
         #Layout for selectPredictors frame
         modelTypeLayout = QVBoxLayout()
-        modelTypeLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
+        modelTypeLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
         modelTypeLayout.setSpacing(0)  # No spacing between elements
         modelTypeFrame.setLayout(modelTypeLayout)
         
@@ -254,7 +229,7 @@ class ContentWidget(QWidget):
 
         #Layout for selectPredictors frame
         processLayout = QVBoxLayout()
-        processLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
+        processLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
         processLayout.setSpacing(0)  # No spacing between elements
         processFrame.setLayout(processLayout)
         
@@ -267,8 +242,8 @@ class ContentWidget(QWidget):
 
         #Layout for selectPredictors frame
         autoregressionResidualLayout = QHBoxLayout()
-        autoregressionResidualLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
-        autoregressionResidualLayout.setSpacing(0)  # No spacing between elements
+        autoregressionResidualLayout.setContentsMargins(0,0,0,0) #Pad 10 pixels each way
+        autoregressionResidualLayout.setSpacing(10)  # No spacing between elements
         autoregressionResidualFrame.setLayout(autoregressionResidualLayout)
         
         optionsLayout.addWidget(autoregressionResidualFrame)
@@ -278,7 +253,7 @@ class ContentWidget(QWidget):
 
         #Layout for selectPredictors frame
         autoregressionLayout = QHBoxLayout()
-        autoregressionLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
+        autoregressionLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
         autoregressionLayout.setSpacing(0)  # No spacing between elements
         autoregressionFrame.setLayout(autoregressionLayout)
         
@@ -288,8 +263,8 @@ class ContentWidget(QWidget):
         residualFrame.setBaseSize(200,100)
 
         #Layout for selectPredictors frame
-        residualLayout = QHBoxLayout()
-        residualLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
+        residualLayout = QVBoxLayout()
+        residualLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
         residualLayout.setSpacing(0)  # No spacing between elements
         residualFrame.setLayout(residualLayout)
         
@@ -303,8 +278,8 @@ class ContentWidget(QWidget):
 
         #Layout for selectPredictors frame
         chowHistogramLayout = QHBoxLayout()
-        chowHistogramLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
-        chowHistogramLayout.setSpacing(0)  # No spacing between elements
+        chowHistogramLayout.setContentsMargins(0,0,0,0) #Pad 10 pixels each way
+        chowHistogramLayout.setSpacing(10)  # No spacing between elements
         chowHistogramFrame.setLayout(chowHistogramLayout)
         
         optionsLayout.addWidget(chowHistogramFrame)
@@ -314,7 +289,7 @@ class ContentWidget(QWidget):
 
         #Layout for selectPredictors frame
         chowTestLayout = QHBoxLayout()
-        chowTestLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
+        chowTestLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
         chowTestLayout.setSpacing(0)  # No spacing between elements
         chowTestFrame.setLayout(chowTestLayout)
 
@@ -325,8 +300,8 @@ class ContentWidget(QWidget):
 
         #Layout for selectPredictors frame
         histogramLayout = QHBoxLayout()
-        histogramLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
-        histogramLayout.setSpacing(0)  # No spacing between elements
+        histogramLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
+        histogramLayout.setSpacing(10)  # No spacing between elements
         histogramFrame.setLayout(histogramLayout)
 
         chowHistogramLayout.addWidget(histogramFrame)
@@ -338,7 +313,7 @@ class ContentWidget(QWidget):
 
         #Layout for selectPredictors frame
         deTrendLayout = QHBoxLayout()
-        deTrendLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
+        deTrendLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
         deTrendLayout.setSpacing(0)  # No spacing between elements
         deTrendFrame.setLayout(deTrendLayout)
         
@@ -351,18 +326,63 @@ class ContentWidget(QWidget):
 
         #Layout for selectPredictors frame
         crossValLayout = QHBoxLayout()
-        crossValLayout.setContentsMargins(10,10,10,10) #Pad 10 pixels each way
-        crossValLayout.setSpacing(0)  # No spacing between elements
+        crossValLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
+        crossValLayout.setSpacing(10)  # No spacing between elements
         crossValFrame.setLayout(crossValLayout)
         
         optionsLayout.addWidget(crossValFrame)
 
+        buttonFrame = QFrame()
+        buttonFrame.setBaseSize(600,60)
+        buttonFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Fixed)
 
+        buttonLayout = QHBoxLayout()
+        buttonLayout.setContentsMargins(25,25,25,25)
+        buttonLayout.setSpacing(10)
+
+        buttonFrame.setLayout(buttonLayout)
+
+        mainLayout.addWidget(buttonFrame)
 
 
 
         #Actual Content
 
+        #Predictand file selector button
+        selectPredictandButton = QPushButton("📂 Select Predictand File")
+        selectPredictandButton.clicked.connect(self.selectPredictandButtonClicked)
+        selectPredictandFileLayout.addWidget(selectPredictandButton)
+
+        self.selectPredictandLabel = QLabel("No predictand selected.")
+        selectPredictandFileLayout.addWidget(self.selectPredictandLabel)
+
+        
+        #Predictand file selector button
+        selectOutputButton = QPushButton("📂 Select Output File")
+        selectOutputButton.clicked.connect(self.selectOutputButtonClicked)
+        selectOutputFileLayout.addWidget(selectOutputButton)
+
+        self.selectOutputLabel = QLabel("No output selected.")
+        selectOutputFileLayout.addWidget(self.selectOutputLabel)
+
+        #Create a date edit box in the fitStart frame to choose start fit date
+
+        fitStartDateLabel = QLabel("Fit Start:")
+        fitStartDateLayout.addWidget(fitStartDateLabel)
+        self.fitStartDateChooser = QDateEdit(calendarPopup=True)
+        self.fitStartDateChooser.setDate(QDate(1948,1,1))
+        self.fitStartDateChooser.setMinimumWidth(100)
+
+        fitStartDateLayout.addWidget(self.fitStartDateChooser)
+
+        #Create a date edit box in the fitEnd frame to choose start fit date
+
+        fitEndDateLabel = QLabel("Fit End:")
+        fitEndDateLayout.addWidget(fitEndDateLabel)
+        self.fitEndDateChooser = QDateEdit(calendarPopup=True)
+        self.fitEndDateChooser.setMinimumWidth(100)
+        self.fitEndDateChooser.setDate(QDate(2015,12,31))
+        fitEndDateLayout.addWidget(self.fitEndDateChooser)
 
         #Create predictor label
         predictorLabel = QLabel("Predictor Variables")
@@ -379,7 +399,7 @@ class ContentWidget(QWidget):
 
 
         predictorsScrollLayout = QVBoxLayout()
-        selectPredictorsLayout.setContentsMargins(25, 25, 25, 25) #Pad 10 pixels each way
+        predictorsScrollLayout.setContentsMargins(0, 0, 0, 0) #Pad 10 pixels each way
         predictorsScrollLayout.setSpacing(0)  # No spacing between elements
         predictorsScrollLayout.setAlignment(Qt.AlignHCenter)
         predictorsScrollFrame.setLayout(predictorsScrollLayout)  # Apply the layout to the frame
@@ -431,9 +451,97 @@ class ContentWidget(QWidget):
         processLayout.addWidget(unconditionalRadioButton)
         processLayout.addWidget(conditionalRadioButton)
 
+        #Autoregression check box
+        autoregressionCheck = QCheckBox("Include Autoregression")
+        autoregressionLayout.addWidget(autoregressionCheck)
+
+        #Residual Analysis radio buttons
+        residualRadioButtonGroup = QButtonGroup()
+        residualRadioButtonGroup.setExclusive(True)
+        noneRadioButton = QRadioButton("None")
+        noneRadioButton.setChecked(True)
+        scatterRadioButton = QRadioButton("Scatter Plot")
+        histogramRadioButton = QRadioButton("Histogram")
+        residualRadioButtonGroup.addButton(noneRadioButton)
+        residualRadioButtonGroup.addButton(scatterRadioButton)
+        residualRadioButtonGroup.addButton(histogramRadioButton)
+
+        residualLayout.addWidget(noneRadioButton)
+        residualLayout.addWidget(scatterRadioButton)
+        residualLayout.addWidget(histogramRadioButton)
+
+        #Chow Test CheckBox
+        chowCheck = QCheckBox("Calculate Chow Test")
+        chowTestLayout.addWidget(chowCheck)
+
+        #Histogram Input
+
+        histogramLabel = QLabel("No. of categories")
+        histogramLayout.addWidget(histogramLabel)
+
+        histogramInput = QLineEdit("14")
+        histogramInput.setMaximumWidth(50)
+
+        histogramLayout.addWidget(histogramInput)
+
+        #De Trend Radio Buttons
+
+        deTrendRadioButtonGroup = QButtonGroup()
+        deTrendRadioButtonGroup.setExclusive(True)
+        noneTrendRadioButton = QRadioButton("None")
+        noneTrendRadioButton.setChecked(True)
+        linearRadioButton = QRadioButton("Linear")
+        powerRadioButton = QRadioButton("Power Function")
+        deTrendRadioButtonGroup.addButton(noneTrendRadioButton)
+        deTrendRadioButtonGroup.addButton(linearRadioButton)
+        deTrendRadioButtonGroup.addButton(powerRadioButton)
+
+        deTrendLayout.addWidget(noneTrendRadioButton)
+        deTrendLayout.addWidget(linearRadioButton)
+        deTrendLayout.addWidget(powerRadioButton)
+
+        #Cross Validation COntent
+        
+        crossValCalcCheck = QCheckBox("Calculate")
+        crossValLayout.addWidget(crossValCalcCheck)
+
+        crossValLabel = QLabel("No. of folds: ")
+        crossValLayout.addWidget(crossValLabel)
+
+        crossValInput = QLineEdit("2")
+        crossValInput.setMaximumWidth(50)
+        crossValLayout.addWidget(crossValInput) 
+
+        cailbrateButton = QPushButton("Calibrate")
+        #correlationButton.clicked.connect(self.doCorrelation)
+        cailbrateButton.setStyleSheet("background-color: #4CAF50; color: white; font-weight: bold;")
+
+        buttonLayout.addWidget(cailbrateButton)
 
         # Add a spacer to ensure content is properly spaced
         #titleLayout.addStretch()
+    def selectPredictandButtonClicked(self):
+        #Will have to be changed soon, as it relies on known file "predictand files"
+        fileName = QFileDialog.getOpenFileName(self, "Select predictand file", 'predictand files', "DAT Files (*.DAT)") 
+        print(fileName)
+        if fileName[0] != '':
+            self.predictandSelected = fileName[0]
+            self.selectPredictandLabel.setText("File: "+self.predictandSelected.split("/")[-1]) #Only show the name of the file, not the whole path
+        else:
+            self.predictandSelected = None
+            self.selectPredictandLabel.setText("No predictand selected.")
+
+    def selectOutputButtonClicked(self):
+        #Will have to be changed soon, as it relies on known file "predictand files"
+        fileName = QFileDialog.getOpenFileName(self, "Select output file", 'SDSM-REFRESH', "PAR Files (*.PAR)") 
+        print(fileName)
+        if fileName[0] != '':
+            self.outputSelected = fileName[0]
+            self.selectPredictandLabel.setText("File: "+self.outputSelected.split("/")[-1]) #Only show the name of the file, not the whole path
+        else:
+            self.outputSelected = None
+            self.outputSelected.setText("No output file selected.")
+
     def predictorLabelClicked(self,*args):
         button = self.sender() #Get the buttonLabel that was clicked
         predictor = button.text() #Get the name of the buttonLabel, so the predictor file

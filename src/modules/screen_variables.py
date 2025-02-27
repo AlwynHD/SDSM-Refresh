@@ -306,7 +306,7 @@ class ContentWidget(QWidget):
 
 
         predictorsScrollLayout = QVBoxLayout()
-        predictorsScrollLayout.setContentsMargins(25, 25, 25, 25)  # Remove padding from the layout
+        predictorsScrollLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
         predictorsScrollLayout.setSpacing(0)  # No spacing between elements
         predictorsScrollLayout.setAlignment(Qt.AlignHCenter)
         predictorsScrollFrame.setLayout(predictorsScrollLayout)  # Apply the layout to the frame

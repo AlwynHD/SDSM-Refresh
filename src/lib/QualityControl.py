@@ -3,7 +3,7 @@ import datetime
 import math
 import numpy as np
 import pyhomogeneity as hg
-from src.lib.ScreenVars import loadFilesIntoMemory, increaseDate
+from src.lib.utils import loadFilesIntoMemory, increaseDate
 
 #Local version
 predictorSelected = ['predictor files/ncep_dswr.dat']

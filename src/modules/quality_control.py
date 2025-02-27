@@ -71,33 +71,7 @@ class ContentWidget(QWidget):
         mainLayout.setSpacing(0)  # No spacing between elements
         self.setLayout(mainLayout)  # Apply the main layout to the widget
 
-        # --- Button Bar ---
-        # Layout for the buttonBar at the top of the screen
-        buttonBarLayout = QHBoxLayout()
-        buttonBarLayout.setSpacing(0)  # No spacing between buttons
-        buttonBarLayout.setContentsMargins(0, 0, 0, 0)  # No margins around the layout
-        buttonBarLayout.setAlignment(Qt.AlignLeft)  # Align buttons to the left
 
-        # Create placeholder buttons for the buttonBar
-        buttonNames = ["Reset","Check File", "Daily Stats", "Outliers", "Settings"]  # Names of the buttons for clarity
-        for name in buttonNames:
-            button = QPushButton(name)  # Create a button with the given name
-            button.setIcon(QIcon("placeholder_icon.png"))  # Placeholder icon
-            button.clicked.connect(self.handleMenuButtonClicks)
-            button.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)  # Fixed size policy
-            button.sizeHint()  # Set a fixed size for the button
-            button.setStyleSheet(
-                "border: 1px solid lightgray; background-color: #F0F0F0; text-align: left;"
-            )  # Style to match the overall design
-            buttonBarLayout.addWidget(button)  # Add the button to the buttonBar layout
-
-        # Frame for the buttonBar
-        buttonBarFrame = QFrame()
-        buttonBarFrame.setLayout(buttonBarLayout)  # Apply the button layout to the frame
-        buttonBarFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
-        buttonBarFrame.setFixedHeight(50)  # Match height with other UI elements
-        buttonBarFrame.setStyleSheet("background-color: #F0F0F0;")  
-        mainLayout.addWidget(buttonBarFrame)  # Add the buttonBar frame to the main layout
 
         # --- Content Frames ---
         # Frame for the title
@@ -227,6 +201,17 @@ class ContentWidget(QWidget):
         
         SPTOLayout.addWidget(outliersFrame)
 
+        buttonFrame = QFrame()
+        buttonFrame.setBaseSize(600,60)
+        buttonFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Fixed)
+
+        buttonLayout = QHBoxLayout()
+        buttonLayout.setContentsMargins(25,25,25,25)
+        buttonLayout.setSpacing(10)
+
+        buttonFrame.setLayout(buttonLayout)
+
+        mainLayout.addWidget(buttonFrame)
         
 
 
@@ -238,7 +223,7 @@ class ContentWidget(QWidget):
         titleLayout.addWidget(moduleLabel)  # Add the label to the contentArea layout'''
 
 
-        selectFileButton = QPushButton("Select File")
+        selectFileButton = QPushButton("📂 Select File")
         selectFileButton.setObjectName("check file")
 
         selectFileButton.clicked.connect(self.selectFile)
@@ -278,7 +263,7 @@ class ContentWidget(QWidget):
         standardDeviationInput = QLineEdit("0")
         standardDeviationLayout.addWidget(standardDeviationInput)
 
-        selectOutlierFileButton = QPushButton("Select File")
+        selectOutlierFileButton = QPushButton("📂 Select File")
         selectOutlierFileButton.clicked.connect(self.selectFile)
         selectOutlierFileButton.setObjectName("outlier file")
         outliersLayout.addWidget(selectOutlierFileButton)
@@ -328,6 +313,24 @@ class ContentWidget(QWidget):
         self.eventThreshFrame = resultsQFrame("Event threshold: ")
         resultsLayout.addWidget(self.eventThreshFrame)
 
+        checkFileButton = QPushButton("Check File")
+        checkFileButton.clicked.connect(self.checkFile)
+        checkFileButton.setStyleSheet("background-color: #4CAF50; color: white; font-weight: bold;")
+
+        buttonLayout.addWidget(checkFileButton)
+
+        dailyStatsButton = QPushButton("Daily Stats")
+        dailyStatsButton.clicked.connect(self.getDailyStats)
+        dailyStatsButton.setStyleSheet("background-color: #1FC7F5; color: white; font-weight: bold")
+
+        buttonLayout.addWidget(dailyStatsButton)
+
+        outliersButton = QPushButton("Outliers")
+        outliersButton.clicked.connect(self.checkOutliers)
+        outliersButton.setStyleSheet("background-color: #F57F0C; color: white; font-weight: bold")
+        buttonLayout.addWidget(outliersButton)
+
+        
 
 
 
@@ -356,6 +359,35 @@ class ContentWidget(QWidget):
             label.setText("No file selected")
             return ""
     
+    def checkFile(self):
+        #https://www.youtube.com/watch?v=QY4KKG4TBFo im keeping this in the comments
+        print("https://www.youtube.com/watch?v=QY4KKG4TBFo") #Are easter eggs allowed?
+        try:
+            min, max, count, missing, mean = qualityCheck(self.selectedFile)
+            self.minimumFrame.contentLabel.setText(min)
+            self.maximumFrame.contentLabel.setText(max)
+            self.meanFrame.contentLabel.setText(mean)
+            self.numOfValuesFrame.contentLabel.setText(count)
+            self.missingFrame.contentLabel.setText(missing)
+        except FileNotFoundError:
+            displayBox("File Error", "Please ensure a predictand file is selected and exists.","Error", isError=True)
+
+    def getDailyStats(self):
+        try:
+            stats = dailyMeans(self.selectedFile)
+            displayBox("Daily Stats:", stats, "Daily Results")
+        except FileNotFoundError:
+            displayBox("File Error", "Please ensure a predictand file is selected and exists.", "Error", isError=True)
+
+    def checkOutliers(self):
+        try:
+            message = outliersID(self.selectedFile, self.selectedOutlier)
+            displayBox("Outliers Identified", message, "Outlier Results")
+
+        except FileNotFoundError:
+            displayBox("File Error", "Please ensure predictand and output files are selected.", "Error", isError=True)
+
+
     def handleMenuButtonClicks(self):
         button = self.sender().text()
         if button == "Check File":

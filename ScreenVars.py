@@ -6,8 +6,8 @@ import re
 import numpy as np
 
 #Local version
-#predictorSelected = ['predictor files/ncep_dswr.dat']
-#predictandSelected = ['predictand files/NoviSadPrecOBS.dat']
+predictorSelected = ['predictor files/ncep_dswr.dat']
+predictandSelected = ['predictand files/NoviSadPrecOBS.dat']
 
 #predictorSelected = ['C:/Code/SDSM/SDSM-Refresh/predictor files/ncep_dswr.dat'] #todo remove default
 #predictandSelected = ['C:/Code/SDSM/SDSM-Refresh/predictand files/NoviSadPrecOBS.dat'] #todo remove default
@@ -281,7 +281,7 @@ def correlation(predictandSelected, predictorSelected, fSDate, fEDate, autoRegre
             nVariables +=1
             firstColumn = inputData[:, 0]
 
-            # create a new column for position 3 with the first element shifted down
+            # create a new column for position end with the first element shifted down
             newColumn = np.roll(firstColumn, 1)
             newColumn[0] = 0  # Replace the first element with 0 or any placeholder value
             
@@ -460,16 +460,21 @@ def analyseData(predictandSelected, predictorSelected, fsDate, feDate, globalSDa
             for i in range(len(month)):
                 row = month[i]
                 if row[0] == missingCode:
-                    row = [0 for file in row]
+                    row = [0 for file in row] # np.zero(len(row))
                 row = [0 if data == missingCode else data for data in row]
+                #if autoregression then last one needs to be sumdata += month[i-1][nvariables]
                 #SUMX
                 sumData += row
                 #SUMXX
                 sumDataSquared += [data**2 for data in row]
                 #SUMXY
                 SumDataPredictandPredictor += [data*row[0] for data in row]
-                #SUMY not needed as in SUMX same with SUMYY
+                #SUMY not needed as it is in SUMX same with SUMYY
 
+                if autoRegressionTick:
+                    sumData[nVariables] += month[i-1][nVariables]
+                    sumData[nVariables] += month[i-1][nVariables] ** 2
+                    sumData[nVariables] += month[i-1][nVariables] * row[0]
             """
             collapsedArray = np.vstack(months)
             print("Collapsed array")
@@ -491,11 +496,96 @@ def analyseData(predictandSelected, predictorSelected, fsDate, feDate, globalSDa
             T = [9999 if RSQD[i] > 0.999 else (CORR[i] * np.sqrt(len(month) - missing[i]) - 2 ) / np.sqrt(1 - RSQD[i]) for i in range(nVariables)]
 
             pr = [(((1 + ((T[i] ** 2) / (len(month) - missing[index]))) ** -(((len(month) - missing[index]) + 1) / 2))) / (np.sqrt(((len(month) - missing[index]) * math.pi))) * np.sqrt((len(month) - missing[index])) for i in range(nVariables)] # line 875
-        #
+        # return each months CORR, RSQD, T, pr
 
+def scatterPlot(predictandSelected, predictorSelected, fsDate, feDate, globalSDate, globalEDate, autoRegressionTick):
+    if predictandSelected == "":
+        print("You must select a predictand.") # todo proper error message
+    elif len(predictorSelected) < 1 and not autoRegressionTick:
+        print("You must select at least one predictor.") # todo proper error message
+    elif len(predictorSelected) < 1:
+        print("You must select only one predictor to plot with.") # todo proper error message
+    elif autoRegressionTick and len(predictorSelected) == 1:
+        print("You must select only one predictor to plot with - you have selected one predictor and an autoregressive parameter.") # todo proper error message
+    else:
+        nVariables = len(predictorSelected) + 1
+
+        loadedFiles = []
+        loadedFiles = loadFilesIntoMemory(predictorSelected, predictandSelected)
+        nameOfFiles = displayFiles(predictandSelected + predictorSelected)
+        print("HERE", nameOfFiles)
+        print(predictorSelected + predictandSelected)
+
+
+        totalNumbers = 0
+        totalMissing = 0 
+        totalMissingRows = 0
+        totalBelowThreshold = 0
+
+        #todo import from settings
+        threshold = 0 
+        missingCode = -999
+        workingDate = fSDate
+        conditional = False
+        analysisPeriodChosen = 0
+        inputData = []
+        sumData = np.zeros(nVariables)
+        #####################
+        # gets data into an array of shape (length of data, number of files)
+        # only puts data in if date is in the analysis period chosen
+        #####################
+        for i in range((fEDate - fSDate).days):
+            if dateWanted(workingDate, analysisPeriodChosen):
+                totalNumbers += 1    
+                row = [file[i] for file in loadedFiles]
+
+                missingNumber = row.count(missingCode)
+
+                # there are missingCodes
+                if missingNumber > 0:
+                    totalMissingRows += 1
+                    totalMissing += missingNumber
+
+                # there is no missingCodes
+                elif (conditional and row[0] > threshold) or not conditional:
+                    sumData += row
+
+                # the threshold only applies to the predictand file not the predictor files
+                if row[0] <= threshold and conditional and row[0] != missingCode:
+                    totalBelowThreshold +=1
+
+                inputData.append(row)
+            increaseDate(workingDate, 1)
+
+        inputData = np.array(inputData)
+
+        if autoRegressionTick:
+            nVariables +=1
+            firstColumn = inputData[:, 0]
+
+            # create a new column for position end with the first element shifted down
+            newColumn = np.roll(firstColumn, 1)
+            newColumn[0] = 0  # Replace the first element with 0 or any placeholder value
+            
+            # Append the new column to the original array
+            inputData = np.hstack((inputData, newColumn.reshape(-1, 1)))
+            
+            if inputData[totalNumbers - 1, 0] != missingCode and (not (inputData[totalNumbers - 1, 0] <= threshold) and conditional):
+                sumData = np.append(sumData, inputData[totalNumbers - 1, 0])
+                
+            else:
+                sumData = np.append(sumData, sumData[0])
+                nameOfFiles.append("Autoregression")
+
+        return inputData.T
+
+        
 
 if __name__ == '__main__':
     #analyseData(predictandSelected, predictorSelected, fSDate, fEDate, globalSDate, globalEDate, autoRegressionTick)
-    predictorSelected = selectFile()
-    predictandSelected = selectFile()
-    correlation(predictandSelected, predictorSelected, fSDate, fEDate, autoRegressionTick)
+    #predictorSelected = selectFile()
+    #predictandSelected = selectFile()
+
+    #correlation(predictandSelected, predictorSelected, fSDate, fEDate, autoRegressionTick)
+    scatterPlot(predictandSelected, predictorSelected, fSDate, fEDate, globalSDate, globalEDate, autoRegressionTick)
+    #print(np.random.normal(size=(2, 200), scale=1e-5))

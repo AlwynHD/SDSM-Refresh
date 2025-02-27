@@ -2,6 +2,7 @@ import calendar
 import datetime
 import math
 import numpy as np
+import pyhomogeneity as hg
 from ScreenVars import loadFilesIntoMemory, increaseDate
 
 #Local version
@@ -250,10 +251,11 @@ def qualityCheck(selectedFile):
     else:
         pettitt = pettittTest(petArray, 90)
 
-    print("Min: " + str(min) + "\nMax: " + str(max) + "\nTotal Values: " + str(count) + "\nMissing Values: " + str(missing) + "\nMean: " + str(mean))
+    print("Min: " + str(min) + "\nMax: " + str(max) + "\nMean: " + str(mean) + "\nValues in file: " + str(count + missing) + "\nMissing Values: " + str(missing) + "\nGood Values: " + str(count) + "\nMean: " + str(mean) + "\nMax Difference: " + str(maxDifference) + "\nMax Differenece Value 1: " + str(maxDiffValue1) + "\nMax Differenece Value 2: " + str(maxDiffValue2) + "\nValues above threshold: " + str(threshCount) + "\nPettitt: " + str(pettitt) + "\nPettitt Max Pos: " + str(0) + "\nGlobal Missing Code: " + str(globalMissingCode) + "\nEvent Threshold: " + str(thresh))
     return str(min), str(max), str(count), str(missing), str(mean)
 
 def pettittTest(pettittArray, ptPercent):
+    #todo Ask for Chris help, things seem very wrong.
     currentDate = globalSDate
 
     annualMeans = [0] * 120
@@ -282,10 +284,12 @@ def pettittTest(pettittArray, ptPercent):
     if yearsOk < 5:
         pettitt = globalMissingCode
     else:
-        petMatrix = np.zeros((yearsOk, 7), float) 
+        petMatrix = np.zeros((yearsOk, 7), float)
+        test = []
         yearsOk = 0
         for i in range(yearIndex):
             if annualMeans[i] != globalMissingCode:
+                test.append(annualMeans[i])
                 petMatrix[yearsOk][0] = annualMeans[i]
                 petMatrix[yearsOk][1] = yearsOk
                 petMatrix[yearsOk][5] = i + globalSDate.year
@@ -324,11 +328,11 @@ def pettittTest(pettittArray, ptPercent):
                 maxPos = i
 
         pettitt = 2 * math.pow(math.e, ((-6 * kn ** 2) / ((yearsOk ** 3) + yearsOk ** 2)))
-        #todo, fix calculation
         print("pettitt Value: " + str(pettitt))
 
         if pettitt < 0.05:
             print("max position: " + str(petMatrix[maxPos][5]))
+
 if __name__ == '__main__':
     #Module tests go here
     qualityCheck(selectedFile)

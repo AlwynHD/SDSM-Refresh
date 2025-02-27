@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import (QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, 
                              QFrame, QLabel, QFileDialog, QScrollArea, QDateEdit, QCheckBox,
-                             QButtonGroup, QRadioButton, QLineEdit, QGroupBox)
+                             QButtonGroup, QRadioButton, QLineEdit, QGroupBox, QMessageBox)
 from PyQt5.QtCore import Qt, QSize, QDate
 from PyQt5.QtGui import QPalette, QColor, QIcon
 from ScreenVars import correlation, analyseData, filesNames
@@ -9,6 +9,17 @@ from datetime import datetime
 
 # Define the name of the module for display in the content area
 moduleName = "Screen Variables"
+
+def displayBox(messageType, messageInfo, messageTitle, isError=False):
+    messageBox = QMessageBox()
+    if isError:
+        messageBox.setIcon(QMessageBox.Critical)
+    else:
+        messageBox.setIcon(QMessageBox.Information)
+    messageBox.setText(messageType)
+    messageBox.setInformativeText(messageInfo)
+    messageBox.setWindowTitle(messageTitle)
+    messageBox.exec_()
 
 class borderedQGroupBox(QGroupBox):
     def __init__(self,args):
@@ -50,33 +61,6 @@ class ContentWidget(QWidget):
                                 border-bottom-right-radius : 20px;}""")
 
 
-        # --- Button Bar ---
-        # Layout for the buttonBar at the top of the screen
-        buttonBarLayout = QHBoxLayout()
-        buttonBarLayout.setSpacing(0)  # No spacing between buttons
-        buttonBarLayout.setContentsMargins(0, 0, 0, 0)  # No margins around the layout
-        buttonBarLayout.setAlignment(Qt.AlignLeft)  # Align buttons to the left
-
-        # Create placeholder buttons for the buttonBar
-        buttonNames = ["Reset", "Analyse", "Correlation", "Scatter", "Settings"]  # Names of the buttons for clarity
-        for name in buttonNames:
-            button = QPushButton(name)  # Create a button with the given name
-            button.setIcon(QIcon("placeholder_icon.png"))  # Placeholder icon
-            button.clicked.connect(self.handleMenuButtonClicks)
-            button.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)  # Expanding size policy
-            button.sizeHint()  # Set a Expanding size for the button
-            button.setStyleSheet(
-                "border: 1px solid lightgray; background-color: #F0F0F0; text-align: left;"
-            )  # Style to match the overall design
-            buttonBarLayout.addWidget(button)  # Add the button to the buttonBar layout
-
-        # Frame for the buttonBar
-        buttonBarFrame = QFrame()
-        buttonBarFrame.setLayout(buttonBarLayout)  # Apply the button layout to the frame
-        buttonBarFrame.setFrameStyle(QFrame.NoFrame)  # No border around the frame
-        buttonBarFrame.setFixedHeight(50)  # Match height with other UI elements
-        buttonBarFrame.setStyleSheet("background-color: #F0F0F0;")  # Dark gray background
-        mainLayout.addWidget(buttonBarFrame)  # Add the buttonBar frame to the main layout
 
         # --- Content Area ---
 
@@ -278,6 +262,18 @@ class ContentWidget(QWidget):
 
         selectDARPSLayout.addWidget(significanceFrame)
 
+
+        buttonFrame = QFrame()
+        buttonFrame.setBaseSize(600,60)
+        buttonFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Fixed)
+
+        buttonLayout = QHBoxLayout()
+        buttonLayout.setContentsMargins(25,25,25,25)
+        buttonLayout.setSpacing(10)
+
+        buttonFrame.setLayout(buttonLayout)
+
+        mainLayout.addWidget(buttonFrame)
         
 
 
@@ -371,6 +367,7 @@ class ContentWidget(QWidget):
         unconditionalRadioButton = QRadioButton("Unconditional")
         unconditionalRadioButton.setChecked(True)
         conditionalRadioButton = QRadioButton("Conditional")
+        conditionalRadioButton.setStyleSheet("QRadioButton::indicator{;width:14px;height:14px;border-radius:8px;}QRadioButton::indicator::checked{background-color: #FF00A0;border:1px solid grey;}QRadioButton::indicator::unchecked{background-color: white;border:1px solid grey}")
         processRadioButtonGroup.addButton(unconditionalRadioButton)
         processRadioButtonGroup.addButton(conditionalRadioButton)
 
@@ -384,7 +381,22 @@ class ContentWidget(QWidget):
         significanceInput = QLineEdit("0.05")
         significanceLayout.addWidget(significanceInput)
 
+        correlationButton = QPushButton("Correlation")
+        correlationButton.clicked.connect(self.doCorrelation)
+        correlationButton.setStyleSheet("background-color: #4CAF50; color: white; font-weight: bold;")
 
+        buttonLayout.addWidget(correlationButton)
+
+        analyseButton = QPushButton("Analyse")
+        #analyseButton.clicked.connect(self.doCorrelation)
+        analyseButton.setStyleSheet("background-color: #1FC7F5; color: white; font-weight: bold")
+
+        buttonLayout.addWidget(analyseButton)
+
+        scatterButton = QPushButton("Scatter")
+        #scatterButton.clicked.connect(self.checkOutliers)
+        scatterButton.setStyleSheet("background-color: #F57F0C; color: white; font-weight: bold")
+        buttonLayout.addWidget(scatterButton)
 
 
 
@@ -392,6 +404,23 @@ class ContentWidget(QWidget):
         
         #titleLayout.addStretch()
         #contentAreaLayout.addStretch()
+    def doCorrelation(self):
+        #Get dates
+        fitStartDate = self.QDateEditToDateTime(self.fitStartDateChooser)
+
+
+        fitEndDate = self.QDateEditToDateTime(self.fitEndDateChooser)
+
+        if fitEndDate <= fitStartDate:
+            return displayBox("Date Error","End date cannot be before start date.","Error",isError=True)
+            
+
+        #Get autoregression state
+        autoregression = self.autoregressionCheckBox.isChecked()
+
+        #Perform correlation
+        print(["predictor files/"+predictor for predictor in self.predictorsSelected])
+        correlation([self.predictandSelected], ["predictor files/"+predictor for predictor in self.predictorsSelected], fitStartDate, fitEndDate, autoregression)
 
     def selectPredictandButtonClicked(self):
         #Will have to be changed soon, as it relies on known file "predictand files"
@@ -421,31 +450,10 @@ class ContentWidget(QWidget):
             self.predictorDescriptionLabel.setText("Description not found")
         
     
-    def handleMenuButtonClicks(self):
-        button = self.sender().text()
-        if button == "Correlation":
-            #Get dates
-            fitStartDate = self.QDateEditToDateTime(self.fitStartDateChooser)
 
-
-            fitEndDate = self.QDateEditToDateTime(self.fitEndDateChooser)
-
-
-            #Get autoregression state
-            autoregression = self.autoregressionCheckBox.isChecked()
-
-            #Perform correlation
-            #not sure if multiple variables works yet, also I need to do an autoregression gui element still
-            #do multiple predictors
-            #crashes with ncep_prec
-            print(["predictor files/"+predictor for predictor in self.predictorsSelected])
-            correlation([self.predictandSelected], ["predictor files/"+predictor for predictor in self.predictorsSelected], fitStartDate, fitEndDate, autoregression)
-        else:
-            print("work in progress, pardon our dust")
 
     def QDateEditToDateTime(self, dateEdit):
         rawStartDate = dateEdit.date()
-        print(str(rawStartDate))
         dateTime = rawStartDate.toPyDate()
         dateTime = datetime.combine(dateTime, datetime.min.time())
         return dateTime

@@ -188,7 +188,7 @@ class SDSMWindow(QMainWindow):
         Uses the single HTML file 'SDSMHelp.html' (in the same folder as the code).
         """
         # Path to the single HTML help file
-        help_file_path = os.path.abspath("src/core/SDSMHelp.html")
+        help_file_path = os.path.abspath("SDSMHelp.html")
         
         # General Help Contents action (opens the whole page)
         helpContentsAction = QAction("Help Contents", self)
@@ -233,7 +233,7 @@ class SDSMWindow(QMainWindow):
         If a section (anchor) is provided, jump to that part of SDSMHelp.html.
         Otherwise, load the entire help file.
         """
-        help_file = os.path.abspath("src/core/SDSMHelp.html")
+        help_file = os.path.abspath("SDSMHelp.html")
         url = QUrl.fromLocalFile(help_file)
         if section:
             # Set the fragment (anchor) for in-page navigation

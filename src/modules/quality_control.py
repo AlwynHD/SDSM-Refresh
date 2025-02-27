@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import (QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSi
                              QLineEdit, QCheckBox, QMessageBox, QGroupBox)
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QPalette, QColor, QIcon
-from QualityControl import qualityCheck, outliersID, dailyMeans
+from src.lib.QualityControl import qualityCheck, outliersID, dailyMeans
 # Define the name of the module for display in the content area
 moduleName = "Quality Control"
 

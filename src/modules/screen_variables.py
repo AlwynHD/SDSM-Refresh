@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import (QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSi
                              QButtonGroup, QRadioButton, QLineEdit, QGroupBox, QMessageBox)
 from PyQt5.QtCore import Qt, QSize, QDate
 from PyQt5.QtGui import QPalette, QColor, QIcon
-from ScreenVars import correlation, analyseData, filesNames
+from src.lib.ScreenVars import correlation, analyseData, filesNames
 from os import listdir
 from datetime import datetime
 

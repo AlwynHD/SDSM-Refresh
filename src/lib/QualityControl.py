@@ -3,7 +3,7 @@ import datetime
 import math
 import numpy as np
 import pyhomogeneity as hg
-from ScreenVars import loadFilesIntoMemory, increaseDate
+from src.lib.ScreenVars import loadFilesIntoMemory, increaseDate
 
 #Local version
 predictorSelected = ['predictor files/ncep_dswr.dat']
@@ -65,6 +65,7 @@ def dailyMeans(selectedFile):
     dayWorkingOn = globalSDate.weekday()
 
     #Read file and add values to array
+    #TODO open file
     with open(selectedFile, "r") as file:
         for line in file:
             line = line.rstrip('\n')
@@ -90,6 +91,8 @@ def dailyMeans(selectedFile):
     #Calculate standard deviation
     dayWorkingOn = globalSDate.weekday()
 
+
+    #TODO open file
     with open(selectedFile, "r") as file:
         for line in file:
             line = line.rstrip('\n')
@@ -132,6 +135,7 @@ def outliersID(selectedFile, outlierFile):
     sum = 0
     count = 0
 
+    #TODO open file
     with open(selectedFile, "r") as file:
         for line in file:
             line = line.rstrip('\n')
@@ -151,6 +155,7 @@ def outliersID(selectedFile, outlierFile):
     standardDeviation = 0
 
     if mean != globalMissingCode:
+        #TODO open file
         with open(selectedFile, "r") as file:
             for line in file:
                 line = line.rstrip('\n')
@@ -169,6 +174,7 @@ def outliersID(selectedFile, outlierFile):
     outlierCount = 0
     counter = 1
 
+    #TODO open file
     with open(selectedFile, "r") as file:
         for line in file:
             if line != str(globalMissingCode):
@@ -200,7 +206,7 @@ def qualityCheck(selectedFile):
     maxDifference = 0
     threshCount = 0
     
-    
+    #TODO open file
     with open(selectedFile, "r") as file:
         for line in file:
             inputValue = float(line)

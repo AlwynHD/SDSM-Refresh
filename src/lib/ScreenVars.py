@@ -52,6 +52,7 @@ def partialCorrelation(A, B, n, crossCorr, corrArrayList):
     else:
         return result / math.sqrt(denom)
 #move to gui
+
 def displayFiles(selected_files):
     """
     takes files strips paths and prints that to user

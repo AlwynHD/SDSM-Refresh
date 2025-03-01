@@ -1,5 +1,7 @@
 import numpy as np
 from datetime import date
+from src.lib.utils import loadFilesIntoMemory, increaseDate
+from copy import deepcopy
 
 ## NOTE TO READERS: THIS FILE **DOES NOT** WORK
 
@@ -17,36 +19,72 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
 
     ##Real comments will be added later
 
+    ##NEW in v0.2.0:
+    ## Readded LastSeason & LastMonth
+    ## Replaced all instances of np.array with np.ndarray
+    ## Added IncreaseDate back where necessary
+    ## Corrected periodWorkingOn to be within 0-11 rather than 1-12
+    ## Fixed section #5.2.0 such that it now runs without crashing
+
     #------------------------
     # FUNCTION DEFINITITIONS:
     #------------------------
 
-
     ## Globals:
-    GlobalMissingCode = -1
+    GlobalMissingCode = 999
     NPredictors = 12
 
     ## (Temp) Parameters
     ApplyStepwise = True
     modelType = 0
-    globalStartDate = date(2024, 8, 5)
+    globalStartDate = date(2004, 8, 5)
     globalEndDate = date(2025, 1, 7)
-    fsDate = date(2025, 1, 8)
-    detrendOption = True
+    fsDate = date(2005, 1, 8)
+    feDate = deepcopy(globalEndDate)
+    detrendOption = False #True
     parmOpt = True  ## Whether Conditional or Unconditional. True = Cond, False = Uncond. 
     ##ParmOpt(1) = Uncond = False
     ##ParmOpt(0) = Cond = True
     autoRegression = True ## Replaces AutoRegressionCheck
-
+    xValidation = True
+    PTandRoot = ["predictand files/NoviSadPrecOBS.dat"] ##Predictand file
+    #fileList = ["Chumbus", "Glaucose", "Jhomcy"]
+    fileList = [
+        "temp", "mslp", "p500", "p850", "rhum", 
+        "r500", "r850", "p__f", "p__z", 
+        "p__v", "p__u", "p_th", "p_zh", "p5_f", 
+        "p5_z", "p5_v", "p5_u", "p5th", "p5zh", 
+        "p8_f", "p8_z", "p8_v", "p8_u","p8th", 
+        "p8zh", "shum", "dswr", 
+        "lftx", "pottmp", "pr_wtr",
+    ]
+    for i in range(len(fileList)):
+        fileList[i] = "predictor files/ncep_" + fileList[i] + ".dat"
+    debugMsg(fileList)
     ## Other Vars:
     progValue = 0 ## Progress Bar
     thresh = 0 ## ???
-    modelTrans = 1 ## Defined in main as Public ModelTrans As Single -> 'Model transformation; 1=none, 2=4root, 3=ln, 4=Inv Normal, 5=box cox
+    modelTrans = 1 ## No idea - never defined. Assumed 1-5, not starting 0
+    ##Actuamalaly defined in main as Public ModelTrans As Single -> 'Model transformation; 1=none, 2=4root, 3=ln, 4=Inv Normal, 5=box cox
     ##Will copy whomever defined it...
 
-    ## Idea: Could define commonly used ranges here so that we don't keep recreating them each time.
 
-    
+    ## True Temps:
+    rSquared = 0
+    SE = 0
+    chowStat = 0
+    fRatio = 0
+    parameterResultsArray = np.zeros((24,50))
+    CondPropCorrect = 5
+
+    ## Note: The following vars were not adjusted to use 0 as their base:
+    # ModelTrans
+    # SeasonCode
+    # NB: ModelType starts from 0
+    # NB: Swap WorkingDate.Month to CurrentMonth
+
+    ## Idea: Could define commonly used ranges here so that we don't keep regenerating them each time.
+
     #------------------------
     #------ SECTION #1 ------ Error Checking & Validation
     #------------------------
@@ -54,23 +92,22 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
     ##not used rn -> will add later
     ##i have notes trust me
     
-    if true:
+    if True:
         #------------------------
         #------ SECTION #2 ------ Unknown/Initialisation?
         #------------------------
-
         
-        xValidationResults = np.ndarray(12, 6).fill(GlobalMissingCode) ## Original array is XValidationResults(1 To 13, 1 To 7) As Double
+        xValidationResults = np.ndarray((13, 7)).fill(GlobalMissingCode) ## Original array is XValidationResults(1 To 13, 1 To 7) As Double
         xValidMessageShown = False
 
         #if ApplyStepwise:
             ## Add msg
     
-        lambdaArray = np.zeros(11,1) ## Lamda array originally "LamdaArray(1 To 12, 1 To 2) As Double"
+        lambdaArray = np.zeros((12,2)) ## Lamda array originally "LamdaArray(1 To 12, 1 To 2) As Double"
 
         processTerminated = False
 
-        statsSummary = np.zeros(25,4) ## Originally StatsSummary(1 To 26, 1 To 5) As Double
+        statsSummary = np.zeros((26,5)) ## Originally StatsSummary(1 To 26, 1 To 5) As Double
 
         dependMgs = False
 
@@ -79,7 +116,8 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
         #-----------------
 
         ## Reading in data from files?
-        ##idk how to do that rn, will revisit
+        ## FileList is the selected files from 
+        loadedFiles = loadFilesIntoMemory(fileList, PTandRoot) 
 
         """
                                             'Open selected files
@@ -120,17 +158,18 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
             ## Progress Bar Stuff
 
 
-        FSDateBaseline = ndarray.zeros((11)) ## Original: FSDateBaseline(1 To 12) As Long
-        workingDate = globalStartDate.copy() ## It appears Current Day/Month/Year were split to make incrementing it easier.
+        fsDateBaseline = np.zeros((12)) ## Original: FSDateBaseline(1 To 12) As Long
+        workingDate = deepcopy(globalStartDate) ## It appears Current Day/Month/Year were split to make incrementing it easier.
         totalNumbers = 0
 
-        while (FSDate - workingDate).days > 0:
+        while (fsDate - workingDate).days > 0: ##Infinite Loop Bug
+            debugMsg("Loop0")
             if seasonCode == 1:
-                FSDateBaseline[0] += 1
+                fsDateBaseline[0] += 1
             elif seasonCode == 4:
-                FSDateBaseline[GetSeason(workingDate.month)] += 1
+                fsDateBaseline[getSeason(workingDate.month)] += 1
             else: ##Assume seasonCode = 12:
-                FSDateBaseline[workingDate.month] += 1
+                fsDateBaseline[workingDate.month -1] += 1
 
             ##########################################
             ## What is "DoEvents"?
@@ -141,23 +180,24 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
 
             totalNumbers += 1
             ##Call IncreaseDate
+            workingDate = increaseDate(workingDate, 1)
             progValue = np.floor((totalNumbers / totalToSkip) * 100)
             ##Update progress bar with progValue
 
         ## END While
 
         #------------------------
-        #------ SECTION #4 ------ ???
+        #----- SECTION #4.0 ----- ???
         #------------------------
 
         if seasonCode == 1:
-            dataReadIn = np.zeros((0, NPredictors, nDaysR))
+            dataReadIn = np.zeros((1, NPredictors + 1, nDaysR))
         elif seasonCode == 4:
-            dataReadIn = np.zeros((3, NPredictors, ((noOfDays2Fit / 4) + 100)))
+            dataReadIn = np.zeros((4, NPredictors + 1, ((nDaysR // 4) + 100)))
         else: ## Assume seasonCode = 12
-            dataReadIn = np.zeros((11, NPredictors, ((noOfDays2Fit / 12) + 100)))
+            dataReadIn = np.zeros((12, NPredictors + 1, ((nDaysR // 12) + 100)))
 
-        sizeOfDataArray = np.zeros((11))
+        sizeOfDataArray = np.zeros((12), dtype=int)
 
         totalNumbers = 0
         missingRows = 0
@@ -165,60 +205,86 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
     
         ## Progress Bar Update Stuff
 
+        currentMonth = workingDate.month - 1
+        currentSeason = getSeason(workingDate.month)
+
+        #------------------------
+        #----- SECTION #4.1 ----- (Finding the Start Pos)
+        #------------------------
+
         ## Revisit the following - Something feels off... ##
 
-        noOfSections = np.zeros((11))
+        noOfSections = np.zeros((12), dtype=int)
         startFound = False
+        searchPos = 0
 
         while not startFound:
+            debugMsg("Loop1")
             startFound = True
-            #for i in range(NPredictors + 1):
-                ## input #j, tempReadin(j)
-                ## if tempReadin(j) = GlobalMissingCode: startFound = False
-            
+            for i in range(NPredictors + 1):
+                #tempReadin[i] = loadedFiles[i]
+                #if tempReadin[i] == GlobalMissingCode: startFound = False
+                if loadedFiles[i][searchPos] == GlobalMissingCode: 
+                    startFound = False
+                #else:
+            searchPos += 1
+            #next i
             totalNumbers += 1
-            progValue = np.floor((totalNumbers / noOfDays2Fit) * 100)
+            progValue = np.floor((totalNumbers / nDaysR) * 100)
             #call newProgressBar
 
-        lastDate = workingDate.copy()
+        #lastDate = deepcopy(workingDate)
+        lastMonth = workingDate.month - 1 #currentMonth
+        lastSeason = getSeason(workingDate.month)
         if seasonCode == 1:
-            currentPeriod = 1
+            currentPeriod = 0
         elif seasonCode == 4:
             noOfSections[currentSeason] = 1
-            sectionSizes[currentSeason, 1] = 0
+            #sectionSizes[currentSeason, 1] = 0
             currentPeriod = currentSeason
         else: ##Assume seasonCode = 12
             noOfSections[currentMonth] = 1
-            sectionSizes[currentMonth, 1] = 0
+            #sectionSizes[currentMonth, 1] = 0
             currentPeriod = currentMonth
 
         sizeOfDataArray[currentPeriod] += 1
+        debugMsg(noOfSections)
+        debugMsg(max(noOfSections))
+        sectionSizes = np.zeros((12, 200), dtype=int) #sectionSizes = np.zeros((12, max(noOfSections)))
         for i in range(NPredictors + 1):
-            dataReadIn[currentPeriod, i, sizeOfDataArray(currentPeriod)] = tempReadin(i)
+            dataReadIn[currentPeriod, i, sizeOfDataArray[currentPeriod]] = loadedFiles[i][searchPos]#tempReadin(i)
 
         if seasonCode != 1:
-            sectionSizes[currentPeriod, noOfSections[currentPeriod]] += 1
+            debugMsg(noOfSections[currentPeriod])
+            sectionSizes[currentPeriod, 0] += 1
+            #sectionSizes[currentPeriod, noOfSections[currentPeriod]] += 1
 
         #------------------------
-        #------ SECTION #5 ------
+        #----- SECTION #4.2 ----- Finding evidence of missing values(?)
         #------------------------
 
         #call increasedate
 
         #Do Until (DateDiff("d", DateSerial(CurrentYear, CurrentMonth, CurrentDay), FSDate)) <= 0
 
-        while (FEDate - workingDate).days >= 0:
+        while (feDate - workingDate).days >= 0:
+            debugMsg("Loop2")
             #Do Events, whatever that means
             ##Maybe Exit???
 
             anyMissing = False
-            #for i in range(NPredictors + 1):
-                ## input #j, tempReadin(j)
-                ## if tempReadin(j) = GlobalMissingCode: anyMissing = True
+            for i in range(NPredictors + 1):
+                #tempReadin[i] = loadedFiles[i] ## input #j, tempReadin(j)
+                #if tempReadin[j] == GlobalMissingCode: anyMissing = True
+                if loadedFiles[i][searchPos] == GlobalMissingCode:
+                    anyMissing = True
+                #else:
+            searchPos += 1
+            #next i
             
             totalNumbers += 1
             if seasonCode == 1:
-                currentPeriod = 1
+                currentPeriod = 0
             elif seasonCode == 4:
                 currentPeriod = currentSeason
             else: ##Assume seasonCode = 12
@@ -229,22 +295,26 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
             else:
                 sizeOfDataArray[currentPeriod] += 1
                 for i in range(NPredictors + 1):
-                    dataReadIn[currentPeriod, i, sizeOfDataArray(currentPeriod)] = tempReadin(i)
-
+                    dataReadIn[currentPeriod, i, sizeOfDataArray[currentPeriod]] = loadedFiles[i]#tempReadin(i)
+            ####################################
+            ## Revisit - Should be unnecesary ##
+            ####################################
             if ((seasonCode == 4) and (currentPeriod != lastSeason)) or ((seasonCode == 12) and (currentPeriod != lastMonth)):
                 noOfSections[currentPeriod] += 1
                 if anyMissing:
-                    sectionSizes[currentPeriod, noOfSections[currentPeriod]] = 0
+                    sectionSizes[currentPeriod, noOfSections[currentPeriod] - 1] = 0
                 else:
-                    sectionSizes[currentPeriod, noOfSections[currentPeriod]] = 1
+                    sectionSizes[currentPeriod, noOfSections[currentPeriod] - 1] = 1
             elif (seasonCode != 1) and not anyMissing:
-                sectionSizes[currentPeriod, noOfSections[currentPeriod]] += 1
-            
-            lastMonth = currentMonth
-            lastSeason = currentSeason
-
+                sectionSizes[currentPeriod, noOfSections[currentPeriod] - 1] += 1
+            #endif
+            lastMonth = workingDate.month - 1 #currentMonth
+            lastSeason = getSeason(workingDate.month)
             #call increasedate
-            progValue = np.floor((totalNumbers / noOfDays2Fit) * 100)
+            workingDate = increaseDate(workingDate, 1)
+            currentMonth = workingDate.month - 1
+            currentSeason = getSeason(workingDate.month)
+            progValue = np.floor((totalNumbers / nDaysR) * 100)
 
         ##End while
 
@@ -253,17 +323,17 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
         #################
 
         #------------------------
-        #----- SECTION #6.0 ----- 
+        #----- SECTION #5.0 ----- 
         #------------------------
 
         anyMissing = False
         for i in range(0, seasonCode):
-            if sizeOfDataArray(i) < 10:
+            if sizeOfDataArray[i] < 10:
                 anyMissing = True
 
         if anyMissing:
             #error here
-            do_nothing() ## prevent indentation error
+            do_nothing()
         else:
             xMatrix = None
             yMatrix = None
@@ -272,14 +342,14 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
             noOfResiduals = 0
 
             #------------------------
-            #---- SECTION #6.1.0 ---- SeasonCode 1 -> Annuals
+            #---- SECTION #5.1.0 ---- SeasonCode 1 -> Annuals
             #------------------------
 
             ## uwu
             ## Double check for arrays with too many / little values...
 
             if seasonCode == 1:
-                periodWorkingOn = 1
+                periodWorkingOn = 0
                 if applyStepwise:
                     #call newprogressbar
                     do_nothing()
@@ -291,21 +361,23 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
                     do_nothing()
                 
                 if not autoRegression:
-                    xMatrix = np.array((sizeOfDataArray[0], NPredictors))
-                    yMatrix = np.array(sizeOfDataArray[0])
-                    yMatrixAboveThreshPos = np.array(sizeOfDataArray[0])
+                    xMatrix = np.ndarray((sizeOfDataArray[0], NPredictors))
+                    yMatrix = np.ndarray((sizeOfDataArray[0]))
+                    yMatrixAboveThreshPos = np.ndarray((sizeOfDataArray[0]))
                     for i in range(sizeOfDataArray[0]):
                         yMatrix[i] = dataReadIn[0, 0, i]
                         #xMatrix[i, 0] = 1# --> What does this meen?
+                        xMatrix[i, 0] = loadedFiles[0]
                         for j in range(NPreedictors):
-                            #xMatrix[i, j] = dataReadIn[0, j+1, i]
-                            do_nothing()
+                            xMatrix[i, j] = dataReadIn[0, j+1, i]
+                            #do_nothing()
                 else:
                     xMatrix = np.ndarray((sizeOfDataArray[0] - 1, NPredictors + 1))
-                    yMatrix = np.array(sizeOfDataArray[0] - 1)
+                    yMatrix = np.ndarray((sizeOfDataArray[0] - 1))
                     for i in range(sizeOfDataArray[0] - 1):
                         yMatrix[i] = dataReadIn(0, 0, i + 1)
                         #xMatrix[i, 0] = 1#
+                        xMatrix[i, 0] = loadedFiles[0]
                         for j in range(NPredictors):
                             xMatrix[i, j] = dataReadIn[0, j+1, i]
                         ##next
@@ -323,19 +395,19 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
                 ##endif
                 
                 #------------------------
-                #---- SECTION #6.1.1 ---- 
+                #---- SECTION #5.1.1 ---- 
                 #------------------------
 
                 if (not detrendOption and not parmOpt):
                     ##call detrendData(periodWorkingOn, False)
-                    detrendData()
+                    detrendData(yMatrix, yMatrixAboveThreshPos, periodWorkingOn, False)
 
-                savedYMatrix = yMatrix.clone()
+                savedYMatrix = deepcopy(yMatrix)
                 if parmOpt:
                     ##call PropogateUnConditional
                     propogateUnconditional()
 
-                if xValidationCheck:
+                if xValidation:
                     ##call xValUnConditional
                     xValUnconditional()
 
@@ -343,21 +415,22 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
 
                 if applyStepwise:
                     ##call stepwise_regression(parmOpt)
-                    stepWiseRegression() ##very wise
+                    stepWiseRegression() ##very wise #betamatrix defined here
                 else:
                     ##call CalculateParameters(parmOpt)
-                    calculateParameters()
+                    calculateParameters()   #betamatrix defined here
                 ##endif
 
                 if processTerminated:
                     ##call mini_reset
                     do_nothing()
 
-                yMatrix = savedYMatrix.clone()
+                yMatrix = savedYMatrix
 
                 for i in range(12):  ## 0-11 inclusive
                     for j in range(NPredictors + 1): ## 0-NPred inclusive
-                        parameterResultsArray[i, j] = beetaMatrix[j, 0]
+                        #parameterResultsArray[i, j] = betaMatrix[j, 0]
+                        do_nothing()
                     ##next
                     ##Dim ParameterResultsArray(1 To 24, 1 To 50) As Double   'stores beta parmeters etc from calulations as going along - printed to file in the end
                     parameterResultsArray[i, NPredictors + 1] = SE
@@ -370,7 +443,7 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
                 ##next
 
                 #------------------------
-                #---- SECTION #6.1.2 ---- Conditional Part
+                #---- SECTION #5.1.2 ---- Conditional Part
                 #------------------------
 
                 if autoRegression:
@@ -386,7 +459,7 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
                     ##call newprogressbar
                     if autoRegression:
                         ##Funky resize stuffs here - come back later...
-                        xMatrixClone = xMatrix.clone()
+                        xMatrixClone = deepcopy(xMatrix)
                         #xmatrix size
                         #for loop
                         #extra for loop
@@ -396,7 +469,7 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
                     #call PropogateConditional
                     propogateConditional() 
 
-                    if xValidationCheck == 1:
+                    if xValidation:
                         #call xvalConditional
                         xValConditional()
 
@@ -406,7 +479,8 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
 
                     if detrendOption:
                         ##call DetrendData
-                        detrendData()
+                        detrendData(yMatrix, yMatrixAboveThreshPos, periodWorkingOn, True)
+
 
                     if modelTrans == 5:
                         for i in range(12):
@@ -416,7 +490,7 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
                     ##Can we move the following above, to make it an elif?
                     conditionalPart = True
                     #call CalculateParameters(true)
-                    calculateParameters()
+                    calculateParameters() #betaMatrix defined here
                     
                     if processTerminated:
                         ##exit
@@ -427,7 +501,8 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
                     
                     for i in range(12, 24):
                         for j in range(NPredictors + 1):
-                            parameterResultsArray[i, j] = betaMatrix[j, 0]
+                            #parameterResultsArray[i, j] = betaMatrix[j, 0]
+                            do_nothing()
                         ##next
                         parameterResultsArray[i, NPredictors + 1] = SE
                         parameterResultsArray[i, NPredictors + 2] = rSquared
@@ -438,7 +513,7 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
                     ##next
                 else:
                     #------------------------
-                    #---- SECTION #6.1.3 ---- DW calculations
+                    #---- SECTION #5.1.3 ---- DW calculations
                     #------------------------
 
                     DWNumerator = 0
@@ -466,24 +541,25 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
                 #Call NewProgressBar(ProgressPicture, 100, 100, "Calibrating Model")
 
                 #------------------------
-                #---- SECTION #6.2.0 ---- (season/month)
+                #---- SECTION #5.2.0 ---- (season/month)
                 #------------------------
             else:
-                for periodWorkingOn in range(1, SeasonCode + 1):
+                for periodWorkingOn in range(seasonCode):
                     #progValue = ##progress bar stuff
                     ##call newprogressbar
 
                     ## Copied from above section (SeasonCode == 1), but sizeOfDataArray swapped for periodWorkingOn
                     if not autoRegression:
-                        xMatrix = np.array((periodWorkingOn, NPredictors))
-                        yMatrix = np.array(periodWorkingOn)
-                        yMatrixAboveThreshPos = np.array(sizeOfDataArray[0])
+                        xMatrix = np.ndarray((periodWorkingOn + 1, NPredictors))
+                        yMatrix = np.ndarray((periodWorkingOn + 1))
+                        yMatrixAboveThreshPos = np.ndarray((sizeOfDataArray[0]))
                         for i in range(sizeOfDataArray[periodWorkingOn]):
                             yMatrix[i] = dataReadIn[0, 0, i]
                             #xMatrix[i, 0] = 1# --> What does this meen?
+                            xMatrix[i, 0] = loadedFiles[0]
                             for j in range(NPreedictors):
-                                #xMatrix[i, j] = dataReadIn[0, j+1, i]
-                                do_nothing()
+                                xMatrix[i, j] = dataReadIn[0, j+1, i]
+                                #do_nothing()
                         ###### End of Sorta Copy ######
                     else:
                         NPredictors += 1
@@ -494,27 +570,31 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
                                 okSectionCount += 1
                             ##endif
                         ##next
-                        binsTotal = binsTotal - okSectionCount
+                        binsTotal -= okSectionCount
                         ##xMatrix resize 
                         ##yMatrix resize
+                        xMatrix = np.zeros((binsTotal + 1, NPredictors))
+                        yMatrix = np.zeros((binsTotal + 1))
+
                         tempCounter = 0
-                        progressTHroughData = 1
+                        progressThroughData = 1
                         for i in range(noOfSections[periodWorkingOn]):
                             if sectionSizes[periodWorkingOn, i] > 1:
-                                for j in range(sectionSizes[periodWorkingOn, i]):
-                                    yMatrix[tempCounter] = dataReadIn[periodWorkingOn, 0, ]
+                                for j in range(sectionSizes[periodWorkingOn, i] - 1):
+                                    yMatrix[tempCounter] = dataReadIn[periodWorkingOn, 0, i]
                                     for subloop in range(NPredictors - 1):
-                                        xMatrix[tempCounter, subloop] = dataReadIn[periodWorkingON, subloop, j+progressThroughData]
+                                        xMatrix[tempCounter, subloop] = dataReadIn[periodWorkingOn, subloop, j+progressThroughData]
                                     ##next (subloop)
                                     ##xmatrix[tempCounter, 0] = 1#
+                                    xMatrix[tempCounter, 0] = 1 #loadedFiles[0] - Whoops, actually just a 1
                                     if parmOpt:
-                                        if dataREadIn[periodWorkingOn, 0, j + progressThroughData - 1] > thresh:
-                                            xMatrix[tempCounter, NPredictors] = 1
+                                        if dataReadIn[periodWorkingOn, 0, j + progressThroughData - 1] > thresh:
+                                            xMatrix[tempCounter, NPredictors - 1] = 1
                                         else:
-                                            xMatrix[tempCounter, NPredictors] = 0
+                                            xMatrix[tempCounter, NPredictors - 1] = 0
                                         ##endif
                                     else:
-                                        xMatrix[tempCounter, NPredictors] = dataReadIn[periodWorkingON, 0, j+progressThroughData - 1]
+                                        xMatrix[tempCounter, NPredictors - 1] = dataReadIn[periodWorkingOn, 0, j+progressThroughData - 1]
                                     ##endif
                                     tempCounter += 1
                                 ##next j
@@ -524,14 +604,14 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
                     ##endif
 
                     #------------------------
-                    #---- SECTION #6.2.1 ---- 
+                    #---- SECTION #5.2.1 ---- 
                     #------------------------
 
                     if (not detrendOption and not parmOpt):
                         ##call detrendData(periodWorkingOn, False)
-                        detrendData()
+                        detrendData(yMatrix, yMatrixAboveThreshPos, periodWorkingOn, False)
                         
-                    savedYMatrix = yMatrix.clone()
+                    savedYMatrix = deepcopy(yMatrix)
 
                     if parmOpt:
                         ###call PropogateUnconditional
@@ -553,15 +633,16 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
                         ##call mini_reset
                         do_nothing()
 
-                    yMatrix = savedYMatrix.clone()
+                    yMatrix = savedYMatrix
 
                     if seasonCode == 4:
                         for i in range(3):
                             for j in range(NPredictors):
-                                parameterResultsArray[seasonMonths[periodWorkingOn, i], j] = betaMatrix[i, 0]
+                                #parameterResultsArray[seasonMonths[periodWorkingOn, i], j] = betaMatrix[i, 0]
+                                do_nothing()
                             ##next j
                             parameterResultsArray[seasonMonths[periodWorkingOn, i], NPredictors + 1] = SE
-                            parameterResultsArray[seasonMonths[periodWorkingON, i], NPredictors + 2] = rSquared
+                            parameterResultsArray[seasonMonths[periodWorkingOn, i], NPredictors + 2] = rSquared
                             statsSummary[seasonMonths[periodWorkingOn, i], 0] = rSquared
                             statsSummary[seasonMonths[periodWorkingOn, i], 1] = SE
                             statsSummary[seasonMonths[periodWorkingOn, i], 3] = chowStat
@@ -569,9 +650,10 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
                         ##next i
                     else: ##Monthly?
                         for i in range(NPredictors + 1):
-                            parameterResultsArray[periodWorkingOn, i] = betaMatrix[i, 0]
+                            #parameterResultsArray[periodWorkingOn, i] = betaMatrix[i, 0]
+                            do_nothing()
                         ##next
-                        parameterResultsArray[periodWorkingON, NPredictors + 1] = SE
+                        parameterResultsArray[periodWorkingOn, NPredictors + 1] = SE
                         parameterResultsArray[periodWorkingOn, NPredictors + 2] = rSquared
                         statsSummary[periodWorkingOn, 0] = rSquared
                         statsSummary[periodWorkingOn, 1] = SE
@@ -580,14 +662,14 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
                     ##endif
 
                     #------------------------
-                    #---- SECTION #6.2.2 ---- (Conditional Part)
+                    #---- SECTION #5.2.2 ---- (Conditional Part)
                     #------------------------
 
                     if autoRegression:
                         NPredictors -= 1
 
                     if parmOpt:
-                        ## From Section #6.2.3 (Originally came before #6.2.2)
+                        ## From Section #5.2.3 (Originally came before #5.2.2)
                         if seasonCode == 12:
                             statsSummary[periodWorkingOn, 2] = CondPropCorrect
                         else:
@@ -598,7 +680,7 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
 
                         if autoRegression:
                             ##Funky resize stuffs here - come back later...
-                            xMatrixClone = xMatrix.clone()
+                            xMatrixClone = deepcopy(xMatrix)
                             #xmatrix size
                             #for loop
                             #extra for loop
@@ -608,7 +690,7 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
                         #call PropogateConditional
                         propogateConditional()
 
-                        if xValidationCheck == 1:
+                        if xValidation:
                             #call xValConditional
                             xValConditional()
                         
@@ -618,7 +700,7 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
 
                         if detrendOption:
                             ##call DetrendData
-                            detrendData()
+                            detrendData(yMatrix, yMatrixAboveThreshPos, periodWorkingOn, True)
 
                         if modelTrans == 5:
                             if seasonCode == 12:
@@ -658,7 +740,7 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
                         ##endif
                         conditionalPart = True
                         ##call CalculateParameters(true)
-                        calculateParameters()
+                        calculateParameters() #BetaMatrix defined here
                         if processTerminated:
                             ##exit
                             do_nothing()
@@ -675,18 +757,20 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
                         if seasonCode == 4:
                             for i in range(3):
                                 for j in range(NPredictors + 1):
-                                    parameterResultsArray[seasonMonths[periodWorkingOn, i] + 12, j] = betaMatrix[j, 0]
+                                    #parameterResultsArray[seasonMonths[periodWorkingOn, i] + 12, j] = betaMatrix[j, 0]
+                                    do_nothing()
                                 ##next j
-                                parameterResultsArray[seasonMonths[periodWorkingOn, i] + 12, NPredictors + 1] = SE
-                                parameterResultsArray[seasonMonths[periodWorkingOn, i] + 12, NPredictors + 2] = rSquared
-                                statsSummary[seasonMonths[periodWorkingOn, i] + 12, 0] = rSquared
-                                statsSummary[seasonMonths[periodWorkingOn, i] + 12, 1] = SE
-                                statsSummary[seasonMonths[periodWorkingOn, i] + 12, 3] = chowStat
-                                statsSummary[seasonMonths[periodWorkingOn, i] + 12, 4] = fRatio
+                                parameterResultsArray[seasonMonths[periodWorkingOn, i] + 11, NPredictors + 1] = SE
+                                parameterResultsArray[seasonMonths[periodWorkingOn, i] + 11, NPredictors + 2] = rSquared
+                                statsSummary[seasonMonths[periodWorkingOn, i] + 11, 0] = rSquared
+                                statsSummary[seasonMonths[periodWorkingOn, i] + 11, 1] = SE
+                                statsSummary[seasonMonths[periodWorkingOn, i] + 11, 3] = chowStat
+                                statsSummary[seasonMonths[periodWorkingOn, i] + 11, 4] = fRatio
                             ##next i
                         else:
                             for j in range(NPredictors + 1):
-                                parameterResultsArray[periodWorkingOn + 12, j] = betaMatrix[j, 0]
+                                #parameterResultsArray[periodWorkingOn + 12, j] = betaMatrix[j, 0]
+                                do_nothing()
                             ##next j
                             parameterResultsArray[periodWorkingOn + 12, NPredictors + 1] = SE
                             parameterResultsArray[periodWorkingOn + 12, NPredictors + 2] = rSquared
@@ -697,7 +781,7 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
                         ##endif  
                     else:             
                         #------------------------
-                        #---- SECTION #6.2.3 ---- (DW Calculations)
+                        #---- SECTION #5.2.3 ---- (DW Calculations)
                         #------------------------
 
                         DWNumerator = 0
@@ -742,7 +826,7 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
             ##endif
                 
             #------------------------
-            #----- SECTION #7.0 ----- Printing to Scream?
+            #----- SECTION #6.0 ----- Printing to Scream?
             #------------------------
 
             ##what is PARROOT FOR OUTPUT???
@@ -778,8 +862,8 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
             ##real change here:
             output = {
                 "SeasonCode": seasonCode,
-                "YearIndicator": yearIndicator,
-                "GlobalStartDate": globalSDate,
+                #"YearIndicator": yearIndicator,
+                "GlobalStartDate": globalStartDate,
                 "NDaysR": nDaysR,
                 "1":1, ##Idk what to do with this
                 "AutoRegression": autoRegression 
@@ -798,11 +882,12 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
             #print PTandRoot
             if detrendOption:   ##Will need to double check and standardise this parameter
                 #call PrintTrendParms
-                printTrendParms() ##???
+                #printTrendParms() ##???
+                do_nothing()
             #call newProgressBar
 
             #------------------------
-            #----- SECTION #7.1 ----- something something load calibResultsFrm
+            #----- SECTION #6.1 ----- something something load calibResultsFrm
             #------------------------
 
             ##This section is dedicated to the absolutely horrendous layout of the OG SDSM-DC application
@@ -819,12 +904,74 @@ def do_nothing():
 
 ##Core functions called directly from calibrateModel()
 
-def detrendData():
+def detrendData(yMatrix: np.array, yMatrixAboveThreshPos: np.array, period: int, conditional: bool):
     """
     Detrend Data Function
     -- Currently a placeholder
     ----> Might be Coming Soon
+    ----> Hard dependency on TransformData (Needs yMatrixAboveThreshPos)
     """
+    ##DetrendOption: 0 = none, 1 = Linear, 2 = power function
+
+    debugMsg(yMatrix)
+    xValues = np.ndarray((len(yMatrix), 2))
+    #betaValues = np.array((2))
+    tempMatrix1 = np.ndarray
+    tempMatrix2 = np.ndarray
+    tempYMatrix = deepcopy(yMatrix)
+    for i in range(len(yMatrix)):
+        xValues[i, 0] = 1
+        if conditional:
+            xValues[i, 1] = yMatrixAboveThreshPos[i]
+        else:
+            xValues[i, 1] = i
+        ##endif
+        if detrendOption == 2:
+            xValues[i, 1] += fsDateBaseline[period]
+        ##endif
+    ##next i
+
+    if detrendOption == 1:
+        tempMatrix1 = np.linalg.inv(np.multiply(xValues.transpose, xValues))
+        tempMatrix2 = np.multiply(xValues.transpose, yMatrix)
+        betaValues = np.multiply(tempMatrix1, tempMatrix2)
+        betaTrend[period, 0] = betaValues[0] #,0]
+        betaTrend[period, 1] = betaValues[1] #,0]
+
+        for i in range(len(yMatrix)):
+            yMatrix[i] -= (xValues[i,1] * betaValues[1]) #,0])
+        ##next i
+
+    else:
+        xLogged = deepcopy(xValues)
+        #minY = 99999
+        #for i in range(len(yMatrix)):
+        #    if yMatrix[i] < minY:
+        #        minY = yMatrix[i]
+        ##next
+        minY = np.min(yMatrix)
+        if minY > 0: minY = 0
+        for i in range(len(yMatrix)):
+            tempYMatrix[i] = yMatrix[i] + np.abs(minY) + 0.001
+
+        for i in range(len(yMatrix)):
+            tempYMatrix[i] = np.log(tempYMatrix[i])
+            xLogged[i] = np.log(xValues[i, 1])
+
+        #tempMatrix1 = xLogged.transpose
+        tempMatrix1 = np.linalg.inv(np.multiply(xLogged.transpose, xLogged))
+        tempMatrix2 = np.multiply(xLogged.transpose, tempYMatrix)
+        betaValues = np.multiply(tempMatrix1, tempMatrix2)
+        betaValues[0] = np.exp(betaValues[0]) #,0] = np.exp(betaBalues(0,0))
+        betaTrend[period, 0] = betaValues[0]
+        betaTrend[period, 1] = betaValues[1]
+        betaTrend[period, 2] = minY
+
+        for i in range(len(yMatrix)):
+            yMatrix[i] -= (betaValues[0,0] * (xValues[i, 1] ** betaValues[1,0])) - np.abs(minY) - 0.001
+        
+
+
 
 def propogateUnconditional():
     """Propogate Unconditional Function

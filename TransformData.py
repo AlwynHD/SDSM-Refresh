@@ -1,5 +1,17 @@
 import numpy as np
 
+#Alex's attempts to understand the original Transform Data Screen
+#All functions and inverse functions in transformations box self-explanitory
+#Backwards change returns the difference between a row and the previous row. First row defaults to missing code
+#Lag n rewrites the data so that it starts at position n
+#Binomial returns 0 if data entry is less than or equal to given value, 1 otherwise.
+#Extract ensemble member seems to just take one column from the input file?
+#Apply threshold does not apply the transformation to the value if it is below threshold
+#Can't figure out what sim or out file do
+#Pad data adds missing values based on dates given
+#Outliers remove outliers from file
+
+
 globalMissingCode = -999
 data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 700, 27, 16]
 
@@ -37,6 +49,17 @@ def binomial(inputData, binomialValue):
     return [0 if entry <= binomialValue else 1 for entry in inputData]
 
 def applyThreshold(inputData, thresh):
+    #Removes all values below threshold
     return [entry for entry in inputData if entry > thresh]
+
+def applyThresholdTransformation(inputData, thresh):
+    #Keeps values below threshold, but doesn't transform them
+    outputData = []
+    for entry in inputData:
+        if entry > thresh:
+            entry = entry #Apply whatever transformation you want
+        outputData.append(entry)
+    return outputData
+        
 
 print(applyThreshold(data, 3))

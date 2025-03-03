@@ -2,7 +2,6 @@ import calendar
 import datetime
 import math
 import numpy as np
-import pyhomogeneity as hg
 from src.lib.utils import loadFilesIntoMemory, increaseDate
 
 #Local version
@@ -249,10 +248,69 @@ def qualityCheck(selectedFile):
     if count < 10 or applyThresh and threshCount < 10:
         pettitt = globalMissingCode
     else:
-        pettitt = pettittTest(petArray, 90)
+        pettitt = pettittTest2(petArray, 90)
 
     print("Min: " + str(min) + "\nMax: " + str(max) + "\nMean: " + str(mean) + "\nValues in file: " + str(count + missing) + "\nMissing Values: " + str(missing) + "\nGood Values: " + str(count) + "\nMean: " + str(mean) + "\nMax Difference: " + str(maxDifference) + "\nMax Differenece Value 1: " + str(maxDiffValue1) + "\nMax Differenece Value 2: " + str(maxDiffValue2) + "\nValues above threshold: " + str(threshCount) + "\nPettitt: " + str(pettitt) + "\nPettitt Max Pos: " + str(0) + "\nGlobal Missing Code: " + str(globalMissingCode) + "\nEvent Threshold: " + str(thresh))
     return str(min), str(max), str(count), str(missing), str(mean)
+
+def pettittTest2(pettittArray, ptPercent):
+    currentDate = globalSDate
+
+    annualMeans = [0] * 120
+    annualCount = [0] * 120
+    #I think it has 120 values is a placeholder for a range of 120 years
+    #Could probably be clever and do this in a list for potentially infinite range
+
+    yearIndex = 0
+    for i in range(len(pettittArray)):
+        value = pettittArray[i]
+        if value != globalMissingCode and checkThreshold(value):
+            annualMeans[yearIndex] += value
+            annualCount[yearIndex] += 1
+
+        currentDate = increaseDate(currentDate, 1)
+        yearIndex = currentDate.year - globalSDate.year
+
+    del annualMeans[yearIndex:120]
+    del annualCount[yearIndex:120]
+    
+    yearsOk = 0
+    for i in range(yearIndex):
+        if annualCount[i] > 0 and annualCount[i] >= (ptPercent * 3.65):
+            annualMeans[i] /= annualCount[i]
+            yearsOk += 1
+        else:
+            annualMeans[i] = globalMissingCode
+    
+    if yearsOk < 5:
+        return globalMissingCode
+
+
+    petMatrix = np.zeros((yearsOk, 4), float)
+    yearsOk = 0
+    
+    for i in range(yearIndex):
+        if annualMeans[i] != globalMissingCode:
+            petMatrix[yearsOk][1] = annualMeans[i]
+            petMatrix[yearsOk][0] = yearsOk + 1
+            yearsOk += 1
+
+    validMeans = [mean for mean in annualMeans if mean != globalMissingCode]
+    validMeans.sort()
+
+    for i in range(len(validMeans)):
+        for j in range(yearsOk):
+            if petMatrix[j][1] == validMeans[i] and petMatrix[j][2] == 0:
+                petMatrix[j][2] = i + 1
+
+    sum = 0
+    for i in range(yearsOk):
+        sum += petMatrix[i][2]
+        petMatrix[i][3] = (2 * sum) - ((i + 1) * (yearsOk + 1))
+
+    petMatrix[:, 3] = np.abs(petMatrix[:, 3])
+    print(petMatrix)
+    return 2 * np.e ** ((-6 * max(petMatrix[:, 3]) ** 2) / ((20 ** 3) + (20 ** 2)))
 
 def pettittTest(pettittArray, ptPercent):
     #todo Ask for Chris help, things seem very wrong.

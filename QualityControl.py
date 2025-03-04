@@ -248,12 +248,32 @@ def qualityCheck(selectedFile):
     if count < 10 or applyThresh and threshCount < 10:
         pettitt = globalMissingCode
     else:
-        pettitt = pettittTest2(petArray, 90)
+        pettitt = pettittTest(petArray, 90)
 
-    print("Min: " + str(min) + "\nMax: " + str(max) + "\nMean: " + str(mean) + "\nValues in file: " + str(count + missing) + "\nMissing Values: " + str(missing) + "\nGood Values: " + str(count) + "\nMean: " + str(mean) + "\nMax Difference: " + str(maxDifference) + "\nMax Differenece Value 1: " + str(maxDiffValue1) + "\nMax Differenece Value 2: " + str(maxDiffValue2) + "\nValues above threshold: " + str(threshCount) + "\nPettitt: " + str(pettitt) + "\nPettitt Max Pos: " + str(0) + "\nGlobal Missing Code: " + str(globalMissingCode) + "\nEvent Threshold: " + str(thresh))
+    #print("Min: " + str(min) + "\nMax: " + str(max) + "\nMean: " + str(mean) + "\nValues in file: " + str(count + missing) + "\nMissing Values: " + str(missing) + "\nGood Values: " + str(count) + "\nMean: " + str(mean) + "\nMax Difference: " + str(maxDifference) + "\nMax Differenece Value 1: " + str(maxDiffValue1) + "\nMax Differenece Value 2: " + str(maxDiffValue2) + "\nValues above threshold: " + str(threshCount) + "\nPettitt: " + str(pettitt) + "\nPettitt Max Pos: " + str(0) + "\nGlobal Missing Code: " + str(globalMissingCode) + "\nEvent Threshold: " + str(thresh))
     return str(min), str(max), str(count), str(missing), str(mean)
 
-def pettittTest2(pettittArray, ptPercent):
+def runPettittTest(data):
+    petMatrix = np.zeros((len(data), 4), float)
+
+    petMatrix[:, 0] = [i for i in range(1, len(data) + 1)]
+    petMatrix[:, 1] = data
+
+    data.sort()
+
+    for i in range(len(data)):
+        for j in range(len(data)):
+            if petMatrix[j][1] == data[i] and petMatrix[j][2] == 0:
+                petMatrix[j][2] = i + 1
+
+    sum = 0
+    for i in range(len(data)):
+        sum += petMatrix[i][2]
+        petMatrix[i][3] = (2 * sum) - ((i + 1) * (len(data) + 1))
+
+    petMatrix[:, 3] = np.abs(petMatrix[:, 3])
+    print(petMatrix)
+    return 2 * np.e ** ((-6 * max(petMatrix[:, 3]) ** 2) / ((20 ** 3) + (20 ** 2)))
     currentDate = globalSDate
 
     annualMeans = [0] * 120
@@ -313,84 +333,43 @@ def pettittTest2(pettittArray, ptPercent):
     return 2 * np.e ** ((-6 * max(petMatrix[:, 3]) ** 2) / ((20 ** 3) + (20 ** 2)))
 
 def pettittTest(pettittArray, ptPercent):
-    #todo Ask for Chris help, things seem very wrong.
     currentDate = globalSDate
 
     annualMeans = [0] * 120
     annualCount = [0] * 120
-    #I think it has 120 values is a placeholder for a range of 120 years
-    #Could probably be clever and do this in a list for potentially infinite range
+    #120 arbitary, means program can only handle a range of 120 years
 
     yearIndex = 0
-    for i in range(len(pettittArray)):
-        value = pettittArray[i]
-        if value != globalMissingCode and checkThreshold(value):
-            annualMeans[yearIndex] += value
+    for entry in pettittArray:
+        if entry != globalMissingCode and checkThreshold(entry):
+            annualMeans[yearIndex] += entry
             annualCount[yearIndex] += 1
-
+        
         currentDate = increaseDate(currentDate, 1)
         yearIndex = currentDate.year - globalSDate.year
 
+    del(annualMeans[yearIndex:120])
+    del(annualCount[yearIndex:120])
+
     yearsOk = 0
     for i in range(yearIndex):
-        if annualCount[i] > 0 and annualCount[i] >= (ptPercent * 3.65):
-            annualMeans[i] /= annualCount[i]
+        if annualCount[i] >= ptPercent * 3.65 and annualCount[i] > 0:
+            annualMeans[i] = annualMeans[i] / annualCount[i]
             yearsOk += 1
         else:
             annualMeans[i] = globalMissingCode
     
     if yearsOk < 5:
-        pettitt = globalMissingCode
+        return globalMissingCode
     else:
-        petMatrix = np.zeros((yearsOk, 7), float)
-        test = []
-        yearsOk = 0
-        for i in range(yearIndex):
-            if annualMeans[i] != globalMissingCode:
-                test.append(annualMeans[i])
-                petMatrix[yearsOk][0] = annualMeans[i]
-                petMatrix[yearsOk][1] = yearsOk
-                petMatrix[yearsOk][5] = i + globalSDate.year
-                yearsOk += 1
-        
-        petMatrix[petMatrix[:, 0].argsort()]
-        #sort data on itself
-
-        for i in range(yearsOk):
-            petMatrix[i][2] = i + 1
-        
-        for i in range(1, yearsOk):
-            if petMatrix[i][0] == petMatrix[i - 1][0]:
-                petMatrix[i][2] = petMatrix[i][2]
-        
-        petMatrix[petMatrix[:, 1].argsort()]
-        #sort data back to original order
-
-        for i in range(yearsOk):
-            petMatrix[i][3] = yearsOk + 1 - (2 * petMatrix[i][2])
-            #create vi value
-
-        #create ui value:
-        petMatrix[0][4] = petMatrix[0][3]
-        for i in range(1, yearsOk - 1):
-            petMatrix[i][4] = petMatrix[i - 1][4] + petMatrix[i][3]
-
-        for i in range(yearsOk):
-            petMatrix[i][4] = abs(petMatrix[i][4])
-
-        kn = -1
-        maxPos = 0
-        for i in range(yearsOk):
-            if petMatrix[i][4] > kn:
-                kn = petMatrix[i][4]
-                maxPos = i
-
-        pettitt = 2 * math.pow(math.e, ((-6 * kn ** 2) / ((yearsOk ** 3) + yearsOk ** 2)))
-        print("pettitt Value: " + "%.20f" % pettitt)
-
-        if pettitt < 0.05:
-            print("max position: " + str(petMatrix[maxPos][5]))
+        pettittData = []
+        for entry in annualMeans:
+            if entry != globalMissingCode:
+                pettittData.append(entry)
+        print(runPettittTest(pettittData))
 
 if __name__ == '__main__':
     #Module tests go here
-    qualityCheck(selectedFile)
+    print(qualityCheck(selectedFile))
+    #qualityCheck("C:\\Users\\ajs25\\Downloads\\Dummy Annual.txt")
+    #runPettittTest([2, 3, 4, 5, 6, 7, 8, 9, 10, 100, 120, 145, 145, 555, 444, 333, 333, 333, 333, 333])

@@ -22,6 +22,8 @@ class labeledQLineEditFrame(QFrame):
           self.setLayout(layout)
      def getLineEditVal(self):
           return self.lineEdit.text()
+     
+
 
 
 
@@ -252,6 +254,120 @@ class ContentWidget(QWidget):
           outputCheckBox = QCheckBox("Create .OUT File")
           outputLayout.addWidget(outputCheckBox)
 
+
+
+          self.transformRadioGroup = QButtonGroup()
+          self.transformRadioGroup.setExclusive(True)
+          self.transformRadioGroup.buttonPressed.connect(self.unPressOtherRadios)
+
+          transformationsFrame = QFrame()
+          transformationsFrame.setBaseSize(200,300)
+          transformationsFrame.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
+          transformationsLayout = QHBoxLayout()
+          transformationsFrame.setLayout(transformationsLayout)
+          functionTransformationsFrame = QFrame()
+          functionTransformationsLayout = QVBoxLayout()
+          functionTransformationsFrame.setLayout(functionTransformationsLayout)
+
+          functionsLabel = QLabel("Functions")
+          functionsLabel.setAlignment(Qt.AlignTop)
+          functionTransformationsLayout.addWidget(functionsLabel)
+
+          natLogRadio = QRadioButton("Ln")
+          self.transformRadioGroup.addButton(natLogRadio)
+          functionTransformationsLayout.addWidget(natLogRadio)
+
+          logRadio = QRadioButton("Log")
+          self.transformRadioGroup.addButton(logRadio)
+          functionTransformationsLayout.addWidget(logRadio)
+
+          squareRadio = QRadioButton("x²")
+          self.transformRadioGroup.addButton(squareRadio)
+          functionTransformationsLayout.addWidget(squareRadio)
+
+          cubeRadio = QRadioButton("x³")
+          self.transformRadioGroup.addButton(cubeRadio)
+          functionTransformationsLayout.addWidget(cubeRadio)
+
+          fourRadio = QRadioButton("x⁴")
+          self.transformRadioGroup.addButton(fourRadio)
+          functionTransformationsLayout.addWidget(fourRadio)
+
+          recipRadio = QRadioButton("x⁻¹")
+          self.transformRadioGroup.addButton(recipRadio)
+          functionTransformationsLayout.addWidget(recipRadio)
+
+          inverseTransformationsFrame = QFrame()
+          inverseTransformationsLayout = QVBoxLayout()
+          inverseTransformationsFrame.setLayout(inverseTransformationsLayout)
+
+          inverseLabel = QLabel("Inverse")
+          inverseLabel.setAlignment(Qt.AlignTop)
+          inverseTransformationsLayout.addWidget(inverseLabel)
+
+          eXRadio = QRadioButton("eˣ")
+          self.transformRadioGroup.addButton(eXRadio)
+          inverseTransformationsLayout.addWidget(eXRadio)
+
+          tenXRadio = QRadioButton("10ˣ")
+          self.transformRadioGroup.addButton(tenXRadio)
+          inverseTransformationsLayout.addWidget(tenXRadio)
+
+          sqrtRadio = QRadioButton("√x")
+          self.transformRadioGroup.addButton(sqrtRadio)
+          inverseTransformationsLayout.addWidget(sqrtRadio)
+
+          cbrtRadio = QRadioButton("∛x")
+          self.transformRadioGroup.addButton(cbrtRadio)
+          inverseTransformationsLayout.addWidget(cbrtRadio)
+
+          fourRtRadio = QRadioButton("∜x")
+          self.transformRadioGroup.addButton(fourRtRadio)
+          inverseTransformationsLayout.addWidget(fourRtRadio)
+          
+          xRadio = QRadioButton("x")
+          self.transformRadioGroup.addButton(xRadio)
+          inverseTransformationsLayout.addWidget(xRadio)
+
+          transformationsLayout.addWidget(functionTransformationsFrame)
+          transformationsLayout.addWidget(inverseTransformationsFrame)
+
+          transformationLayout.addWidget(transformationsFrame)
+
+          backwardChangeRadio = QRadioButton("Backward Change")
+          self.transformRadioGroup.addButton(backwardChangeRadio)
+          transformationLayout.addWidget(backwardChangeRadio)
+
+
+          
+          lagNFrame = QFrame()
+          lagNLayout = QHBoxLayout()
+          lagNRadio = QRadioButton("Lag n")
+          self.transformRadioGroup.addButton(lagNRadio)
+          lagNLineEdit = QLineEdit("0")
+          lagNLayout.addWidget(lagNRadio)
+          lagNLayout.addWidget(lagNLineEdit)
+          lagNFrame.setLayout(lagNLayout)
+          transformationLayout.addWidget(lagNFrame)
+
+          binomialFrame = QFrame()
+          binomialLayout = QHBoxLayout()
+          binomialRadio = QRadioButton("Binomial")
+          self.transformRadioGroup.addButton(binomialRadio)
+
+          binomialLineEdit = QLineEdit("0")
+          binomialWrapCheckBox = QCheckBox("Wrap")
+          binomialLayout.addWidget(binomialRadio)
+          binomialLayout.addWidget(binomialLineEdit)
+          binomialLayout.addWidget(binomialWrapCheckBox)
+          binomialFrame.setLayout(binomialLayout)
+          transformationLayout.addWidget(binomialFrame)
+          
+
+
+
+
+
           selectOutputButton = QPushButton("📂 Select Output File")
           selectOutputButton.clicked.connect(self.selectOutputButtonClicked)
           selectOutputFileLayout.addWidget(selectOutputButton)
@@ -316,7 +432,7 @@ class ContentWidget(QWidget):
 
      def selectOutputButtonClicked(self):
         #Will have to be changed soon, as it relies on known file "predictand files"
-        fileName = QFileDialog.getOpenFileName(self, "Select output file", 'SDSM Refresh', "DAT Files (*.DAT)") 
+        fileName = QFileDialog.getOpenFileName(self, "Select output file", 'SDSM Refresh', "") 
         print(fileName)
         if fileName[0] != '':
             self.outputSelected = fileName[0]
@@ -324,3 +440,13 @@ class ContentWidget(QWidget):
         else:
             self.outputSelected = None
             self.selectOutputLabel.setText("File: Not Selected")
+
+     def unPressOtherRadios(self,*args):
+         #Needed to make sure function radio and inverse radio buttons cant be clicked at same time
+         radio = self.sender()
+         buttons = self.transformRadioGroup.buttons()
+         for button in buttons:
+             if button != radio:
+                 
+                 if button.isChecked():
+                     button.setChecked(False)

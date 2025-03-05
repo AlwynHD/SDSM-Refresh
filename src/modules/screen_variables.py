@@ -1,9 +1,11 @@
 from PyQt5.QtWidgets import (QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, 
                              QFrame, QLabel, QFileDialog, QScrollArea, QDateEdit, QCheckBox,
-                             QButtonGroup, QRadioButton, QLineEdit, QGroupBox, QMessageBox)
+                             QButtonGroup, QRadioButton, QLineEdit, QGroupBox, QMessageBox,
+                             )
+import pyqtgraph as pg
 from PyQt5.QtCore import Qt, QSize, QDate
 from PyQt5.QtGui import QPalette, QColor, QIcon
-from src.lib.ScreenVars import correlation, analyseData, filesNames
+from src.lib.ScreenVars import correlation, analyseData, filesNames, scatterPlot
 from os import listdir
 from datetime import datetime
 
@@ -394,7 +396,7 @@ class ContentWidget(QWidget):
         buttonLayout.addWidget(analyseButton)
 
         scatterButton = QPushButton("Scatter")
-        #scatterButton.clicked.connect(self.checkOutliers)
+        scatterButton.clicked.connect(self.showScatterGraph)
         scatterButton.setStyleSheet("background-color: #F57F0C; color: white; font-weight: bold")
         buttonLayout.addWidget(scatterButton)
 
@@ -437,7 +439,7 @@ class ContentWidget(QWidget):
         button = self.sender() #Get the buttonLabel that was clicked
         predictor = button.text() #Get the name of the buttonLabel, so the predictor file
         if predictor not in self.predictorsSelected:
-            self.predictorsSelected.append(predictor)
+            self.predictorsSelected.append(self.predictorPath+"/"+predictor)
             button.setStyleSheet("color: white; background-color: blue")
         else:
             self.predictorsSelected.remove(predictor)
@@ -457,4 +459,21 @@ class ContentWidget(QWidget):
         dateTime = rawStartDate.toPyDate()
         dateTime = datetime.combine(dateTime, datetime.min.time())
         return dateTime
+    
+    def showScatterGraph(self):
+        print()
+        fitStartDate = self.QDateEditToDateTime(self.fitStartDateChooser)
+        fitEndDate = self.QDateEditToDateTime(self.fitEndDateChooser)
+        autoregression = self.autoregressionCheckBox.isChecked()
+        print(self.predictandSelected)
+        print(self.predictorsSelected)
+        data = scatterPlot([self.predictandSelected], self.predictorsSelected, fitStartDate,fitEndDate,fitStartDate,fitEndDate, autoregression)
+        print(data)
+        plot = pg.plot()
+        scatter = pg.ScatterPlotItem(size=10, brush=pg.mkBrush(255, 255, 255, 120))
+        print(data.size)
+        spots = [{'pos': [i,data[0,i]], 'data': data[1,i]}
+                 for i in range(int(data.size/2))]
+        scatter.addPoints(spots)
+        plot.addItem(scatter)
 

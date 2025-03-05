@@ -54,8 +54,6 @@ def dailyMeans(selectedFile):
     #Read file and add values to array
     #TODO open file
     loadedFiles = loadFilesIntoMemory([selectedFile])[0]
-    
-    
 
     for datapoint in loadedFiles:
         if datapoint != globalMissingCode and checkThreshold(datapoint):
@@ -150,16 +148,24 @@ def outliersID(selectedFile, outlierFile):
     #Calculate mean
     sum = 0
     count = 0
+    
+    loadedFiles = loadFilesIntoMemory([selectedFile])[0]
+    print(loadedFiles)
 
-    #TODO open file
-    with open(selectedFile, "r") as file:
-        for line in file:
-            line = line.rstrip('\n')
-            if line != str(globalMissingCode) and checkThreshold(float(line)):
-                sum += float(line)
+    for datapoint in loadedFiles:
+        if datapoint != str(globalMissingCode) and checkThreshold(datapoint):
+                sum += datapoint
                 count += 1
+    """old code
+        #TODO open file
+        with open(selectedFile, "r") as file:
+            for line in file:
+                line = line.rstrip('\n')
+                if line != str(globalMissingCode) and checkThreshold(float(line)):
+                    sum += float(line)
+                    count += 1
 
-    file.close()
+        file.close()"""
 
     if count > 0:
         mean = sum / count
@@ -171,7 +177,13 @@ def outliersID(selectedFile, outlierFile):
     standardDeviation = 0
 
     if mean != globalMissingCode:
-        #TODO open file
+        for datapoint in loadedFiles:
+            if datapoint != globalMissingCode and checkThreshold(datapoint):
+                standardDeviation += (datapoint - mean) ** 2
+
+        
+
+        """old code
         with open(selectedFile, "r") as file:
             for line in file:
                 line = line.rstrip('\n')
@@ -179,7 +191,7 @@ def outliersID(selectedFile, outlierFile):
                     if checkThreshold(line):
                         standardDeviation += (float(line) - mean) ** 2
 
-        file.close()
+        file.close()"""
 
         standardDeviation = math.sqrt(standardDeviation / count)
     else:
@@ -190,7 +202,18 @@ def outliersID(selectedFile, outlierFile):
     outlierCount = 0
     counter = 1
 
-    #TODO open file
+    
+    for datapoint in loadedFiles:
+        if datapoint != globalMissingCode and checkThreshold(datapoint):
+            if datapoint > (mean + standardDeviationRange) or datapoint < (mean - standardDeviationRange):
+                #TODO figure out if this needs to change
+                outFile = open(outlierFile, "a")
+                outFile.write(str(counter) + "\t" * 3 + str(datapoint))
+                outFile.close()
+                outlierCount += 1
+        counter += 1
+
+    """old code
     with open(selectedFile, "r") as file:
         for line in file:
             if line != str(globalMissingCode):
@@ -200,7 +223,7 @@ def outliersID(selectedFile, outlierFile):
                         outFile.write(str(counter) + "\t" * 3 + line)
                         outFile.close()
                         outlierCount += 1
-            counter += 1
+            counter += 1"""
 
     message = str(outlierCount) + " outliers identified and saved to file."
     print(message)
@@ -357,4 +380,4 @@ def pettittTest(pettittArray, ptPercent):
 
 if __name__ == '__main__':
     #Module tests go here
-    dailyMeans(selectedFile)
+    outliersID(selectedFile, outlierFile)

@@ -29,8 +29,6 @@ standardDeviationLimits = 1
 def checkThreshold(value):
     return not applyThresh or value > thresh
 
-#endregion
-
 def dailyMeans(selectedFile):
     if not checkForFile(selectedFile, "You must select a file to check first"):
         return
@@ -150,7 +148,6 @@ def outliersID(selectedFile, outlierFile):
     count = 0
     
     loadedFiles = loadFilesIntoMemory([selectedFile])[0]
-    print(loadedFiles)
 
     for datapoint in loadedFiles:
         if datapoint != str(globalMissingCode) and checkThreshold(datapoint):
@@ -229,7 +226,6 @@ def outliersID(selectedFile, outlierFile):
     print(message)
     return message
 
-
 def qualityCheck(selectedFile):
     if not checkForFile(selectedFile, "You must select a file to check first."):
         return
@@ -245,7 +241,42 @@ def qualityCheck(selectedFile):
     maxDifference = 0
     threshCount = 0
     
-    #TODO open file
+    loadedFiles = loadFilesIntoMemory([selectedFile])[0]
+
+    for datapoint in loadedFiles:
+        inputValue = datapoint
+        
+        petArray.append(inputValue)
+        totalNumbers += 1
+
+        if inputValue == globalMissingCode:
+            missing += 1
+        else:
+            count += 1
+            if checkThreshold(inputValue):
+                sum += inputValue
+
+                if inputValue > max:
+                    max = inputValue
+
+                if inputValue < min:
+                    min = inputValue
+
+                if inputValue > thresh:
+                    threshCount += 1
+        
+        if prevValue != globalMissingCode and inputValue != globalMissingCode:
+            if checkThreshold(inputValue) and abs(prevValue - inputValue) > maxDifference:
+                maxDifference = abs(prevValue - inputValue)
+                maxDiffValue1 = prevValue
+                maxDiffValue2 = inputValue
+
+        if checkThreshold(inputValue):
+            prevValue = inputValue
+
+
+    """ 
+    old code
     with open(selectedFile, "r") as file:
         for line in file:
             inputValue = float(line)
@@ -279,6 +310,7 @@ def qualityCheck(selectedFile):
                 prevValue = inputValue
 
     file.close()
+    """
 
     if applyThresh:
         if threshCount > 0:
@@ -380,4 +412,4 @@ def pettittTest(pettittArray, ptPercent):
 
 if __name__ == '__main__':
     #Module tests go here
-    outliersID(selectedFile, outlierFile)
+    qualityCheck(selectedFile)

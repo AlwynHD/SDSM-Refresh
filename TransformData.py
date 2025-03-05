@@ -1,52 +1,51 @@
 import numpy as np
 
 #Alex's attempts to understand the original Transform Data Screen
-#All functions and inverse functions in transformations box self-explanitory
-#Backwards change returns the difference between a row and the previous row. First row defaults to missing code
-#Lag n rewrites the data so that it starts at position n
-#Binomial returns 0 if data entry is less than or equal to given value, 1 otherwise.
 #Extract ensemble member seems to just take one column from the input file?
 #Apply threshold does not apply the transformation to the value if it is below threshold
 #Can't figure out what sim or out file do
 #Pad data adds missing values based on dates given
 #Outliers remove outliers from file
 
-
 globalMissingCode = -999
-data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 700, 27, 16]
+data = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9], [10, 11, 15]])
 
-#Functions
-np.log(data)
-np.log10(data)
-np.power(data, 2)
-np.power(data, 3)
-np.power(data, 4)
-np.ones(len(data)) / data
+def ln(data):
+    return np.log(data)
 
-#Inverse
-np.power(np.e, data)
-np.power(10, data)
-np.power(data, 0.5)
-np.power(data, 1/3)
-np.power(data, 0.25)
-data
+def log(data):
+    return np.log10(data)
 
-def backwardsChange(inputData):
-    outputData = [-999]
-    for i in range(1, len(inputData)):
-        currVal = inputData[i]
-        prevVal = inputData[i - 1]
-        if (currVal != globalMissingCode) and (prevVal != globalMissingCode):
-            outputData.append(currVal - prevVal)
-        else:
-            outputData.append(globalMissingCode)
-    return outputData
+def power(data, pow):
+    return np.float_power(data, pow)
 
-def lag(inputData, n):
-    return inputData[n:] + inputData[:n]
+def exponent(base, data):
+    return np.float_power(base, data)
 
-def binomial(inputData, binomialValue):
-    return [0 if entry <= binomialValue else 1 for entry in inputData]
+def backwardsChange(data):
+    """Returns the difference between each value and the previous value"""
+    returnData = np.empty_like(data)
+    for c in range(len(data.T)):
+        for r in range(len(data[:, c])):
+            if r == 0 or (data[r][c] == globalMissingCode or data[r - 1][c] == globalMissingCode):
+                returnData[r][c] = globalMissingCode
+            else:
+                returnData[r][c] = data[r][c] - data[r - 1][c]
+    return returnData
+
+def lag(data, n):
+    """Rewrite data so it begins at position n. Values before n wrap to bottom."""
+    returnData = np.empty_like(data)
+    for c in range(len(data.T)):
+        returnData[:, c] = np.concatenate((data[:, c][n:], data[:, c][:n])) #The double brackets here are required
+    return returnData
+
+def binomial(data, binomial):
+    """Returns 1 if value in column is above binomial value, otherwise returns 0"""
+    returnData = np.empty_like(data)
+    for c in range(len(data.T)):
+        returnData[:, c] = [1 if entry > binomial else 0 for entry in data.T[c]]
+    return returnData
 
 def applyThreshold(inputData, thresh):
     #Removes all values below threshold
@@ -60,6 +59,41 @@ def applyThresholdTransformation(inputData, thresh):
             entry = entry #Apply whatever transformation you want
         outputData.append(entry)
     return outputData
-        
 
-print(applyThreshold(data, 3))
+#region Settings
+
+#Pad Data
+#Create SIM File
+#Apply Threshold
+#Remove Outliers
+#Create OUT File
+#Wrap
+
+#endregion
+
+#region Transformations
+
+#Functions
+ln(data)
+log(data)
+power(data, 2)
+power(data, 3)
+power(data, 4)
+power(data, -1)
+
+#Inverse Functions
+exponent(np.e, data)
+exponent(10, data)
+power(data, 1/2)
+power(data, 1/3)
+power(data, 1/4)
+power(data, 1)
+
+#Other Transformations
+backwardsChange(data)
+lag(data, 1)
+binomial(data, 1)
+#Box Cox
+#Unbox Cox
+
+#endregion

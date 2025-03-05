@@ -3,7 +3,7 @@ import datetime
 import math
 import numpy as np
 import pyhomogeneity as hg
-from src.lib.utils import loadFilesIntoMemory, increaseDate
+from utils import loadFilesIntoMemory, increaseDate, checkForFile, checkIfFileFormatted
 
 #Local version
 predictorSelected = ['predictor files/ncep_dswr.dat']
@@ -25,22 +25,6 @@ standardDeviationLimits = 1
 
 #region New Functions
 
-def checkForFile(file, errorMessage):
-    if file is None:
-        print(errorMessage)
-        return False
-    else:
-        return True
-    
-def checkIfFileFormatted(file):
-    #Only checks the first line, not ideal but this is how it's done in the original
-    with open(file) as f:
-        firstLine = f.readline()
-        if len(firstLine) > 15:
-            print("File may contain multiple columns or non-Windows line breaks / carriage returns. This may cause problems in SDSM later.")
-    
-    f.close()
-    return
 
 def checkThreshold(value):
     return not applyThresh or value > thresh
@@ -57,15 +41,32 @@ def dailyMeans(selectedFile):
 
     #Initialise results to zero
     dailyStats = np.zeros((7, 4), float)
-    #dailyStats[i][0] is running sum
-    #dailyStats[i][1] is count
-    #dailyStats[i][2] is standard deviation
-    #dailyStats[i][3] is mean
+    print(dailyStats)
+    """
+    dailyStats[i][0] is running sum
+    dailyStats[i][1] is count
+    dailyStats[i][2] is standard deviation
+    dailyStats[i][3] is mean
+    """
 
     dayWorkingOn = globalSDate.weekday()
 
     #Read file and add values to array
     #TODO open file
+    loadedFiles = loadFilesIntoMemory([selectedFile])[0]
+    
+    
+
+    for datapoint in loadedFiles:
+        if datapoint != globalMissingCode and checkThreshold(datapoint):
+            dailyStats[dayWorkingOn][0] += datapoint #Add to cumulative sum
+            dailyStats[dayWorkingOn][1] += 1           #Increase count for that day
+
+        #Iterate dayWorkingOn
+        dayWorkingOn = (dayWorkingOn + 1) % 7
+    
+    """
+    old code
     with open(selectedFile, "r") as file:
         for line in file:
             line = line.rstrip('\n')
@@ -78,21 +79,30 @@ def dailyMeans(selectedFile):
                 dayWorkingOn = 0
             else:
                 dayWorkingOn += 1
-
     file.close()
-
-    #Calulcate means for each day
+    
     for i in range(7):
         if dailyStats[i][1] > 0:
             dailyStats[i][3] = dailyStats[i][0] / dailyStats[i][1]
         else:
             dailyStats[i][3] = globalMissingCode
-    
+        print(dailyStats[i][3])
+
+    print("SECOND")
+    """
+
+
+    #Calulcate means for each day
+
+    for stat in dailyStats:
+        stat[3] = stat[0] / stat[1] if stat[1] > 0 else globalMissingCode
+        print(stat[3])
+
     #Calculate standard deviation
     dayWorkingOn = globalSDate.weekday()
 
 
-    #TODO open file
+    """old code
     with open(selectedFile, "r") as file:
         for line in file:
             line = line.rstrip('\n')
@@ -105,13 +115,19 @@ def dailyMeans(selectedFile):
             else:
                 dayWorkingOn += 1
 
-    file.close()
+    file.close()"""
 
-    for i in range(7):
-        if dailyStats[i][1] > 0:
-            dailyStats[i][2] = math.sqrt(dailyStats[i][2] / dailyStats[i][1])
-        else:
-            dailyStats[i][2] = globalMissingCode
+    for datapoint in loadedFiles:
+            if datapoint != globalMissingCode and dailyStats[dayWorkingOn][3] != globalMissingCode and checkThreshold(datapoint):
+                dailyStats[dayWorkingOn][2] += (datapoint - dailyStats[dayWorkingOn][3]) ** 2
+
+            #Iterate dayWorkingOn
+            dayWorkingOn = (dayWorkingOn + 1) % 7
+    
+
+
+    for stat in dailyStats:
+        stat[2] = math.sqrt(stat[2] / stat[1]) if stat[1] > 0 else globalMissingCode
 
     output = ""
     for i in range(7):
@@ -189,7 +205,7 @@ def outliersID(selectedFile, outlierFile):
     message = str(outlierCount) + " outliers identified and saved to file."
     print(message)
     return message
-    
+
 
 def qualityCheck(selectedFile):
     if not checkForFile(selectedFile, "You must select a file to check first."):
@@ -341,4 +357,4 @@ def pettittTest(pettittArray, ptPercent):
 
 if __name__ == '__main__':
     #Module tests go here
-    qualityCheck(selectedFile)
+    dailyMeans(selectedFile)

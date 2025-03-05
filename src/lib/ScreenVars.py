@@ -1,7 +1,7 @@
 import math
 import datetime
 import numpy as np
-from src.lib.utils import *
+from utils import *
 
 #Local version
 predictorSelected = ['predictor files/ncep_dswr.dat']
@@ -49,8 +49,6 @@ def partialCorrelation(A, B, n, crossCorr, corrArrayList):
         return -1
     else:
         return result / math.sqrt(denom)
-#move to gui
-
 
 def correlation(predictandSelected, predictorSelected, fSDate, fEDate, autoRegressionTick):
     """checks the correlation between the predicant and predictors"""
@@ -64,10 +62,8 @@ def correlation(predictandSelected, predictorSelected, fSDate, fEDate, autoRegre
         nVariables = len(predictorSelected) + 1
 
         loadedFiles = []
-        loadedFiles = loadFilesIntoMemory(predictorSelected, predictandSelected)
+        loadedFiles = loadFilesIntoMemory(predictandSelected + predictorSelected)
         nameOfFiles = displayFiles(predictandSelected + predictorSelected)
-        print("HERE", nameOfFiles)
-        print(predictorSelected + predictandSelected)
 
         #todo progress bar
 
@@ -243,7 +239,7 @@ def analyseData(predictandSelected, predictorSelected, fsDate, feDate, globalSDa
         nVariables = len(predictorSelected) + 1
 
         loadedFiles = []
-        loadedFiles = loadFilesIntoMemory(predictorSelected, predictandSelected)
+        loadedFiles = loadFilesIntoMemory(predictandSelected + predictorSelected)
         
         loadedFiles = [file[(fsDate - globalSDate).days:] for file in loadedFiles]
         nameOfFiles = displayFiles(predictandSelected + predictorSelected)
@@ -350,7 +346,7 @@ def scatterPlot(predictandSelected, predictorSelected, fsDate, feDate, globalSDa
         nVariables = len(predictorSelected) + 1
 
         loadedFiles = []
-        loadedFiles = loadFilesIntoMemory(predictorSelected, predictandSelected)
+        loadedFiles = loadFilesIntoMemory(predictandSelected + predictorSelected)
         nameOfFiles = displayFiles(predictandSelected + predictorSelected)
         print("HERE", nameOfFiles)
         print(predictorSelected + predictandSelected)

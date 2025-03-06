@@ -1,8 +1,9 @@
 from PyQt5.QtWidgets import (QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, 
                              QFrame, QLabel, QFileDialog, QScrollArea, QDateEdit, QCheckBox,
                              QButtonGroup, QRadioButton, QLineEdit, QGroupBox)
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QDate
 from PyQt5.QtGui import QPalette, QColor, QIcon
+from src.lib.TransformData import *
 
 # Define the name of the module for display in the content area
 moduleName = "Transform Data"
@@ -10,6 +11,22 @@ moduleName = "Transform Data"
 class borderedQGroupBox(QGroupBox):
     def __init__(self,args):
          super().__init__(args)
+
+class labeledQLineEditFrame(QFrame):
+    def __init__(self,labelVal,lineEditVal):
+        super().__init__()
+        layout = QHBoxLayout()
+        label = QLabel(labelVal)
+        self.lineEdit = QLineEdit(lineEditVal)
+        layout.addWidget(label)
+        layout.addWidget(self.lineEdit)
+        self.setLayout(layout)
+    def getLineEditVal(self):
+        return self.lineEdit.text()
+    
+
+
+
 
 class ContentWidget(QWidget):
     """
@@ -22,16 +39,40 @@ class ContentWidget(QWidget):
         """
         super().__init__()
 
-        # Main layout for the entire widget
+        self.predictorPath = 'predictor files'
+
+        self.inputSelected = ""
+        self.outputSelected = ""
+
+    # Main layout for the entire widget
         mainLayout = QVBoxLayout()
         mainLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
         mainLayout.setSpacing(0)  # No spacing between elements
         self.setLayout(mainLayout)  # Apply the main layout to the widget
 
         self.setStyleSheet("""
-                           QFrame{
-                                background-color: #F0F0F0;}
-                           borderedQGroupBox{
+                            
+                            QFrame{
+                                background-color: #F0F0F0;
+                                font-size: 18px;}
+                           
+                            QRadioButton
+                           {
+                                font-size: 18px;
+                           }
+                           QDateEdit
+                           {
+                                font-size: 18px;
+                           }
+                           QLineEdit
+                           {
+                                font-size: 18px;
+                           }
+                           QCheckBox
+                           {
+                                font-size: 18px;
+                           }
+                            borderedQGroupBox{
                                 background-color: #F0F0F0;
                                 border : 1px solid #CECECE;
                                 border-top-left-radius : 20px;
@@ -126,7 +167,7 @@ class ContentWidget(QWidget):
 
         selectICSETOLayout.addWidget(thresholdFrame)
 
-        outputFrame = borderedQGroupBox("Threshold")
+        outputFrame = borderedQGroupBox("Create .OUT File ")
         outputFrame.setBaseSize(200,200)
 
         outputLayout = QHBoxLayout()
@@ -205,9 +246,247 @@ class ContentWidget(QWidget):
 
         outlierFrame.setLayout(outlierLayout)
         selectOPBOLayout.addWidget(outlierFrame)
+
+        buttonFrame = QFrame()
+        buttonFrame.setBaseSize(600,60)
+        buttonFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Fixed)
+
+        buttonLayout = QHBoxLayout()
+        buttonLayout.setContentsMargins(25,25,25,25)
+        buttonLayout.setSpacing(10)
+
+        buttonFrame.setLayout(buttonLayout)
+
+        mainLayout.addWidget(buttonFrame)
+
+        #Content
+
+        #Predictand file selector button
+        selectInputButton = QPushButton("📂 Select Input File")
+        selectInputButton.clicked.connect(self.selectInputButtonClicked)
+        selectInputFileLayout.addWidget(selectInputButton)
+
+        self.selectInputLabel = QLabel("File: Not Selected")
+        selectInputFileLayout.addWidget(self.selectInputLabel)
+
+        columnInput = QLineEdit("1")
+        columnLayout.addWidget(columnInput)
+        
+        simCheckBox = QCheckBox("Create")
+        simLayout.addWidget(simCheckBox)
+
+        ensembleCheckBox = QCheckBox("Extract")
+        ensembleInput = QLineEdit("1")
+        ensembleLayout.addWidget(ensembleCheckBox)
+        ensembleLayout.addWidget(ensembleInput)
+
+        thresholdCheckBox = QCheckBox("Apply Threshold")
+        thresholdLayout.addWidget(thresholdCheckBox)
+
+        outputCheckBox = QCheckBox("Create .OUT File")
+        outputLayout.addWidget(outputCheckBox)
+
+
+
+        self.transformRadioGroup = QButtonGroup()
+        self.transformRadioGroup.setExclusive(True)
+        self.transformRadioGroup.buttonPressed.connect(self.unPressOtherRadios)
+
+        transformationsFrame = QFrame()
+        transformationsFrame.setBaseSize(200,300)
+        transformationsFrame.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
+        transformationsLayout = QHBoxLayout()
+        transformationsFrame.setLayout(transformationsLayout)
+        functionTransformationsFrame = QFrame()
+        functionTransformationsLayout = QVBoxLayout()
+        functionTransformationsFrame.setLayout(functionTransformationsLayout)
+
+        functionsLabel = QLabel("Functions")
+        functionsLabel.setAlignment(Qt.AlignTop)
+        functionTransformationsLayout.addWidget(functionsLabel)
+
+        natLogRadio = QRadioButton("Ln")
+        self.transformRadioGroup.addButton(natLogRadio)
+        functionTransformationsLayout.addWidget(natLogRadio)
+
+        logRadio = QRadioButton("Log")
+        self.transformRadioGroup.addButton(logRadio)
+        functionTransformationsLayout.addWidget(logRadio)
+
+        squareRadio = QRadioButton("x²")
+        self.transformRadioGroup.addButton(squareRadio)
+        functionTransformationsLayout.addWidget(squareRadio)
+
+        cubeRadio = QRadioButton("x³")
+        self.transformRadioGroup.addButton(cubeRadio)
+        functionTransformationsLayout.addWidget(cubeRadio)
+
+        fourRadio = QRadioButton("x⁴")
+        self.transformRadioGroup.addButton(fourRadio)
+        functionTransformationsLayout.addWidget(fourRadio)
+
+        recipRadio = QRadioButton("x⁻¹")
+        self.transformRadioGroup.addButton(recipRadio)
+        functionTransformationsLayout.addWidget(recipRadio)
+
+        inverseTransformationsFrame = QFrame()
+        inverseTransformationsLayout = QVBoxLayout()
+        inverseTransformationsFrame.setLayout(inverseTransformationsLayout)
+
+        inverseLabel = QLabel("Inverse")
+        inverseLabel.setAlignment(Qt.AlignTop)
+        inverseTransformationsLayout.addWidget(inverseLabel)
+
+        eXRadio = QRadioButton("eˣ")
+        self.transformRadioGroup.addButton(eXRadio)
+        inverseTransformationsLayout.addWidget(eXRadio)
+
+        tenXRadio = QRadioButton("10ˣ")
+        self.transformRadioGroup.addButton(tenXRadio)
+        inverseTransformationsLayout.addWidget(tenXRadio)
+
+        sqrtRadio = QRadioButton("√x")
+        self.transformRadioGroup.addButton(sqrtRadio)
+        inverseTransformationsLayout.addWidget(sqrtRadio)
+
+        cbrtRadio = QRadioButton("∛x")
+        self.transformRadioGroup.addButton(cbrtRadio)
+        inverseTransformationsLayout.addWidget(cbrtRadio)
+
+        fourRtRadio = QRadioButton("∜x")
+        self.transformRadioGroup.addButton(fourRtRadio)
+        inverseTransformationsLayout.addWidget(fourRtRadio)
+        
+        xRadio = QRadioButton("x")
+        self.transformRadioGroup.addButton(xRadio)
+        inverseTransformationsLayout.addWidget(xRadio)
+
+        transformationsLayout.addWidget(functionTransformationsFrame)
+        transformationsLayout.addWidget(inverseTransformationsFrame)
+
+        transformationLayout.addWidget(transformationsFrame)
+
+        backwardChangeRadio = QRadioButton("Backward Change")
+        self.transformRadioGroup.addButton(backwardChangeRadio)
+        transformationLayout.addWidget(backwardChangeRadio)
+
+
+        
+        lagNFrame = QFrame()
+        lagNLayout = QHBoxLayout()
+        lagNRadio = QRadioButton("Lag n")
+        self.transformRadioGroup.addButton(lagNRadio)
+        lagNLineEdit = QLineEdit("0")
+        lagNLayout.addWidget(lagNRadio)
+        lagNLayout.addWidget(lagNLineEdit)
+        lagNFrame.setLayout(lagNLayout)
+        transformationLayout.addWidget(lagNFrame)
+
+        binomialFrame = QFrame()
+        binomialLayout = QHBoxLayout()
+        binomialRadio = QRadioButton("Binomial")
+        self.transformRadioGroup.addButton(binomialRadio)
+
+        binomialLineEdit = QLineEdit("0")
+        binomialWrapCheckBox = QCheckBox("Wrap")
+        binomialLayout.addWidget(binomialRadio)
+        binomialLayout.addWidget(binomialLineEdit)
+        binomialLayout.addWidget(binomialWrapCheckBox)
+        binomialFrame.setLayout(binomialLayout)
+        transformationLayout.addWidget(binomialFrame)
         
 
+
+
+
+
+        selectOutputButton = QPushButton("📂 Select Output File")
+        selectOutputButton.clicked.connect(self.selectOutputButtonClicked)
+        selectOutputFileLayout.addWidget(selectOutputButton)
+
+        self.selectOutputLabel = QLabel("File: Not Selected")
+        selectOutputFileLayout.addWidget(self.selectOutputLabel)
+
+        padDataCheckBox = QCheckBox("Pad Data")
+
+        startDateFrame = QFrame()
+        startDateLayout = QHBoxLayout()
+        startDateLabel = QLabel("Start Date: ")
+        startDateEdit = QDateEdit(QDate(1948,1,1))
+        startDateLayout.addWidget(startDateLabel)
+        startDateLayout.addWidget(startDateEdit)
+        startDateFrame.setLayout(startDateLayout)
         
+        endDateFrame = QFrame()
+        endDateLayout = QHBoxLayout()
+        endDateLabel = QLabel("End Date: ")
+        endDateEdit = QDateEdit(QDate(2015,12,31))
+        endDateLayout.addWidget(endDateLabel)
+        endDateLayout.addWidget(endDateEdit)
+        endDateFrame.setLayout(endDateLayout)
+
+        padDataLayout.addWidget(padDataCheckBox)
+        padDataLayout.addWidget(startDateFrame)
+        padDataLayout.addWidget(endDateFrame)
+
+        boxCoxRadioGroup = QButtonGroup()
+        boxCoxRadioGroup.setExclusive(True)
+        boxCoxRadio = QRadioButton("Box Cox")
+        unBoxCoxRadio = QRadioButton("Un-Box Cox")
+        boxCoxRadioGroup.addButton(boxCoxRadio)
+        boxCoxRadioGroup.addButton(unBoxCoxRadio)
+        lambdaFrame = labeledQLineEditFrame("Lambda: ", "1")
+        shiftFrame = labeledQLineEditFrame("Shift: ", "0")
+
+        boxLayout.addWidget(boxCoxRadio)
+        boxLayout.addWidget(unBoxCoxRadio)
+        boxLayout.addWidget(lambdaFrame)
+        boxLayout.addWidget(shiftFrame)
+
+        outlierCheckBox = QCheckBox("Remove Outliers")
+        standardDevFrame = labeledQLineEditFrame("Standard Dev: ", "0")
+        outlierLayout.addWidget(outlierCheckBox)
+        outlierLayout.addWidget(standardDevFrame)
+
+        transformButton = QPushButton("Transform Data")
+        transformButton.clicked.connect(self.doTransform)
+        transformButton.setStyleSheet("background-color: #4CAF50; color: white; font-weight: bold;")
+
+        buttonLayout.addWidget(transformButton)
 
 
 
+
+    def selectInputButtonClicked(self):
+        #Will have to be changed soon, as it relies on known file "predictand files"
+        fileName = QFileDialog.getOpenFileName(self, "Select input file", 'predictand files', "DAT Files (*.DAT)") 
+        print(fileName)
+        if fileName[0] != '':
+            self.inputSelected = fileName[0]
+            self.selectInputLabel.setText("File: "+self.inputSelected.split("/")[-1]) #Only show the name of the file, not the whole path
+        else:
+            self.inputSelected = None
+            self.selectInputLabel.setText("File: Not Selected")
+
+    def selectOutputButtonClicked(self):
+        #Will have to be changed soon, as it relies on known file "predictand files"
+        fileName = QFileDialog.getOpenFileName(self, "Select output file", 'SDSM Refresh', "") 
+        print(fileName)
+        if fileName[0] != '':
+            self.outputSelected = fileName[0]
+            self.selectOutputLabel.setText("File: "+self.outputSelected.split("/")[-1]) #Only show the name of the file, not the whole path
+        else:
+            self.outputSelected = None
+            self.selectOutputLabel.setText("File: Not Selected")
+
+    def unPressOtherRadios(self,*args):
+         #Needed to make sure function radio and inverse radio buttons cant be clicked at same time
+        radio = self.sender()
+        buttons = self.transformRadioGroup.buttons()
+        for button in buttons:
+            if button != radio:
+                if button.isChecked():
+                    button.setChecked(False)
+
+    def doTransform(self):
+        print("https://www.youtube.com/watch?v=7F2QE8O-Y1g")

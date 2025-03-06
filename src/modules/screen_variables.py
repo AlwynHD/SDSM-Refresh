@@ -1,9 +1,11 @@
 from PyQt5.QtWidgets import (QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, 
                              QFrame, QLabel, QFileDialog, QScrollArea, QDateEdit, QCheckBox,
-                             QButtonGroup, QRadioButton, QLineEdit, QGroupBox, QMessageBox)
+                             QButtonGroup, QRadioButton, QLineEdit, QGroupBox, QMessageBox,
+                             )
+import pyqtgraph as pg
 from PyQt5.QtCore import Qt, QSize, QDate
 from PyQt5.QtGui import QPalette, QColor, QIcon
-from src.lib.ScreenVars import correlation, analyseData, filesNames
+from src.lib.ScreenVars import correlation, analyseData, filesNames, scatterPlot
 from os import listdir
 from datetime import datetime
 
@@ -50,15 +52,35 @@ class ContentWidget(QWidget):
         self.setLayout(mainLayout)  # Apply the main layout to the widget
 
         self.setStyleSheet("""
-                           QFrame{
-                                background-color: #F0F0F0;}
-                           borderedQGroupBox{
+                            
+                            QFrame{
+                                background-color: #F0F0F0;
+                                font-size: 18px;}
+                           
+                            QRadioButton
+                           {
+                                font-size: 18px;
+                           }
+                           QDateEdit
+                           {
+                                font-size: 18px;
+                           }
+                           QLineEdit
+                           {
+                                font-size: 18px;
+                           }
+                           QCheckBox
+                           {
+                                font-size: 18px;
+                           }
+                            borderedQGroupBox{
                                 background-color: #F0F0F0;
                                 border : 1px solid #CECECE;
                                 border-top-left-radius : 20px;
                                 border-top-right-radius : 20px;
                                 border-bottom-left-radius : 20px;
                                 border-bottom-right-radius : 20px;}""")
+
 
 
 
@@ -394,7 +416,7 @@ class ContentWidget(QWidget):
         buttonLayout.addWidget(analyseButton)
 
         scatterButton = QPushButton("Scatter")
-        #scatterButton.clicked.connect(self.checkOutliers)
+        scatterButton.clicked.connect(self.showScatterGraph)
         scatterButton.setStyleSheet("background-color: #F57F0C; color: white; font-weight: bold")
         buttonLayout.addWidget(scatterButton)
 
@@ -420,7 +442,7 @@ class ContentWidget(QWidget):
 
         #Perform correlation
         print(["predictor files/"+predictor for predictor in self.predictorsSelected])
-        correlation([self.predictandSelected], ["predictor files/"+predictor for predictor in self.predictorsSelected], fitStartDate, fitEndDate, autoregression)
+        correlation([self.predictandSelected], [predictor for predictor in self.predictorsSelected], fitStartDate, fitEndDate, autoregression)
 
     def selectPredictandButtonClicked(self):
         #Will have to be changed soon, as it relies on known file "predictand files"
@@ -437,7 +459,7 @@ class ContentWidget(QWidget):
         button = self.sender() #Get the buttonLabel that was clicked
         predictor = button.text() #Get the name of the buttonLabel, so the predictor file
         if predictor not in self.predictorsSelected:
-            self.predictorsSelected.append(predictor)
+            self.predictorsSelected.append(self.predictorPath+"/"+predictor)
             button.setStyleSheet("color: white; background-color: blue")
         else:
             self.predictorsSelected.remove(predictor)
@@ -457,4 +479,21 @@ class ContentWidget(QWidget):
         dateTime = rawStartDate.toPyDate()
         dateTime = datetime.combine(dateTime, datetime.min.time())
         return dateTime
+    
+    def showScatterGraph(self):
+        print()
+        fitStartDate = self.QDateEditToDateTime(self.fitStartDateChooser)
+        fitEndDate = self.QDateEditToDateTime(self.fitEndDateChooser)
+        autoregression = self.autoregressionCheckBox.isChecked()
+        print(self.predictandSelected)
+        print(self.predictorsSelected)
+        data = scatterPlot([self.predictandSelected], self.predictorsSelected, fitStartDate,fitEndDate,fitStartDate,fitEndDate, autoregression)
+        print(data)
+        plot = pg.plot()
+        scatter = pg.ScatterPlotItem(size=10, brush=pg.mkBrush(255, 255, 255, 120))
+        print(data.size)
+        spots = [{'pos': [data[1,i],data[0,i]]}
+                 for i in range(int(data.size/2))]
+        scatter.addPoints(spots)
+        plot.addItem(scatter)
 

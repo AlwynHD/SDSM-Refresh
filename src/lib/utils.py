@@ -59,6 +59,15 @@ def resetFiles(predictorSelected):
     """
     return predictorSelected.clear()
 
+def loadFilesIntoMemory(filesToLoad):
+    """
+    create an array with shape (amount of files, length of files) return that
+    """
+    loadedFiles = []
+    for fileLocation in filesToLoad:
+        loadedFiles.append(np.loadtxt(fileLocation))
+    return loadedFiles
+
 def increaseDate(currentDate, noDays): #todo check if the leap year thing was important
     """increases datatime object by noDays"""
     # this might have to change back to orginal vb code as not sure why it was done the way it was
@@ -125,16 +134,7 @@ def feDateOK(fsDate, feDate, globalEDate):
     else:
         output = True 
     return output
-
-def loadFilesIntoMemory(predictorSelected, predictandSelected):
-    """
-    create an array with shape (amount of files, length of files) return that"""
-    loadedFiles = []
-    loadedFiles.append(np.loadtxt(predictandSelected[0]))
-    for fileLocation in predictorSelected:
-        loadedFiles.append(np.loadtxt(fileLocation))
-    return loadedFiles
-    
+   
 def findDataStart(predictandFile): # gets predictand numpy array then gets the position of the first data position
     """ this gets the first data index where the predictand is not a -999"""
     firstData = predictandFile[predictandFile != -999] #todo change to missing code
@@ -163,3 +163,20 @@ def dateWanted(date, analysisPeriodChosen):
         if date == (analysisPeriodChosen - 4):
             answer = True     #Individual months
     return answer
+
+def checkForFile(file, errorMessage):
+    if file is None:
+        print(errorMessage)
+        return False
+    else:
+        return True
+    
+def checkIfFileFormatted(file):
+    #Only checks the first line, not ideal but this is how it's done in the original
+    with open(file) as f:
+        firstLine = f.readline()
+        if len(firstLine) > 15:
+            print("File may contain multiple columns or non-Windows line breaks / carriage returns. This may cause problems in SDSM later.")
+    
+    f.close()
+    return

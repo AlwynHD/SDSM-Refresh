@@ -39,15 +39,35 @@ class ContentWidget(QWidget):
         self.setLayout(mainLayout)  # Apply the main layout to the widget
 
         self.setStyleSheet("""
-                           QFrame{
-                                background-color: #F0F0F0;}
-                           borderedQGroupBox{
+                            
+                            QFrame{
+                                background-color: #F0F0F0;
+                                font-size: 18px;}
+                           
+                            QRadioButton
+                           {
+                                font-size: 18px;
+                           }
+                           QDateEdit
+                           {
+                                font-size: 18px;
+                           }
+                           QLineEdit
+                           {
+                                font-size: 18px;
+                           }
+                           QCheckBox
+                           {
+                                font-size: 18px;
+                           }
+                            borderedQGroupBox{
                                 background-color: #F0F0F0;
                                 border : 1px solid #CECECE;
                                 border-top-left-radius : 20px;
                                 border-top-right-radius : 20px;
                                 border-bottom-left-radius : 20px;
                                 border-bottom-right-radius : 20px;}""")
+
 
         
 

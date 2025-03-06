@@ -77,6 +77,11 @@ def binomial(data, binomial):
 def extractEnsemble(data, column):
     return data[:, column - 1]
 
+def padData(data):
+    startDiff = dataSDate - globalSDate
+    endDiff = globalEDate - dataEDate
+    return np.pad(data, [(startDiff.days, endDiff.days), (0, 0)], mode='constant', constant_values=globalMissingCode)
+
 #region Settings
 
 #Pad Data
@@ -115,4 +120,6 @@ binomial(data, 1)
 #Box Cox
 #Unbox Cox
 """
+
+print(padData(data))
 #endregion

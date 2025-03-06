@@ -52,15 +52,35 @@ class ContentWidget(QWidget):
         self.setLayout(mainLayout)  # Apply the main layout to the widget
 
         self.setStyleSheet("""
-                           QFrame{
-                                background-color: #F0F0F0;}
-                           borderedQGroupBox{
+                            
+                            QFrame{
+                                background-color: #F0F0F0;
+                                font-size: 18px;}
+                           
+                            QRadioButton
+                           {
+                                font-size: 18px;
+                           }
+                           QDateEdit
+                           {
+                                font-size: 18px;
+                           }
+                           QLineEdit
+                           {
+                                font-size: 18px;
+                           }
+                           QCheckBox
+                           {
+                                font-size: 18px;
+                           }
+                            borderedQGroupBox{
                                 background-color: #F0F0F0;
                                 border : 1px solid #CECECE;
                                 border-top-left-radius : 20px;
                                 border-top-right-radius : 20px;
                                 border-bottom-left-radius : 20px;
                                 border-bottom-right-radius : 20px;}""")
+
 
 
 
@@ -422,7 +442,7 @@ class ContentWidget(QWidget):
 
         #Perform correlation
         print(["predictor files/"+predictor for predictor in self.predictorsSelected])
-        correlation([self.predictandSelected], ["predictor files/"+predictor for predictor in self.predictorsSelected], fitStartDate, fitEndDate, autoregression)
+        correlation([self.predictandSelected], [predictor for predictor in self.predictorsSelected], fitStartDate, fitEndDate, autoregression)
 
     def selectPredictandButtonClicked(self):
         #Will have to be changed soon, as it relies on known file "predictand files"
@@ -472,7 +492,7 @@ class ContentWidget(QWidget):
         plot = pg.plot()
         scatter = pg.ScatterPlotItem(size=10, brush=pg.mkBrush(255, 255, 255, 120))
         print(data.size)
-        spots = [{'pos': [i,data[0,i]], 'data': data[1,i]}
+        spots = [{'pos': [data[1,i],data[0,i]]}
                  for i in range(int(data.size/2))]
         scatter.addPoints(spots)
         plot.addItem(scatter)

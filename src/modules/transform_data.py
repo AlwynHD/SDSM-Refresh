@@ -12,414 +12,433 @@ class borderedQGroupBox(QGroupBox):
          super().__init__(args)
 
 class labeledQLineEditFrame(QFrame):
-     def __init__(self,labelVal,lineEditVal):
-          super().__init__()
-          layout = QHBoxLayout()
-          label = QLabel(labelVal)
-          self.lineEdit = QLineEdit(lineEditVal)
-          layout.addWidget(label)
-          layout.addWidget(self.lineEdit)
-          self.setLayout(layout)
-     def getLineEditVal(self):
-          return self.lineEdit.text()
-     
+    def __init__(self,labelVal,lineEditVal):
+        super().__init__()
+        layout = QHBoxLayout()
+        label = QLabel(labelVal)
+        self.lineEdit = QLineEdit(lineEditVal)
+        layout.addWidget(label)
+        layout.addWidget(self.lineEdit)
+        self.setLayout(layout)
+    def getLineEditVal(self):
+        return self.lineEdit.text()
+    
 
 
 
 
 class ContentWidget(QWidget):
-     """
-     A widget to display the Transform Data screen (UI/UX).
-     Includes a buttonBar at the top and a contentArea for displaying details.
-     """
-     def __init__(self):
-          """
-          Initialize the Transform Data screen UI/UX, setting up the layout, buttonBar, and contentArea.
-          """
-          super().__init__()
+    """
+    A widget to display the Transform Data screen (UI/UX).
+    Includes a buttonBar at the top and a contentArea for displaying details.
+    """
+    def __init__(self):
+        """
+        Initialize the Transform Data screen UI/UX, setting up the layout, buttonBar, and contentArea.
+        """
+        super().__init__()
+
+        self.predictorPath = 'predictor files'
+
+        self.inputSelected = ""
+        self.outputSelected = ""
+
+    # Main layout for the entire widget
+        mainLayout = QVBoxLayout()
+        mainLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
+        mainLayout.setSpacing(0)  # No spacing between elements
+        self.setLayout(mainLayout)  # Apply the main layout to the widget
+
+        self.setStyleSheet("""
+                            
+                            QFrame{
+                                background-color: #F0F0F0;
+                                font-size: 18px;}
+                           
+                            QRadioButton
+                           {
+                                font-size: 18px;
+                           }
+                           QDateEdit
+                           {
+                                font-size: 18px;
+                           }
+                           QLineEdit
+                           {
+                                font-size: 18px;
+                           }
+                           QCheckBox
+                           {
+                                font-size: 18px;
+                           }
+                            borderedQGroupBox{
+                                background-color: #F0F0F0;
+                                border : 1px solid #CECECE;
+                                border-top-left-radius : 20px;
+                                border-top-right-radius : 20px;
+                                border-bottom-left-radius : 20px;
+                                border-bottom-right-radius : 20px;}""")
+
+
+        # --- Frame Area ---
+
+        contentAreaFrame = QFrame()
+        contentAreaFrame.setFrameStyle(QFrame.NoFrame)  # No border around the frame
+        contentAreaFrame.setBaseSize(600,100)
+        contentAreaFrame.setSizePolicy(QSizePolicy.Preferred,QSizePolicy.Expanding)
+
+        # Layout for the contentArea frame
+        contentAreaLayout = QHBoxLayout()
+        contentAreaLayout.setContentsMargins(25, 25, 25, 25)  # Remove padding from the layout
+        contentAreaLayout.setSpacing(10)  # No spacing between elements
+        contentAreaFrame.setLayout(contentAreaLayout)  # Apply the layout to the frame
+
+        mainLayout.addWidget(contentAreaFrame)
+
+        #Frame to hold Input file, Columns in input file, SIM file, Ensemble member, Threshold, OUT File (ICSETO)
+        selectICSETOFrame = QFrame()
+        selectICSETOFrame.setFrameStyle(QFrame.NoFrame)
+        selectICSETOFrame.setBaseSize(200,500)
+        selectICSETOFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
+
+        selectICSETOLayout = QVBoxLayout()
+        selectICSETOLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
+        selectICSETOLayout.setSpacing(10)  # No spacing between elements
+        selectICSETOFrame.setLayout(selectICSETOLayout) 
+        
+        contentAreaLayout.addWidget(selectICSETOFrame)
+
+        #Create selectInputFile frame
+        selectInputFileFrame = borderedQGroupBox("Select Input File")
+        selectInputFileFrame.setBaseSize(200,200)
+
+        #Layout for selectInputFile frame
+        selectInputFileLayout = QVBoxLayout()
+        selectInputFileLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
+        selectInputFileLayout.setSpacing(0)  # No spacing between elements
 
-          self.predictorPath = 'predictor files'
+
+        selectInputFileFrame.setLayout(selectInputFileLayout)
+        
+        selectICSETOLayout.addWidget(selectInputFileFrame)
+
+        columnFrame = borderedQGroupBox("Columns in Input File")
+        columnFrame.setBaseSize(200,200)
 
-          self.inputSelected = ""
-          self.outputSelected = ""
+        columnLayout = QHBoxLayout()
+        columnLayout.setContentsMargins(25,25,25,25)
+        columnLayout.setSpacing(0)
 
-        # Main layout for the entire widget
-          mainLayout = QVBoxLayout()
-          mainLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
-          mainLayout.setSpacing(0)  # No spacing between elements
-          self.setLayout(mainLayout)  # Apply the main layout to the widget
+        columnFrame.setLayout(columnLayout)
 
-          self.setStyleSheet("""
-                              QFrame{
-                                   background-color: #F0F0F0;}
-                              borderedQGroupBox{
-                                   background-color: #F0F0F0;
-                                   border : 1px solid #CECECE;
-                                   border-top-left-radius : 20px;
-                                   border-top-right-radius : 20px;
-                                   border-bottom-left-radius : 20px;
-                                   border-bottom-right-radius : 20px;}""")
+        selectICSETOLayout.addWidget(columnFrame)
 
+        simFrame = borderedQGroupBox("Create SIM File")
+        simFrame.setBaseSize(200,200)
 
-          # --- Frame Area ---
+        simLayout = QHBoxLayout()
+        simLayout.setContentsMargins(25,25,25,25)
+        simLayout.setSpacing(0)
 
-          contentAreaFrame = QFrame()
-          contentAreaFrame.setFrameStyle(QFrame.NoFrame)  # No border around the frame
-          contentAreaFrame.setBaseSize(600,100)
-          contentAreaFrame.setSizePolicy(QSizePolicy.Preferred,QSizePolicy.Expanding)
+        simFrame.setLayout(simLayout)
 
-          # Layout for the contentArea frame
-          contentAreaLayout = QHBoxLayout()
-          contentAreaLayout.setContentsMargins(25, 25, 25, 25)  # Remove padding from the layout
-          contentAreaLayout.setSpacing(10)  # No spacing between elements
-          contentAreaFrame.setLayout(contentAreaLayout)  # Apply the layout to the frame
+        selectICSETOLayout.addWidget(simFrame)
 
-          mainLayout.addWidget(contentAreaFrame)
+        ensembleFrame = borderedQGroupBox("Extract Ensemble Member")
+        ensembleFrame.setBaseSize(200,200)
 
-          #Frame to hold Input file, Columns in input file, SIM file, Ensemble member, Threshold, OUT File (ICSETO)
-          selectICSETOFrame = QFrame()
-          selectICSETOFrame.setFrameStyle(QFrame.NoFrame)
-          selectICSETOFrame.setBaseSize(200,500)
-          selectICSETOFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
+        ensembleLayout = QHBoxLayout()
+        ensembleLayout.setContentsMargins(25,25,25,25)
+        ensembleLayout.setSpacing(0)
 
-          selectICSETOLayout = QVBoxLayout()
-          selectICSETOLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
-          selectICSETOLayout.setSpacing(10)  # No spacing between elements
-          selectICSETOFrame.setLayout(selectICSETOLayout) 
-          
-          contentAreaLayout.addWidget(selectICSETOFrame)
+        ensembleFrame.setLayout(ensembleLayout)
 
-          #Create selectInputFile frame
-          selectInputFileFrame = borderedQGroupBox("Select Input File")
-          selectInputFileFrame.setBaseSize(200,200)
+        selectICSETOLayout.addWidget(ensembleFrame)
 
-          #Layout for selectInputFile frame
-          selectInputFileLayout = QVBoxLayout()
-          selectInputFileLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
-          selectInputFileLayout.setSpacing(0)  # No spacing between elements
+        thresholdFrame = borderedQGroupBox("Threshold")
+        thresholdFrame.setBaseSize(200,200)
 
+        thresholdLayout = QHBoxLayout()
+        thresholdLayout.setContentsMargins(25,25,25,25)
+        thresholdLayout.setSpacing(0)
 
-          selectInputFileFrame.setLayout(selectInputFileLayout)
-          
-          selectICSETOLayout.addWidget(selectInputFileFrame)
+        thresholdFrame.setLayout(thresholdLayout)
 
-          columnFrame = borderedQGroupBox("Columns in Input File")
-          columnFrame.setBaseSize(200,200)
+        selectICSETOLayout.addWidget(thresholdFrame)
 
-          columnLayout = QHBoxLayout()
-          columnLayout.setContentsMargins(25,25,25,25)
-          columnLayout.setSpacing(0)
+        outputFrame = borderedQGroupBox("Create .OUT File ")
+        outputFrame.setBaseSize(200,200)
 
-          columnFrame.setLayout(columnLayout)
+        outputLayout = QHBoxLayout()
+        outputLayout.setContentsMargins(25,25,25,25)
+        outputLayout.setSpacing(0)
 
-          selectICSETOLayout.addWidget(columnFrame)
+        outputFrame.setLayout(outputLayout)
 
-          simFrame = borderedQGroupBox("Create SIM File")
-          simFrame.setBaseSize(200,200)
+        selectICSETOLayout.addWidget(outputFrame)
 
-          simLayout = QHBoxLayout()
-          simLayout.setContentsMargins(25,25,25,25)
-          simLayout.setSpacing(0)
+        transformationFrame = borderedQGroupBox("Transformation")
+        transformationFrame.setBaseSize(200,500)
+        transformationFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
 
-          simFrame.setLayout(simLayout)
+        transformationLayout = QVBoxLayout()
+        transformationLayout.setContentsMargins(25, 25, 25, 25)  # Remove padding from the layout
+        transformationLayout.setSpacing(10)  # No spacing between elements
+        transformationFrame.setLayout(transformationLayout)  # Apply the layout to the frame
 
-          selectICSETOLayout.addWidget(simFrame)
+        contentAreaLayout.addWidget(transformationFrame)
 
-          ensembleFrame = borderedQGroupBox("Extract Ensemble Member")
-          ensembleFrame.setBaseSize(200,200)
+        #selectOPBOFrame, Output file, Pad data, Box, Outliers (OPBO)
+        selectOPBOFrame = QFrame()
+        selectOPBOFrame.setFrameStyle(QFrame.NoFrame)  # No border around the frame
+        selectOPBOFrame.setBaseSize(200,500)
+        selectOPBOFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
 
-          ensembleLayout = QHBoxLayout()
-          ensembleLayout.setContentsMargins(25,25,25,25)
-          ensembleLayout.setSpacing(0)
+        selectOPBOLayout = QVBoxLayout()
+        selectOPBOLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
+        selectOPBOLayout.setSpacing(10)  # No spacing between elements
+        selectOPBOFrame.setLayout(selectOPBOLayout)  # Apply the layout to the frame
 
-          ensembleFrame.setLayout(ensembleLayout)
+        contentAreaLayout.addWidget(selectOPBOFrame)
 
-          selectICSETOLayout.addWidget(ensembleFrame)
+        #Select Output File
+        selectOutputFileFrame = borderedQGroupBox("Select Output File")
+        selectOutputFileFrame.setBaseSize(200,200)
 
-          thresholdFrame = borderedQGroupBox("Threshold")
-          thresholdFrame.setBaseSize(200,200)
 
-          thresholdLayout = QHBoxLayout()
-          thresholdLayout.setContentsMargins(25,25,25,25)
-          thresholdLayout.setSpacing(0)
+        #Layout for selectPredictandFile frame
+        selectOutputFileLayout = QVBoxLayout()
+        selectOutputFileLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
+        selectOutputFileLayout.setSpacing(0)  # No spacing between elements
 
-          thresholdFrame.setLayout(thresholdLayout)
 
-          selectICSETOLayout.addWidget(thresholdFrame)
+        selectOutputFileFrame.setLayout(selectOutputFileLayout)
+        
+        selectOPBOLayout.addWidget(selectOutputFileFrame) 
 
-          outputFrame = borderedQGroupBox("Create .OUT File ")
-          outputFrame.setBaseSize(200,200)
+        padDataFrame = borderedQGroupBox("Pad Data") 
+        padDataFrame.setBaseSize(200,200)
 
-          outputLayout = QHBoxLayout()
-          outputLayout.setContentsMargins(25,25,25,25)
-          outputLayout.setSpacing(0)
+        padDataLayout = QVBoxLayout()
+        padDataLayout.setContentsMargins(25,25,25,25)   
+        padDataLayout.setSpacing(0)
 
-          outputFrame.setLayout(outputLayout)
+        padDataFrame.setLayout(padDataLayout)
+        selectOPBOLayout.addWidget(padDataFrame)
 
-          selectICSETOLayout.addWidget(outputFrame)
+        boxFrame = borderedQGroupBox("Box Cox")
+        boxFrame.setBaseSize(200,200)
 
-          transformationFrame = borderedQGroupBox("Transformation")
-          transformationFrame.setBaseSize(200,500)
-          transformationFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
+        boxLayout = QVBoxLayout()
+        boxLayout.setContentsMargins(25,25,25,25)
+        boxLayout.setSpacing(0)
 
-          transformationLayout = QVBoxLayout()
-          transformationLayout.setContentsMargins(25, 25, 25, 25)  # Remove padding from the layout
-          transformationLayout.setSpacing(10)  # No spacing between elements
-          transformationFrame.setLayout(transformationLayout)  # Apply the layout to the frame
+        boxFrame.setLayout(boxLayout)
+        selectOPBOLayout.addWidget(boxFrame)
 
-          contentAreaLayout.addWidget(transformationFrame)
+        outlierFrame = borderedQGroupBox("Outlier Filter")
+        outlierFrame.setBaseSize(200,200)
 
-          #selectOPBOFrame, Output file, Pad data, Box, Outliers (OPBO)
-          selectOPBOFrame = QFrame()
-          selectOPBOFrame.setFrameStyle(QFrame.NoFrame)  # No border around the frame
-          selectOPBOFrame.setBaseSize(200,500)
-          selectOPBOFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
+        outlierLayout = QVBoxLayout()
+        outlierLayout.setContentsMargins(25,25,25,25)
+        outlierLayout.setSpacing(0)
 
-          selectOPBOLayout = QVBoxLayout()
-          selectOPBOLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
-          selectOPBOLayout.setSpacing(10)  # No spacing between elements
-          selectOPBOFrame.setLayout(selectOPBOLayout)  # Apply the layout to the frame
+        outlierFrame.setLayout(outlierLayout)
+        selectOPBOLayout.addWidget(outlierFrame)
 
-          contentAreaLayout.addWidget(selectOPBOFrame)
+        #Content
 
-          #Select Output File
-          selectOutputFileFrame = borderedQGroupBox("Select Output File")
-          selectOutputFileFrame.setBaseSize(200,200)
+        #Predictand file selector button
+        selectInputButton = QPushButton("📂 Select Input File")
+        selectInputButton.clicked.connect(self.selectInputButtonClicked)
+        selectInputFileLayout.addWidget(selectInputButton)
 
+        self.selectInputLabel = QLabel("File: Not Selected")
+        selectInputFileLayout.addWidget(self.selectInputLabel)
 
-          #Layout for selectPredictandFile frame
-          selectOutputFileLayout = QVBoxLayout()
-          selectOutputFileLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
-          selectOutputFileLayout.setSpacing(0)  # No spacing between elements
+        columnInput = QLineEdit("1")
+        columnLayout.addWidget(columnInput)
+        
+        simCheckBox = QCheckBox("Create")
+        simLayout.addWidget(simCheckBox)
 
+        ensembleCheckBox = QCheckBox("Extract")
+        ensembleInput = QLineEdit("1")
+        ensembleLayout.addWidget(ensembleCheckBox)
+        ensembleLayout.addWidget(ensembleInput)
 
-          selectOutputFileFrame.setLayout(selectOutputFileLayout)
-          
-          selectOPBOLayout.addWidget(selectOutputFileFrame) 
+        thresholdCheckBox = QCheckBox("Apply Threshold")
+        thresholdLayout.addWidget(thresholdCheckBox)
 
-          padDataFrame = borderedQGroupBox("Pad Data") 
-          padDataFrame.setBaseSize(200,200)
+        outputCheckBox = QCheckBox("Create .OUT File")
+        outputLayout.addWidget(outputCheckBox)
 
-          padDataLayout = QVBoxLayout()
-          padDataLayout.setContentsMargins(25,25,25,25)   
-          padDataLayout.setSpacing(0)
 
-          padDataFrame.setLayout(padDataLayout)
-          selectOPBOLayout.addWidget(padDataFrame)
 
-          boxFrame = borderedQGroupBox("Box Cox")
-          boxFrame.setBaseSize(200,200)
+        self.transformRadioGroup = QButtonGroup()
+        self.transformRadioGroup.setExclusive(True)
+        self.transformRadioGroup.buttonPressed.connect(self.unPressOtherRadios)
 
-          boxLayout = QVBoxLayout()
-          boxLayout.setContentsMargins(25,25,25,25)
-          boxLayout.setSpacing(0)
+        transformationsFrame = QFrame()
+        transformationsFrame.setBaseSize(200,300)
+        transformationsFrame.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
+        transformationsLayout = QHBoxLayout()
+        transformationsFrame.setLayout(transformationsLayout)
+        functionTransformationsFrame = QFrame()
+        functionTransformationsLayout = QVBoxLayout()
+        functionTransformationsFrame.setLayout(functionTransformationsLayout)
 
-          boxFrame.setLayout(boxLayout)
-          selectOPBOLayout.addWidget(boxFrame)
+        functionsLabel = QLabel("Functions")
+        functionsLabel.setAlignment(Qt.AlignTop)
+        functionTransformationsLayout.addWidget(functionsLabel)
 
-          outlierFrame = borderedQGroupBox("Outlier Filter")
-          outlierFrame.setBaseSize(200,200)
+        natLogRadio = QRadioButton("Ln")
+        self.transformRadioGroup.addButton(natLogRadio)
+        functionTransformationsLayout.addWidget(natLogRadio)
 
-          outlierLayout = QVBoxLayout()
-          outlierLayout.setContentsMargins(25,25,25,25)
-          outlierLayout.setSpacing(0)
+        logRadio = QRadioButton("Log")
+        self.transformRadioGroup.addButton(logRadio)
+        functionTransformationsLayout.addWidget(logRadio)
 
-          outlierFrame.setLayout(outlierLayout)
-          selectOPBOLayout.addWidget(outlierFrame)
+        squareRadio = QRadioButton("x²")
+        self.transformRadioGroup.addButton(squareRadio)
+        functionTransformationsLayout.addWidget(squareRadio)
 
-          #Content
+        cubeRadio = QRadioButton("x³")
+        self.transformRadioGroup.addButton(cubeRadio)
+        functionTransformationsLayout.addWidget(cubeRadio)
 
-          #Predictand file selector button
-          selectInputButton = QPushButton("📂 Select Input File")
-          selectInputButton.clicked.connect(self.selectInputButtonClicked)
-          selectInputFileLayout.addWidget(selectInputButton)
+        fourRadio = QRadioButton("x⁴")
+        self.transformRadioGroup.addButton(fourRadio)
+        functionTransformationsLayout.addWidget(fourRadio)
 
-          self.selectInputLabel = QLabel("File: Not Selected")
-          selectInputFileLayout.addWidget(self.selectInputLabel)
+        recipRadio = QRadioButton("x⁻¹")
+        self.transformRadioGroup.addButton(recipRadio)
+        functionTransformationsLayout.addWidget(recipRadio)
 
-          columnInput = QLineEdit("1")
-          columnLayout.addWidget(columnInput)
-          
-          simCheckBox = QCheckBox("Create")
-          simLayout.addWidget(simCheckBox)
+        inverseTransformationsFrame = QFrame()
+        inverseTransformationsLayout = QVBoxLayout()
+        inverseTransformationsFrame.setLayout(inverseTransformationsLayout)
 
-          ensembleCheckBox = QCheckBox("Extract")
-          ensembleInput = QLineEdit("1")
-          ensembleLayout.addWidget(ensembleCheckBox)
-          ensembleLayout.addWidget(ensembleInput)
+        inverseLabel = QLabel("Inverse")
+        inverseLabel.setAlignment(Qt.AlignTop)
+        inverseTransformationsLayout.addWidget(inverseLabel)
 
-          thresholdCheckBox = QCheckBox("Apply Threshold")
-          thresholdLayout.addWidget(thresholdCheckBox)
+        eXRadio = QRadioButton("eˣ")
+        self.transformRadioGroup.addButton(eXRadio)
+        inverseTransformationsLayout.addWidget(eXRadio)
 
-          outputCheckBox = QCheckBox("Create .OUT File")
-          outputLayout.addWidget(outputCheckBox)
+        tenXRadio = QRadioButton("10ˣ")
+        self.transformRadioGroup.addButton(tenXRadio)
+        inverseTransformationsLayout.addWidget(tenXRadio)
 
+        sqrtRadio = QRadioButton("√x")
+        self.transformRadioGroup.addButton(sqrtRadio)
+        inverseTransformationsLayout.addWidget(sqrtRadio)
 
+        cbrtRadio = QRadioButton("∛x")
+        self.transformRadioGroup.addButton(cbrtRadio)
+        inverseTransformationsLayout.addWidget(cbrtRadio)
 
-          self.transformRadioGroup = QButtonGroup()
-          self.transformRadioGroup.setExclusive(True)
-          self.transformRadioGroup.buttonPressed.connect(self.unPressOtherRadios)
+        fourRtRadio = QRadioButton("∜x")
+        self.transformRadioGroup.addButton(fourRtRadio)
+        inverseTransformationsLayout.addWidget(fourRtRadio)
+        
+        xRadio = QRadioButton("x")
+        self.transformRadioGroup.addButton(xRadio)
+        inverseTransformationsLayout.addWidget(xRadio)
 
-          transformationsFrame = QFrame()
-          transformationsFrame.setBaseSize(200,300)
-          transformationsFrame.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
-          transformationsLayout = QHBoxLayout()
-          transformationsFrame.setLayout(transformationsLayout)
-          functionTransformationsFrame = QFrame()
-          functionTransformationsLayout = QVBoxLayout()
-          functionTransformationsFrame.setLayout(functionTransformationsLayout)
+        transformationsLayout.addWidget(functionTransformationsFrame)
+        transformationsLayout.addWidget(inverseTransformationsFrame)
 
-          functionsLabel = QLabel("Functions")
-          functionsLabel.setAlignment(Qt.AlignTop)
-          functionTransformationsLayout.addWidget(functionsLabel)
+        transformationLayout.addWidget(transformationsFrame)
 
-          natLogRadio = QRadioButton("Ln")
-          self.transformRadioGroup.addButton(natLogRadio)
-          functionTransformationsLayout.addWidget(natLogRadio)
+        backwardChangeRadio = QRadioButton("Backward Change")
+        self.transformRadioGroup.addButton(backwardChangeRadio)
+        transformationLayout.addWidget(backwardChangeRadio)
 
-          logRadio = QRadioButton("Log")
-          self.transformRadioGroup.addButton(logRadio)
-          functionTransformationsLayout.addWidget(logRadio)
 
-          squareRadio = QRadioButton("x²")
-          self.transformRadioGroup.addButton(squareRadio)
-          functionTransformationsLayout.addWidget(squareRadio)
+        
+        lagNFrame = QFrame()
+        lagNLayout = QHBoxLayout()
+        lagNRadio = QRadioButton("Lag n")
+        self.transformRadioGroup.addButton(lagNRadio)
+        lagNLineEdit = QLineEdit("0")
+        lagNLayout.addWidget(lagNRadio)
+        lagNLayout.addWidget(lagNLineEdit)
+        lagNFrame.setLayout(lagNLayout)
+        transformationLayout.addWidget(lagNFrame)
 
-          cubeRadio = QRadioButton("x³")
-          self.transformRadioGroup.addButton(cubeRadio)
-          functionTransformationsLayout.addWidget(cubeRadio)
+        binomialFrame = QFrame()
+        binomialLayout = QHBoxLayout()
+        binomialRadio = QRadioButton("Binomial")
+        self.transformRadioGroup.addButton(binomialRadio)
 
-          fourRadio = QRadioButton("x⁴")
-          self.transformRadioGroup.addButton(fourRadio)
-          functionTransformationsLayout.addWidget(fourRadio)
+        binomialLineEdit = QLineEdit("0")
+        binomialWrapCheckBox = QCheckBox("Wrap")
+        binomialLayout.addWidget(binomialRadio)
+        binomialLayout.addWidget(binomialLineEdit)
+        binomialLayout.addWidget(binomialWrapCheckBox)
+        binomialFrame.setLayout(binomialLayout)
+        transformationLayout.addWidget(binomialFrame)
+        
 
-          recipRadio = QRadioButton("x⁻¹")
-          self.transformRadioGroup.addButton(recipRadio)
-          functionTransformationsLayout.addWidget(recipRadio)
 
-          inverseTransformationsFrame = QFrame()
-          inverseTransformationsLayout = QVBoxLayout()
-          inverseTransformationsFrame.setLayout(inverseTransformationsLayout)
 
-          inverseLabel = QLabel("Inverse")
-          inverseLabel.setAlignment(Qt.AlignTop)
-          inverseTransformationsLayout.addWidget(inverseLabel)
 
-          eXRadio = QRadioButton("eˣ")
-          self.transformRadioGroup.addButton(eXRadio)
-          inverseTransformationsLayout.addWidget(eXRadio)
 
-          tenXRadio = QRadioButton("10ˣ")
-          self.transformRadioGroup.addButton(tenXRadio)
-          inverseTransformationsLayout.addWidget(tenXRadio)
+        selectOutputButton = QPushButton("📂 Select Output File")
+        selectOutputButton.clicked.connect(self.selectOutputButtonClicked)
+        selectOutputFileLayout.addWidget(selectOutputButton)
 
-          sqrtRadio = QRadioButton("√x")
-          self.transformRadioGroup.addButton(sqrtRadio)
-          inverseTransformationsLayout.addWidget(sqrtRadio)
+        self.selectOutputLabel = QLabel("File: Not Selected")
+        selectOutputFileLayout.addWidget(self.selectOutputLabel)
 
-          cbrtRadio = QRadioButton("∛x")
-          self.transformRadioGroup.addButton(cbrtRadio)
-          inverseTransformationsLayout.addWidget(cbrtRadio)
+        padDataCheckBox = QCheckBox("Pad Data")
 
-          fourRtRadio = QRadioButton("∜x")
-          self.transformRadioGroup.addButton(fourRtRadio)
-          inverseTransformationsLayout.addWidget(fourRtRadio)
-          
-          xRadio = QRadioButton("x")
-          self.transformRadioGroup.addButton(xRadio)
-          inverseTransformationsLayout.addWidget(xRadio)
+        startDateFrame = QFrame()
+        startDateLayout = QHBoxLayout()
+        startDateLabel = QLabel("Start Date: ")
+        startDateEdit = QDateEdit(QDate(1948,1,1))
+        startDateLayout.addWidget(startDateLabel)
+        startDateLayout.addWidget(startDateEdit)
+        startDateFrame.setLayout(startDateLayout)
+        
+        endDateFrame = QFrame()
+        endDateLayout = QHBoxLayout()
+        endDateLabel = QLabel("End Date: ")
+        endDateEdit = QDateEdit(QDate(2015,12,31))
+        endDateLayout.addWidget(endDateLabel)
+        endDateLayout.addWidget(endDateEdit)
+        endDateFrame.setLayout(endDateLayout)
 
-          transformationsLayout.addWidget(functionTransformationsFrame)
-          transformationsLayout.addWidget(inverseTransformationsFrame)
+        padDataLayout.addWidget(padDataCheckBox)
+        padDataLayout.addWidget(startDateFrame)
+        padDataLayout.addWidget(endDateFrame)
 
-          transformationLayout.addWidget(transformationsFrame)
+        boxCoxRadioGroup = QButtonGroup()
+        boxCoxRadioGroup.setExclusive(True)
+        boxCoxRadio = QRadioButton("Box Cox")
+        unBoxCoxRadio = QRadioButton("Un-Box Cox")
+        boxCoxRadioGroup.addButton(boxCoxRadio)
+        boxCoxRadioGroup.addButton(unBoxCoxRadio)
+        lambdaFrame = labeledQLineEditFrame("Lambda: ", "1")
+        shiftFrame = labeledQLineEditFrame("Shift: ", "0")
 
-          backwardChangeRadio = QRadioButton("Backward Change")
-          self.transformRadioGroup.addButton(backwardChangeRadio)
-          transformationLayout.addWidget(backwardChangeRadio)
+        boxLayout.addWidget(boxCoxRadio)
+        boxLayout.addWidget(unBoxCoxRadio)
+        boxLayout.addWidget(lambdaFrame)
+        boxLayout.addWidget(shiftFrame)
 
+        outlierCheckBox = QCheckBox("Remove Outliers")
+        standardDevFrame = labeledQLineEditFrame("Standard Dev: ", "0")
+        outlierLayout.addWidget(outlierCheckBox)
+        outlierLayout.addWidget(standardDevFrame)
 
-          
-          lagNFrame = QFrame()
-          lagNLayout = QHBoxLayout()
-          lagNRadio = QRadioButton("Lag n")
-          self.transformRadioGroup.addButton(lagNRadio)
-          lagNLineEdit = QLineEdit("0")
-          lagNLayout.addWidget(lagNRadio)
-          lagNLayout.addWidget(lagNLineEdit)
-          lagNFrame.setLayout(lagNLayout)
-          transformationLayout.addWidget(lagNFrame)
 
-          binomialFrame = QFrame()
-          binomialLayout = QHBoxLayout()
-          binomialRadio = QRadioButton("Binomial")
-          self.transformRadioGroup.addButton(binomialRadio)
 
-          binomialLineEdit = QLineEdit("0")
-          binomialWrapCheckBox = QCheckBox("Wrap")
-          binomialLayout.addWidget(binomialRadio)
-          binomialLayout.addWidget(binomialLineEdit)
-          binomialLayout.addWidget(binomialWrapCheckBox)
-          binomialFrame.setLayout(binomialLayout)
-          transformationLayout.addWidget(binomialFrame)
-          
 
-
-
-
-
-          selectOutputButton = QPushButton("📂 Select Output File")
-          selectOutputButton.clicked.connect(self.selectOutputButtonClicked)
-          selectOutputFileLayout.addWidget(selectOutputButton)
-
-          self.selectOutputLabel = QLabel("File: Not Selected")
-          selectOutputFileLayout.addWidget(self.selectOutputLabel)
-
-          padDataCheckBox = QCheckBox("Pad Data")
-
-          startDateFrame = QFrame()
-          startDateLayout = QHBoxLayout()
-          startDateLabel = QLabel("Start Date: ")
-          startDateEdit = QDateEdit(QDate(1948,1,1))
-          startDateLayout.addWidget(startDateLabel)
-          startDateLayout.addWidget(startDateEdit)
-          startDateFrame.setLayout(startDateLayout)
-          
-          endDateFrame = QFrame()
-          endDateLayout = QHBoxLayout()
-          endDateLabel = QLabel("End Date: ")
-          endDateEdit = QDateEdit(QDate(2015,12,31))
-          endDateLayout.addWidget(endDateLabel)
-          endDateLayout.addWidget(endDateEdit)
-          endDateFrame.setLayout(endDateLayout)
-
-          padDataLayout.addWidget(padDataCheckBox)
-          padDataLayout.addWidget(startDateFrame)
-          padDataLayout.addWidget(endDateFrame)
-
-          boxCoxRadioGroup = QButtonGroup()
-          boxCoxRadioGroup.setExclusive(True)
-          boxCoxRadio = QRadioButton("Box Cox")
-          unBoxCoxRadio = QRadioButton("Un-Box Cox")
-          boxCoxRadioGroup.addButton(boxCoxRadio)
-          boxCoxRadioGroup.addButton(unBoxCoxRadio)
-          lambdaFrame = labeledQLineEditFrame("Lambda: ", "1")
-          shiftFrame = labeledQLineEditFrame("Shift: ", "0")
-
-          boxLayout.addWidget(boxCoxRadio)
-          boxLayout.addWidget(unBoxCoxRadio)
-          boxLayout.addWidget(lambdaFrame)
-          boxLayout.addWidget(shiftFrame)
-
-          outlierCheckBox = QCheckBox("Remove Outliers")
-          standardDevFrame = labeledQLineEditFrame("Standard Dev: ", "0")
-          outlierLayout.addWidget(outlierCheckBox)
-          outlierLayout.addWidget(standardDevFrame)
-
-
-
-
-     def selectInputButtonClicked(self):
+    def selectInputButtonClicked(self):
         #Will have to be changed soon, as it relies on known file "predictand files"
         fileName = QFileDialog.getOpenFileName(self, "Select input file", 'predictand files', "DAT Files (*.DAT)") 
         print(fileName)
@@ -430,7 +449,7 @@ class ContentWidget(QWidget):
             self.inputSelected = None
             self.selectInputLabel.setText("File: Not Selected")
 
-     def selectOutputButtonClicked(self):
+    def selectOutputButtonClicked(self):
         #Will have to be changed soon, as it relies on known file "predictand files"
         fileName = QFileDialog.getOpenFileName(self, "Select output file", 'SDSM Refresh', "") 
         print(fileName)
@@ -441,12 +460,11 @@ class ContentWidget(QWidget):
             self.outputSelected = None
             self.selectOutputLabel.setText("File: Not Selected")
 
-     def unPressOtherRadios(self,*args):
+    def unPressOtherRadios(self,*args):
          #Needed to make sure function radio and inverse radio buttons cant be clicked at same time
-         radio = self.sender()
-         buttons = self.transformRadioGroup.buttons()
-         for button in buttons:
-             if button != radio:
-                 
-                 if button.isChecked():
-                     button.setChecked(False)
+        radio = self.sender()
+        buttons = self.transformRadioGroup.buttons()
+        for button in buttons:
+            if button != radio:
+                if button.isChecked():
+                    button.setChecked(False)

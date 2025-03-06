@@ -348,8 +348,6 @@ def scatterPlot(predictandSelected, predictorSelected, fsDate, feDate, globalSDa
         loadedFiles = []
         loadedFiles = loadFilesIntoMemory(predictandSelected + predictorSelected)
         nameOfFiles = displayFiles(predictandSelected + predictorSelected)
-        print("HERE", nameOfFiles)
-        print(predictorSelected + predictandSelected)
 
 
         totalNumbers = 0
@@ -383,13 +381,7 @@ def scatterPlot(predictandSelected, predictorSelected, fsDate, feDate, globalSDa
 
                 # there is no missingCodes
                 elif (conditional and row[0] > threshold) or not conditional:
-                    sumData += row
-
-                # the threshold only applies to the predictand file not the predictor files
-                if row[0] <= threshold and conditional and row[0] != missingCode:
-                    totalBelowThreshold +=1
-
-                inputData.append(row)
+                    inputData.append(row)
             increaseDate(workingDate, 1)
 
         inputData = np.array(inputData)

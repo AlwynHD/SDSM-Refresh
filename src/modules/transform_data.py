@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import (QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSi
                              QButtonGroup, QRadioButton, QLineEdit, QGroupBox)
 from PyQt5.QtCore import Qt, QDate
 from PyQt5.QtGui import QPalette, QColor, QIcon
+from src.lib.TransformData import *
 
 # Define the name of the module for display in the content area
 moduleName = "Transform Data"
@@ -246,6 +247,18 @@ class ContentWidget(QWidget):
         outlierFrame.setLayout(outlierLayout)
         selectOPBOLayout.addWidget(outlierFrame)
 
+        buttonFrame = QFrame()
+        buttonFrame.setBaseSize(600,60)
+        buttonFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Fixed)
+
+        buttonLayout = QHBoxLayout()
+        buttonLayout.setContentsMargins(25,25,25,25)
+        buttonLayout.setSpacing(10)
+
+        buttonFrame.setLayout(buttonLayout)
+
+        mainLayout.addWidget(buttonFrame)
+
         #Content
 
         #Predictand file selector button
@@ -435,6 +448,12 @@ class ContentWidget(QWidget):
         outlierLayout.addWidget(outlierCheckBox)
         outlierLayout.addWidget(standardDevFrame)
 
+        transformButton = QPushButton("Transform Data")
+        transformButton.clicked.connect(self.doTransform)
+        transformButton.setStyleSheet("background-color: #4CAF50; color: white; font-weight: bold;")
+
+        buttonLayout.addWidget(transformButton)
+
 
 
 
@@ -468,3 +487,6 @@ class ContentWidget(QWidget):
             if button != radio:
                 if button.isChecked():
                     button.setChecked(False)
+
+    def doTransform(self):
+        print("https://www.youtube.com/watch?v=7F2QE8O-Y1g")

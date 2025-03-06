@@ -2,7 +2,6 @@ import calendar
 import datetime
 import math
 import numpy as np
-import pyhomogeneity as hg
 from src.lib.utils import loadFilesIntoMemory, increaseDate, checkForFile, checkIfFileFormatted
 
 #Local version

@@ -406,8 +406,6 @@ def scatterPlot(predictandSelected, predictorSelected, fsDate, feDate, globalSDa
 
         return inputData.T
 
-        
-
 if __name__ == '__main__':
     #analyseData(predictandSelected, predictorSelected, fSDate, fEDate, globalSDate, globalEDate, autoRegressionTick)
     #predictorSelected = selectFile()

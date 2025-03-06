@@ -2,6 +2,7 @@ from PyQt5.QtWidgets import QApplication, QFileDialog
 import datetime
 import os 
 import re
+import calendar
 import numpy as np
 
 
@@ -46,7 +47,7 @@ def filesNames(fileName):
                        ["p8_f", "850 hPa airflow strength"], ["p8_z", "850 hPa vorticity"], ["p8_v", "850 hPa meridional velocity"], ["p8_u", "850 hPa zonal velocity"],
                        ["p8th", "850 hPa wind direction"], ["p8zh", "850 hPa divergence"], ["shum", "Surface specific humidity"], ["s850", "Specific humidity at 850 hPa"],
                        ["s500", "Specific humidity at 500 hPa"], ["dswr", "Solar radiation"], ["lftx", "Surface lifted index"], ["pottmp", "Potential temperature"],
-                       ["pr_wtr", "Precipitable water"]]
+                       ["pr_wtr", "Precipitable water"],["prec", "Precipitable total"]]
 
     # will return file description e.g. Mean temperature at 2m if the fileName is found in the list file Description will be empty if it's not there
     fileDescription = [record[1] for record in fileDescriptionList if re.search(re.compile(record[0]),fileName) != None] # regex
@@ -68,11 +69,21 @@ def loadFilesIntoMemory(filesToLoad):
         loadedFiles.append(np.loadtxt(fileLocation))
     return loadedFiles
 
-def increaseDate(currentDate, noDays): #todo check if the leap year thing was important
+def increaseDate(startDate, noDays): #todo check if the leap year thing was important
     """increases datatime object by noDays"""
     # this might have to change back to orginal vb code as not sure why it was done the way it was
-    currentDate += datetime.timedelta(days=noDays)
-    return currentDate
+    finalDate = startDate + datetime.timedelta(days=noDays)
+
+    if calendar.isleap(startDate.year):
+        feb = datetime.datetime(startDate.year, 2, 29)
+        if startDate <= feb <= finalDate:
+            finalDate += datetime.timedelta(days=1)
+    elif calendar.isleap(finalDate.year):
+        feb = datetime.datetime(finalDate.year, 2, 29)
+        if startDate <= feb <= finalDate:
+            finalDate += datetime.timedelta(days=1)
+
+    return finalDate
 
 def sigLevelOK(sigLevelInput):
     """checks if sigLevel is good returns default diglevel if not"""
@@ -180,3 +191,12 @@ def checkIfFileFormatted(file):
     
     f.close()
     return
+
+
+if __name__ == '__main__':
+    #Module tests go here
+    currentDate = datetime.datetime(2000, 2, 26)
+    noDays = 7
+    increaseDate(currentDate, noDays)
+    increaseDate(datetime.datetime(2001, 1, 26), 77)
+    jeff = datetime.datetime(2000, 2, 30)

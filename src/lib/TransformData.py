@@ -16,7 +16,8 @@ globalMissingCode = -999
 thresh = 4
 applyThresh = True
 #data = np.array([[2], [3], [4], [5], [6], [7], [8], [9], [10], [100], [120], [145], [145], [555], [444], [333], [333], [333], [333], [333]])
-data = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9], [10, 11, 12]])
+#data = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9], [10, 11, 12]])
+data = np.array([[1], [2], [3], [4], [5], [6], [7], [8], [9]])
 
 def valueIsValid(value):
     #todo move to utils
@@ -82,9 +83,33 @@ def padData(data):
     endDiff = globalEDate - dataEDate
     return np.pad(data, [(startDiff.days, endDiff.days), (0, 0)], mode='constant', constant_values=globalMissingCode)
 
+def removeOutliers(data, sdFilterValue):
+    returnData = np.empty_like(data)
+    for c in range(len(data.T)):
+        column = data[:, c]
+        threshCol = [entry for entry in column if valueIsValid(entry)]
+        if len(threshCol) > 0:
+            mean = sum(threshCol) / len(threshCol)
+            sd = 0
+            for entry in threshCol:
+                if valueIsValid(entry):
+                    sd += np.power((entry - mean), 2)
+            sd = np.sqrt(sd / len(threshCol))
+            sdFilter = sd * sdFilterValue
+        
+        filteredCol = np.empty_like(column)
+        for r in range(len(column)):
+            if valueIsValid(column[r]) and (column[r] > (mean + sdFilter) or column[r] < (mean - sdFilter)):
+                filteredCol[r] = globalMissingCode
+            else:
+                filteredCol[r] = column[r]
+        returnData[:, c] = filteredCol
+    return returnData
+
+
 #region Settings
 
-#Pad Data
+padData(data)
 #Create SIM File
 #Apply Threshold
 #Remove Outliers
@@ -121,5 +146,5 @@ binomial(data, 1)
 #Unbox Cox
 """
 
-print(padData(data))
+removeOutliers(data, 1)
 #endregion

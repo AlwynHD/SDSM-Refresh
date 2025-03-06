@@ -39,7 +39,6 @@ def dailyMeans(selectedFile):
 
     #Initialise results to zero
     dailyStats = np.zeros((7, 4), float)
-    print(dailyStats)
     """
     dailyStats[i][0] is running sum
     dailyStats[i][1] is count
@@ -60,58 +59,14 @@ def dailyMeans(selectedFile):
 
         #Iterate dayWorkingOn
         dayWorkingOn = (dayWorkingOn + 1) % 7
-    
-    """
-    old code
-    with open(selectedFile, "r") as file:
-        for line in file:
-            line = line.rstrip('\n')
-            if line != str(globalMissingCode) and checkThreshold(float(line)):
-                dailyStats[dayWorkingOn][0] += float(line) #Add to cumulative sum
-                dailyStats[dayWorkingOn][1] += 1           #Increase count for that day
-
-            #Iterate dayWorkingOn
-            if dayWorkingOn == 6:
-                dayWorkingOn = 0
-            else:
-                dayWorkingOn += 1
-    file.close()
-    
-    for i in range(7):
-        if dailyStats[i][1] > 0:
-            dailyStats[i][3] = dailyStats[i][0] / dailyStats[i][1]
-        else:
-            dailyStats[i][3] = globalMissingCode
-        print(dailyStats[i][3])
-
-    print("SECOND")
-    """
-
 
     #Calulcate means for each day
 
     for stat in dailyStats:
         stat[3] = stat[0] / stat[1] if stat[1] > 0 else globalMissingCode
-        print(stat[3])
 
     #Calculate standard deviation
     dayWorkingOn = globalSDate.weekday()
-
-
-    """old code
-    with open(selectedFile, "r") as file:
-        for line in file:
-            line = line.rstrip('\n')
-            if line != str(globalMissingCode) and dailyStats[dayWorkingOn][3] != globalMissingCode and checkThreshold(float(line)):
-                dailyStats[dayWorkingOn][2] += (float(line) - dailyStats[dayWorkingOn][3]) ** 2
-
-            #Iterate dayWorkingOn
-            if dayWorkingOn == 6:
-                dayWorkingOn = 0
-            else:
-                dayWorkingOn += 1
-
-    file.close()"""
 
     for datapoint in loadedFiles:
             if datapoint != globalMissingCode and dailyStats[dayWorkingOn][3] != globalMissingCode and checkThreshold(datapoint):
@@ -412,4 +367,5 @@ def pettittTest(pettittArray, ptPercent):
 
 if __name__ == '__main__':
     #Module tests go here
-    qualityCheck(selectedFile)
+    outliersID(selectedFile, outlierFile)
+    #qualityCheck(selectedFile)

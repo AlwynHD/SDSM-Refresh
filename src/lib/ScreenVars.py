@@ -1,7 +1,7 @@
 import math
 import datetime
 import numpy as np
-from utils import *
+from src.lib.utils import *
 
 #Local version
 predictorSelected = ['predictor files/ncep_dswr.dat']

@@ -56,16 +56,17 @@ class SDSMWindow(QMainWindow):
         ]
         
         self.menuButtons = []
-        button_height = int(screen_height * 0.03)
-        button_font_size = int(button_height * 0.5)
+        self.button_height = int(screen_height * 0.03)
+        self.button_font_size = int(self.button_height * 0.5)
         
         for index, (name, icon) in enumerate(zip(self.menuButtonNames, self.menuButtonIcons)):
             menuButton = QPushButton(name)
+            
             menuButton.setIcon(QIcon(icon))
             menuButton.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.MinimumExpanding)
-            menuButton.setMinimumHeight(button_height)
+            menuButton.setMinimumHeight(self.button_height)
             menuButton.setStyleSheet(
-                f"text-align: left; padding-left: 10px; border: 1px solid lightgray; font-size: {button_font_size}px;"
+                f"text-align: left; padding-left: 10px; border: 1px solid lightgray; font-size: {self.button_font_size}px;"
             )
             menuButton.clicked.connect(lambda checked, idx=index: self.loadContent(idx))
             menuLayout.addWidget(menuButton)
@@ -124,10 +125,15 @@ class SDSMWindow(QMainWindow):
         # Center the window on the screen
         self.centerOnScreen()
     
-    def loadContent(self, index):
+    def loadContent(self, index, *args):
         """
         Load the content for the selected menu option.
         """
+        
+      
+        for btn in self.menuButtons:
+            btn.setStyleSheet(f"text-align: left; padding-left: 10px; background-color: #F0F0F0; border: 1px solid lightgray; font-size: {self.button_font_size}px;")
+        self.menuButtons[index].setStyleSheet(f"text-align: left; padding-left: 10px; background-color: #B0B0B0; border: 1px solid lightgray; font-size: {self.button_font_size}px;")
         moduleName = self.menuButtonNames[index].lower().replace(" ", "_")
         displayName = self.menuButtonNames[index]
         self.loadModule(moduleName, displayName)

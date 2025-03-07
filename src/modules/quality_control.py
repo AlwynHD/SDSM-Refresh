@@ -1,8 +1,8 @@
 from PyQt5.QtWidgets import (QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, QFrame, QLabel, QFileDialog,
                              QLineEdit, QCheckBox, QMessageBox, QGroupBox)
-from PyQt5.QtCore import Qt, QSize
-from PyQt5.QtGui import QPalette, QColor, QIcon
-from src.lib.QualityControl import qualityCheck, outliersID, dailyMeans
+from PyQt5.QtCore import Qt
+import threading
+import time
 # Define the name of the module for display in the content area
 moduleName = "Quality Control"
 
@@ -17,7 +17,20 @@ def displayBox(messageType, messageInfo, messageTitle, isError=False):
     messageBox.setWindowTitle(messageTitle)
     messageBox.exec_()
 
+class ThreadWithReturnValue(threading.Thread):
+    
+    def __init__(self, group=None, target=None, name=None,
+                 args=(), kwargs={}, Verbose=None):
+        threading.Thread.__init__(self, group, target, name, args, kwargs)
+        self._return = None
 
+    def run(self):
+        if self._target is not None:
+            self._return = self._target(*self._args,
+                                                **self._kwargs)
+            return self._return
+ 
+        
 
 class borderedQGroupBox(QGroupBox):
     def __init__(self,args):
@@ -345,10 +358,11 @@ class ContentWidget(QWidget):
 
         buttonLayout.addWidget(dailyStatsButton)
 
-        outliersButton = QPushButton("Outliers")
-        outliersButton.clicked.connect(self.checkOutliers)
-        outliersButton.setStyleSheet("background-color: #F57F0C; color: white; font-weight: bold")
-        buttonLayout.addWidget(outliersButton)
+        self.outliersButton = QPushButton("Outliers")
+        
+        self.outliersButton.clicked.connect(self.doOutliers)
+        self.outliersButton.setStyleSheet("background-color: #F57F0C; color: white; font-weight: bold")
+        buttonLayout.addWidget(self.outliersButton)
 
         
 
@@ -381,6 +395,7 @@ class ContentWidget(QWidget):
     
     def checkFile(self):
         #https://www.youtube.com/watch?v=QY4KKG4TBFo im keeping this in the comments
+        from src.lib.QualityControl import qualityCheck
         print("https://www.youtube.com/watch?v=QY4KKG4TBFo") #Are easter eggs allowed?
         try:
             min, max, count, missing, mean = qualityCheck(self.selectedFile)
@@ -393,50 +408,35 @@ class ContentWidget(QWidget):
             displayBox("File Error", "Please ensure a predictand file is selected and exists.","Error", isError=True)
 
     def getDailyStats(self):
+        from src.lib.QualityControl import dailyMeans
         try:
             stats = dailyMeans(self.selectedFile)
             displayBox("Daily Stats:", stats, "Daily Results")
         except FileNotFoundError:
             displayBox("File Error", "Please ensure a predictand file is selected and exists.", "Error", isError=True)
+    def doOutliers(self):
+        proc = ThreadWithReturnValue(target=self.checkOutliers)
+        proc.daemon = True
+        proc.start()
+        
 
     def checkOutliers(self):
+        self.outliersButton.setText("Calculating")
+        from src.lib.QualityControl import outliersID
         try:
-            message = outliersID(self.selectedFile, self.selectedOutlier)
-            displayBox("Outliers Identified", message, "Outlier Results")
+            message= outliersID(self.selectedFile, self.selectedOutlier)
+            self.outliersButton.setText("Outliers")
+            print("message in checkOutliers=",message)
+            #proc = threading.Thread(target=displayBox, args=("Outliers Identified", message, "Outlier Results"))
+            #proc.start()
+            #displayBox("Outliers Identified", message, "Outlier Results")
+
+            self.outliersButton.setText(message)
+            time.sleep(5)
+            self.outliersButton.setText("Outliers")
 
         except FileNotFoundError:
-            displayBox("File Error", "Please ensure predictand and output files are selected.", "Error", isError=True)
+            self.outliersButton.setText("Outliers")
+    
 
 
-    def handleMenuButtonClicks(self):
-        button = self.sender().text()
-        if button == "Check File":
-            #https://www.youtube.com/watch?v=QY4KKG4TBFo im keeping this in the comments
-            print("https://www.youtube.com/watch?v=QY4KKG4TBFo") #Are easter eggs allowed?
-            try:
-                min, max, count, missing, mean = qualityCheck(self.selectedFile)
-                self.minimumFrame.contentLabel.setText(min)
-                self.maximumFrame.contentLabel.setText(max)
-                self.meanFrame.contentLabel.setText(mean)
-                self.numOfValuesFrame.contentLabel.setText(count)
-                self.missingFrame.contentLabel.setText(missing)
-            except FileNotFoundError:
-                displayBox("File Error", "Please ensure a predictand file is selected and exists.","Error", isError=True)
-
-           
-        elif button == "Outliers":
-            try:
-                message = outliersID(self.selectedFile, self.selectedOutlier)
-                displayBox("Outliers Identified", message, "Outlier Results")
-
-            except FileNotFoundError:
-                displayBox("File Error", "Please ensure predictand and output files are selected.", "Error", isError=True)
-        elif button == "Daily Stats":
-            try:
-                stats = dailyMeans(self.selectedFile)
-                displayBox("Daily Stats:", stats, "Daily Results")
-            except FileNotFoundError:
-                displayBox("File Error", "Please ensure a predictand file is selected and exists.", "Error", isError=True)
-            
-        else:
-            print("work in progress, pardon our dust")

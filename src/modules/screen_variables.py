@@ -458,11 +458,11 @@ class ContentWidget(QWidget):
     def predictorLabelClicked(self,*args):
         button = self.sender() #Get the buttonLabel that was clicked
         predictor = button.text() #Get the name of the buttonLabel, so the predictor file
-        if predictor not in self.predictorsSelected:
+        if (self.predictorPath+"/"+predictor) not in self.predictorsSelected:
             self.predictorsSelected.append(self.predictorPath+"/"+predictor)
             button.setStyleSheet("color: white; background-color: blue")
         else:
-            self.predictorsSelected.remove(predictor)
+            self.predictorsSelected.remove(self.predictorPath+"/"+predictor)
             button.setStyleSheet("color: black; background-color: #F0F0F0")
         try:
             predictorDescription = filesNames(predictor)

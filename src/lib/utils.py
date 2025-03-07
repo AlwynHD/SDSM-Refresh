@@ -4,6 +4,65 @@ import os
 import re
 import numpy as np
 
+class thirtydate:
+    """
+    SDSM allows a date option where all months have 30 days
+    Python's native datetime.date does not support this
+    Especially noticable with Feb 30
+    --> This date should support all the functionality needed
+    --> Use in place of datetime.date when needed
+    """
+    def __init__(self, year, month, day):
+        self.year = year
+        self.month = month
+        self.day = day
+
+    def __subtract__(self, other):
+        return cooldelta(
+            ((self.year - other.year) * 30 * 12) +
+            ((self.month - other.month) * 30) +
+            (self.day - other.day)
+        )
+    def __eq__(self, other):
+        if ((self.year == other.year) 
+        and (self.month == other.month) 
+        and (self.day == other.day)):
+            return True
+        else:
+            return False
+    
+    def __gt__(self, other):
+        if self.year == other.year:
+            if self.month == other.month:
+                if self.day == other.day:
+                    return False
+                else:
+                    return self.day > other.day
+            else:
+                return self.month > other.day
+        else:
+            return self.year > other.year
+        
+    def __ge__(self, other):
+        return (self > other) | (self == other)
+
+    def __lt__(self, other):
+        return not (self >= other)
+
+    def __le__(self, other):
+        return not (self > other)
+
+    def __ne__(self, other):
+        return not (self == other)
+
+    def __add__(self, other):
+        if isinstance(other, datetime.timedelta):
+            ###convert to int
+            pass ##stop empty errors
+        ##eendif
+        ###add to date
+        ###do modulos
+
 
 def displayFiles(selected_files):
     """

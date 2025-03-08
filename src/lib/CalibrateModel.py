@@ -7,10 +7,10 @@ from copy import deepcopy
 
 def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegression):
     """
-        Core Calibrate Model Function (v0.1.1)
+        Core Calibrate Model Function (v0.2.1)
         applyStepwise -> Stepwise Tickbox
         modelType -> Monthly/Seasonal/Annual (0/1/2), can change easily according to the will of the GUI Developer Gods
-        detrendOption -> Detrend Options. 0-> None, 1/2 -> Options. Code currently (falsely) assumes boolean input
+        detrendOption -> Detrend Options. 0-> None, 1 -> Linear, 2 -> Power function
         parmOpt -> Conditional / Unconditional model, True / False respectively
         autoRegression -> Autoregression tickbox
         ----------------------------------------
@@ -26,6 +26,11 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
     ## Corrected periodWorkingOn to be within 0-11 rather than 1-12
     ## Fixed section #5.2.0 such that it now runs without crashing
 
+
+    ##In v0.2.1:
+    ## detrendOption correctly uses 0, 1 & 2 rather than bool
+    ## Adjusted DetrendData to use detrendOption as parameter
+
     #------------------------
     # FUNCTION DEFINITITIONS:
     #------------------------
@@ -40,8 +45,8 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
     globalStartDate = date(2004, 8, 5)
     globalEndDate = date(2025, 1, 7)
     fsDate = date(2005, 1, 8)
-    feDate = deepcopy(globalEndDate)
-    detrendOption = False #True
+    feDate = deepcopy(globalEndDate)    
+    detrendOption = 0 #0, 1 or 2...
     parmOpt = True  ## Whether Conditional or Unconditional. True = Cond, False = Uncond. 
     ##ParmOpt(1) = Uncond = False
     ##ParmOpt(0) = Cond = True
@@ -398,9 +403,9 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
                 #---- SECTION #5.1.1 ---- 
                 #------------------------
 
-                if (not detrendOption and not parmOpt):
+                if (detrendOption != 0 and not parmOpt):
                     ##call detrendData(periodWorkingOn, False)
-                    detrendData(yMatrix, yMatrixAboveThreshPos, periodWorkingOn, False)
+                    detrendData(yMatrix, yMatrixAboveThreshPos, detrendOption, periodWorkingOn, False)
 
                 savedYMatrix = deepcopy(yMatrix)
                 if parmOpt:
@@ -477,9 +482,9 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
                     transformData()
                     ##if errored then exit
 
-                    if detrendOption:
+                    if detrendOption != 0:
                         ##call DetrendData
-                        detrendData(yMatrix, yMatrixAboveThreshPos, periodWorkingOn, True)
+                        detrendData(yMatrix, yMatrixAboveThreshPos, detrendOption, periodWorkingOn, True)
 
 
                     if modelTrans == 5:
@@ -607,10 +612,10 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
                     #---- SECTION #5.2.1 ---- 
                     #------------------------
 
-                    if (not detrendOption and not parmOpt):
+                    if (detrendOption != 0 and not parmOpt):
                         ##call detrendData(periodWorkingOn, False)
-                        detrendData(yMatrix, yMatrixAboveThreshPos, periodWorkingOn, False)
-                        
+                        detrendData(yMatrix, yMatrixAboveThreshPos, detrendOption, periodWorkingOn, False)
+                       
                     savedYMatrix = deepcopy(yMatrix)
 
                     if parmOpt:
@@ -698,9 +703,9 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
                         transformData()
                         #if errored then exit
 
-                        if detrendOption:
+                        if detrendOption != 0:
                             ##call DetrendData
-                            detrendData(yMatrix, yMatrixAboveThreshPos, periodWorkingOn, True)
+                            detrendData(yMatrix, yMatrixAboveThreshPos, detrendOption, periodWorkingOn, True)
 
                         if modelTrans == 5:
                             if seasonCode == 12:
@@ -833,7 +838,7 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
 
             ##this might be the certified export parameters moment...
             tempNPred = 0
-            if detrendOption:
+            if detrendOption != 0:
                 #print NPredictors
                 tempNPRed = NPredictors
             else:
@@ -880,7 +885,7 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
             
             #call PrintResults
             #print PTandRoot
-            if detrendOption:   ##Will need to double check and standardise this parameter
+            if detrendOption != 0:   ##Will need to double check and standardise this parameter
                 #call PrintTrendParms
                 #printTrendParms() ##???
                 do_nothing()
@@ -904,14 +909,13 @@ def do_nothing():
 
 ##Core functions called directly from calibrateModel()
 
-def detrendData(yMatrix: np.array, yMatrixAboveThreshPos: np.array, period: int, conditional: bool):
+def detrendData(yMatrix: np.array, yMatrixAboveThreshPos: np.array, detrendOption: int, period: int, conditional: bool):
+    """"
+    Detrend Data Function v1.0
+    -- May or may not work - Find out soon!
+    DetrendOption: 0 = none, 1 = Linear, 2 = power function
+    Requires yMatrixAboveThreshPos to be set (generally configured in TransformData)
     """
-    Detrend Data Function
-    -- Currently a placeholder
-    ----> Might be Coming Soon
-    ----> Hard dependency on TransformData (Needs yMatrixAboveThreshPos)
-    """
-    ##DetrendOption: 0 = none, 1 = Linear, 2 = power function
 
     debugMsg(yMatrix)
     xValues = np.ndarray((len(yMatrix), 2))
@@ -931,7 +935,7 @@ def detrendData(yMatrix: np.array, yMatrixAboveThreshPos: np.array, period: int,
         ##endif
     ##next i
 
-    if detrendOption == 1:
+    if detrendOption == 1: #linear regression
         tempMatrix1 = np.linalg.inv(np.multiply(xValues.transpose, xValues))
         tempMatrix2 = np.multiply(xValues.transpose, yMatrix)
         betaValues = np.multiply(tempMatrix1, tempMatrix2)
@@ -942,7 +946,7 @@ def detrendData(yMatrix: np.array, yMatrixAboveThreshPos: np.array, period: int,
             yMatrix[i] -= (xValues[i,1] * betaValues[1]) #,0])
         ##next i
 
-    else:
+    elif detrendOption == 2: #Power function
         xLogged = deepcopy(xValues)
         #minY = 99999
         #for i in range(len(yMatrix)):
@@ -970,6 +974,8 @@ def detrendData(yMatrix: np.array, yMatrixAboveThreshPos: np.array, period: int,
         for i in range(len(yMatrix)):
             yMatrix[i] -= (betaValues[0,0] * (xValues[i, 1] ** betaValues[1,0])) - np.abs(minY) - 0.001
         
+    else:
+        debugMsg("Error: Invalid Detrend Option")
 
 
 

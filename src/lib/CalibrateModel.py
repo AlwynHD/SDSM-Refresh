@@ -31,6 +31,9 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
     ## detrendOption correctly uses 0, 1 & 2 rather than bool
     ## Adjusted DetrendData to use detrendOption as parameter
 
+    ## In v0.2.2:
+    ## Propogate Conditional & Unconditional functions implemented
+
     #------------------------
     # FUNCTION DEFINITITIONS:
     #------------------------
@@ -410,7 +413,7 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
                 savedYMatrix = deepcopy(yMatrix)
                 if parmOpt:
                     ##call PropogateUnConditional
-                    propogateUnconditional()
+                    propogateUnconditional(yMatrix, thresh)
 
                 if xValidation:
                     ##call xValUnConditional
@@ -472,7 +475,7 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
                     ##endif
 
                     #call PropogateConditional
-                    propogateConditional() 
+                    propogateConditional(xMatrix, yMatrix, yMatrixAboveThreshPos, thresh, NPredictor) 
 
                     if xValidation:
                         #call xvalConditional
@@ -620,7 +623,7 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
 
                     if parmOpt:
                         ###call PropogateUnconditional
-                        propogateUnconditional()
+                        propogateUnconditional(yMatrix, thresh)
                     
                     if xValidationCheck:
                         ##call xValUnconditional
@@ -693,7 +696,7 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
                         ##endif
 
                         #call PropogateConditional
-                        propogateConditional()
+                        propogateConditional(xMatrix, yMatrix, yMatrixAboveThreshPos, thresh, NPredictor) 
 
                         if xValidation:
                             #call xValConditional
@@ -979,16 +982,46 @@ def detrendData(yMatrix: np.array, yMatrixAboveThreshPos: np.array, detrendOptio
 
 
 
-def propogateUnconditional():
-    """Propogate Unconditional Function
-    -- Currently a placeholder
+def propogateUnconditional(yMatrix: np.array, thresh):
+    """Propogate: Unconditional Function v1.0
+    -- yMatrix is an array / Matrix of size (x, 1)
+    -- Thresh is the Threshold Value (originally defined as Single)
     """
-def propogateConditional():
-    """ Propogate: Conditional Function
-    -- Currently a placeholder
-    -- VERY similar functionality to propUncond
-    ----> Might merge code if possible
+    for i in range(len(yMatrix)):
+        if yMatrix[i] > thresh:
+            yMatrix[i] = 1
+        else:
+            yMatrix[i] = 0
+
+def propogateConditional(xMatrix: np.ndarray, yMatrix: np.ndarray, yMatrixAboveThreshPos: np.ndarray, thresh, NPredictors: int):
+    """ 
+    Propogate: Conditional Function v1.0
+    Reduces X and Y matrices into above threshold values only - adjusts size of X and Y too
     """
+
+    ### GLOBALS ###
+    #thresh = 0
+    #NPredictors = 21
+    #yMatrixAboveThreshPos = np.array()
+    #xMatrix = np.array()
+    ### ####### ###
+
+    tempCounter = 0
+    for i in range(len(yMatrix)):
+        if yMatrix[i] > thresh:
+            for j in range(NPredictors):
+                xMatrix[tempCounter, j] = xMatrix[i, j]
+            #Next j
+            yMatrix[tempCounter] = yMatrix[i]
+            ### MILDLY INTERESTING - Is the +1 Necessary?
+            yMatrixAboveThreshPos[tempCounter, 0] = i+1   #'keeps a record of where above thresh values occured for detrend option
+            tempCounter += 1
+        #End If
+    #Next i
+    ##May be defective idk
+    xMatrix.resize((tempCounter, NPredictors))
+    yMatrix.resize((tempCounter))
+    yMatrixAboveThreshPos.resize((tempCounter))
 
 def xValUnConditional():
     """
@@ -1020,11 +1053,10 @@ def calculateParameters():
 
 def transformData(xMatrix: np.ndarray, yMatrix: np.array, yMatrixAboveThreshPos: np.array, modelTrans):
     """
-        Transform data?
+        Transform data v1.0
         transforms data in Y Matrix according to transformation required.  Amends (reduces) X matrix too if some values are missing
         modelTrans ->  Option from None (1), 4th Root (2), Natural Log (3), Inverse Normal (4), Box Con (5)
         yMatrix -> 'Y Matrix - X declared globally so registration code entered
-        Likely doesn't work - was done right at the start
     """
     ##Calls FindMinLambda
 

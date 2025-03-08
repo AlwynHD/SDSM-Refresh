@@ -5,7 +5,7 @@ import re
 import calendar
 import numpy as np
 
-class thirtydate:
+class thirtyDate:
     """
     SDSM allows a date option where all months have 30 days
     Python's native datetime.date does not support this
@@ -19,7 +19,7 @@ class thirtydate:
         self.day = day
 
     def __subtract__(self, other):
-        return cooldelta(
+        return thirtyDate(
             ((self.year - other.year) * 30 * 12) +
             ((self.month - other.month) * 30) +
             (self.day - other.day)
@@ -58,12 +58,26 @@ class thirtydate:
 
     def __add__(self, other):
         if isinstance(other, datetime.timedelta):
-            ###convert to int
-            pass ##stop empty errors
-        ##eendif
-        ###add to date
-        ###do modulos
+            toIncrease = other.days
+        elif isinstance(other, int):  # If it's an integer, assume it's days to add.
+            toIncrease = other
+        else:
+            raise TypeError("Unsupported type for addition with ThirtyDate.")
 
+        nextDay = self.day - 1 + toIncrease # mod get numbers between 0-29 we want 1-30. 1's to make it right
+        self.day = nextDay % 30 + 1 
+        nextMonth = nextDay // 30 + self.month - 1
+        self.month = nextMonth % 12 + 1
+        nextYear = nextMonth // 12 + self.year
+        self.year = nextYear
+
+        return self
+    
+    def __str__(self):
+        """A user-friendly string representation of the date."""
+        # Format the date as "YYYY-MM-DD"
+        return f"{self.year:04d}-{self.month:02d}-{self.day:02d}"
+        #return str(self.year) + '-' + ('0' + str(self.month) if self.month < 10 else str(self.month)) + '-' + ('0' + str(self.day) if self.day < 10 else str(self.day))
 
 def displayFiles(selected_files):
     """
@@ -254,8 +268,9 @@ def checkIfFileFormatted(file):
 
 if __name__ == '__main__':
     #Module tests go here
-    currentDate = datetime.datetime(2000, 2, 26)
-    noDays = 7
-    increaseDate(currentDate, noDays)
-    increaseDate(datetime.datetime(2001, 1, 26), 77)
-    jeff = datetime.datetime(2000, 2, 30)
+    date1 = thirtyDate(2025, 3, 30)  # March 30, 2025 (in this system, all months have 30 days)
+    print(date1)
+    #date2 = thirtyDate(2025, 5, 15)
+    #print(date2)
+    date1 += datetime.timedelta(days=2)
+    print(date1)

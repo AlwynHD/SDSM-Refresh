@@ -18,13 +18,15 @@ class thirtyDate:
         self.month = month
         self.day = day
 
-    def __subtract__(self, other):
-        return thirtyDate(
+    def __sub__(self, other):
+        return (
             ((self.year - other.year) * 30 * 12) +
             ((self.month - other.month) * 30) +
             (self.day - other.day)
         )
+    
     def __eq__(self, other):
+        #equal to
         if ((self.year == other.year) 
         and (self.month == other.month) 
         and (self.day == other.day)):
@@ -33,6 +35,7 @@ class thirtyDate:
             return False
     
     def __gt__(self, other):
+        #greater than
         if self.year == other.year:
             if self.month == other.month:
                 if self.day == other.day:
@@ -45,18 +48,23 @@ class thirtyDate:
             return self.year > other.year
         
     def __ge__(self, other):
+        #greater than or equal to
         return (self > other) | (self == other)
 
     def __lt__(self, other):
+        #less than
         return not (self >= other)
 
     def __le__(self, other):
+        #less than or equal to
         return not (self > other)
 
     def __ne__(self, other):
+        #not equal to
         return not (self == other)
 
     def __add__(self, other):
+        # increase date by timedelta or int
         if isinstance(other, datetime.timedelta):
             toIncrease = other.days
         elif isinstance(other, int):  # If it's an integer, assume it's days to add.
@@ -74,6 +82,7 @@ class thirtyDate:
         return self
     
     def __str__(self):
+        # convert to string to print
         """A user-friendly string representation of the date."""
         # Format the date as "YYYY-MM-DD"
         return f"{self.year:04d}-{self.month:02d}-{self.day:02d}"
@@ -268,9 +277,13 @@ def checkIfFileFormatted(file):
 
 if __name__ == '__main__':
     #Module tests go here
-    date1 = thirtyDate(2025, 3, 30)  # March 30, 2025 (in this system, all months have 30 days)
+    date1 = thirtyDate(2025, 4, 1)  # March 30, 2025 (in this system, all months have 30 days)
     print(date1)
-    #date2 = thirtyDate(2025, 5, 15)
-    #print(date2)
-    date1 += datetime.timedelta(days=2)
-    print(date1)
+    date2 = thirtyDate(2025, 5, 1)
+    print(date2)
+    date3 = datetime.date(2025, 4, 1)  # March 30, 2025 (in this system, all months have 30 days)
+    print(date3)
+    date4 = datetime.date(2025, 5, 1)
+    print(date4)
+    print(date1 - date2)
+    print((date3 - date4).days)

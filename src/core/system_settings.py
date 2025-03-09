@@ -7,7 +7,7 @@ import os
 import sys
 
 # Constants
-defaultIniFile = 'settings.ini'
+defaultIniFile = os.path.join("src", "lib", "settings.ini")
 
 # Default Values for Reset
 defaultValues = {
@@ -20,7 +20,7 @@ defaultValues = {
     'allowNeg': True,
     'randomSeed': True,
     'thresh': 0,
-    'defaultDir': QDir.homePath(),
+    'defaultDir': os.path.join("src", "lib"),
     'globalMissingCode': -999,
     'varianceInflation': 12,
     'biasCorrection': 1,
@@ -319,16 +319,15 @@ class ContentWidget(QWidget):
         except ValueError:
             return fallback
 
-    def saveSettings(self, iniFile=None):
+    def saveSettings(self, iniFile=None, silent=False):
         global yearIndicator, globalSDate, globalEDate, allowNeg, randomSeed, thresh, globalMissingCode, defaultDir
         global varianceInflation, biasCorrection, fixedThreshold, modelTransformation, optimizationAlgorithm, criteriaType, stepwiseRegression, conditionalSelection, months
 
         if iniFile is None:
             iniFile = QFileDialog.getExistingDirectory(None, "Select Directory to Save Settings", defaultDir)
-
-        if not iniFile:
-            return
-        iniFile = os.path.join(iniFile, 'settings.ini')
+            if not iniFile:
+                return
+            iniFile = os.path.join(iniFile, 'settings.ini')
 
         config = configparser.ConfigParser()
         config['Settings'] = {
@@ -352,13 +351,12 @@ class ContentWidget(QWidget):
         }
 
         try:
-            if os.path.isdir(iniFile):
-                iniFile = os.path.join(iniFile, 'settings.ini')
             with open(iniFile, 'w') as configfile:
                 config.write(configfile)
+            if not silent:
                 QMessageBox.information(self, "Info", f"Settings saved to '{iniFile}'")
         except OSError as e:
-            QMessageBox.critical(self, "Error", f"Error: Could not save settings to the specified location '{iniFile}'. Reason: {e}")
+            QMessageBox.critical(self, "Error", f"Error: Could not save settings to '{iniFile}'. Reason: {e}")
     
     def saveSettingsFromUi(self):
         global varianceInflation, biasCorrection, fixedThreshold, modelTransformation, optimizationAlgorithm, criteriaType, stepwiseRegression, conditionalSelection, months
@@ -403,6 +401,55 @@ class ContentWidget(QWidget):
 
     def get_conditional_selection(self):
         return "Stochastic" if self.conditionalStochastic.isChecked() else "Fixed Threshold"
+    
+    def hideEvent(self, event):
+        """
+        Upon hiding the window, update UI values (with validation) and silently save them 
+        to the default INI file without prompting for a directory or showing a confirmation.
+        """
+        global varianceInflation, biasCorrection, fixedThreshold, modelTransformation, optimizationAlgorithm, criteriaType, stepwiseRegression, conditionalSelection, months
+
+        # Validate Variance Inflation (should be numeric)
+        vi = self.varianceInflationEdit.text()
+        try:
+            float(vi)
+        except ValueError:
+            QMessageBox.critical(self, "Error", "Error: Variance Inflation value must be numeric.")
+            event.ignore()
+            return
+
+        # Validate Bias Correction (should be numeric)
+        bc = self.biasCorrectionEdit.text()
+        try:
+            float(bc)
+        except ValueError:
+            QMessageBox.critical(self, "Error", "Error: Bias Correction value must be numeric.")
+            event.ignore()
+            return
+
+        # Validate Fixed Threshold (should be numeric)
+        ft = self.fixedThresholdEdit.text()
+        try:
+            float(ft)
+        except ValueError:
+            QMessageBox.critical(self, "Error", "Error: Fixed Threshold value must be numeric.")
+            event.ignore()
+            return
+
+        # Update global variables from the UI values
+        varianceInflation = vi
+        biasCorrection = bc
+        fixedThreshold = ft
+        modelTransformation = self.get_model_transformation()
+        optimizationAlgorithm = self.get_optimization_algorithm()
+        stepwiseRegression = str(self.stepwiseRegressionCheck.isChecked())
+        criteriaType = self.get_criteria_type()
+        conditionalSelection = self.get_conditional_selection()
+        months = [edit.text() for edit in self.wetDayEdits]
+
+        # Save settings silently to the default ini file (no file dialog or confirmation prompt)
+        self.saveSettings(defaultIniFile, silent=True)
+        event.accept()
 
 # Main function for testing the UI
 def main():

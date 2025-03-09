@@ -980,8 +980,6 @@ def detrendData(yMatrix: np.array, yMatrixAboveThreshPos: np.array, detrendOptio
     else:
         debugMsg("Error: Invalid Detrend Option")
 
-
-
 def propogateUnconditional(yMatrix: np.array, thresh):
     """Propogate: Unconditional Function v1.0
     -- yMatrix is an array / Matrix of size (x, 1)
@@ -1050,6 +1048,217 @@ def calculateParameters():
     -- Currently a placeholder
     -- Presumably calculates parameters
     """
+
+def calculateParameters2(xMatrix: np.ndarray, yMatrix: np.ndarray, optimisationChoice: int, NPredictors: int):
+    """
+    Calculate Parameters #2 v1.0
+    Component function for Calculate Parameters #1 and Stepwise Regression
+    - Calculates MLR parameters for XMatrix and YMatrix
+    - PropResiduals = whether we want the residuals array to be added to
+    - Calculates the global variables SE and rsquared for these particular arrays too and FRatio
+    - Establishes BetaMatrix and ResidualMatrix
+    """
+
+    ### GLOBALS ###
+    GlobalMissingCode = -999
+    #yMatrixAboveThreshPos = np.array()
+    #xMatrix = np.ndarray()
+    ### ####### ###
+
+    yBar = np.sum(yMatrix) / len(yMatrix)
+
+    if optimisationChoice == 1:
+        xTransY = np.matmul(xMatrix.transpose(), yMatrix)
+        xTransXInverse = np.matmul(xMatrix.transpose(), np.linalg.inv(xMatrix))
+        betaMatrix = np.matmul(xTransXInverse, xTransY)
+
+    else:
+        #Dual Simplex Approach
+        ## INITIALISATION
+        IMAX = xMatrix.shape[0] #+1
+        JMAX = NPredictors #+1
+        KPN = IMAX + JMAX
+        KP1 = JMAX
+        A = np.zeros((IMAX + 1, JMAX + 1))
+        B = np.zeros((20))
+        C = np.zeros((KPN))
+        xBar = np.zeros((20))
+        ISS = np.zeros((IMAX + 1), int)
+        NB = np.array(range(JMAX + 1))
+        TOL = 0.00000001
+
+        for i in range(KP1, KPN):
+            C[i] = 2
+        xSum = np.sum(xMatrix, 0)
+        for j in range(NPredictors):
+            #I THINK
+            xBar[j] = xSum[j] / len(xSum) ##My math senses tell me something's wrong here...
+            for i in range(xMatrix.shape[0]):
+                A[i + 1, j] = xMatrix[i, j] - xBar[j]
+        
+        for i in range(len(xSum)):
+            ISS[i+ 1] = i + NPredictors
+            A[i + 1, JMAX] = yMatrix[i] - yBar
+
+        ##END OF INIT
+
+        done = True
+        while done != True: ##Condition irrelevant - loop exits via 'break' statement
+            while True:
+                H = -TOL
+                ICAND = 0
+                done = True
+                for i in range(1, IMAX): 
+                    if A[i, JMAX] < H:
+                        done = False
+                        H = A[i, JMAX]
+                        ICAND = i
+                ##next
+
+                if done:
+                    break
+                else:
+                    JCAND = 0
+                    RATIO = -10000000000
+                    for j in range(NPredictors):
+                        IONE = 1
+                        aa = A[ICAND, j]
+                        if np.abs(aa) >= TOL:
+                            RCOST = A[0, j]
+                            if aa >= -TOL:
+                                IONE = -1
+                                if np.abs(NB[j]) > NPredictors:
+                                    RCOST -= 2
+                                ##end if
+                            ##endif
+                            r = RCOST / aa
+                            if r > RATIO:
+                                JCAND = j * IONE
+                                RATIO = r
+                                RSAVE = RCOST
+                            #endif
+                        #endif
+                    #next j
+
+                    IT = ISS[ICAND]
+                    II = np.abs(IT)
+                    CJ = C[II]
+                    if RATIO > -CJ:
+                        break
+                    else:
+                        ISS[ICAND] *= -1 #Make -ve or vice versa
+                        for j in range(JMAX):
+                            A[0, j] += CJ * A[ICAND, j] * -1
+                            #A[]
+                        #j
+                    #endif
+                #endif
+
+            #end while
+            if done:
+                break
+
+            oneFlipper = 1
+            if JCAND <= 0:
+                JCAND *= -1
+                NB[JCAND] *= -1
+                oneFlipper = -1
+                A[0, JCAND] = RSAVE
+            pivot = A[ICAND, JCAND] * oneFlipper
+            for j in range(JMAX):
+                A[ICAND, j] /= pivot
+            #next j
+            for i in range(IMAX):
+                if i != ICAND:
+                    AIJ = A[i, JCAND] * oneFlipper
+                    if AIJ != 0:
+                        for j in range(JMAX):
+                            A[i, j] -= A[ICAND, j] * AIJ
+                        #next j
+                        A[i, JCAND] = -AIJ / pivot
+                    #endif
+                #endif
+            #next i
+            A[ICAND, JCAND] = 1 / pivot
+            ISS[ICAND] = NB[JCAND]
+            NB[JCAND] = IT
+
+        #endwhile
+
+        ALPHA = yBar
+        for i in range(1, IMAX):
+            oneFlipper = 1
+            II = ISS[i]
+            if np.abs(II) <= NPredictors:
+                if II <= 0:
+                    II *= -1
+                    oneFlipper = -1
+                #endif
+                B[II] = oneFlipper * A[i, JMAX]
+                ALPHA -= xBar[II] * B[II]
+            #endif
+        #next i
+
+        betaMatrix = np.zeros((NPredictors))
+        betaMatrix[0] = ALPHA
+        for i in range(NPredictors):
+            betaMatrix[i] = B[i]
+        #next i
+        xTransY = np.matmul(xMatrix.transpose(), yMatrix)
+
+        dependencies = False
+        for i in range(NPredictors):
+            if np.abs(NB[i]) <= NPredictors:
+                dependencies = True
+                break
+
+        dependMsg = True #No idea where this is supposed to be defined...
+        if dependencies and not dependMsg:
+            ##Warning error
+            pass
+        #endif
+    #endif
+
+    predictedMatrix = np.matmul(xMatrix, betaMatrix)
+    residualMatrix = np.subtract(yMatrix, predictedMatrix)
+    meanY = 0
+    for i in range(xMatrix.shape[0]):
+        meanY += yMatrix[i]
+    
+    if xMatrix.shape[0] > 0:
+        meanY /= xMatrix.shape[0]
+    else:
+        meanY = GlobalMissingCode
+    #endif
+
+    #merge with above loop later
+    RSS = 0
+    for i in range(xMatrix.shape[0]):
+        modelled = 0
+        for j in range(xMatrix.shape[1]):
+            modelled += betaMatrix[j] * xMatrix[i, j]
+        #next j
+        RSS += (modelled - yMatrix[i]) ** 2
+    #next i
+    debugMsg(f"RSS: {RSS}")
+    if RSS < 0.0001:
+        RSS = 0.0001
+    
+    if meanY != GlobalMissingCode:
+        SSM = 0
+        for i in range(xMatrix.shape[0]):
+            modelled = 0
+            for j in range(xMatrix.shape[1]):
+                modelled += (betaMatrix[j] * xMatrix[i, j])
+            #next j
+            SSM += (modelled - meanY) ** 2
+        #next i
+        fRatio = (SSM / NPredictors) / (RSS / (xMatrix.shape[0] - NPredictors))
+    else:
+        fRatio = GlobalMissingCode
+    #endif
+
+    return fRatio
 
 def transformData(xMatrix: np.ndarray, yMatrix: np.array, yMatrixAboveThreshPos: np.array, modelTrans):
     """

@@ -76,6 +76,7 @@ psutil==5.9.8
 pure-eval==0.2.2
 pycparser==2.22
 Pygments==2.17.2
+pyhomogeneity==1.1
 pyparsing==3.1.2
 PyQt5==5.15.11
 PyQt5-Qt5==5.15.16
@@ -84,6 +85,7 @@ python-dateutil==2.9.0.post0
 python-json-logger==2.0.7
 PyYAML==6.0.1
 pyzmq==25.1.2
+pyqtgraph==0.13.3
 qtconsole==5.5.1
 QtPy==2.4.1
 referencing==0.34.0

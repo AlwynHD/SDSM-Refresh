@@ -914,7 +914,7 @@ def do_nothing():
 
 def detrendData(yMatrix: np.array, yMatrixAboveThreshPos: np.array, detrendOption: int, period: int, conditional: bool):
     """"
-    Detrend Data Function v1.0
+    Detrend Data Function v1.1
     -- May or may not work - Find out soon!
     DetrendOption: 0 = none, 1 = Linear, 2 = power function
     Requires yMatrixAboveThreshPos to be set (generally configured in TransformData)
@@ -939,9 +939,9 @@ def detrendData(yMatrix: np.array, yMatrixAboveThreshPos: np.array, detrendOptio
     ##next i
 
     if detrendOption == 1: #linear regression
-        tempMatrix1 = np.linalg.inv(np.multiply(xValues.transpose, xValues))
-        tempMatrix2 = np.multiply(xValues.transpose, yMatrix)
-        betaValues = np.multiply(tempMatrix1, tempMatrix2)
+        tempMatrix1 = np.linalg.inv(np.matmul(xValues.transpose, xValues))
+        tempMatrix2 = np.matmul(xValues.transpose, yMatrix)
+        betaValues = np.matmul(tempMatrix1, tempMatrix2)
         betaTrend[period, 0] = betaValues[0] #,0]
         betaTrend[period, 1] = betaValues[1] #,0]
 
@@ -966,9 +966,9 @@ def detrendData(yMatrix: np.array, yMatrixAboveThreshPos: np.array, detrendOptio
             xLogged[i] = np.log(xValues[i, 1])
 
         #tempMatrix1 = xLogged.transpose
-        tempMatrix1 = np.linalg.inv(np.multiply(xLogged.transpose, xLogged))
-        tempMatrix2 = np.multiply(xLogged.transpose, tempYMatrix)
-        betaValues = np.multiply(tempMatrix1, tempMatrix2)
+        tempMatrix1 = np.linalg.inv(np.matmul(xLogged.transpose, xLogged))
+        tempMatrix2 = np.matmul(xLogged.transpose, tempYMatrix)
+        betaValues = np.matmul(tempMatrix1, tempMatrix2)
         betaValues[0] = np.exp(betaValues[0]) #,0] = np.exp(betaBalues(0,0))
         betaTrend[period, 0] = betaValues[0]
         betaTrend[period, 1] = betaValues[1]

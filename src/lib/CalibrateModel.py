@@ -78,12 +78,12 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
 
 
     ## True Temps:
-    rSquared = 0
-    SE = 0
-    chowStat = 0
-    fRatio = 0
+    #rSquared = 0
+    #SE = 0
+    #chowStat = 0
+    #fRatio = 0
     parameterResultsArray = np.zeros((24,50))
-    CondPropCorrect = 5
+    #CondPropCorrect = 5
 
     ## Note: The following vars were not adjusted to use 0 as their base:
     # ModelTrans
@@ -426,7 +426,7 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
                     stepWiseRegression() ##very wise #betamatrix defined here
                 else:
                     ##call CalculateParameters(parmOpt)
-                    calculateParameters()   #betamatrix defined here
+                    params = calculateParameters(xMatrix, yMatrix, optimisationChoice, NPredictors, includeChow, conditionalPart, parmOpt)   #betamatrix defined here
                 ##endif
 
                 if processTerminated:
@@ -437,17 +437,17 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
 
                 for i in range(12):  ## 0-11 inclusive
                     for j in range(NPredictors + 1): ## 0-NPred inclusive
-                        #parameterResultsArray[i, j] = betaMatrix[j, 0]
+                        parameterResultsArray[i, j] = params["betaMatrix"][j]
                         do_nothing()
                     ##next
                     ##Dim ParameterResultsArray(1 To 24, 1 To 50) As Double   'stores beta parmeters etc from calulations as going along - printed to file in the end
-                    parameterResultsArray[i, NPredictors + 1] = SE
-                    parameterResultsArray[i, NPredictors + 2] = RSquared
+                    parameterResultsArray[i, NPredictors + 1] = params["SE"]
+                    parameterResultsArray[i, NPredictors + 2] = params["RSQR"]
                     ##Dim StatsSummary(1 To 26, 1 To 5) As Double 'stores summary stats for each month;1=R2, 2=SE; 3=DW; 4=Chow; 5=FRatio (1 to 24 for months -cond and uncond - 25,26 are the means)
-                    statsSummary[i, 0] = rSquared
-                    statsSummary[i, 1] = SE
-                    statsSummary[i, 3] = chowStat
-                    statsSummary[i, 5] = fRatio
+                    statsSummary[i, 0] = params["RSQR"]
+                    statsSummary[i, 1] = params["SE"]
+                    statsSummary[i, 3] = params["chowStat"]
+                    statsSummary[i, 5] = params["fRatio"]
                 ##next
 
                 #------------------------
@@ -460,8 +460,7 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
                 if parmOpt:
                     ## From Section #6.1.3 (Originally came before #6.1.2)
                     for i in range(12):
-                        statsSummary[i, 2] = CondPropCorrect
-                    ##next
+                        statsSummary[i, 2] = params["condPropCorrect"]                    ##next
 
 
                     ##call newprogressbar
@@ -498,8 +497,8 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
                     ##Can we move the following above, to make it an elif?
                     conditionalPart = True
                     #call CalculateParameters(true)
-                    calculateParameters() #betaMatrix defined here
-                    
+                    params = calculateParameters(xMatrix, yMatrix, optimisationChoice, NPredictors, includeChow, conditionalPart, parmOpt, residualArray) #betaMatrix defined here
+
                     if processTerminated:
                         ##exit
                         do_nothing()
@@ -509,15 +508,15 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
                     
                     for i in range(12, 24):
                         for j in range(NPredictors + 1):
-                            #parameterResultsArray[i, j] = betaMatrix[j, 0]
+                            parameterResultsArray[i, j] = params["betaMatrix"][j]
                             do_nothing()
                         ##next
-                        parameterResultsArray[i, NPredictors + 1] = SE
-                        parameterResultsArray[i, NPredictors + 2] = rSquared
-                        statsSummary[i, 0] = rSquared
-                        statsSummary[i, 1] = SE
-                        statsSummary[i, 3] = chowStat
-                        statsSummary[i, 4] = fRatio
+                        parameterResultsArray[i, NPredictors + 1] = params["SE"]
+                        parameterResultsArray[i, NPredictors + 2] = params["RSQR"]
+                        statsSummary[i, 0] = params["RSQR"]
+                        statsSummary[i, 1] = params["SE"]
+                        statsSummary[i, 3] = params["chowStat"]
+                        statsSummary[i, 4] = params["fRatio"]
                     ##next
                 else:
                     #------------------------
@@ -635,7 +634,7 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
                     ###but is notably missing the ApplyStepwise condition for CalcualteParameters
 
                     ##call CalculateParameters(parmOpt) ##Adjust to make sure its correct...?
-                    calculateParameters()
+                    params = calculateParameters(xMatrix, yMatrix, optimisationChoice, NPredictors, includeChow, conditionalPart, parmOpt)     #betaMatrix Defined Here
 
                     if processTerminated:
                         ##call mini_reset
@@ -646,27 +645,25 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
                     if seasonCode == 4:
                         for i in range(3):
                             for j in range(NPredictors):
-                                #parameterResultsArray[seasonMonths[periodWorkingOn, i], j] = betaMatrix[i, 0]
-                                do_nothing()
+                                parameterResultsArray[seasonMonths[periodWorkingOn, i], j] = params["betaMatrix"][i]
                             ##next j
-                            parameterResultsArray[seasonMonths[periodWorkingOn, i], NPredictors + 1] = SE
-                            parameterResultsArray[seasonMonths[periodWorkingOn, i], NPredictors + 2] = rSquared
-                            statsSummary[seasonMonths[periodWorkingOn, i], 0] = rSquared
-                            statsSummary[seasonMonths[periodWorkingOn, i], 1] = SE
-                            statsSummary[seasonMonths[periodWorkingOn, i], 3] = chowStat
-                            statsSummary[seasonMonths[periodWorkingOn, i], 4] = fRatio
+                            parameterResultsArray[seasonMonths[periodWorkingOn, i], NPredictors + 1] = params["SE"]
+                            parameterResultsArray[seasonMonths[periodWorkingOn, i], NPredictors + 2] = params["RSQR"]
+                            statsSummary[seasonMonths[periodWorkingOn, i], 0] = params["RSQR"]
+                            statsSummary[seasonMonths[periodWorkingOn, i], 1] = params["SE"]
+                            statsSummary[seasonMonths[periodWorkingOn, i], 3] = params["chowStat"]
+                            statsSummary[seasonMonths[periodWorkingOn, i], 4] = params["fRatio"]
                         ##next i
                     else: ##Monthly?
                         for i in range(NPredictors + 1):
-                            #parameterResultsArray[periodWorkingOn, i] = betaMatrix[i, 0]
-                            do_nothing()
+                            parameterResultsArray[periodWorkingOn, i] = params["betaMatrix"][i]
                         ##next
-                        parameterResultsArray[periodWorkingOn, NPredictors + 1] = SE
-                        parameterResultsArray[periodWorkingOn, NPredictors + 2] = rSquared
-                        statsSummary[periodWorkingOn, 0] = rSquared
-                        statsSummary[periodWorkingOn, 1] = SE
-                        statsSummary[periodWorkingOn, 3] = chowStat
-                        statsSummary[periodWorkingOn, 4] = fRatio
+                        parameterResultsArray[periodWorkingOn, NPredictors + 1] = params["SE"]
+                        parameterResultsArray[periodWorkingOn, NPredictors + 2] = params["RSQR"]
+                        statsSummary[periodWorkingOn, 0] = params["RSQR"]
+                        statsSummary[periodWorkingOn, 1] = params["SE"]
+                        statsSummary[periodWorkingOn, 3] = params["chowStat"]
+                        statsSummary[periodWorkingOn, 4] = params["fRatio"]
                     ##endif
 
                     #------------------------
@@ -679,10 +676,10 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
                     if parmOpt:
                         ## From Section #5.2.3 (Originally came before #5.2.2)
                         if seasonCode == 12:
-                            statsSummary[periodWorkingOn, 2] = CondPropCorrect
+                            statsSummary[periodWorkingOn, 2] = params["condPropCorrect"]
                         else:
                             for i in range(3):
-                                statsSummary[seasonMonths[periodWorkingOn, i], 2] = CondPropCorrect
+                                statsSummary[seasonMonths[periodWorkingOn, i], 2] = params["condPropCorrect"]
                             ##next
                         ##endif
 
@@ -748,7 +745,7 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
                         ##endif
                         conditionalPart = True
                         ##call CalculateParameters(true)
-                        calculateParameters() #BetaMatrix defined here
+                        params = calculateParameters(xMatrix, yMatrix, optimisationChoice, NPredictors, includeChow, conditionalPart, parmOpt, residualArray) #BetaMatrix defined here
                         if processTerminated:
                             ##exit
                             do_nothing()
@@ -765,28 +762,26 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
                         if seasonCode == 4:
                             for i in range(3):
                                 for j in range(NPredictors + 1):
-                                    #parameterResultsArray[seasonMonths[periodWorkingOn, i] + 12, j] = betaMatrix[j, 0]
-                                    do_nothing()
+                                    parameterResultsArray[seasonMonths[periodWorkingOn, i] + 12, j] = params["betaMatrix"][j]
                                 ##next j
-                                parameterResultsArray[seasonMonths[periodWorkingOn, i] + 11, NPredictors + 1] = SE
-                                parameterResultsArray[seasonMonths[periodWorkingOn, i] + 11, NPredictors + 2] = rSquared
-                                statsSummary[seasonMonths[periodWorkingOn, i] + 11, 0] = rSquared
-                                statsSummary[seasonMonths[periodWorkingOn, i] + 11, 1] = SE
-                                statsSummary[seasonMonths[periodWorkingOn, i] + 11, 3] = chowStat
-                                statsSummary[seasonMonths[periodWorkingOn, i] + 11, 4] = fRatio
+                                parameterResultsArray[seasonMonths[periodWorkingOn, i] + 11, NPredictors + 1] = params["SE"]
+                                parameterResultsArray[seasonMonths[periodWorkingOn, i] + 11, NPredictors + 2] = params["RSQR"]
+                                statsSummary[seasonMonths[periodWorkingOn, i] + 11, 0] = params["RSQR"]
+                                statsSummary[seasonMonths[periodWorkingOn, i] + 11, 1] = params["SE"]
+                                statsSummary[seasonMonths[periodWorkingOn, i] + 11, 3] = params["chowStat"]
+                                statsSummary[seasonMonths[periodWorkingOn, i] + 11, 4] = params["fRatio"]
                             ##next i
                         else:
                             for j in range(NPredictors + 1):
-                                #parameterResultsArray[periodWorkingOn + 12, j] = betaMatrix[j, 0]
-                                do_nothing()
+                                parameterResultsArray[periodWorkingOn + 12, j] = params["betaMatrix"][j]
                             ##next j
-                            parameterResultsArray[periodWorkingOn + 12, NPredictors + 1] = SE
-                            parameterResultsArray[periodWorkingOn + 12, NPredictors + 2] = rSquared
-                            statsSummary[periodWorkingOn + 12, 0] = rSquared
-                            statsSummary[periodWorkingOn + 12, 1] = SE
-                            statsSummary[periodWorkingOn + 12, 3] = chowStat
-                            statsSummary[periodWorkingOn + 12, 4] = fRatio
-                        ##endif  
+                            parameterResultsArray[periodWorkingOn + 12, NPredictors + 1] = params["SE"]
+                            parameterResultsArray[periodWorkingOn + 12, NPredictors + 2] = params["RSQR"]
+                            statsSummary[periodWorkingOn + 12, 0] = params["RSQR"]
+                            statsSummary[periodWorkingOn + 12, 1] = params["SE"]
+                            statsSummary[periodWorkingOn + 12, 3] = params["chowStat"]
+                            statsSummary[periodWorkingOn + 12, 4] = params["fRatio"]
+                        ##endif      
                     else:             
                         #------------------------
                         #---- SECTION #5.2.3 ---- (DW Calculations)
@@ -1042,27 +1037,106 @@ def stepWiseRegression():
     -- Currently a placeholder
     """
 
-def calculateParameters():
+def calculateParameters(xMatrix: np.ndarray, yMatrix: np.ndarray, optimisationChoice: int, NPredictors: int, includeChow: bool, conditionalPart: bool, parmOpt: bool, residualArray=None):
     """
-    Calculate Parameters function
-    -- Currently a placeholder
+    Calculate Parameters function v1.0
     -- Presumably calculates parameters
     """
+     ### GLOBALS ###
+    GlobalMissingCode = -999
+    ### ####### ###
+
+    #local vars
+    chowStat = 0
+    condPropCorrect = None
+
+    #requireUntransform = True #ConditionalPart And ParmOpt(0).value
+
+    if includeChow:
+        #CalcParams does not modify xMatrix or yMatrix
+        xtemp = xMatrix #deepcopy(xMatrix)
+        ytemp = yMatrix #deepcopy(yMatrix)
+        firstHalf = np.round(xMatrix.shape[0] / 2) ##Should use the same rounding algorithm as original software
+        #secondHalf = xMatrix.shape[0] - firstHalf ##Might be unnecesary
+        isValid = (xMatrix.shape[0] // 2) > 10
+
+        if (isValid): #Do we have enough data? Are both halves >10?
+            ##Cool python hackz
+
+            results = calculateParameters2(xtemp[:firstHalf], ytemp[:firstHalf], optimisationChoice, NPredictors) #ignore error
+            RSS1 = results["RSS"]
+
+            results = calculateParameters2(xtemp[firstHalf:], ytemp[firstHalf:], optimisatioChoice, NPredictors) #ignore error
+            RSS2 = results["RSS"]
+        #endif
+    #endif
+
+    results = calculateParameters2(xMatrix, yMatrix, optimisationChoice, NPredictors)
+    RSSAll = results["RSS"]
+    betaMatrix = results["betaMatrix"]
+
+    if includeChow and isValid:
+        chowDenom = RSS1 + RSS2
+        if chowDenom > 0:
+            chowStat = ((RSSAll - RSS1 - RSS2) / chowDenom)
+            chowStat *= (xMatrix.shape[0] - (2* (xMatrix.shape[1] - 1))) / (xMatrix.shape[1] - 1)
+            #
+        #
+    #endif
+
+    yMatrix2Test = deepcopy(yMatrix)
+    modMatrix2Test = np.ndarray((len(yMatrix)))
+
+    for i in range(len(yMatrix)):
+        modMatrix2Test[i] = 0
+        for j in range(xMatrix.shape[1]):
+            modMatrix2Test[i] += betaMatrix[j] * xMatrix[i, j]
+        #next j
+    #next i
+
+    if parmOpt:
+        if conditionalPart:
+            ##call untransformdata
+            pass
+        else: #i.e. Not conditionalPart
+            condPropCorrect = calcPropCorrect(modMatrix2Test, yMatrix2Test, len(yMatrix2Test))
+    #endif
+
+    #Quick SError?
+    if len(yMatrix) < 2:
+        SE = GlobalMissingCode
+    else:
+        SE = (RSSAll / (len(yMatrix) - 1)) ** 0.5 ##SQRT?
+        SE = max(SE, 0.0001)
+    #endif
+
+    rsqr = calcRSQR(modMatrix2Test, yMatrix2Test, len(yMatrix2Test), True, (len(yMatrix2Test) - 2))
+    ## Aka RSquared
+
+    if residualArray != None:
+        for i in range(len(residualArray)):
+            residualArray["predicted"][i + noOfResiduals] = results["predictedMatrix"][i]
+            residualArray["residual"][i + noOfResiduals] = results["residualMatrix"][i]
+        residualArray["noOfResidual"] += len(results["residualMatrix"])
+    #endif
+
+    return {"fRatio": results["fRatio"], "betaMatrix":results["betaMatrix"], "SE":SE, "RSQR":rsqr, "condPropCorrect":condPropCorrect, "chowStat":chowStat }
 
 def calculateParameters2(xMatrix: np.ndarray, yMatrix: np.ndarray, optimisationChoice: int, NPredictors: int):
     """
-    Calculate Parameters #2 v1.0
+    Calculate Parameters #2 v1.1
     Component function for Calculate Parameters #1 and Stepwise Regression
     - Calculates MLR parameters for XMatrix and YMatrix
-    - PropResiduals = whether we want the residuals array to be added to
     - Calculates the global variables SE and rsquared for these particular arrays too and FRatio
     - Establishes BetaMatrix and ResidualMatrix
     """
 
+    ##NB-Original Code had a parameter "PropResiduals" and "IgnoreError"
+    #-> PropResiduals never read
+
     ### GLOBALS ###
     GlobalMissingCode = -999
-    #yMatrixAboveThreshPos = np.array()
-    #xMatrix = np.ndarray()
+    dependMsg = True #No idea where this is supposed to be defined...
     ### ####### ###
 
     yBar = np.sum(yMatrix) / len(yMatrix)
@@ -1212,7 +1286,6 @@ def calculateParameters2(xMatrix: np.ndarray, yMatrix: np.ndarray, optimisationC
                 dependencies = True
                 break
 
-        dependMsg = True #No idea where this is supposed to be defined...
         if dependencies and not dependMsg:
             ##Warning error
             pass
@@ -1240,9 +1313,7 @@ def calculateParameters2(xMatrix: np.ndarray, yMatrix: np.ndarray, optimisationC
         #next j
         RSS += (modelled - yMatrix[i]) ** 2
     #next i
-    debugMsg(f"RSS: {RSS}")
-    if RSS < 0.0001:
-        RSS = 0.0001
+    RSS = max(RSS, 0.0001)
     
     if meanY != GlobalMissingCode:
         SSM = 0
@@ -1258,7 +1329,7 @@ def calculateParameters2(xMatrix: np.ndarray, yMatrix: np.ndarray, optimisationC
         fRatio = GlobalMissingCode
     #endif
 
-    return fRatio
+    return {"fRatio":fRatio, "betaMatrix":betaMatrix, "residualMatrix":residualMatrix, "predictedMatrix":predictedMatrix, "RSS":RSS}
 
 def transformData(xMatrix: np.ndarray, yMatrix: np.array, yMatrixAboveThreshPos: np.array, modelTrans):
     """
@@ -1447,3 +1518,82 @@ def transformData(xMatrix: np.ndarray, yMatrix: np.array, yMatrixAboveThreshPos:
     #End If
     
     #return Something here
+
+##Helper Functions:
+
+def calcRSQR(modMatrix: np.ndarray, yMatrix: np.ndarray, limit: int, checkMissing: bool, missingLim: int = None):
+    """
+    RSQR Shared code for xValidation & Calculate Params #1, neatly merged into one function
+    modMatrix and yMatrix are both 1 dimensional slices of the original array
+    limit is the length of the iterator / size of the matrix slice. Might be redundant
+    checkMissing toggles whether missing values are ignored or not. True -> Ignore missing, False -> Count them
+    --> CheckMissing might be redundant...
+    """
+
+    ### GLOBALS ###
+    GlobalMissingCode = -999
+    ### ####### ###
+
+    if missingLim == none:
+        missingLim = limit
+
+
+
+    sumX = sumY = sumXX = sumYY = sumXY = missing = 0
+
+    for i in range(limit):
+        if (modMatrix != GlobalMissingCode and yMatrix != GlobalMissingCode) | checkMissing == False:
+            sumX += modMatrix[i]
+            sumY += yMatrix[i]
+            sumXX += modMatrix[i] ** 2
+            sumYY += yMatrix[i] ** 2
+            sumXY += modMatrix[i] * yMatrix[i]
+        else:
+            missing += 1
+    ##end for
+
+    if missing < missingLim: 
+        totalVals = limit - missing
+        denom = sumXX - (sumX ** 2 / totalVals)
+        denom *= sumYY - (sumY ** 2 / totalVals)
+        numerator = (sumXY - (sumX * sumY)) ** 2
+
+        if denom > 0:
+            rsqr = numerator / denom
+        elif denom < 0:
+            ##Edge case testing
+            debugMsg("Error: Edge Case Detected - denom < 0")
+            rsqr = GlobalMissingCode
+        else:
+            rsqr = GlobalMissingCode
+
+    return rsqr
+
+def calcPropCorrect(modMatrix: np.ndarray, yMatrix: np.ndarray, limit: int):
+    """
+    Proportion Correct Shared code for xValidation:Unconditional (parmOpt=F) & Calculate Params #1
+    """
+
+    GlobalMissingCode = -999
+
+    correctCount = 0
+    missing = 0
+    for i in range(limit):
+        if (modMatrix != GlobalMissingCode and yMatrix != GlobalMissingCode):
+            if (yMatrix[i] == 0 and modMatrix[i] < 0.5):
+                correctCount += 1
+            elif (yMatrix[i] == 1 and modMatrix[i] >= 0.5):
+                correctCount += 1
+            #endif
+        else:
+            missing += 1
+        #endif
+    #next i
+    if missing < limit:
+        propCorrect = correctCount / (limit - missing)
+    else:
+        propCorrect = GlobalMissingCode
+    
+    return propCorrect
+
+##

@@ -438,7 +438,6 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
                 for i in range(12):  ## 0-11 inclusive
                     for j in range(NPredictors + 1): ## 0-NPred inclusive
                         parameterResultsArray[i, j] = params["betaMatrix"][j]
-                        do_nothing()
                     ##next
                     ##Dim ParameterResultsArray(1 To 24, 1 To 50) As Double   'stores beta parmeters etc from calulations as going along - printed to file in the end
                     parameterResultsArray[i, NPredictors + 1] = params["SE"]
@@ -509,7 +508,6 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
                     for i in range(12, 24):
                         for j in range(NPredictors + 1):
                             parameterResultsArray[i, j] = params["betaMatrix"][j]
-                            do_nothing()
                         ##next
                         parameterResultsArray[i, NPredictors + 1] = params["SE"]
                         parameterResultsArray[i, NPredictors + 2] = params["RSQR"]
@@ -566,7 +564,6 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
                             xMatrix[i, 0] = loadedFiles[0]
                             for j in range(NPreedictors):
                                 xMatrix[i, j] = dataReadIn[0, j+1, i]
-                                #do_nothing()
                         ###### End of Sorta Copy ######
                     else:
                         NPredictors += 1

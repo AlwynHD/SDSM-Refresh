@@ -5,7 +5,7 @@ from copy import deepcopy
 
 ## NOTE TO READERS: THIS FILE **DOES NOT** WORK
 
-def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegression):
+def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegression, includeChow, optimisationChoice):
     """
         Core Calibrate Model Function (v0.2.1)
         applyStepwise -> Stepwise Tickbox
@@ -13,6 +13,8 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
         detrendOption -> Detrend Options. 0-> None, 1 -> Linear, 2 -> Power function
         parmOpt -> Conditional / Unconditional model, True / False respectively
         autoRegression -> Autoregression tickbox
+        includeChow -> Chow Test Tickbox
+        optimisationChoice -> Defined in advanced settings - 0 for "Ordinary" least squares, 1 for Dual Simplex 
         ----------------------------------------
         More parameters coming soon!
     """
@@ -43,8 +45,10 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
     NPredictors = 12
 
     ## (Temp) Parameters
-    ApplyStepwise = True
-    modelType = 0
+    #includeChow = True
+    #optimisationChoice = 1
+    #ApplyStepwise = True
+    #modelType = 0
     globalStartDate = date(2004, 8, 5)
     globalEndDate = date(2025, 1, 7)
     fsDate = date(2005, 1, 8)
@@ -76,6 +80,10 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
     ##Actuamalaly defined in main as Public ModelTrans As Single -> 'Model transformation; 1=none, 2=4root, 3=ln, 4=Inv Normal, 5=box cox
     ##Will copy whomever defined it...
 
+    ##???
+    propResiduals = False
+    if propResiduals:
+        residualArray = np.ndarray
 
     ## True Temps:
     #rSquared = 0

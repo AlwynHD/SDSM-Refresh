@@ -183,7 +183,7 @@ class ContentWidget(QWidget):
         transformationFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
 
         transformationLayout = QVBoxLayout()
-        transformationLayout.setContentsMargins(25, 25, 25, 25)  # Remove padding from the layout
+        transformationLayout.setContentsMargins(0, 25, 0, 25)  # Remove padding from the layout
         transformationLayout.setSpacing(10)  # No spacing between elements
         transformationFrame.setLayout(transformationLayout)  # Apply the layout to the frame
 
@@ -294,6 +294,7 @@ class ContentWidget(QWidget):
 
         transformationsFrame = QFrame()
         transformationsFrame.setBaseSize(200,300)
+        transformationFrame.setContentsMargins(25,0,25,0)
         transformationsFrame.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
         transformationsLayout = QHBoxLayout()
         transformationsFrame.setLayout(transformationsLayout)
@@ -366,9 +367,19 @@ class ContentWidget(QWidget):
 
         transformationLayout.addWidget(transformationsFrame)
 
+        spacerFrame = QFrame()
+        spacerFrame.setFrameShape(QFrame.HLine|QFrame.Sunken)
+        transformationLayout.addWidget(spacerFrame)
+
+
+        otherTransformationsFrame = QFrame()
+        otherTransformationsLayout = QVBoxLayout()
+        otherTransformationsFrame.setContentsMargins(25,0,25,0)
         backwardChangeRadio = QRadioButton("Backward Change")
         self.transformRadioGroup.addButton(backwardChangeRadio)
-        transformationLayout.addWidget(backwardChangeRadio)
+        otherTransformationsFrame.setLayout(otherTransformationsLayout)
+        otherTransformationsLayout.addWidget(backwardChangeRadio)
+        transformationLayout.addWidget(otherTransformationsFrame)
 
 
         
@@ -380,7 +391,7 @@ class ContentWidget(QWidget):
         lagNLayout.addWidget(lagNRadio)
         lagNLayout.addWidget(lagNLineEdit)
         lagNFrame.setLayout(lagNLayout)
-        transformationLayout.addWidget(lagNFrame)
+        otherTransformationsLayout.addWidget(lagNFrame)
 
         binomialFrame = QFrame()
         binomialLayout = QHBoxLayout()
@@ -393,7 +404,7 @@ class ContentWidget(QWidget):
         binomialLayout.addWidget(binomialLineEdit)
         binomialLayout.addWidget(binomialWrapCheckBox)
         binomialFrame.setLayout(binomialLayout)
-        transformationLayout.addWidget(binomialFrame)
+        otherTransformationsLayout.addWidget(binomialFrame)
         
 
 

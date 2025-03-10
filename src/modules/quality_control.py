@@ -398,12 +398,22 @@ class ContentWidget(QWidget):
         from src.lib.QualityControl import qualityCheck
         print("https://www.youtube.com/watch?v=QY4KKG4TBFo") #Are easter eggs allowed?
         try:
-            min, max, count, missing, mean = qualityCheck(self.selectedFile)
+            min, max, count, missing, mean, maxDiff,maxDiff1, maxDiff2,threshCount, pettitt, pettitMaxPos, globalMissingCount, thresh = qualityCheck(self.selectedFile)
             self.minimumFrame.contentLabel.setText(min)
             self.maximumFrame.contentLabel.setText(max)
             self.meanFrame.contentLabel.setText(mean)
-            self.numOfValuesFrame.contentLabel.setText(count)
+            self.numOfValuesFrame.contentLabel.setText(count+missing)
             self.missingFrame.contentLabel.setText(missing)
+            self.numOfOKValuesFrame.contentLabel.setText(count)
+            self.maximumDifferenceFrame.contentLabel.setText(maxDiff)
+            self.maximumDifferenceValOneFrame.contentLabel.setText(maxDiff1)
+            self.maximumDifferenceValTwoFrame.contentLabel.setText(maxDiff2)
+            self.valueOverThreshFrame.contentLabel.setText(threshCount)
+            self.pettittSigFrame.contentLabel.setText(pettitt)
+            self.pettittMaxFrame.contentLabel.setText(pettitMaxPos)
+            self.missingValCodeFrame.contentLabel.setText(globalMissingCount)
+            self.eventThreshFrame.contentLabel.setText(thresh)
+            
         except FileNotFoundError:
             displayBox("File Error", "Please ensure a predictand file is selected and exists.","Error", isError=True)
 

@@ -334,14 +334,15 @@ def analyseData(predictandSelected, predictorSelected, fsDate, feDate, globalSDa
         # return each months CORR, RSQD, T, pr
 
 def scatterPlot(predictandSelected, predictorSelected, fsDate, feDate, globalSDate, globalEDate, autoRegressionTick):
-    if predictandSelected == "":
-        print("You must select a predictand.") # todo proper error message
+    print(predictandSelected)
+    if predictandSelected[0] == "":
+        return "Predictand Error" # todo proper error message
     elif len(predictorSelected) < 1 and not autoRegressionTick:
-        print("You must select at least one predictor.") # todo proper error message
+        return "Predictor Error" # todo proper error message
     elif len(predictorSelected) < 1:
-        print("You must select only one predictor to plot with.") # todo proper error message
+        return "Predictor Error" # todo proper error message
     elif autoRegressionTick and len(predictorSelected) == 1:
-        print("You must select only one predictor to plot with - you have selected one predictor and an autoregressive parameter.") # todo proper error message
+        return "Predictor Error" # todo proper error message
     else:
         nVariables = len(predictorSelected) + 1
 

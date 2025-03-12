@@ -7,7 +7,7 @@ from PyQt5.QtCore import Qt, QSize, QDate
 from PyQt5.QtGui import QPalette, QColor, QIcon
 from src.lib.ScreenVars import correlation, analyseData, filesNames, scatterPlot
 from os import listdir
-from datetime import datetime
+from datetime import datetime, date
 
 # Define the name of the module for display in the content area
 moduleName = "Screen Variables"
@@ -484,11 +484,21 @@ class ContentWidget(QWidget):
         print()
         fitStartDate = self.QDateEditToDateTime(self.fitStartDateChooser)
         fitEndDate = self.QDateEditToDateTime(self.fitEndDateChooser)
+
+        if fitEndDate <= fitStartDate:
+            return displayBox("Date Error","End date cannot be before start date.","Error",isError=True)
+
         autoregression = self.autoregressionCheckBox.isChecked()
         print(self.predictandSelected)
         print(self.predictorsSelected)
         data = scatterPlot([self.predictandSelected], self.predictorsSelected, fitStartDate,fitEndDate,fitStartDate,fitEndDate, autoregression)
         print(data)
+        if data == "Predictand Error":
+            return displayBox("Predictand Error","No predictand file selected.","Error",isError=True)
+        elif data == "Predictor Error":
+            return displayBox("Predictor Error",
+                              "Only one predictor can be selected when autoregressive term is not checked. If autoregressive term is checked, no predictors should be selected.",
+                              "Error",isError=True)
         plot = pg.plot()
         scatter = pg.ScatterPlotItem(size=10, brush=pg.mkBrush(255, 255, 255, 120))
         print(data.size)

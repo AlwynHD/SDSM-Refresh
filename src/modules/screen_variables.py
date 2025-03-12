@@ -442,7 +442,14 @@ class ContentWidget(QWidget):
 
         #Perform correlation
         print(["predictor files/"+predictor for predictor in self.predictorsSelected])
-        correlation([self.predictandSelected], [predictor for predictor in self.predictorsSelected], fitStartDate, fitEndDate, autoregression)
+        data = correlation([self.predictandSelected], [predictor for predictor in self.predictorsSelected], fitStartDate, fitEndDate, autoregression)
+
+        if data == "Predictand Error":
+            return displayBox("Predictand Error","No predictand file selected.","Error",isError=True)
+        elif data == "Predictor Error":
+            return displayBox("Predictor Error",
+                              "There can only be between one and twelve predictor files selected.",
+                              "Error",isError=True)
 
     def selectPredictandButtonClicked(self):
         #Will have to be changed soon, as it relies on known file "predictand files"
@@ -477,7 +484,6 @@ class ContentWidget(QWidget):
     def QDateEditToDateTime(self, dateEdit):
         rawStartDate = dateEdit.date()
         dateTime = rawStartDate.toPyDate()
-        dateTime = datetime.combine(dateTime, datetime.min.time())
         return dateTime
     
     def showScatterGraph(self):

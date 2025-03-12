@@ -52,12 +52,12 @@ def partialCorrelation(A, B, n, crossCorr, corrArrayList):
 
 def correlation(predictandSelected, predictorSelected, fSDate, fEDate, autoRegressionTick):
     """checks the correlation between the predicant and predictors"""
-    if predictandSelected == "":
-        print("You must select a predictand.") # todo proper error message
+    if predictandSelected[0] == "":
+        return "Predictand Error" # todo proper error message
     elif len(predictorSelected) < 1:
-        print("You must select at least one predictor.") # todo proper error message
+        return "Predictor Error" # todo proper error message
     elif len(predictorSelected) > 12:
-        print("Sorry - you are allowed a maximum of 12 predictors only.") #todo proper error message
+        return "Predictor Error" #todo proper error message
     else:
         nVariables = len(predictorSelected) + 1
 

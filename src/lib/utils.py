@@ -157,11 +157,11 @@ def increaseDate(startDate, noDays): #todo check if the leap year thing was impo
     finalDate = startDate + datetime.timedelta(days=noDays)
 
     if calendar.isleap(startDate.year):
-        feb = datetime.datetime(startDate.year, 2, 29)
+        feb = datetime.date(startDate.year, 2, 29)
         if startDate <= feb <= finalDate:
             finalDate += datetime.timedelta(days=1)
     elif calendar.isleap(finalDate.year):
-        feb = datetime.datetime(finalDate.year, 2, 29)
+        feb = datetime.date(finalDate.year, 2, 29)
         if startDate <= feb <= finalDate:
             finalDate += datetime.timedelta(days=1)
 
@@ -190,7 +190,7 @@ def fsDateOK(fSDate, feDate, globalSDate):
     """if date is okay return true if not return false"""
 
     output = False
-    if not isinstance(fSDate, datetime.datetime):
+    if not isinstance(fSDate, datetime.date):
         #todo error message to user about correct date orginal MsgBox "Start date is invalid - it must be in the format dd/mm/yyyy.", 0 + vbCritical, "Error Message"
         fSDate = globalSDate
         print("Start date is invalid - it must be in the format dd/mm/yyyy")
@@ -211,7 +211,7 @@ def feDateOK(fsDate, feDate, globalEDate):
     """if date is okay return true if not return false"""
 
     output = False
-    if not isinstance(feDate, datetime.datetime):
+    if not isinstance(feDate, datetime.date):
         #todo error message to user about correct date orginal MsgBox "End date is invalid - it must be in the format dd/mm/yyyy.", 0 + vbCritical, "Error Message"
         fsDate = globalEDate 
         print("End date is invalid - it must be in the format dd/mm/yyyy.")

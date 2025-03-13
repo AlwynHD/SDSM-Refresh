@@ -528,13 +528,7 @@ class ContentWidget(QWidget):
         except FileNotFoundError:
             return displayBox("Output Error","No output file selected, and you have not selected one to be generated.","Error",isError=True)
             
-        data = loadFilesIntoMemory([self.inputSelected])
-        data = data[0]
-        if ndim(data) == 1:
-            newData = empty((len(data),1))
-            newData[:,0] = data
-            data = newData
-        data.astype(longdouble)
+        data = loadData(self.inputSelected)
         transformations = [["Ln",log],["Log",log10],["x²",square], ["x³",cube],["x⁴",powFour],["x⁻¹",powMinusOne],["eˣ",eToTheN],["10ˣ",tenToTheN],["√x",powHalf],["∛x",powThird],["∜x",powQuarter],["x",returnSelf]]
         for i in transformations:
             if i[0] == trans:

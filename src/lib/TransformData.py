@@ -58,11 +58,14 @@ def backwardsChange(data):
                 returnData[r][c] = data[r][c]
     return returnData
 
-def lag(data, n):
+def lag(data, n, wrap):
     """Rewrite data so it begins at position n. Values before n wrap to bottom."""
     returnData = np.empty_like(data)
     for c in range(len(data.T)):
-        returnData[:, c] = np.concatenate((data[:, c][n:], data[:, c][:n])) #The double brackets here are required
+        if wrap:
+            returnData[:, c] = np.concatenate((data[:, c][n:], data[:, c][:n])) #The double brackets here are required
+        else:
+            returnData[:, c] = np.concatenate((data[:, c][n:], np.full(n, globalMissingCode)))
     return returnData
 
 def binomial(data, binomial):
@@ -150,10 +153,13 @@ if __name__ == "__main__":
     applyThresh = True
     dataSDate = dt.date(1948, 1, 1)
     dataEDate = dt.date(2015, 12, 31)
-    lagValue = 1
+    lagValue = 3
     binomialValue = 1
     ensembleCol = 1
     sdFilter = 1
+    lamda = 2
+    leftShift = 5
+    wrap = False
 
     file = selectFile()
     data = loadData(file)
@@ -173,7 +179,7 @@ if __name__ == "__main__":
     genericTransform(data, returnSelf)
 
     backwardsChange(data)
-    lag(data, lagValue)
+    lag(data, lagValue, wrap)
     binomial(data, binomialValue)
 
     extractEnsemble(data, ensembleCol)
@@ -183,4 +189,4 @@ if __name__ == "__main__":
     removeOutliers(data, sdFilter)
 
     boxCox(data)
-    print(unBoxCox(data, 2, 5))
+    unBoxCox(data, lamda, leftShift)

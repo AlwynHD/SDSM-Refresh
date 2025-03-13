@@ -2,8 +2,8 @@ import math
 import datetime
 import numpy as np
 import scipy.stats as stats                
-#from src.lib.utils import *
-from utils import *
+from src.lib.utils import *
+#from utils import *
 from PyQt5.QtWidgets import QApplication, QMainWindow, QTextEdit, QTabWidget
 from PyQt5.QtGui import QFont
 import sys

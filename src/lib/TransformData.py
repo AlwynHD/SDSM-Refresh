@@ -108,43 +108,43 @@ def removeOutliers(data, sdFilterValue):
 
 
 #region Settings
+if __name__ == "__main__":
+    padData(data)
+    #Create SIM File
+    #Apply Threshold
+    #Remove Outliers
+    #Create OUT File
+    #Wrap
 
-padData(data)
-#Create SIM File
-#Apply Threshold
-#Remove Outliers
-#Create OUT File
-#Wrap
+    #endregion
 
-#endregion
+    #region Transformations
 
-#region Transformations
+    genericTransform(data, np.log)
+    genericTransform(data, np.log10)
+    genericTransform(data, square)
+    genericTransform(data, cube)
+    #genericTransform(data, powFour)
+    genericTransform(data, powMinusOne)
+    #genericTransform(data, eToTheN)
+    #genericTransform(data, tenToTheN)
+    genericTransform(data, powHalf)
+    genericTransform(data, powThird)
+    genericTransform(data, powQuarter)
+    data
 
-genericTransform(data, np.log)
-genericTransform(data, np.log10)
-genericTransform(data, square)
-genericTransform(data, cube)
-#genericTransform(data, powFour)
-genericTransform(data, powMinusOne)
-#genericTransform(data, eToTheN)
-#genericTransform(data, tenToTheN)
-genericTransform(data, powHalf)
-genericTransform(data, powThird)
-genericTransform(data, powQuarter)
-data
+    backwardsChange(data)
+    lag(data, 1)
+    binomial(data, 5)
+    """
 
-backwardsChange(data)
-lag(data, 1)
-binomial(data, 5)
-"""
+    #Other Transformations
+    backwardsChange(data)
+    lag(data, 1)
+    binomial(data, 1)
+    #Box Cox
+    #Unbox Cox
+    """
 
-#Other Transformations
-backwardsChange(data)
-lag(data, 1)
-binomial(data, 1)
-#Box Cox
-#Unbox Cox
-"""
-
-removeOutliers(data, 1)
-#endregion
+    removeOutliers(data, 1)
+    #endregion

@@ -519,7 +519,6 @@ class ContentWidget(QWidget):
         except AttributeError:
             return displayBox("Transformation Error","A transformation must be selected.","Error",isError=True)
         transformations = [["Ln",log],["Log",log10],["x²",square], ["x³",cube],["x⁴",powFour],["x⁻¹",powMinusOne],["eˣ",eToTheN],["10ˣ",tenToTheN],["√x",powHalf],["∛x",powThird],["∜x",powQuarter],["x","None"]]
-        
         for i in transformations:
             if i[0] == trans:
                 print(i[0] +" found")

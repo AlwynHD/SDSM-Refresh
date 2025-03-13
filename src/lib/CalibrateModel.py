@@ -7,7 +7,7 @@ from copy import deepcopy
 
 def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegression, includeChow, optimisationChoice):
     """
-        Core Calibrate Model Function (v0.2.1)
+        Core Calibrate Model Function (v0.3.0)
         applyStepwise -> Stepwise Tickbox
         modelType -> Monthly/Seasonal/Annual (0/1/2), can change easily according to the will of the GUI Developer Gods
         detrendOption -> Detrend Options. 0-> None, 1 -> Linear, 2 -> Power function
@@ -34,7 +34,14 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
     ## Adjusted DetrendData to use detrendOption as parameter
 
     ## In v0.2.2:
-    ## Propogate Conditional & Unconditional functions implemented
+    ## Propogate Conditional & Unconditional functions 
+    
+    ## In v0.3.0:
+    ## Calculate Parms & Calc Parms #2 implemented
+    ## calcPropCorrect & calcRSQR helper functions added
+    ## new parameter "optimisationChoice" (is int, might want bool or tiny int...)
+    ## new parameter includeChow (is bool)
+
 
     #------------------------
     # FUNCTION DEFINITITIONS:
@@ -868,17 +875,28 @@ def calibrateModel(applyStepwise, modelType, detrendOption, parmOpt, autoRegress
             #next subloop
 
             ##real change here:
+            from calendar import month_name as months
+            #debugMsg(f"{month_name[i]}\t{statsSummary[i,0]:.4f}\t\t{statsSummary[i,1]:.4f}\t\t{statsSummary[i,4]:.2f}\t\t{statsSummary[i,2]:.4f}\t")
             output = {
                 "SeasonCode": seasonCode,
                 #"YearIndicator": yearIndicator,
                 "GlobalStartDate": globalStartDate,
                 "NDaysR": nDaysR,
                 "1":1, ##Idk what to do with this
-                "AutoRegression": autoRegression 
+                "AutoRegression": autoRegression,
+                "Predictand File": "your_predictand_file.dat"
             }
+
             for subloop in range(NPredictors):
-                output[f"FileList#{subloop}"] = fileList[subloop]
-            ##Vars "Written":
+                output[f"Predictor#{subloop}"] = fileList[subloop]
+            for month in months:
+                output[month]["RSquared"] = statsSummary[i,0]
+                output[month]["SE"] = statsSummary[i,1]
+                output[month]["FRatio"] = statsSummary[i,4]
+                output[month]["D-Watson"] = statsSummary[i,2]
+                output[month]["Chow"] = None ##Coming soon!
+
+            ##Vars "Written" to PAR file:
             output2 = {
                 "ParmOpt": parmOpt,
                 "ModelTrans":modelTrans
@@ -1523,6 +1541,8 @@ def transformData(xMatrix: np.ndarray, yMatrix: np.array, yMatrixAboveThreshPos:
     #End If
     
     #return Something here
+
+
 
 ##Helper Functions:
 

@@ -503,7 +503,7 @@ class ContentWidget(QWidget):
             return displayBox("Predictand Error","No predictand file selected.","Error",isError=True)
         elif data == "Predictor Error":
             return displayBox("Predictor Error",
-                              "Only one predictor can be selected when autoregressive term is not checked. If autoregressive term is checked, no predictors should be selected.",
+                              "You must have only one predictor selected when autoregressive term is not checked. If autoregressive term is checked, no predictors should be selected.",
                               "Error",isError=True)
         plot = pg.plot()
         scatter = pg.ScatterPlotItem(size=10, brush=pg.mkBrush(255, 255, 255, 120))

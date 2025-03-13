@@ -339,7 +339,7 @@ def scatterPlot(predictandSelected, predictorSelected, fsDate, feDate, globalSDa
         return "Predictand Error" # todo proper error message
     elif len(predictorSelected) < 1 and not autoRegressionTick:
         return "Predictor Error" # todo proper error message
-    elif len(predictorSelected) < 1:
+    elif len(predictorSelected) > 1:
         return "Predictor Error" # todo proper error message
     elif autoRegressionTick and len(predictorSelected) == 1:
         return "Predictor Error" # todo proper error message

@@ -1,13 +1,15 @@
 from PyQt5.QtWidgets import (QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, 
                              QFrame, QLabel, QFileDialog, QScrollArea, QDateEdit, QCheckBox,
                              QButtonGroup, QRadioButton, QLineEdit, QGroupBox, QMessageBox,
+                             QApplication
                              )
 import pyqtgraph as pg
 from PyQt5.QtCore import Qt, QSize, QDate
 from PyQt5.QtGui import QPalette, QColor, QIcon
-from src.lib.ScreenVars import correlation, analyseData, filesNames, scatterPlot
+from src.lib.ScreenVars import correlation, analyseData, filesNames, scatterPlot, CorrelationAnalysisApp
 from os import listdir
-from datetime import datetime
+from datetime import datetime, date
+import sys
 
 # Define the name of the module for display in the content area
 moduleName = "Screen Variables"
@@ -432,17 +434,37 @@ class ContentWidget(QWidget):
 
 
         fitEndDate = self.QDateEditToDateTime(self.fitEndDateChooser)
-
+        settings = {
+        'fSDate': self.QDateEditToDateTime(self.fitStartDateChooser),
+        'fEDate': self.QDateEditToDateTime(self.fitEndDateChooser),
+        'leapYear': True,
+        'threshold': 0.5,
+        'missingCode': -999,
+        'analysisPeriodChosen': 0,
+        'analysisPeriod': ["Annual", "Winter", "Spring", "Summer", "Autumn", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+        'conditional': True,
+        'autoRegressionTick': self.autoregressionCheckBox.isChecked()
+        }
         if fitEndDate <= fitStartDate:
             return displayBox("Date Error","End date cannot be before start date.","Error",isError=True)
             
 
         #Get autoregression state
-        autoregression = self.autoregressionCheckBox.isChecked()
 
         #Perform correlation
         print(["predictor files/"+predictor for predictor in self.predictorsSelected])
-        correlation([self.predictandSelected], [predictor for predictor in self.predictorsSelected], fitStartDate, fitEndDate, autoregression)
+        data = correlation([self.predictandSelected], [predictor for predictor in self.predictorsSelected], settings)
+
+        if data == "Predictand Error":
+            return displayBox("Predictand Error","No predictand file selected.","Error",isError=True)
+        elif data == "Predictor Error":
+            return displayBox("Predictor Error",
+                              "There can only be between one and twelve predictor files selected.",
+                              "Error",isError=True)
+        self.newWindow = CorrelationAnalysisApp()
+        
+        self.newWindow.load_results(data)
+        self.newWindow.show()
 
     def selectPredictandButtonClicked(self):
         #Will have to be changed soon, as it relies on known file "predictand files"
@@ -477,18 +499,27 @@ class ContentWidget(QWidget):
     def QDateEditToDateTime(self, dateEdit):
         rawStartDate = dateEdit.date()
         dateTime = rawStartDate.toPyDate()
-        dateTime = datetime.combine(dateTime, datetime.min.time())
         return dateTime
     
     def showScatterGraph(self):
         print()
         fitStartDate = self.QDateEditToDateTime(self.fitStartDateChooser)
         fitEndDate = self.QDateEditToDateTime(self.fitEndDateChooser)
+
+        if fitEndDate <= fitStartDate:
+            return displayBox("Date Error","End date cannot be before start date.","Error",isError=True)
+
         autoregression = self.autoregressionCheckBox.isChecked()
         print(self.predictandSelected)
         print(self.predictorsSelected)
         data = scatterPlot([self.predictandSelected], self.predictorsSelected, fitStartDate,fitEndDate,fitStartDate,fitEndDate, autoregression)
         print(data)
+        if data == "Predictand Error":
+            return displayBox("Predictand Error","No predictand file selected.","Error",isError=True)
+        elif data == "Predictor Error":
+            return displayBox("Predictor Error",
+                              "You must have only one predictor selected when autoregressive term is not checked. If autoregressive term is checked, no predictors should be selected.",
+                              "Error",isError=True)
         plot = pg.plot()
         scatter = pg.ScatterPlotItem(size=10, brush=pg.mkBrush(255, 255, 255, 120))
         print(data.size)

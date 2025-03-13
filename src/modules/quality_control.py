@@ -425,6 +425,14 @@ class ContentWidget(QWidget):
         except FileNotFoundError:
             displayBox("File Error", "Please ensure a predictand file is selected and exists.", "Error", isError=True)
     def doOutliers(self):
+        #Try to open both files to see if they exist
+        try:
+            predictand = open(self.selectedFile,"r")
+            outlier = open(self.selectedOutlier,"r")
+            predictand.close()
+            outlier.close()
+        except FileNotFoundError:
+            return displayBox("File Error", "Please ensure predictand and outlier files are selected.","Error",isError=True)
         proc = ThreadWithReturnValue(target=self.checkOutliers)
         proc.daemon = True
         proc.start()
@@ -446,6 +454,7 @@ class ContentWidget(QWidget):
             self.outliersButton.setText("Outliers")
 
         except FileNotFoundError:
+            
             self.outliersButton.setText("Outliers")
     
 

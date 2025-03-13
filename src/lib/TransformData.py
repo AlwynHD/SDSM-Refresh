@@ -1,26 +1,18 @@
 import numpy as np
 import datetime as dt
+import scipy as sci
+from src.lib.utils import loadFilesIntoMemory, selectFile
 
-#Alex's attempts to understand the original Transform Data Screen
-#Extract ensemble member seems to just take one column from the input file?
-#Apply threshold does not apply the transformation to the value if it is below threshold
-#Can't figure out what sim or out file do
-#Pad data adds missing values based on dates given
-#Outliers remove outliers from file
-
-globalSDate = dt.datetime(1948, 1, 1)
-globalEDate = dt.datetime(2015, 12, 31)
-dataSDate = dt.datetime(1948, 1, 1)
-dataEDate = dt.datetime(2015, 12, 31)
-globalMissingCode = -999
-thresh = 4
-applyThresh = True
-#data = np.array([[2], [3], [4], [5], [6], [7], [8], [9], [10], [100], [120], [145], [145], [555], [444], [333], [333], [333], [333], [333]])
-#data = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9], [10, 11, 12]])
-data = np.array([[1], [2], [3], [4], [5], [6], [7], [8], [9]])
+def loadData(file):
+    data = loadFilesIntoMemory(file)[0]
+    if np.ndim(data) == 1:
+        newData = np.empty((len(data), 1))
+        newData[:, 0] = data
+        data = newData
+    data.astype(np.longdouble)
+    return data
 
 def valueIsValid(value):
-    #todo move to utils
     return value != globalMissingCode and (not applyThresh or value > thresh)
 
 def genericTransform(data, func):
@@ -42,6 +34,7 @@ def tenToTheN(n): return np.float_power(10, n)
 def powHalf(n): return np.float_power(n, 1/2)
 def powThird(n): return np.float_power(n, 1/3)
 def powQuarter(n): return np.float_power(n, 1/4)
+def returnSelf(n): return n
 
 def backwardsChange(data):
     """Returns the difference between each value and the previous value"""
@@ -106,45 +99,42 @@ def removeOutliers(data, sdFilterValue):
         returnData[:, c] = filteredCol
     return returnData
 
+if __name__ == "__main__":
+    """Variables that are gotten from the settings or the screen."""
+    file = selectFile()
+    globalSDate = dt.date(1948, 1, 1)
+    globalEDate = dt.date(2015, 12, 31)
+    dataSDate = dt.date(1948, 1, 1)
+    dataEDate = dt.date(2015, 12, 31)
+    globalMissingCode = -999
+    thresh = 0
+    applyThresh = True
 
-#region Settings
+    data = loadData(file)
 
-padData(data)
-#Create SIM File
-#Apply Threshold
-#Remove Outliers
-#Create OUT File
-#Wrap
+    genericTransform(data, np.log)
+    genericTransform(data, np.log10)
+    genericTransform(data, square)
+    genericTransform(data, cube)
+    genericTransform(data, powFour)
+    genericTransform(data, powMinusOne)
 
-#endregion
+    genericTransform(data, eToTheN)
+    genericTransform(data, tenToTheN)
+    genericTransform(data, powHalf)
+    genericTransform(data, powThird)
+    genericTransform(data, powQuarter)
+    genericTransform(data, returnSelf)
 
-#region Transformations
+    backwardsChange(data)
+    lag(data, 1)
+    binomial(data, 1)
 
-genericTransform(data, np.log)
-genericTransform(data, np.log10)
-genericTransform(data, square)
-genericTransform(data, cube)
-#genericTransform(data, powFour)
-genericTransform(data, powMinusOne)
-#genericTransform(data, eToTheN)
-#genericTransform(data, tenToTheN)
-genericTransform(data, powHalf)
-genericTransform(data, powThird)
-genericTransform(data, powQuarter)
-data
+    extractEnsemble(data, 1)
 
-backwardsChange(data)
-lag(data, 1)
-binomial(data, 5)
-"""
+    padData(data)
 
-#Other Transformations
-backwardsChange(data)
-lag(data, 1)
-binomial(data, 1)
-#Box Cox
-#Unbox Cox
-"""
+    removeOutliers(data)
 
-removeOutliers(data, 1)
-#endregion
+    sci.stats.boxcox(data)
+    sci.special.inv_boxcox(data, 1)

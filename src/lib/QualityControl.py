@@ -3,6 +3,7 @@ import datetime
 import math
 import numpy as np
 from src.lib.utils import loadFilesIntoMemory, increaseDate, checkForFile, checkIfFileFormatted
+#from utils import loadFilesIntoMemory, increaseDate, checkForFile, checkIfFileFormatted
 
 #Local version
 predictorSelected = ['predictor files/ncep_dswr.dat']
@@ -14,6 +15,7 @@ outlierFile = "outlier.txt"
 
 #Variables obtained from global settings
 globalSDate = datetime.datetime(1948, 1, 1)
+leapYear = True
 globalMissingCode = -999
 applyThresh = False
 thresh = 0
@@ -301,7 +303,7 @@ def pettittTest(pettittArray, ptPercent):
             annualMeans[yearIndex] += value
             annualCount[yearIndex] += 1
 
-        currentDate = increaseDate(currentDate, 1)
+        currentDate = increaseDate(currentDate, 1, leapYear)
         yearIndex = currentDate.year - globalSDate.year
 
     yearsOk = 0
@@ -366,5 +368,5 @@ def pettittTest(pettittArray, ptPercent):
 
 if __name__ == '__main__':
     #Module tests go here
-    outliersID(selectedFile, outlierFile)
-    #qualityCheck(selectedFile)
+    #outliersID(selectedFile, outlierFile)
+    qualityCheck(selectedFile)

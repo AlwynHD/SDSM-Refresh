@@ -1,12 +1,24 @@
 from PyQt5.QtWidgets import (QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, 
                              QFrame, QLabel, QFileDialog, QScrollArea, QDateEdit, QCheckBox,
-                             QButtonGroup, QRadioButton, QLineEdit, QGroupBox)
+                             QButtonGroup, QRadioButton, QLineEdit, QGroupBox, QMessageBox)
 from PyQt5.QtCore import Qt, QDate
 from PyQt5.QtGui import QPalette, QColor, QIcon
 from src.lib.TransformData import *
+from src.lib.utils import loadFilesIntoMemory
 
 # Define the name of the module for display in the content area
 moduleName = "Transform Data"
+
+def displayBox(messageType, messageInfo, messageTitle, isError=False):
+    messageBox = QMessageBox()
+    if isError:
+        messageBox.setIcon(QMessageBox.Critical)
+    else:
+        messageBox.setIcon(QMessageBox.Information)
+    messageBox.setText(messageType)
+    messageBox.setInformativeText(messageInfo)
+    messageBox.setWindowTitle(messageTitle)
+    messageBox.exec_()
 
 class borderedQGroupBox(QGroupBox):
     def __init__(self,args):
@@ -500,4 +512,25 @@ class ContentWidget(QWidget):
                     button.setChecked(False)
 
     def doTransform(self):
-        print("https://www.youtube.com/watch?v=7F2QE8O-Y1g")
+        from numpy import log, log10
+        #print("https://www.youtube.com/watch?v=7F2QE8O-Y1g")
+        try:
+            trans = self.transformRadioGroup.checkedButton().text()
+        except AttributeError:
+            return displayBox("Transformation Error","A transformation must be selected.","Error",isError=True)
+        transformations = [["Ln",log],["Log",log10],["x²",square], ["x³",cube],["x⁴",powFour],["x⁻¹",powMinusOne],["eˣ",eToTheN],["10ˣ",tenToTheN],["√x",powHalf],["∛x",powThird],["∜x",powQuarter],["x","None"]]
+        
+        for i in transformations:
+            if i[0] == trans:
+                print(i[0] +" found")
+        # data = loadFilesIntoMemory([self.inputSelected])
+        # print(data)
+        # data = data[0]
+        # print(data)
+        # 
+        # outputFile = open(self.outputSelected, "w")
+        # if trans == "eˣ":
+        #     returnedData = genericTransform(data, eToTheN)
+        #     for i in returnedData:
+        #         outputFile.write(i)
+        # outputFile.close()

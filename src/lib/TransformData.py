@@ -1,24 +1,16 @@
 import numpy as np
 import datetime as dt
 import scipy as sci
-from utils import loadFilesIntoMemory, selectFile
+from src.lib.utils import loadFilesIntoMemory, selectFile
 
-file = selectFile()
-data = loadFilesIntoMemory(file)[0]
-if np.ndim(data) == 1:
-    newData = np.empty((len(data), 1))
-    newData[:, 0] = data
-    data = newData
-
-data.astype(np.longdouble)
-
-globalSDate = dt.date(1948, 1, 1)
-globalEDate = dt.date(2015, 12, 31)
-dataSDate = dt.date(1948, 1, 1)
-dataEDate = dt.date(2015, 12, 31)
-globalMissingCode = -999
-thresh = 0
-applyThresh = True
+def loadData(file):
+    data = loadFilesIntoMemory(file)[0]
+    if np.ndim(data) == 1:
+        newData = np.empty((len(data), 1))
+        newData[:, 0] = data
+        data = newData
+    data.astype(np.longdouble)
+    return data
 
 def valueIsValid(value):
     return value != globalMissingCode and (not applyThresh or value > thresh)
@@ -107,75 +99,42 @@ def removeOutliers(data, sdFilterValue):
         returnData[:, c] = filteredCol
     return returnData
 
-#region Settings
-
-#padData(data)
-#Create SIM File
-#removeOutliers(data, 1)
-#Create OUT File
-#Wrap
 if __name__ == "__main__":
-    padData(data)
-    #Create SIM File
-    #Apply Threshold
-    #Remove Outliers
-    #Create OUT File
-    #Wrap
+    """Variables that are gotten from the settings or the screen."""
+    file = selectFile()
+    globalSDate = dt.date(1948, 1, 1)
+    globalEDate = dt.date(2015, 12, 31)
+    dataSDate = dt.date(1948, 1, 1)
+    dataEDate = dt.date(2015, 12, 31)
+    globalMissingCode = -999
+    thresh = 0
+    applyThresh = True
 
-    #endregion
+    data = loadData(file)
 
-#padData(data)
-#Create SIM File
-#removeOutliers(data, 1)
-#Create OUT File
-#Wrap
-
-
-#region Transformations
-"""
     genericTransform(data, np.log)
     genericTransform(data, np.log10)
     genericTransform(data, square)
     genericTransform(data, cube)
-    #genericTransform(data, powFour)
+    genericTransform(data, powFour)
     genericTransform(data, powMinusOne)
-    
-#genericTransform(data, eToTheN)
-    #genericTransform(data, tenToTheN)
+
+    genericTransform(data, eToTheN)
+    genericTransform(data, tenToTheN)
     genericTransform(data, powHalf)
     genericTransform(data, powThird)
     genericTransform(data, powQuarter)
-    data
+    genericTransform(data, returnSelf)
 
-backwardsChange(data)
-lag(data, 1)
-binomial(data, 5)
-#sci.stats.boxcox(data, lambda)
-#sci.special.inv_boxcox(data, lambda)
+    backwardsChange(data)
+    lag(data, 1)
+    binomial(data, 1)
 
-"""
-#endregion
-#region Transformations
-"""
-genericTransform(data, np.log)
-genericTransform(data, np.log10)
-genericTransform(data, square)
-genericTransform(data, cube)
-#genericTransform(data, powFour)
-genericTransform(data, powMinusOne)
+    extractEnsemble(data, 1)
 
-#genericTransform(data, eToTheN)
-#genericTransform(data, tenToTheN)
-genericTransform(data, powHalf)
-genericTransform(data, powThird)
-genericTransform(data, powQuarter)
-data
+    padData(data)
 
-backwardsChange(data)
-lag(data, 1)
-binomial(data, 5)
-#sci.stats.boxcox(data, lambda)
-#sci.special.inv_boxcox(data, lambda)
+    removeOutliers(data)
 
-"""
-#endregion
+    sci.stats.boxcox(data)
+    sci.special.inv_boxcox(data, 1)

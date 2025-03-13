@@ -430,25 +430,28 @@ class ContentWidget(QWidget):
         self.selectOutputLabel = QLabel("File: Not Selected")
         selectOutputFileLayout.addWidget(self.selectOutputLabel)
 
-        padDataCheckBox = QCheckBox("Pad Data")
+        self.padDataCheckBox = QCheckBox("Pad Data")
 
         startDateFrame = QFrame()
         startDateLayout = QHBoxLayout()
         startDateLabel = QLabel("Start Date: ")
-        startDateEdit = QDateEdit(QDate(1948,1,1))
+        self.startDateEdit = QDateEdit(calendarPopup=True)
+        self.startDateEdit.setDate(QDate(1948,1,1))
+
         startDateLayout.addWidget(startDateLabel)
-        startDateLayout.addWidget(startDateEdit)
+        startDateLayout.addWidget(self.startDateEdit)
         startDateFrame.setLayout(startDateLayout)
         
         endDateFrame = QFrame()
         endDateLayout = QHBoxLayout()
         endDateLabel = QLabel("End Date: ")
-        endDateEdit = QDateEdit(QDate(2015,12,31))
+        self.endDateEdit = QDateEdit(calendarPopup=True)
+        self.endDateEdit.setDate(QDate(2015,12,31))
         endDateLayout.addWidget(endDateLabel)
-        endDateLayout.addWidget(endDateEdit)
+        endDateLayout.addWidget(self.endDateEdit)
         endDateFrame.setLayout(endDateLayout)
 
-        padDataLayout.addWidget(padDataCheckBox)
+        padDataLayout.addWidget(self.padDataCheckBox)
         padDataLayout.addWidget(startDateFrame)
         padDataLayout.addWidget(endDateFrame)
 
@@ -478,7 +481,10 @@ class ContentWidget(QWidget):
         buttonLayout.addWidget(transformButton)
 
 
-
+    def QDateEditToDateTime(self, dateEdit):
+        rawStartDate = dateEdit.date()
+        dateTime = rawStartDate.toPyDate()
+        return dateTime
 
     def selectInputButtonClicked(self):
         #Will have to be changed soon, as it relies on known file "predictand files"
@@ -527,16 +533,14 @@ class ContentWidget(QWidget):
             outputFile = open(self.outputSelected, "w")
         except FileNotFoundError:
             return displayBox("Output Error","No output file selected, and you have not selected one to be generated.","Error",isError=True)
-            
-        data = loadData(self.inputSelected)
+        data = loadData([self.inputSelected])
         transformations = [["Ln",log],["Log",log10],["x²",square], ["x³",cube],["x⁴",powFour],["x⁻¹",powMinusOne],["eˣ",eToTheN],["10ˣ",tenToTheN],["√x",powHalf],["∛x",powThird],["∜x",powQuarter],["x",returnSelf]]
+        if self.padDataCheckBox.isChecked():
+            padData(data, self.QDateEditToDateTime(self.startDateEdit), self.QDateEditToDateTime(self.endDateEdit))
         for i in transformations:
             if i[0] == trans:
                 print(i[0] +" found")
                 returnedData = genericTransform(data, i[1])
                 for i in returnedData:
                     outputFile.write(str(i[0])+"\n")
-        
-        
-            
         outputFile.close()

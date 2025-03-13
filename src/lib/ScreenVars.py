@@ -33,13 +33,13 @@ settings = {
     'missingCode': -999,
     'analysisPeriodChosen': 0,
     'analysisPeriod': ["Annual", "Winter", "Spring", "Summer", "Autumn", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
-    'conditional': True,
+    'conditional': False,
     'autoRegressionTick': True
 }
 
 def partialCorrelation(A, B, n, crossCorr, corrArrayList):
     """
-    Recursive function that calculates the partial correlation between variables A and B,
+     Recursive function that calculates the partial correlation between variables A and B,
     given other controlling variables in corrArrayList.
     
     Parameters:
@@ -51,26 +51,21 @@ def partialCorrelation(A, B, n, crossCorr, corrArrayList):
     Returns:
     - Partial correlation coefficient, or -1 if calculation fails
     """
-    
-    # Small epsilon to prevent division by very small numbers
-    EPSILON = 1e-10
-    
-    # Base case: control for a single variable
-    if n == 0:
-        return crossCorr[A][B]
-    elif n == 1:
-        result = crossCorr[A][B] - (crossCorr[A][int(corrArrayList[0])] * crossCorr[B][int(corrArrayList[0])])
-        denom = (1 - crossCorr[A][int(corrArrayList[0])]**2) * (1 - crossCorr[B][int(corrArrayList[0])]**2)
-    else:
-        # Recursive case: control for multiple variables
-        result = partialCorrelation(A, B, n - 1, crossCorr, corrArrayList)
-        r13 = partialCorrelation(A, int(corrArrayList[n-1]), n - 1, crossCorr, corrArrayList)
-        r23 = partialCorrelation(B, int(corrArrayList[n-1]), n - 1, crossCorr, corrArrayList)
+    r13 = 0
+    r23 = 0
+    denom = 0
+    result = ""
+    if n == 1:
+        result = crossCorr[A][B] - ( crossCorr[A][int(corrArrayList[0])] * crossCorr[B][int(corrArrayList[0])] )
+        denom = (1 - crossCorr[A][int(corrArrayList[0])] ** 2) * (1 - crossCorr[B][int(corrArrayList[0])] ** 2)
+    else:                #r12.34567etc... case - calculate r12.3456, r17.3456, r27.3456 for example
+        result = partialCorrelation(A, B, n - 1, crossCorr, corrArrayList)     #r12.3456 for r12.34567 for example
+        r13 = partialCorrelation(A, int(corrArrayList[n]), n - 1, crossCorr, corrArrayList) #r17.3456 for r12.34567 for example
+        r23 = partialCorrelation(B, int(corrArrayList[n]), n - 1, crossCorr, corrArrayList) #r27.3456 for r12.34567 for example
         result = result - (r13 * r23)
-        denom = (1 - r13**2) * (1 - r23**2)
+        denom = (1 - r13 ** 2) * (1 - r23 ** 2)
 
-    # Check for numerical stability
-    if denom <= EPSILON:
+    if denom <= 0:                          #Trap errors - return -1 if a problem occurs
         return -1
     else:
         return result / math.sqrt(denom)
@@ -217,34 +212,32 @@ def correlation(predictandSelected, predictorSelected, settings):
     # Calculate partial correlations
     partial_correlations = []
     if nVariables >= 3:
-        for i in range(1, nVariables):
-            corrArrayList = np.zeros(nVariables - 2)#todo figure out why orginal was corrArraayList = np.zeros(nVariables + 1)
-            arrayCount = 0
-            for j in range(1, nVariables):
-                if i != j:
-                    corrArrayList[arrayCount] = j
-                    arrayCount += 1
-            
-            # Calculate partial correlation
-            tempResult = partialCorrelation(0, i, arrayCount, crossCorr, corrArrayList) #todo figure out why arrayCount was nVariables-2 in the orginal
-            
-            # Calculate p-value
-            if abs(tempResult) < 0.999: #todo why does this have an -arrayCount and the old one doesn't
-                degreesOfFreedom = effectiveSampleSize - 2 - arrayCount
-                TTestValue = tempResult * math.sqrt(degreesOfFreedom) / math.sqrt(1 - tempResult**2)
-                # Use scipy for proper p-value calculation
-                PrValue = 2 * (1 - stats.t.cdf(abs(TTestValue), degreesOfFreedom))
-            else:
-                TTestValue = 0
-                PrValue = 1
-                tempResult = 0
-            
-            partial_correlations.append({
+       for i in range(1, nVariables):
+                corrArrayList = np.zeros(nVariables + 1)
+                arrayCount = 0
+                for j in range(1, nVariables):
+                    if i != j:
+                        corrArrayList[arrayCount] = j
+                        arrayCount += 1
+                
+                tempResult = partialCorrelation(0, i, nVariables-2, crossCorr, corrArrayList)
+                
+                if abs(tempResult) < 0.999:
+                    TTestValue = (tempResult * np.sqrt(totalNumbers - 2 - totalMissingRows - totalBelowThreshold)) / np.sqrt(1 - (tempResult ** 2))
+                    PrValue = (((1 + ((TTestValue ** 2) / (totalNumbers - totalMissingRows - totalBelowThreshold))) ** -((totalNumbers + 1 - totalMissingRows - totalBelowThreshold) / 2))) / (np.sqrt((totalNumbers - totalMissingRows - totalBelowThreshold) * np.pi))
+                    PrValue = PrValue * np.sqrt(totalNumbers - totalMissingRows - totalBelowThreshold)  # Correction for large N
+                else:
+                    TTestValue = 0
+                    PrValue = 1
+                    tempResult = 0
+
+                partial_correlations.append({
                 'variable': nameOfFiles[i],
                 'correlation': tempResult,
                 'p_value': PrValue,
                 'TTestValue': TTestValue
             })
+
     
     # Create dictionary with all results
     results = {
@@ -624,7 +617,7 @@ def format_correlation_results(results):
         if partial_correlations:
             for i in range(1, n_variables):
                 if i-1 < len(partial_correlations):
-                    partial_r = partial_correlations[i-1]['TTestValue']
+                    partial_r = partial_correlations[i-1]['correlation']
                     p_value = partial_correlations[i-1]['p_value']
                     output.append(f"{file_names[i]:24}{partial_r:<12.3f}{p_value:<12.3f}")
     

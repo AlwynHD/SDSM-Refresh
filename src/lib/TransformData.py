@@ -27,7 +27,7 @@ def loadData(file):
 def valueIsValid(value, applyThresh):
     return value != globalMissingCode and (not applyThresh or value > thresh)
 
-def genericTransform(data, func):
+def genericTransform(data, func, applyThresh=False):
     returnData = np.empty_like(data)
     success = 0
     overflow = 0

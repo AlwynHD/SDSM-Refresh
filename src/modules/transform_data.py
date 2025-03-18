@@ -3,7 +3,6 @@ from PyQt5.QtWidgets import (QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSi
                              QButtonGroup, QRadioButton, QLineEdit, QGroupBox, QMessageBox)
 from PyQt5.QtCore import Qt, QDate
 from PyQt5.QtGui import QPalette, QColor, QIcon
-from src.lib.TransformData import *
 from src.lib.utils import loadFilesIntoMemory
 
 # Define the name of the module for display in the content area
@@ -284,19 +283,19 @@ class ContentWidget(QWidget):
         columnInput = QLineEdit("1")
         columnLayout.addWidget(columnInput)
         
-        simCheckBox = QCheckBox("Create")
-        simLayout.addWidget(simCheckBox)
+        self.simCheckBox = QCheckBox("Create")
+        simLayout.addWidget(self.simCheckBox)
 
-        ensembleCheckBox = QCheckBox("Extract")
-        ensembleInput = QLineEdit("1")
-        ensembleLayout.addWidget(ensembleCheckBox)
-        ensembleLayout.addWidget(ensembleInput)
+        self.ensembleCheckBox = QCheckBox("Extract")
+        self.ensembleInput = QLineEdit("1")
+        ensembleLayout.addWidget(self.ensembleCheckBox)
+        ensembleLayout.addWidget(self.ensembleInput)
 
-        thresholdCheckBox = QCheckBox("Apply Threshold")
-        thresholdLayout.addWidget(thresholdCheckBox)
+        self.thresholdCheckBox = QCheckBox("Apply Threshold")
+        thresholdLayout.addWidget(self.thresholdCheckBox)
 
-        outputCheckBox = QCheckBox("Create .OUT File")
-        outputLayout.addWidget(outputCheckBox)
+        self.outputCheckBox = QCheckBox("Create .OUT File")
+        outputLayout.addWidget(self.outputCheckBox)
 
 
 
@@ -455,12 +454,12 @@ class ContentWidget(QWidget):
         padDataLayout.addWidget(startDateFrame)
         padDataLayout.addWidget(endDateFrame)
 
-        boxCoxRadioGroup = QButtonGroup()
-        boxCoxRadioGroup.setExclusive(True)
+        self.boxCoxRadioGroup = QButtonGroup()
+        self.boxCoxRadioGroup.setExclusive(True)
         boxCoxRadio = QRadioButton("Box Cox")
         unBoxCoxRadio = QRadioButton("Un-Box Cox")
-        boxCoxRadioGroup.addButton(boxCoxRadio)
-        boxCoxRadioGroup.addButton(unBoxCoxRadio)
+        self.boxCoxRadioGroup.addButton(boxCoxRadio)
+        self.boxCoxRadioGroup.addButton(unBoxCoxRadio)
         lambdaFrame = labeledQLineEditFrame("Lambda: ", "1")
         shiftFrame = labeledQLineEditFrame("Shift: ", "0")
 
@@ -518,6 +517,7 @@ class ContentWidget(QWidget):
                     button.setChecked(False)
 
     def doTransform(self):
+        from src.lib.TransformData import square, cube, powFour, powMinusOne, eToTheN, tenToTheN,powHalf, powThird,powQuarter,returnSelf, padData, genericTransform, loadData
         from numpy import log, log10, ndim, empty,longdouble
         #print("https://www.youtube.com/watch?v=7F2QE8O-Y1g")
         try:
@@ -533,6 +533,7 @@ class ContentWidget(QWidget):
             outputFile = open(self.outputSelected, "w")
         except FileNotFoundError:
             return displayBox("Output Error","No output file selected, and you have not selected one to be generated.","Error",isError=True)
+        applyThresh = self.thresholdCheckBox.isChecked()
         data = loadData([self.inputSelected])
         transformations = [["Ln",log],["Log",log10],["x²",square], ["x³",cube],["x⁴",powFour],["x⁻¹",powMinusOne],["eˣ",eToTheN],["10ˣ",tenToTheN],["√x",powHalf],["∛x",powThird],["∜x",powQuarter],["x",returnSelf]]
         if self.padDataCheckBox.isChecked():
@@ -540,7 +541,7 @@ class ContentWidget(QWidget):
         for i in transformations:
             if i[0] == trans:
                 print(i[0] +" found")
-                returnedData = genericTransform(data, i[1])
+                returnedData = genericTransform(data, i[1],applyThresh)
                 for i in returnedData:
                     outputFile.write(str(i[0])+"\n")
         outputFile.close()

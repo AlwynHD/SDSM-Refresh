@@ -545,7 +545,7 @@ class ContentWidget(QWidget):
         for i in transformations:
             if i[0] == trans:
                 print(i[0] +" found")
-                returnedData = genericTransform(data, i[1],applyThresh)
+                returnedData, returnedInfo = genericTransform(data, i[1],applyThresh)
                 for i in returnedData:
                     outputFile.write(str(i[0])+"\n")
         outputFile.close()

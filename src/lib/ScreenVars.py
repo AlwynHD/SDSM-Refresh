@@ -464,7 +464,7 @@ def analyseData(predictandSelected, predictorSelected, fSDate, feDate, globalSDa
         
         return returnData
 
-def scatterPlot(predictandSelected, predictorSelected, fSDate, feDate, globalSDate, globalEDate, autoRegressionTick, leapYear):
+def scatterPlot(predictandSelected, predictorSelected, fSDate, feDate, globalSDate, globalEDate, autoRegressionTick, leapYear=False):
     if predictandSelected == "":
         print("You must select a predictand.") # todo proper error message
     elif len(predictorSelected) < 1 and not autoRegressionTick:

@@ -4,6 +4,7 @@ from PyQt5.QtWidgets import (QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSi
 from PyQt5.QtCore import Qt, QDate
 from PyQt5.QtGui import QPalette, QColor, QIcon
 from src.lib.utils import loadFilesIntoMemory
+import os
 
 # Define the name of the module for display in the content area
 moduleName = "Transform Data"
@@ -493,7 +494,7 @@ class ContentWidget(QWidget):
             self.inputSelected = fileName[0]
             self.selectInputLabel.setText("File: "+self.inputSelected.split("/")[-1]) #Only show the name of the file, not the whole path
         else:
-            self.inputSelected = None
+            self.inputSelected = ""
             self.selectInputLabel.setText("File: Not Selected")
 
     def selectOutputButtonClicked(self):
@@ -504,7 +505,7 @@ class ContentWidget(QWidget):
             self.outputSelected = fileName[0]
             self.selectOutputLabel.setText("File: "+self.outputSelected.split("/")[-1]) #Only show the name of the file, not the whole path
         else:
-            self.outputSelected = None
+            self.outputSelected = ""
             self.selectOutputLabel.setText("File: Not Selected")
 
     def unPressOtherRadios(self,*args):
@@ -531,8 +532,11 @@ class ContentWidget(QWidget):
             return displayBox("Input Error","No input file selected.","Error",isError=True)
         try:
             outputFile = open(self.outputSelected, "w")
-        except FileNotFoundError:
-            return displayBox("Output Error","No output file selected, and you have not selected one to be generated.","Error",isError=True)
+        except (FileNotFoundError, TypeError) as e:
+            if not self.outputCheckBox.isChecked():
+                return displayBox("Output Error","No output file selected, and you have not selected one to be generated.","Error",isError=True)
+            else:
+                outputFile = open(self.inputSelected.split("/")[-1]+" transformed.OUT","w")
         applyThresh = self.thresholdCheckBox.isChecked()
         data = loadData([self.inputSelected])
         transformations = [["Ln",log],["Log",log10],["x²",square], ["x³",cube],["x⁴",powFour],["x⁻¹",powMinusOne],["eˣ",eToTheN],["10ˣ",tenToTheN],["√x",powHalf],["∛x",powThird],["∜x",powQuarter],["x",returnSelf]]
@@ -545,3 +549,9 @@ class ContentWidget(QWidget):
                 for i in returnedData:
                     outputFile.write(str(i[0])+"\n")
         outputFile.close()
+        if outputFile != "" and self.outputCheckBox.isChecked():
+            transformedFile = open(self.outputSelected,"r")
+            outputFile = open(self.inputSelected.split("/")[-1]+" transformed.OUT","w")
+            for line in transformedFile:
+                outputFile.write(line)
+

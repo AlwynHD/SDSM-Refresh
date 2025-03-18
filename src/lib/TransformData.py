@@ -13,6 +13,10 @@ thresh = 0
 
 def loadData(file):
     data = loadFilesIntoMemory(file)[0]
+
+    if np.ndim(data) == 0:
+        data = [data]
+    
     if np.ndim(data) == 1:
         newData = np.empty((len(data), 1))
         newData[:, 0] = data
@@ -26,32 +30,39 @@ def valueIsValid(value, applyThresh):
 def genericTransform(data, func):
     returnData = np.empty_like(data)
     success = 0
+    overflow = 0
     failure = 0
 
     for c in range(len(data.T)):
         for r in range(len(data[:, c])):
             if valueIsValid(data[r][c], applyThresh):
-                returnData[r][c] = func(data[r][c])
-                success += 1
+                newVal = func(data[r][c])
+                returnData[r][c] = newVal
+                if newVal == globalMissingCode:
+                    overflow += 1
+                else:
+                    success += 1
             else:
                 returnData[r][c] = data[r][c]
                 failure += 1
                 
-    infoString = "Processed " + str(success + failure) + " values.\n"
+    infoString = "Processed " + str(success + overflow + failure) + " values.\n"
     if failure > 0:
-        infoString += str(failure) + " value(s) were not transformed (missing or below threshold)."
+        infoString += str(failure) + " value(s) not transformed (missing or below threshold).\n"
+    if overflow > 0:
+        infoString += str(overflow) + " value(s) would have caused overflow, replaced by global missing code."
 
     return returnData, infoString
 
-def square(n): return np.float_power(n, 2)
-def cube(n): return np.float_power(n, 3)
-def powFour(n): return np.float_power(n, 4)
-def powMinusOne(n): return np.float_power(n, -1)
-def eToTheN(n): return np.float_power(np.e, n)
-def tenToTheN(n): return np.float_power(10, n)
-def powHalf(n): return np.float_power(n, 1/2)
-def powThird(n): return np.float_power(n, 1/3)
-def powQuarter(n): return np.float_power(n, 1/4)
+def square(n): return np.float_power(n, 2) if n <= 1e154 else globalMissingCode
+def cube(n): return np.float_power(n, 3) if n <= 1e102 else globalMissingCode
+def powFour(n): return np.float_power(n, 4) if n <= 1e77 else globalMissingCode
+def powMinusOne(n): return np.float_power(n, -1) if n >= 1e-308 else globalMissingCode
+def eToTheN(n): return np.float_power(np.e, n) if n <= 709 else globalMissingCode
+def tenToTheN(n): return np.float_power(10, n) if n <= 308 else globalMissingCode
+def powHalf(n): return np.float_power(n, 1/2) if n <= 1e308 else globalMissingCode
+def powThird(n): return np.float_power(n, 1/3) if n <= 1e308 else globalMissingCode
+def powQuarter(n): return np.float_power(n, 1/4) if n<= 1e308 else globalMissingCode
 def returnSelf(n): return n
 
 def backwardsChange(data):
@@ -84,6 +95,9 @@ def lag(data, n, wrap):
     processed = 0
 
     for c in range(len(data.T)):
+        if n > len(data.T):
+            return returnData, "Cannot perform lag transformation, input past end of file."
+        
         processed += 1
         if wrap:
             returnData[:, c] = np.concatenate((data[:, c][n:], data[:, c][:n])) #The double brackets here are required
@@ -228,6 +242,7 @@ if __name__ == "__main__":
 
     file = selectFile()
     data = loadData(file)
+    print(data)
 
     genericTransform(data, np.log)
     genericTransform(data, np.log10)

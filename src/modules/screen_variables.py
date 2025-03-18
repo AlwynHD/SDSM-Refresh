@@ -477,7 +477,7 @@ class ContentWidget(QWidget):
             self.selectPredictandLabel.setText("No predictand selected")
 
     def predictorLabelClicked(self,*args):
-        from src.lib.ScreenVars import filesNames
+        from src.lib.utils import filesNames
         button = self.sender() #Get the buttonLabel that was clicked
         predictor = button.text() #Get the name of the buttonLabel, so the predictor file
         if (self.predictorPath+"/"+predictor) not in self.predictorsSelected:

@@ -25,13 +25,23 @@ def valueIsValid(value, applyThresh):
 
 def genericTransform(data, func):
     returnData = np.empty_like(data)
+    success = 0
+    failure = 0
+
     for c in range(len(data.T)):
         for r in range(len(data[:, c])):
             if valueIsValid(data[r][c], applyThresh):
                 returnData[r][c] = func(data[r][c])
+                success += 1
             else:
                 returnData[r][c] = data[r][c]
-    return returnData
+                failure += 1
+                
+    infoString = "Processed " + str(success + failure) + " values.\n"
+    if failure > 0:
+        infoString += str(failure) + " value(s) were not transformed (missing or below threshold)."
+
+    return returnData, infoString
 
 def square(n): return np.float_power(n, 2)
 def cube(n): return np.float_power(n, 3)
@@ -47,37 +57,63 @@ def returnSelf(n): return n
 def backwardsChange(data):
     """Returns the difference between each value and the previous value"""
     returnData = np.empty_like(data)
+    success = 0
+    failure = 0
+
     for c in range(len(data.T)):
         for r in range(len(data[:, c])):
             if valueIsValid(data[r][c], applyThresh):
+                success += 1
                 if r == 0 or not valueIsValid(data[r - 1][c], applyThresh):
                     returnData[r][c] = globalMissingCode
                 else:
                     returnData[r][c] = data[r][c] - data[r - 1][c]
             else:
+                failure += 1
                 returnData[r][c] = data[r][c]
-    return returnData
+
+    infoString = "Processed " + str(success + failure) + " values.\n"
+    if failure > 0:
+        infoString += str(failure) + " value(s) were not transformed (missing or below threshold)."
+
+    return returnData, infoString
 
 def lag(data, n, wrap):
     """Rewrite data so it begins at position n. Values before n wrap to bottom."""
     returnData = np.empty_like(data)
+    processed = 0
+
     for c in range(len(data.T)):
+        processed += 1
         if wrap:
             returnData[:, c] = np.concatenate((data[:, c][n:], data[:, c][:n])) #The double brackets here are required
         else:
             returnData[:, c] = np.concatenate((data[:, c][n:], np.full(n, globalMissingCode)))
-    return returnData
+
+    infoString = "Processed " + str(processed) + " values.\n"
+
+    return returnData, infoString
 
 def binomial(data, binomial):
     """Returns 1 if value in column is above binomial value, otherwise returns 0"""
     returnData = np.empty_like(data)
+    success = 0
+    failure = 0
+
     for c in range(len(data.T)):
         for r in range(len(data[:, c])):
             if valueIsValid(data[r][c], applyThresh):
                 returnData[r][c] = 1 if data[r][c] > binomial else 0
+                success = 0
             else:
                 returnData[r][c] = data[r][c]
-    return returnData
+                failure = 0
+
+    infoString = "Processed " + str(success + failure) + " values.\n"
+    if failure > 0:
+        infoString += str(failure) + " value(s) were not transformed (missing or below threshold)."
+
+    return returnData, infoString
 
 def extractEnsemble(data, column):
     return data[:, column - 1]
@@ -89,6 +125,9 @@ def padData(data, dataSDate, dataEDate):
 
 def removeOutliers(data, sdFilterValue):
     returnData = np.empty_like(data)
+    remained = 0
+    removed = 0
+
     for c in range(len(data.T)):
         column = data[:, c]
         threshCol = [entry for entry in column if valueIsValid(entry, applyThresh)]
@@ -105,31 +144,51 @@ def removeOutliers(data, sdFilterValue):
         for r in range(len(column)):
             if valueIsValid(column[r], applyThresh) and (column[r] > (mean + sdFilter) or column[r] < (mean - sdFilter)):
                 filteredCol[r] = globalMissingCode
+                removed += 1
             else:
                 filteredCol[r] = column[r]
+                remained += 1
         returnData[:, c] = filteredCol
-    return returnData
+
+    infoString = "Processed " + str(remained + removed) + " values.\n"
+    if removed > 0:
+        infoString += str(removed) + " value(s) were identified as outliers and removed."
+
+    return returnData, infoString
 
 def boxCox(data):
     #todo check with Chris if we can use auto generated lambda or if he wants his method
     #todo also check if he will let us boxcox data with fewer than 50 entries
     #todo and if we can run this for multiple columns
     returnData = np.empty_like(data)
+    success = 0
+
     for c in range(len(data.T)):
         boxCoxData = [entry for entry in data[:, c] if valueIsValid(entry, applyThresh)]
-        boxCoxData = sci.stats.boxcox(boxCoxData)[0]
+        minVal = np.min(boxCoxData)
+        boxCoxData = sci.stats.boxcox(boxCoxData)
 
         invalidCount = 0
         for r in range(len(data[:, c])):
             if valueIsValid(data[r][c], applyThresh):
-                returnData[r][c] = boxCoxData[r - invalidCount]
+                returnData[r][c] = boxCoxData[0][r - invalidCount]
+                success += 1
             else:
                 returnData[r][c] = data[r][c]
                 invalidCount += 1
-    return returnData
+
+    infoString = "Processed " + str(success + invalidCount) + " values.\n"
+    if invalidCount > 0:
+        infoString += str(invalidCount) + " value(s) excluded from transformation (missing or below threshold).\n"
+    infoString += "Optimal lamda value: " + str(boxCoxData[1])
+    infoString += "\nData right shifted: " + str(minVal)
+    
+    return returnData, infoString
 
 def unBoxCox(data, lamda, leftShift):
     returnData = np.empty_like(data)
+    success = 0
+
     for c in range(len(data.T)):
         unBoxCoxData = [entry for entry in data[:, c] if valueIsValid(entry, applyThresh)]
         for i in range(len(unBoxCoxData)):
@@ -143,10 +202,16 @@ def unBoxCox(data, lamda, leftShift):
         for r in range(len(data[:, c])):
             if valueIsValid(data[r][c], applyThresh):
                 returnData[r][c] = unBoxCoxData[r - invalidCount]
+                success += 1
             else:
                 returnData[r][c] = data[r][c]
                 invalidCount += 1
-    return returnData
+
+    infoString = "Processed " + str(success + invalidCount) + " values.\n"
+    if invalidCount > 0:
+        infoString += str(invalidCount) + " value(s) excluded from transformation (missing or below threshold).\n"
+
+    return returnData, infoString
 
 if __name__ == "__main__":
     """Variables that are gotten from the screen."""

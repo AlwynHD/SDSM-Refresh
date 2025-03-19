@@ -1,6 +1,7 @@
 import configparser
 from datetime import datetime, timedelta
 import os
+import json
 from PyQt5.QtWidgets import (QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, QFrame, QLabel, QLineEdit, QCheckBox, QFileSystemModel, QGroupBox, QApplication, QHeaderView, QFileDialog, QMessageBox)
 from PyQt5.QtCore import Qt, QDir
 from PyQt5.QtGui import QPalette, QColor
@@ -230,6 +231,29 @@ class ContentWidget(QWidget):
 
         except configparser.Error as e:
             QMessageBox.critical(self, "Error", f"Error loading settings: {e}")
+
+    def get_settings_json(self):
+        settings = {
+        "yearIndicator": yearIndicator,
+        "globalSDate": globalSDate,
+        "globalEDate": globalEDate,
+        "allowNeg": allowNeg,
+        "randomSeed": randomSeed,
+        "thresh": thresh,
+        "globalMissingCode": globalMissingCode,
+        "defaultDir": defaultDir,
+        "varianceInflation": varianceInflation,
+        "biasCorrection": biasCorrection,
+        "fixedThreshold": fixedThreshold,
+        "modelTransformation": modelTransformation,
+        "optimizationAlgorithm": optimizationAlgorithm,
+        "criteriaType": criteriaType,
+        "stepwiseRegression": stepwiseRegression,
+        "conditionalSelection": conditionalSelection,
+        "months": months
+        }
+        return json.dumps(settings, indent=4)
+
 
     def safeGetInt(self, config, section, option, fallback):
         try:

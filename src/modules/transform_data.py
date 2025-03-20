@@ -399,10 +399,14 @@ class ContentWidget(QWidget):
         lagNLayout = QHBoxLayout()
         lagNRadio = QRadioButton("Lag n")
         self.transformRadioGroup.addButton(lagNRadio)
-        lagNLineEdit = QLineEdit("0")
+        self.lagNLineEdit = QLineEdit("0")
+        self.wrapCheckBox = QCheckBox("Wrap")
         lagNLayout.addWidget(lagNRadio)
-        lagNLayout.addWidget(lagNLineEdit)
+        
+        lagNLayout.addWidget(self.lagNLineEdit)
+        lagNLayout.addWidget(self.wrapCheckBox)
         lagNFrame.setLayout(lagNLayout)
+        
         otherTransformationsLayout.addWidget(lagNFrame)
 
         binomialFrame = QFrame()
@@ -411,10 +415,9 @@ class ContentWidget(QWidget):
         self.transformRadioGroup.addButton(binomialRadio)
 
         binomialLineEdit = QLineEdit("0")
-        binomialWrapCheckBox = QCheckBox("Wrap")
+        
         binomialLayout.addWidget(binomialRadio)
         binomialLayout.addWidget(binomialLineEdit)
-        binomialLayout.addWidget(binomialWrapCheckBox)
         binomialFrame.setLayout(binomialLayout)
         otherTransformationsLayout.addWidget(binomialFrame)
         
@@ -455,12 +458,11 @@ class ContentWidget(QWidget):
         padDataLayout.addWidget(startDateFrame)
         padDataLayout.addWidget(endDateFrame)
 
-        self.boxCoxRadioGroup = QButtonGroup()
-        self.boxCoxRadioGroup.setExclusive(True)
+
         boxCoxRadio = QRadioButton("Box Cox")
         unBoxCoxRadio = QRadioButton("Un-Box Cox")
-        self.boxCoxRadioGroup.addButton(boxCoxRadio)
-        self.boxCoxRadioGroup.addButton(unBoxCoxRadio)
+        self.transformRadioGroup.addButton(boxCoxRadio)
+        self.transformRadioGroup.addButton(unBoxCoxRadio)
         self.lambdaFrame = labeledQLineEditFrame("Lambda: ", "1")
         self.shiftFrame = labeledQLineEditFrame("Shift: ", "0")
 
@@ -518,7 +520,8 @@ class ContentWidget(QWidget):
                     button.setChecked(False)
 
     def doTransform(self):
-        from src.lib.TransformData import square, cube, powFour, powMinusOne, eToTheN, tenToTheN,powHalf, powThird,powQuarter,returnSelf, padData, genericTransform, loadData, boxCox, unBoxCox
+        from src.lib.TransformData import square, cube, powFour, powMinusOne, eToTheN, tenToTheN, lag
+        from src.lib.TransformData import powHalf, powThird,powQuarter,returnSelf, padData, genericTransform, loadData, boxCox, unBoxCox
         from numpy import log, log10, ndim, empty,longdouble
         #print("https://www.youtube.com/watch?v=7F2QE8O-Y1g")
 
@@ -543,7 +546,8 @@ class ContentWidget(QWidget):
             return displayBox("Transformation Error","A transformation must be selected.","Error",isError=True)
         transformations = [["Ln",log],["Log",log10],["x²",square], ["x³",cube],["x⁴",powFour],["x⁻¹",powMinusOne],["eˣ",eToTheN],["10ˣ",tenToTheN],["√x",powHalf],["∛x",powThird],["∜x",powQuarter],["x",returnSelf]]
         if self.padDataCheckBox.isChecked():
-            padData(data, self.QDateEditToDateTime(self.startDateEdit), self.QDateEditToDateTime(self.endDateEdit))
+            data = padData(data, self.QDateEditToDateTime(self.startDateEdit), self.QDateEditToDateTime(self.endDateEdit))
+        genericTrans = False
         for i in transformations:
             if i[0] == trans:
                 genericTrans = True
@@ -553,18 +557,23 @@ class ContentWidget(QWidget):
         if not genericTrans:
             if trans == "Box Cox":
                 if self.padDataCheckBox.isChecked():
-                    padData(data, self.QDateEditToDateTime(self.startDateEdit), self.QDateEditToDateTime(self.endDateEdit))
+                    data = padData(data, self.QDateEditToDateTime(self.startDateEdit), self.QDateEditToDateTime(self.endDateEdit))
                 returnedData, returnedInfo = boxCox(data, applyThresh)
             elif trans == "Un-Box Cox":
                 if self.padDataCheckBox.isChecked():
-                    padData(data, self.QDateEditToDateTime(self.startDateEdit), self.QDateEditToDateTime(self.endDateEdit))
+                    data = padData(data, self.QDateEditToDateTime(self.startDateEdit), self.QDateEditToDateTime(self.endDateEdit))
                 returnedData, returnedInfo = unBoxCox(data, self.lambdaFrame.getLineEditVal(),self.shiftFrame.getLineEditVal(),applyThresh)
-            
+            elif trans == "Lag n":
+                if self.padDataCheckBox.isChecked():
+                    data = padData(data, self.QDateEditToDateTime(self.startDateEdit), self.QDateEditToDateTime(self.endDateEdit))
+                if  not self.lagNLineEdit.text().isdigit():
+                    return displayBox("Value error","Lag N value must be an integer","Error",isError=True)
+                returnedData, returnedInfo = lag(data, int(self.lagNLineEdit.text()), self.wrapCheckBox.isChecked())
         outputFile.close()
         if self.outputSelected != "" and self.outputCheckBox.isChecked():
             transformedFile = open(self.outputSelected,"r")
             outputFile = open(self.inputSelected.split("/")[-1]+" transformed.OUT","w")
             for line in transformedFile:
                 outputFile.write(line)
-        displayBox("Data Transformed",returnedInfo,"Transformation Success")
+        return displayBox("Data Transformed",returnedInfo,"Transformation Success")
 

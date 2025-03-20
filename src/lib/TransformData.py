@@ -54,6 +54,8 @@ def genericTransform(data, func, applyThresh):
 
     return returnData, infoString
 
+def ln(n): return np.log(n) if 0 < n <= 1e308 else globalMissingCode
+def log(n): return np.log10(n) if 0 < n <= 1e308 else globalMissingCode
 def square(n): return np.float_power(n, 2) if n <= 1e154 else globalMissingCode
 def cube(n): return np.float_power(n, 3) if n <= 1e102 else globalMissingCode
 def powFour(n): return np.float_power(n, 4) if n <= 1e77 else globalMissingCode
@@ -98,7 +100,7 @@ def lag(data, n, wrap):
         if n > len(data.T):
             return returnData, "Cannot perform lag transformation, input past end of file."
         
-        processed += 1
+        processed += len(data.T)
         if wrap:
             returnData[:, c] = np.concatenate((data[:, c][n:], data[:, c][:n])) #The double brackets here are required
         else:
@@ -118,10 +120,10 @@ def binomial(data, binomial, applyThresh):
         for r in range(len(data[:, c])):
             if valueIsValid(data[r][c], applyThresh):
                 returnData[r][c] = 1 if data[r][c] > binomial else 0
-                success = 0
+                success += 1
             else:
                 returnData[r][c] = data[r][c]
-                failure = 0
+                failure += 1
 
     infoString = "Processed " + str(success + failure) + " values.\n"
     if failure > 0:
@@ -180,6 +182,13 @@ def boxCox(data, applyThresh):
     for c in range(len(data.T)):
         boxCoxData = [entry for entry in data[:, c] if valueIsValid(entry, applyThresh)]
         minVal = np.min(boxCoxData)
+        print(minVal)
+        boxCoxData = [entry + abs(minVal) for entry in boxCoxData]
+
+        for entry in boxCoxData:
+            if entry <= 0:
+                print(entry)
+
         boxCoxData = sci.stats.boxcox(boxCoxData)
 
         invalidCount = 0
@@ -229,7 +238,7 @@ def unBoxCox(data, lamda, leftShift, applyThresh):
 
 if __name__ == "__main__":
     """Variables that are gotten from the screen."""
-    applyThresh = True
+    applyThresh = False
     dataSDate = dt.date(1948, 1, 1)
     dataEDate = dt.date(2015, 12, 31)
     lagValue = 3
@@ -240,10 +249,13 @@ if __name__ == "__main__":
     leftShift = 5
     wrap = False
 
+    print(np.log10(1e309))
+
     file = selectFile()
     data = loadData(file)
+    data = np.array([[0], [1], [2], [3], [4], [5]])
 
-    genericTransform(data, np.log, applyThresh)
+    genericTransform(data, ln, applyThresh)
     genericTransform(data, np.log10, applyThresh)
     genericTransform(data, square, applyThresh)
     genericTransform(data, cube, applyThresh)
@@ -267,5 +279,5 @@ if __name__ == "__main__":
 
     removeOutliers(data, sdFilter, applyThresh)
 
-    boxCox(data, applyThresh)
+    print(boxCox(data, applyThresh))
     unBoxCox(data, lamda, leftShift, applyThresh)

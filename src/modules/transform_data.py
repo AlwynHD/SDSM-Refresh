@@ -461,13 +461,13 @@ class ContentWidget(QWidget):
         unBoxCoxRadio = QRadioButton("Un-Box Cox")
         self.boxCoxRadioGroup.addButton(boxCoxRadio)
         self.boxCoxRadioGroup.addButton(unBoxCoxRadio)
-        lambdaFrame = labeledQLineEditFrame("Lambda: ", "1")
-        shiftFrame = labeledQLineEditFrame("Shift: ", "0")
+        self.lambdaFrame = labeledQLineEditFrame("Lambda: ", "1")
+        self.shiftFrame = labeledQLineEditFrame("Shift: ", "0")
 
         boxLayout.addWidget(boxCoxRadio)
         boxLayout.addWidget(unBoxCoxRadio)
-        boxLayout.addWidget(lambdaFrame)
-        boxLayout.addWidget(shiftFrame)
+        boxLayout.addWidget(self.lambdaFrame)
+        boxLayout.addWidget(self.shiftFrame)
 
         outlierCheckBox = QCheckBox("Remove Outliers")
         standardDevFrame = labeledQLineEditFrame("Standard Dev: ", "0")
@@ -518,14 +518,11 @@ class ContentWidget(QWidget):
                     button.setChecked(False)
 
     def doTransform(self):
-        from src.lib.TransformData import square, cube, powFour, powMinusOne, eToTheN, tenToTheN,powHalf, powThird,powQuarter,returnSelf, padData, genericTransform, loadData
+        from src.lib.TransformData import square, cube, powFour, powMinusOne, eToTheN, tenToTheN,powHalf, powThird,powQuarter,returnSelf, padData, genericTransform, loadData, boxCox, unBoxCox
         from numpy import log, log10, ndim, empty,longdouble
         #print("https://www.youtube.com/watch?v=7F2QE8O-Y1g")
 
-        try: #Check if a transformation is selected
-            trans = self.transformRadioGroup.checkedButton().text() 
-        except AttributeError:
-            return displayBox("Transformation Error","A transformation must be selected.","Error",isError=True)
+        
         try: #Check if an input file is selected
             file = open(self.inputSelected,"r")
             file.close()
@@ -540,15 +537,29 @@ class ContentWidget(QWidget):
                 outputFile = open(self.inputSelected.split("/")[-1]+" transformed.OUT","w")
         applyThresh = self.thresholdCheckBox.isChecked()
         data = loadData([self.inputSelected])
+        try: #Check if a transformation is selected
+            trans = self.transformRadioGroup.checkedButton().text() 
+        except AttributeError:
+            return displayBox("Transformation Error","A transformation must be selected.","Error",isError=True)
         transformations = [["Ln",log],["Log",log10],["x²",square], ["x³",cube],["x⁴",powFour],["x⁻¹",powMinusOne],["eˣ",eToTheN],["10ˣ",tenToTheN],["√x",powHalf],["∛x",powThird],["∜x",powQuarter],["x",returnSelf]]
         if self.padDataCheckBox.isChecked():
             padData(data, self.QDateEditToDateTime(self.startDateEdit), self.QDateEditToDateTime(self.endDateEdit))
         for i in transformations:
             if i[0] == trans:
-                print(i[0] +" found")
+                genericTrans = True
                 returnedData, returnedInfo = genericTransform(data, i[1],applyThresh)
                 for i in returnedData:
                     outputFile.write(str(i[0])+"\n")
+        if not genericTrans:
+            if trans == "Box Cox":
+                if self.padDataCheckBox.isChecked():
+                    padData(data, self.QDateEditToDateTime(self.startDateEdit), self.QDateEditToDateTime(self.endDateEdit))
+                returnedData, returnedInfo = boxCox(data, applyThresh)
+            elif trans == "Un-Box Cox":
+                if self.padDataCheckBox.isChecked():
+                    padData(data, self.QDateEditToDateTime(self.startDateEdit), self.QDateEditToDateTime(self.endDateEdit))
+                returnedData, returnedInfo = unBoxCox(data, self.lambdaFrame.getLineEditVal(),self.shiftFrame.getLineEditVal(),applyThresh)
+            
         outputFile.close()
         if self.outputSelected != "" and self.outputCheckBox.isChecked():
             transformedFile = open(self.outputSelected,"r")

@@ -200,7 +200,7 @@ class ContentWidget(QWidget):
         #Layout for selectPredictors frame
         selectPredictorsLayout = QVBoxLayout()
         selectPredictorsLayout.setContentsMargins(25, 25, 25, 25) #Pad 10 pixels each way
-        selectPredictorsLayout.setSpacing(0)  # No spacing between elements
+        selectPredictorsLayout.setSpacing(10)  # No spacing between elements
 
 
         selectPredictorsFrame.setLayout(selectPredictorsLayout)
@@ -325,31 +325,24 @@ class ContentWidget(QWidget):
         #predictorsScrollFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Fixed)
 
 
-        predictorsScrollLayout = QVBoxLayout()
-        predictorsScrollLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
-        predictorsScrollLayout.setSpacing(0)  # No spacing between elements
-        predictorsScrollLayout.setAlignment(Qt.AlignHCenter)
-        predictorsScrollFrame.setLayout(predictorsScrollLayout)  # Apply the layout to the frame
+        self.predictorsScrollLayout = QVBoxLayout()
+        self.predictorsScrollLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
+        self.predictorsScrollLayout.setSpacing(0)  # No spacing between elements
+        self.predictorsScrollLayout.setAlignment(Qt.AlignHCenter)
+        predictorsScrollFrame.setLayout(self.predictorsScrollLayout)  # Apply the layout to the frame
 
 
         selectPredictorsLayout.addWidget(predictorsScrollArea)
 
         #Get all predictors and populate scroll frame
-
-        for predictor in listdir(self.predictorPath):
-            #These are functionally labels, but QLabels do not have an onclick function that emits a sender signal,
-            #so QPushButtons are used instead
-            predictorScrollLabelButton = QPushButton(predictor)
-            predictorScrollLabelButton.setFlat = True
-        
-            predictorScrollLabelButton.clicked.connect(self.predictorLabelClicked)
-            predictorScrollLabelButton.setBaseSize(200, 20)
-            predictorScrollLabelButton.setStyleSheet("color: black; background-color: #F0F0F0")
-            predictorScrollLabelButton.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-            predictorsScrollLayout.addWidget(predictorScrollLabelButton) 
+        self.writePredictors()
         
         predictorsScrollArea.setWidget(predictorsScrollFrame)
 
+        selectPredictorPathButton = QPushButton("📂 Select Predictor Path")
+        selectPredictorPathButton.clicked.connect(self.updatePredictors)
+        selectPredictorPathButton.setContentsMargins(0,25,0,25)
+        selectPredictorsLayout.addWidget(selectPredictorPathButton)
 
         #Create a date edit box in the fitStart frame to choose start fit date
 
@@ -464,7 +457,34 @@ class ContentWidget(QWidget):
         
         self.newWindow.load_results(data)
         self.newWindow.show()
-
+    def writePredictors(self):
+        for predictor in listdir(self.predictorPath):
+            #These are functionally labels, but QLabels do not have an onclick function that emits a sender signal,
+            #so QPushButtons are used instead
+            predictor = predictor.lower()
+            if predictor.split(".")[-1] == "dat":
+                predictorScrollLabelButton = QPushButton(predictor)
+                predictorScrollLabelButton.setFlat = True
+            
+                predictorScrollLabelButton.clicked.connect(self.predictorLabelClicked)
+                predictorScrollLabelButton.setBaseSize(200, 20)
+                predictorScrollLabelButton.setStyleSheet("color: black; background-color: #F0F0F0")
+                predictorScrollLabelButton.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+                self.predictorsScrollLayout.addWidget(predictorScrollLabelButton) 
+    def updatePredictors(self):
+        pathName = QFileDialog.getExistingDirectory(self)
+        self.predictorPath = pathName
+        
+        while self.predictorsScrollLayout.count():
+            item = self.predictorsScrollLayout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.setParent(None)
+        if(self.predictorPath != ""):
+            self.writePredictors()
+        else:
+            self.predictorPath = "predictor files"
+      
     def selectPredictandButtonClicked(self):
         #Will have to be changed soon, as it relies on known file "predictand files"
         fileName = QFileDialog.getOpenFileName(self, "Select predictand file", 'predictand files', "DAT Files (*.DAT)") 

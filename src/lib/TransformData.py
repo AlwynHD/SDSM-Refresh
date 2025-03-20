@@ -27,7 +27,7 @@ def loadData(file):
 def valueIsValid(value, applyThresh):
     return value != globalMissingCode and (not applyThresh or value > thresh)
 
-def genericTransform(data, func, applyThresh=False):
+def genericTransform(data, func, applyThresh):
     returnData = np.empty_like(data)
     success = 0
     overflow = 0
@@ -65,7 +65,7 @@ def powThird(n): return np.float_power(n, 1/3) if n <= 1e308 else globalMissingC
 def powQuarter(n): return np.float_power(n, 1/4) if n<= 1e308 else globalMissingCode
 def returnSelf(n): return n
 
-def backwardsChange(data):
+def backwardsChange(data, applyThresh):
     """Returns the difference between each value and the previous value"""
     returnData = np.empty_like(data)
     success = 0
@@ -108,7 +108,7 @@ def lag(data, n, wrap):
 
     return returnData, infoString
 
-def binomial(data, binomial):
+def binomial(data, binomial, applyThresh):
     """Returns 1 if value in column is above binomial value, otherwise returns 0"""
     returnData = np.empty_like(data)
     success = 0
@@ -137,7 +137,7 @@ def padData(data, dataSDate, dataEDate):
     endDiff = globalEDate - dataEDate
     return np.pad(data, [(startDiff.days, endDiff.days), (0, 0)], mode='constant', constant_values=globalMissingCode)
 
-def removeOutliers(data, sdFilterValue):
+def removeOutliers(data, sdFilterValue, applyThresh):
     returnData = np.empty_like(data)
     remained = 0
     removed = 0
@@ -170,7 +170,7 @@ def removeOutliers(data, sdFilterValue):
 
     return returnData, infoString
 
-def boxCox(data):
+def boxCox(data, applyThresh):
     #todo check with Chris if we can use auto generated lambda or if he wants his method
     #todo also check if he will let us boxcox data with fewer than 50 entries
     #todo and if we can run this for multiple columns
@@ -199,7 +199,7 @@ def boxCox(data):
     
     return returnData, infoString
 
-def unBoxCox(data, lamda, leftShift):
+def unBoxCox(data, lamda, leftShift, applyThresh):
     returnData = np.empty_like(data)
     success = 0
 
@@ -243,29 +243,29 @@ if __name__ == "__main__":
     file = selectFile()
     data = loadData(file)
 
-    genericTransform(data, np.log)
-    genericTransform(data, np.log10)
-    genericTransform(data, square)
-    genericTransform(data, cube)
-    genericTransform(data, powFour)
-    genericTransform(data, powMinusOne)
+    genericTransform(data, np.log, applyThresh)
+    genericTransform(data, np.log10, applyThresh)
+    genericTransform(data, square, applyThresh)
+    genericTransform(data, cube, applyThresh)
+    genericTransform(data, powFour, applyThresh)
+    genericTransform(data, powMinusOne, applyThresh)
 
-    genericTransform(data, eToTheN)
-    genericTransform(data, tenToTheN)
-    genericTransform(data, powHalf)
-    genericTransform(data, powThird)
-    genericTransform(data, powQuarter)
-    genericTransform(data, returnSelf)
+    genericTransform(data, eToTheN, applyThresh)
+    genericTransform(data, tenToTheN, applyThresh)
+    genericTransform(data, powHalf, applyThresh)
+    genericTransform(data, powThird, applyThresh)
+    genericTransform(data, powQuarter, applyThresh)
+    genericTransform(data, returnSelf, applyThresh)
 
-    backwardsChange(data)
+    backwardsChange(data, applyThresh)
     lag(data, lagValue, wrap)
-    binomial(data, binomialValue)
+    binomial(data, binomialValue, applyThresh)
 
     extractEnsemble(data, ensembleCol)
 
     padData(data, dataSDate, dataEDate)
 
-    removeOutliers(data, sdFilter)
+    removeOutliers(data, sdFilter, applyThresh)
 
-    boxCox(data)
-    unBoxCox(data, lamda, leftShift)
+    boxCox(data, applyThresh)
+    unBoxCox(data, lamda, leftShift, applyThresh)

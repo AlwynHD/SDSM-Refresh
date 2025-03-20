@@ -6,24 +6,11 @@ from src.lib.utils import *
 #from utils import *
 from PyQt5.QtWidgets import QApplication, QMainWindow, QTextEdit, QTabWidget
 from PyQt5.QtGui import QFont
-import sys
+import src.core.data_settings as global_settings
 
 #Local version
 predictorSelected = ['predictor files/ncep_dswr.dat']
 predictandSelected = ['predictand files/NoviSadPrecOBS.dat']
-
-#predictorSelected = ['C:/Code/SDSM/SDSM-Refresh/predictor files/ncep_dswr.dat'] #todo remove default
-#predictandSelected = ['C:/Code/SDSM/SDSM-Refresh/predictand files/NoviSadPrecOBS.dat'] #todo remove default
-#nameOfFiles = ["NoviSadPrecOBS", "ncep_dswr"]
-globalSDate = datetime.date(1948, 1, 1)
-globalEDate = datetime.date(2015, 12, 31)
-fSDate = datetime.date(1948, 1, 1)
-fEDate = datetime.date(2015, 12, 31)
-leapYear = True
-sigLevelInput = 0
-analysisPeriod = ["Annual", "Winter", "Spring", "Summer", "Autumn", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
-analysisPeriodChosen = 0
-autoRegressionTick = False
 
 settings = {
     'fSDate': datetime.date(1948, 1, 1),
@@ -71,6 +58,7 @@ def partialCorrelation(A, B, n, crossCorr, corrArrayList):
         return result / math.sqrt(denom)
 
 def correlation(predictandSelected, predictorSelected, settings):
+    global_settings.loadSettings()
     """
     Calculates correlation and partial correlation between predictand and predictors.
     
@@ -92,6 +80,7 @@ def correlation(predictandSelected, predictorSelected, settings):
     - Dictionary containing all calculated data and metadata
     """
     # Extract settings with defaults for optional parameters
+    #print(loadsettings())
     fSDate = settings.get('fSDate')
     fEDate = settings.get('fEDate')
     leapYear = settings.get('leapYear', True)
@@ -464,7 +453,7 @@ def analyseData(predictandSelected, predictorSelected, fSDate, feDate, globalSDa
         
         return returnData
 
-def scatterPlot(predictandSelected, predictorSelected, fSDate, feDate, globalSDate, globalEDate, autoRegressionTick, leapYear=False):
+def scatterPlot(predictandSelected, predictorSelected, fSDate, fEDate, globalSDate, globalEDate, autoRegressionTick, leapYear):
     if predictandSelected == "":
         print("You must select a predictand.") # todo proper error message
     elif len(predictorSelected) < 1 and not autoRegressionTick:
@@ -740,14 +729,15 @@ class CorrelationAnalysisApp(QMainWindow):
         self.tab_widget.addTab(table_widget, "Table View")
 
 # Run the application
-if __name__ == "__main__":
+"""if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = CorrelationAnalysisApp()
     window.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec_())"""
 
-"""if __name__ == '__main__':
-    leapYear = True
+if __name__ == '__main__':
+    print("NOO")
+    #leapYear = True
     #data = analyseData(predictandSelected, predictorSelected, fSDate, fEDate, globalSDate, globalEDate, autoRegressionTick, leapYear, sigLevelInput)
 
     #for line in data:
@@ -755,6 +745,6 @@ if __name__ == "__main__":
     #predictorSelected = selectFile()
     #predictandSelected = selectFile()
 
-    correlation(predictandSelected, predictorSelected, settings)
+    #correlation(predictandSelected, predictorSelected, settings)
     #scatterPlot(predictandSelected, predictorSelected, fSDate, fEDate, globalSDate, globalEDate, autoRegressionTick, leapYear)
-    #print(np.random.normal(size=(2, 200), scale=1e-5))"""
+    #print(np.random.normal(size=(2, 200), scale=1e-5))

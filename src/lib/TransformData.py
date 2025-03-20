@@ -195,7 +195,7 @@ def boxCox(data):
     if invalidCount > 0:
         infoString += str(invalidCount) + " value(s) excluded from transformation (missing or below threshold).\n"
     infoString += "Optimal lamda value: " + str(boxCoxData[1])
-    infoString += "\nData right shifted: " + str(minVal)
+    infoString += "\nData right shifted: " + str(abs(min(0, minVal)))
     
     return returnData, infoString
 
@@ -242,7 +242,6 @@ if __name__ == "__main__":
 
     file = selectFile()
     data = loadData(file)
-    print(data)
 
     genericTransform(data, np.log)
     genericTransform(data, np.log10)

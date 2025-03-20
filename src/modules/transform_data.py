@@ -414,10 +414,10 @@ class ContentWidget(QWidget):
         binomialRadio = QRadioButton("Binomial")
         self.transformRadioGroup.addButton(binomialRadio)
 
-        binomialLineEdit = QLineEdit("0")
+        self.binomialLineEdit = QLineEdit("0")
         
         binomialLayout.addWidget(binomialRadio)
-        binomialLayout.addWidget(binomialLineEdit)
+        binomialLayout.addWidget(self.binomialLineEdit)
         binomialFrame.setLayout(binomialLayout)
         otherTransformationsLayout.addWidget(binomialFrame)
         
@@ -520,7 +520,7 @@ class ContentWidget(QWidget):
                     button.setChecked(False)
 
     def doTransform(self):
-        from src.lib.TransformData import square, cube, powFour, powMinusOne, eToTheN, tenToTheN, lag
+        from src.lib.TransformData import square, cube, powFour, powMinusOne, eToTheN, tenToTheN, lag, binomial, backwardsChange
         from src.lib.TransformData import powHalf, powThird,powQuarter,returnSelf, padData, genericTransform, loadData, boxCox, unBoxCox
         from numpy import log, log10, ndim, empty,longdouble
         #print("https://www.youtube.com/watch?v=7F2QE8O-Y1g")
@@ -556,19 +556,20 @@ class ContentWidget(QWidget):
                     outputFile.write(str(i[0])+"\n")
         if not genericTrans:
             if trans == "Box Cox":
-                if self.padDataCheckBox.isChecked():
-                    data = padData(data, self.QDateEditToDateTime(self.startDateEdit), self.QDateEditToDateTime(self.endDateEdit))
                 returnedData, returnedInfo = boxCox(data, applyThresh)
             elif trans == "Un-Box Cox":
-                if self.padDataCheckBox.isChecked():
-                    data = padData(data, self.QDateEditToDateTime(self.startDateEdit), self.QDateEditToDateTime(self.endDateEdit))
                 returnedData, returnedInfo = unBoxCox(data, self.lambdaFrame.getLineEditVal(),self.shiftFrame.getLineEditVal(),applyThresh)
             elif trans == "Lag n":
-                if self.padDataCheckBox.isChecked():
-                    data = padData(data, self.QDateEditToDateTime(self.startDateEdit), self.QDateEditToDateTime(self.endDateEdit))
                 if  not self.lagNLineEdit.text().isdigit():
                     return displayBox("Value error","Lag N value must be an integer","Error",isError=True)
                 returnedData, returnedInfo = lag(data, int(self.lagNLineEdit.text()), self.wrapCheckBox.isChecked())
+            elif trans == "Binomial":
+                if  not self.binomialLineEdit.text().isdigit():
+                    return displayBox("Value error","Binomial value must be an integer","Error",isError=True)
+                returnedData, returnedInfo = binomial(data, int(self.binomialLineEdit.text()), applyThresh)
+            elif trans == "Backward Change":
+                returnedData, returnedInfo = backwardsChange(data, applyThresh)
+
         outputFile.close()
         if self.outputSelected != "" and self.outputCheckBox.isChecked():
             transformedFile = open(self.outputSelected,"r")

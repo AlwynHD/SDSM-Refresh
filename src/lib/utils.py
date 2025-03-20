@@ -4,6 +4,7 @@ import os
 import re
 import calendar
 import numpy as np
+import configparser
 
 class thirtyDate:
     """
@@ -273,7 +274,6 @@ def checkIfFileFormatted(file):
     
     f.close()
     return
-
 
 if __name__ == '__main__':
     #Module tests go here

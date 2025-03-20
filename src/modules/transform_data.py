@@ -471,10 +471,11 @@ class ContentWidget(QWidget):
         boxLayout.addWidget(self.lambdaFrame)
         boxLayout.addWidget(self.shiftFrame)
 
-        outlierCheckBox = QCheckBox("Remove Outliers")
-        standardDevFrame = labeledQLineEditFrame("Standard Dev: ", "0")
-        outlierLayout.addWidget(outlierCheckBox)
-        outlierLayout.addWidget(standardDevFrame)
+        self.outlierRadio = QRadioButton("Remove Outliers")
+        self.transformRadioGroup.addButton(self.outlierRadio)
+        self.standardDevFrame = labeledQLineEditFrame("Standard Dev: ", "0")
+        outlierLayout.addWidget(self.outlierRadio)
+        outlierLayout.addWidget(self.standardDevFrame)
 
         transformButton = QPushButton("Transform Data")
         transformButton.clicked.connect(self.doTransform)
@@ -520,7 +521,7 @@ class ContentWidget(QWidget):
                     button.setChecked(False)
 
     def doTransform(self):
-        from src.lib.TransformData import square, cube, powFour, powMinusOne, eToTheN, tenToTheN, lag, binomial, backwardsChange
+        from src.lib.TransformData import square, cube, powFour, powMinusOne, eToTheN, tenToTheN, lag, binomial, backwardsChange, removeOutliers
         from src.lib.TransformData import powHalf, powThird,powQuarter,returnSelf, padData, genericTransform, loadData, boxCox, unBoxCox
         from numpy import log, log10, ndim, empty,longdouble
         #print("https://www.youtube.com/watch?v=7F2QE8O-Y1g")
@@ -558,9 +559,11 @@ class ContentWidget(QWidget):
             if trans == "Box Cox":
                 returnedData, returnedInfo = boxCox(data, applyThresh)
             elif trans == "Un-Box Cox":
+                if not self.lambdaFrame.getLineEditVal().isdigit() or not self.shiftFrame.getLineEditVal().isdigit():
+                    return displayBox("Value error","Lamda and left shift values must be integers","Error",isError=True)
                 returnedData, returnedInfo = unBoxCox(data, self.lambdaFrame.getLineEditVal(),self.shiftFrame.getLineEditVal(),applyThresh)
             elif trans == "Lag n":
-                if  not self.lagNLineEdit.text().isdigit():
+                if not self.lagNLineEdit.text().isdigit():
                     return displayBox("Value error","Lag N value must be an integer","Error",isError=True)
                 returnedData, returnedInfo = lag(data, int(self.lagNLineEdit.text()), self.wrapCheckBox.isChecked())
             elif trans == "Binomial":
@@ -569,6 +572,10 @@ class ContentWidget(QWidget):
                 returnedData, returnedInfo = binomial(data, int(self.binomialLineEdit.text()), applyThresh)
             elif trans == "Backward Change":
                 returnedData, returnedInfo = backwardsChange(data, applyThresh)
+            elif trans == "Remove Outliers":
+                if not self.standardDevFrame.getLineEditVal().isdigit():
+                    return displayBox("Value error","Standard deviation value must be an integer","Error",isError=True)
+                returnedData,returnedInfo = removeOutliers(data, int(self.standardDevFrame.getLineEditVal()),applyThresh)
 
         outputFile.close()
         if self.outputSelected != "" and self.outputCheckBox.isChecked():

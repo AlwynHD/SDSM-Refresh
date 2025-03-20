@@ -14,7 +14,7 @@ selectedFile = "predictand files/NoviSadPrecOBS.dat"
 outlierFile = "outlier.txt"
 
 #Variables obtained from global settings
-globalSDate = datetime.datetime(1948, 1, 1)
+globalSDate = datetime.date(1948, 1, 1)
 leapYear = True
 globalMissingCode = -999
 applyThresh = False

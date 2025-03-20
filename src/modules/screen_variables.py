@@ -3,13 +3,9 @@ from PyQt5.QtWidgets import (QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSi
                              QButtonGroup, QRadioButton, QLineEdit, QGroupBox, QMessageBox,
                              QApplication
                              )
-import pyqtgraph as pg
 from PyQt5.QtCore import Qt, QSize, QDate
-from PyQt5.QtGui import QPalette, QColor, QIcon
-from src.lib.ScreenVars import correlation, analyseData, filesNames, scatterPlot, CorrelationAnalysisApp
+
 from os import listdir
-from datetime import datetime, date
-import sys
 
 # Define the name of the module for display in the content area
 moduleName = "Screen Variables"
@@ -412,7 +408,7 @@ class ContentWidget(QWidget):
         buttonLayout.addWidget(correlationButton)
 
         analyseButton = QPushButton("Analyse")
-        #analyseButton.clicked.connect(self.doCorrelation)
+        analyseButton.clicked.connect(self.doAnalysis)
         analyseButton.setStyleSheet("background-color: #1FC7F5; color: white; font-weight: bold")
 
         buttonLayout.addWidget(analyseButton)
@@ -428,8 +424,11 @@ class ContentWidget(QWidget):
         
         #titleLayout.addStretch()
         #contentAreaLayout.addStretch()
+    def doAnalysis(self):
+        from src.lib.ScreenVars import analyseData
     def doCorrelation(self):
         #Get dates
+        from src.lib.ScreenVars import CorrelationAnalysisApp, correlation
         fitStartDate = self.QDateEditToDateTime(self.fitStartDateChooser)
 
 
@@ -478,6 +477,7 @@ class ContentWidget(QWidget):
             self.selectPredictandLabel.setText("No predictand selected")
 
     def predictorLabelClicked(self,*args):
+        from src.lib.utils import filesNames
         button = self.sender() #Get the buttonLabel that was clicked
         predictor = button.text() #Get the name of the buttonLabel, so the predictor file
         if (self.predictorPath+"/"+predictor) not in self.predictorsSelected:
@@ -503,6 +503,8 @@ class ContentWidget(QWidget):
     
     def showScatterGraph(self):
         print()
+        import pyqtgraph as pg
+        from src.lib.ScreenVars import scatterPlot
         fitStartDate = self.QDateEditToDateTime(self.fitStartDateChooser)
         fitEndDate = self.QDateEditToDateTime(self.fitEndDateChooser)
 

@@ -2,8 +2,10 @@ import calendar
 import datetime
 import math
 import numpy as np
-from src.lib.utils import loadFilesIntoMemory, increaseDate, checkForFile, checkIfFileFormatted
-#from utils import loadFilesIntoMemory, increaseDate, checkForFile, checkIfFileFormatted
+try:
+    from src.lib.utils import loadFilesIntoMemory, increaseDate, checkForFile, checkIfFileFormatted, selectFile
+except ModuleNotFoundError:
+    from utils import loadFilesIntoMemory, increaseDate, checkForFile, checkIfFileFormatted, selectFile
 
 #Local version
 predictorSelected = ['predictor files/ncep_dswr.dat']
@@ -29,6 +31,42 @@ standardDeviationLimits = 1
 
 def checkThreshold(value):
     return not applyThresh or value > thresh
+
+def valueIsValid(value, applyThresh):
+    return value != globalMissingCode and (not applyThresh or value > thresh)
+
+def dailyMeansNew(data):
+    dailyStats = np.zeros((7, 4), float)
+    #[i][0]: sum, [i][1]: count, [i][2]: mean, [i][3] standard deviation
+    #i represents the day
+
+    #Mean
+    day = globalSDate.day
+    for value in data:
+        if valueIsValid(value, applyThresh):
+            dailyStats[day][0] += value
+            dailyStats[day][1] += 1
+            day = (day + 1) % 7
+
+    for stat in dailyStats:
+        stat[2] = stat[0] / stat[1] if stat[1] > 0 else globalMissingCode
+
+    #Standard Deviation
+    day = globalSDate.day
+    for value in data:
+        if valueIsValid(value) and dailyStats[2] != globalMissingCode:
+            dailyStats[day][3] += (value - dailyStats[day][2]) ** 2
+            day = (day + 1) % 7
+
+    for stat in dailyStats:
+        stat[3] = math.sqrt(stat[3] / stat[1]) if stat[1] > 0 else globalMissingCode
+
+    #Output
+    output = ""
+    for i in range(7):
+        output += str(calendar.day_name[i]) + ": Mean: " + str(round(dailyStats[i][2], 2)) + " SD: " + str(round(dailyStats[i][3], 2)) + "\n"
+
+    return output
 
 def dailyMeans(selectedFile):
     if not checkForFile(selectedFile, "You must select a file to check first"):
@@ -88,6 +126,22 @@ def dailyMeans(selectedFile):
     
     print(output)
     return output
+
+def outliersNew(data, sdFilterValue):
+    workingData = [value for value in data if valueIsValid(value, applyThresh)]
+    if len(workingData) > 0:
+            mean = sum(workingData) / len(workingData)
+            sd = 0
+            for value in workingData:
+                if valueIsValid(value, applyThresh):
+                    sd += np.power((value - mean), 2)
+            sd = np.sqrt(sd / len(workingData))
+            sdFilter = sd * sdFilterValue
+
+            outliers = [value for value in workingData if value > (mean + sdFilter) or value < (mean - sdFilter)]
+    
+    infoString += len(outliers) + " identified and written to file."
+    return outliers, infoString
 
 def outliersID(selectedFile, outlierFile):
     #todo change python lists to numpy arrays
@@ -367,6 +421,9 @@ def pettittTest(pettittArray, ptPercent):
             print("max position: " + str(petMatrix[maxPos][5]))
 
 if __name__ == '__main__':
+    file = selectFile()
+    data = loadFilesIntoMemory(file)[0]
+
     #Module tests go here
     #outliersID(selectedFile, outlierFile)
     qualityCheck(selectedFile)

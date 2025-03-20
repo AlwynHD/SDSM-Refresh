@@ -521,19 +521,20 @@ class ContentWidget(QWidget):
         from src.lib.TransformData import square, cube, powFour, powMinusOne, eToTheN, tenToTheN,powHalf, powThird,powQuarter,returnSelf, padData, genericTransform, loadData
         from numpy import log, log10, ndim, empty,longdouble
         #print("https://www.youtube.com/watch?v=7F2QE8O-Y1g")
-        try:
-            trans = self.transformRadioGroup.checkedButton().text()
+
+        try: #Check if a transformation is selected
+            trans = self.transformRadioGroup.checkedButton().text() 
         except AttributeError:
             return displayBox("Transformation Error","A transformation must be selected.","Error",isError=True)
-        try:
+        try: #Check if an input file is selected
             file = open(self.inputSelected,"r")
             file.close()
         except FileNotFoundError:
             return displayBox("Input Error","No input file selected.","Error",isError=True)
-        try:
+        try: #Check if an output file is selected
             outputFile = open(self.outputSelected, "w")
-        except (FileNotFoundError, TypeError) as e:
-            if not self.outputCheckBox.isChecked():
+        except (FileNotFoundError, TypeError) as e: 
+            if not self.outputCheckBox.isChecked(): #If an OUT file is not being generated
                 return displayBox("Output Error","No output file selected, and you have not selected one to be generated.","Error",isError=True)
             else:
                 outputFile = open(self.inputSelected.split("/")[-1]+" transformed.OUT","w")
@@ -549,9 +550,10 @@ class ContentWidget(QWidget):
                 for i in returnedData:
                     outputFile.write(str(i[0])+"\n")
         outputFile.close()
-        if outputFile != "" and self.outputCheckBox.isChecked():
+        if self.outputSelected != "" and self.outputCheckBox.isChecked():
             transformedFile = open(self.outputSelected,"r")
             outputFile = open(self.inputSelected.split("/")[-1]+" transformed.OUT","w")
             for line in transformedFile:
                 outputFile.write(line)
+        displayBox("Data Transformed",returnedInfo,"Transformation Success")
 

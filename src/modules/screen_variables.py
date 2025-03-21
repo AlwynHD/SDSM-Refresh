@@ -379,13 +379,13 @@ class ContentWidget(QWidget):
         processRadioButtonGroup.setExclusive(True)
         unconditionalRadioButton = QRadioButton("Unconditional")
         unconditionalRadioButton.setChecked(True)
-        conditionalRadioButton = QRadioButton("Conditional")
-        conditionalRadioButton.setStyleSheet("QRadioButton::indicator{;width:14px;height:14px;border-radius:8px;}QRadioButton::indicator::checked{background-color: #FF00A0;border:1px solid grey;}QRadioButton::indicator::unchecked{background-color: white;border:1px solid grey}")
+        self.conditionalRadioButton = QRadioButton("Conditional")
+        #conditionalRadioButton.setStyleSheet("QRadioButton::indicator{;width:14px;height:14px;border-radius:8px;}QRadioButton::indicator::checked{background-color: #FF00A0;border:1px solid grey;}QRadioButton::indicator::unchecked{background-color: white;border:1px solid grey}")
         processRadioButtonGroup.addButton(unconditionalRadioButton)
-        processRadioButtonGroup.addButton(conditionalRadioButton)
+        processRadioButtonGroup.addButton(self.conditionalRadioButton)
 
         processLayout.addWidget(unconditionalRadioButton)
-        processLayout.addWidget(conditionalRadioButton)
+        processLayout.addWidget(self.conditionalRadioButton)
 
         #Significance input
 
@@ -419,33 +419,48 @@ class ContentWidget(QWidget):
         #contentAreaLayout.addStretch()
     def doAnalysis(self):
         from src.lib.ScreenVars import analyseData
+        fitStartDate = self.QDateEditToDateTime(self.fitStartDateChooser)
+        fitEndDate = self.QDateEditToDateTime(self.fitEndDateChooser)
+
+        userInput = {
+        'fSDate': self.QDateEditToDateTime(self.fitStartDateChooser),
+        'fEDate': self.QDateEditToDateTime(self.fitEndDateChooser),
+        'analysisPeriodChosen': 0,
+        'conditional': self.conditionalRadioButton,
+        'autoRegressionTick': self.autoregressionCheckBox.isChecked(),
+        'sigLevelInput': 0.05 #todo check whether this would be a correct input
+        }
+        if fitEndDate <= fitStartDate:
+            return displayBox("Date Error","End date cannot be before start date.","Error",isError=True)
+        
+        data = analyseData([self.predictandSelected], [predictor for predictor in self.predictorsSelected], userInput)
+        print(data)
+
     def doCorrelation(self):
         #Get dates
         from src.lib.ScreenVars import CorrelationAnalysisApp, correlation
         fitStartDate = self.QDateEditToDateTime(self.fitStartDateChooser)
-
-
         fitEndDate = self.QDateEditToDateTime(self.fitEndDateChooser)
-        settings = {
+
+        userInput = {
         'fSDate': self.QDateEditToDateTime(self.fitStartDateChooser),
         'fEDate': self.QDateEditToDateTime(self.fitEndDateChooser),
-        'leapYear': True,
-        'threshold': 0.5,
-        'missingCode': -999,
         'analysisPeriodChosen': 0,
-        'analysisPeriod': ["Annual", "Winter", "Spring", "Summer", "Autumn", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
-        'conditional': True,
-        'autoRegressionTick': self.autoregressionCheckBox.isChecked()
+        'conditional': self.conditionalRadioButton,
+        'autoRegressionTick': self.autoregressionCheckBox.isChecked(),
+        'sigLevelInput': 0.05 #todo check whether this would be a correct input
         }
         if fitEndDate <= fitStartDate:
             return displayBox("Date Error","End date cannot be before start date.","Error",isError=True)
             
 
         #Get autoregression state
+        #PW think i did that here need to test
 
         #Perform correlation
+        #todo remove print
         print(["predictor files/"+predictor for predictor in self.predictorsSelected])
-        data = correlation([self.predictandSelected], [predictor for predictor in self.predictorsSelected], settings)
+        data = correlation([self.predictandSelected], [predictor for predictor in self.predictorsSelected], userInput)
 
         if data == "Predictand Error":
             return displayBox("Predictand Error","No predictand file selected.","Error",isError=True)
@@ -522,31 +537,39 @@ class ContentWidget(QWidget):
         return dateTime
     
     def showScatterGraph(self):
-        print()
+        print() #todo remove 
         import pyqtgraph as pg
         from src.lib.ScreenVars import scatterPlot
         fitStartDate = self.QDateEditToDateTime(self.fitStartDateChooser)
         fitEndDate = self.QDateEditToDateTime(self.fitEndDateChooser)
+        
+        userInput = {
+        'fSDate': self.QDateEditToDateTime(self.fitStartDateChooser),
+        'fEDate': self.QDateEditToDateTime(self.fitEndDateChooser),
+        'analysisPeriodChosen': 0,
+        'conditional': self.conditionalRadioButton,
+        'autoRegressionTick': self.autoregressionCheckBox.isChecked(),
+        'sigLevelInput': 0.05 #todo check whether this would be a correct input
+        }
 
         if fitEndDate <= fitStartDate:
             return displayBox("Date Error","End date cannot be before start date.","Error",isError=True)
 
-        autoregression = self.autoregressionCheckBox.isChecked()
-        print(self.predictandSelected)
-        print(self.predictorsSelected)
-        data = scatterPlot([self.predictandSelected], self.predictorsSelected, fitStartDate,fitEndDate,fitStartDate,fitEndDate, autoregression)
-        print(data)
-        if data == "Predictand Error":
+        
+        data = scatterPlot([self.predictandSelected], self.predictorsSelected, userInput)
+        
+        if data["error"] == "Predictand Error":
             return displayBox("Predictand Error","No predictand file selected.","Error",isError=True)
-        elif data == "Predictor Error":
+        elif data["error"] == "Predictor Error":
             return displayBox("Predictor Error",
                               "You must have only one predictor selected when autoregressive term is not checked. If autoregressive term is checked, no predictors should be selected.",
                               "Error",isError=True)
         plot = pg.plot()
         scatter = pg.ScatterPlotItem(size=10, brush=pg.mkBrush(255, 255, 255, 120))
-        print(data.size)
-        spots = [{'pos': [data[1,i],data[0,i]]}
-                 for i in range(int(data.size/2))]
+
+        outputData = data["Data"]
+        spots = [{'pos': [outputData[1,i],outputData[0,i]]}
+                 for i in range(int(outputData.size/2))]
         scatter.addPoints(spots)
         plot.addItem(scatter)
 

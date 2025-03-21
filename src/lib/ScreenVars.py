@@ -6,7 +6,13 @@ from src.lib.utils import *
 #from utils import *
 from PyQt5.QtWidgets import QApplication, QMainWindow, QTextEdit, QTabWidget
 from PyQt5.QtGui import QFont
-import src.core.data_settings as global_settings
+
+import sys
+
+from PyQt5.QtWidgets import QApplication
+
+from src.core.data_settings import ContentWidget  # Import the ContentWidget class
+
 
 #Local version
 predictorSelected = ['predictor files/ncep_dswr.dat']
@@ -15,13 +21,10 @@ predictandSelected = ['predictand files/NoviSadPrecOBS.dat']
 settings = {
     'fSDate': datetime.date(1948, 1, 1),
     'fEDate': datetime.date(2015, 12, 31),
-    'leapYear': True,
-    'threshold': 0.5,
-    'missingCode': -999,
     'analysisPeriodChosen': 0,
-    'analysisPeriod': ["Annual", "Winter", "Spring", "Summer", "Autumn", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
     'conditional': False,
-    'autoRegressionTick': True
+    'autoRegressionTick': True,
+    'sigLevelInput': 0.05 #todo check whether this would be a correct input
 }
 
 def partialCorrelation(A, B, n, crossCorr, corrArrayList):
@@ -57,8 +60,7 @@ def partialCorrelation(A, B, n, crossCorr, corrArrayList):
     else:
         return result / math.sqrt(denom)
 
-def correlation(predictandSelected, predictorSelected, settings):
-    global_settings.loadSettings()
+def correlation(predictandSelected, predictorSelected, inputs):
     """
     Calculates correlation and partial correlation between predictand and predictors.
     
@@ -79,33 +81,50 @@ def correlation(predictandSelected, predictorSelected, settings):
     Returns:
     - Dictionary containing all calculated data and metadata
     """
-    # Extract settings with defaults for optional parameters
-    #print(loadsettings())
-    fSDate = settings.get('fSDate')
-    fEDate = settings.get('fEDate')
-    leapYear = settings.get('leapYear', True)
-    threshold = settings.get('threshold', 0)
-    missingCode = settings.get('missingCode', -999)
-    analysisPeriodChosen = settings.get('analysisPeriodChosen', 0)
-    analysisPeriod = settings.get('analysisPeriod', ["All Year", "Winter", "Spring", "Summer", "Fall"])
-    conditional = settings.get('conditional', False)
-    epsilon = settings.get('epsilon', 1e-10)
+    settings = getSettings()
+    analysisPeriod = ["Annual", "Winter", "Spring", "Summer", "Autumn", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+
+    
+    #from settings
+    leapYear = settings["leapYear"]
+    thirtyDay = settings["thirtyDay"]
+    threshold = settings["fixedthreshold"]
+    missingCode = settings["globalmissingcode"]
+    globalSDate = settings["globalsdate"]
+    globalEDate = settings["globaledate"]
+
+    #from user choices
+    fSDate = inputs.get('fSDate')
+    fEDate = inputs.get('fEDate')
+    if thirtyDay:
+        fSDate = thirtyDate(fSDate.year, fSDate.month, fSDate.day)
+        fEDate = thirtyDate(fEDate.year, fEDate.month, fEDate.day)
+        
+    analysisPeriodChosen = inputs.get('analysisPeriodChosen', 0)
+    conditional = inputs.get('conditional', False)
+    autoRegressionTick = inputs.get('autoRegressionTick', False)
+
+    #epsilon = inputs.get('epsilon', 1e-10)
     
     # Input validation with returned error messages
     if predictandSelected == "":
-        return {"error": "You must select a predictand."}
-    elif len(predictorSelected) < 1:
-        return {"error": "You must select at least one predictor."}
-    elif len(predictorSelected) > 12:
-        return {"error": "Sorry - you are allowed a maximum of 12 predictors only."}
-    elif fSDate is None or fEDate is None:
-        return {"error": "Start date and end date must be provided in settings."}
+        return {"error": "Predictand Error"}
+    elif len(predictorSelected) < 1 and not autoRegressionTick:
+        return {"error": "Predictor Error"}
+    elif len(predictorSelected) > 1:
+        return {"error": "Predictor Error"}
+    elif autoRegressionTick and len(predictorSelected) == 1:
+        return {"error": "Predictor Error"}
     
     # Set up variables
     nVariables = len(predictorSelected) + 1
     
     # Load data files
     loadedFiles = loadFilesIntoMemory(predictandSelected + predictorSelected)
+    print((fSDate - globalSDate).days)
+    print(fEDate)
+    loadedFiles = [file[(fSDate - globalSDate).days:] for file in loadedFiles]
+
     nameOfFiles = displayFiles(predictandSelected + predictorSelected)
     
     # Initialize counters
@@ -120,6 +139,7 @@ def correlation(predictandSelected, predictorSelected, settings):
     sumData = np.zeros(nVariables)
     
     # Collect data points
+    print((fEDate - fSDate).days)
     for i in range((fEDate - fSDate).days):
         if dateWanted(workingDate, analysisPeriodChosen):
             totalNumbers += 1
@@ -145,7 +165,6 @@ def correlation(predictandSelected, predictorSelected, settings):
     inputData = np.array(inputData)
     
     # Handle autoregression if requested
-    autoRegressionTick = settings.get('autoRegressionTick', False)
     if autoRegressionTick:
         nVariables += 1
         firstColumn = inputData[:, 0]
@@ -265,7 +284,7 @@ def correlation(predictandSelected, predictorSelected, settings):
     
     return results
 
-def analyseData(predictandSelected, predictorSelected, fSDate, feDate, globalSDate, globalEDate, autoRegressionTick, leapYear, sigLevelInput):
+def analyseData(predictandSelected, predictorSelected, inputs):
     """
     Analyzes the relationship between predictand and predictors data
     
@@ -273,7 +292,7 @@ def analyseData(predictandSelected, predictorSelected, fSDate, feDate, globalSDa
         predictandSelected: The selected predictand variable
         predictorSelected: List of selected predictor variables
         fSDate: File start date
-        feDate: File end date
+        fEDate: File end date
         globalSDate: Global start date
         globalEDate: Global end date
         autoRegressionTick: Boolean indicating whether to use autoregression
@@ -283,248 +302,285 @@ def analyseData(predictandSelected, predictorSelected, fSDate, feDate, globalSDa
     Returns:
         A numpy array with correlation statistics for each month
     """
+    settings = getSettings()
+    
+    #from settings
+    leapYear = settings["leapYear"]
+    thirtyDay = settings["thirtyDay"]
+    threshold = settings["fixedthreshold"]
+    missingCode = settings["globalmissingcode"]
+    globalSDate = settings["globalsdate"]
+    globalEDate = settings["globaledate"]
+
+    #from user choices
+    fSDate = inputs.get('fSDate')
+    fEDate = inputs.get('fEDate')
+    if thirtyDay:
+        fSDate = thirtyDate(fSDate.year, fSDate.month, fSDate.day)
+        fEDate = thirtyDate(fEDate.year, fEDate.month, fEDate.day)
+    
+    conditional = inputs.get('conditional', False)
+    autoRegressionTick = inputs.get('autoRegressionTick', False)
+    sigLevelInput = inputs.get('sigLevelInput', 0.05)
+
+
+
     # Input validation
     if predictandSelected == "":
-        print("You must select a predictand.") 
-        return None
+        return {"error": "You must select a predictand."}
     elif len(predictorSelected) < 1 and not autoRegressionTick:
-        print("You must select at least one predictor.") 
-        return None
-    elif not fSDateOK(fSDate, feDate, globalSDate):
-        print("file start date is not okay") 
-        return None
-    elif not fEDateOK(fSDate, feDate, globalEDate):
-        print("file end date is not okay") 
-        return None
+        return {"error": "You must select at least one predictor."}
+    elif not fSDateOK(fSDate, fEDate, globalSDate):
+        return {"error": "file start date is not okay"}
+    elif not fEDateOK(fSDate, fEDate, globalEDate):
+        return {"error": "file end date is not okay"}
     elif not sigLevelOK(sigLevelInput):
-        print("Sig level is not okay")
-        return None
-    else:
-        # Number of variables including predictand and predictors
-        nVariables = len(predictorSelected) + 1
+        return {"error": "Sig level is not okay"}
+
+    # Number of variables including predictand and predictors
+    nVariables = len(predictorSelected) + 1
+    
+    # Add one more variable slot if autoregression is enabled
+    if autoRegressionTick:
+        nVariables += 1
+
+    # Load files into memory
+    loadedFiles = loadFilesIntoMemory(predictandSelected + predictorSelected)
+    
+    # Slice the loaded files starting from the file start date
+    loadedFiles = [file[(fSDate - globalSDate).days:] for file in loadedFiles]
+
+    # Initialize working date to file start date
+    workingDate = fSDate
+    lastMonth = workingDate.month - 1
+    totalNumbers = 0
+    totalFalseMissingCode = 0
+
+    # Initialize arrays for each month
+    months = [[] for _ in range(12)]
+    monthCount = np.zeros(12, dtype=int)
+    missing = np.zeros(12, dtype=int)
+
+    # Loop through each day in the date range
+    for i in range((fEDate - fSDate).days):
+        if lastMonth != workingDate.month - 1:
+            # If month changed, add missing code row for previous month
+            currentDay = np.full((1, nVariables), missingCode, dtype=float)
+            if len(months[lastMonth]) > 0:  # Only append if the month array exists
+                months[lastMonth] = np.concatenate((months[lastMonth], currentDay))
+                totalFalseMissingCode += 1
+            lastMonth = workingDate.month - 1
         
-        # Add one more variable slot if autoregression is enabled
-        if autoRegressionTick:
-            nVariables += 1
+        totalNumbers += 1
+        monthCount[workingDate.month-1] += 1
 
-        # Load files into memory
-        loadedFiles = loadFilesIntoMemory(predictandSelected + predictorSelected)
+        # Extract data row for current day
+        currentDay = np.array([[file[i] for file in loadedFiles]], dtype=float)
         
-        # Slice the loaded files starting from the file start date
-        loadedFiles = [file[(fSDate - globalSDate).days:] for file in loadedFiles]
-
-        # Initialize working date to file start date
-        workingDate = fSDate
-        lastMonth = workingDate.month - 1
-        missingCode = -999
-        totalNumbers = 0
-        totalFalseMissingCode = 0
-
-        # Initialize arrays for each month
-        months = [[] for _ in range(12)]
-        monthCount = np.zeros(12, dtype=int)
-        missing = np.zeros(12, dtype=int)
-
-        # Loop through each day in the date range
-        for i in range((feDate - fSDate).days):
-            if lastMonth != workingDate.month - 1:
-                # If month changed, add missing code row for previous month
-                currentDay = np.full((1, nVariables), missingCode, dtype=float)
-                if len(months[lastMonth]) > 0:  # Only append if the month array exists
-                    months[lastMonth] = np.concatenate((months[lastMonth], currentDay))
-                    totalFalseMissingCode += 1
-                lastMonth = workingDate.month - 1
-            
-            totalNumbers += 1
-            monthCount[workingDate.month-1] += 1
-
-            # Extract data row for current day
-            currentDay = np.array([[file[i] for file in loadedFiles]], dtype=float)
-            
-            # If using autoregression and not the first day, add previous day's value
-            if autoRegressionTick and i > 0:
-                # Add previous day's predictand value as an additional predictor
-                previousValue = np.array([[loadedFiles[0][i-1]]])
-                currentDay = np.concatenate((currentDay, previousValue), axis=1)
-            
-            # Count missing values
-            missingCount = np.count_nonzero(currentDay == missingCode)
-            missing[workingDate.month-1] += missingCount
-
-            # Add row to appropriate month
-            if len(months[workingDate.month - 1]) == 0:
-                months[workingDate.month - 1] = currentDay
-            else:
-                months[workingDate.month - 1] = np.concatenate((months[workingDate.month-1], currentDay))
-            
-            # Increment the date
-            workingDate = increaseDate(workingDate, 1, leapYear)
-
-        # Apply conditional thresholding to predictand if needed
-        conditional = True
-        threshold = 0
-        if conditional:
-            for month in months:
-                if len(month) > 0:  # Make sure month array is not empty
-                    month[:, 0] = np.where(month[:, 0] > threshold, 1, np.where(month[:, 0] != missingCode, 0, missingCode))
-
-        # Initialize return data array
-        returnData = np.zeros((12, 4, nVariables), dtype=float)  # Changed dimensions to store stats for each variable
+        # If using autoregression and not the first day, add previous day's value
+        if autoRegressionTick and i > 0:
+            # Add previous day's predictand value as an additional predictor
+            previousValue = np.array([[loadedFiles[0][i-1]]])
+            currentDay = np.concatenate((currentDay, previousValue), axis=1)
         
-        # Process each month
-        for index, monthData in enumerate(months):
-            if len(monthData) == 0:
-                continue  # Skip empty months
-                
-            # Initialize statistics arrays
-            sumData = np.zeros(nVariables)
-            sumDataSquared = np.zeros(nVariables)
-            sumDataPredictandPredictor = np.zeros(nVariables)
+        # Count missing values
+        missingCount = np.count_nonzero(currentDay == missingCode)
+        missing[workingDate.month-1] += missingCount
+
+        # Add row to appropriate month
+        if len(months[workingDate.month - 1]) == 0:
+            months[workingDate.month - 1] = currentDay
+        else:
+            months[workingDate.month - 1] = np.concatenate((months[workingDate.month-1], currentDay))
+        
+        # Increment the date
+        workingDate = increaseDate(workingDate, 1, leapYear)
+
+    # Apply conditional thresholding to predictand if needed
+    if conditional:
+        for month in months:
+            if len(month) > 0:  # Make sure month array is not empty
+                month[:, 0] = np.where(month[:, 0] > threshold, 1, np.where(month[:, 0] != missingCode, 0, missingCode))
+
+    # Initialize return data array
+    returnData = np.zeros((12, 4, nVariables), dtype=float)  # Changed dimensions to store stats for each variable
+    
+    # Process each month
+    for index, monthData in enumerate(months):
+        if len(monthData) == 0:
+            continue  # Skip empty months
             
-            validRows = 0
+        # Initialize statistics arrays
+        sumData = np.zeros(nVariables)
+        sumDataSquared = np.zeros(nVariables)
+        sumDataPredictandPredictor = np.zeros(nVariables)
+        
+        validRows = 0
+        
+        # Calculate sums
+        for i in range(len(monthData)):
+            row = monthData[i].copy()  # Make a copy to avoid modifying original data
             
-            # Calculate sums
-            for i in range(len(monthData)):
-                row = monthData[i].copy()  # Make a copy to avoid modifying original data
-                
-                # Skip rows where predictand is missing
-                if row[0] == missingCode:
-                    continue
-                    
-                # Replace missing values with zeros for calculations
-                row = np.array([0 if data == missingCode else data for data in row])
-                validRows += 1
-                
-                # Calculate sums
-                sumData += row
-                sumDataSquared += row**2
-                sumDataPredictandPredictor += row * row[0]
-            
-            # Skip month if no valid data
-            if validRows == 0:
+            # Skip rows where predictand is missing
+            if row[0] == missingCode:
                 continue
                 
-            # Skip calculations for the predictand itself (i=0) since it correlates perfectly with itself
-            returnData[index, 0, 0] = 1.0  # Correlation with self is 1
-            returnData[index, 1, 0] = 1.0  # R² with self is 1
-            returnData[index, 2, 0] = float('inf')  # T-statistic is infinite
-            returnData[index, 3, 0] = 0.0  # p-value is 0
-
-            denominatorY = (validRows * sumDataSquared[0]) - (sumData[0] ** 2)
-            # Calculate statistics for each variable
-            for i in range(1, nVariables):  
-                
-                # Calculate correlation coefficient
-                numerator = (validRows * sumDataPredictandPredictor[i]) - (sumData[i] * sumData[0])
-                denominatorX = (validRows * sumDataSquared[i]) - (sumData[i] ** 2)
-                
-                # Check if denominator is valid
-                if denominatorX <= 0 or denominatorY <= 0:
-                    correlation = 0
-                else:
-                    correlation = numerator / (np.sqrt(denominatorX) * np.sqrt(denominatorY))
-                
-                # Ensure correlation is within bounds
-                correlation = max(-1.0, min(1.0, correlation))
-                
-                # Calculate R-squared
-                Rsquared = correlation ** 2
-                
-                # Calculate T-statistic
-                if Rsquared > 0.999:
-                    Tstat = 9999
-                else:
-                    Tstat = (correlation * np.sqrt(validRows - 2)) / np.sqrt(1 - Rsquared)
-                
-                # Use scipy for accurate p-value calculation
-                pValue = 2 * (1 - stats.t.cdf(abs(Tstat), validRows - 2))
-                
-                # Store results
-                returnData[index, 0, i] = correlation
-                returnData[index, 1, i] = Rsquared
-                returnData[index, 2, i] = Tstat
-                returnData[index, 3, i] = pValue
-        
-        #returnData is for every month of the year there is 4 values.
-        # 0 is correlation
-        # 1 is R Squared, which is what the orgianal vb outputs
-        # 2 is T stat
-        # 3 is p Value or pr in the orgianl vb
-        
-        return returnData
-
-def scatterPlot(predictandSelected, predictorSelected, fSDate, fEDate, globalSDate, globalEDate, autoRegressionTick, leapYear):
-    if predictandSelected == "":
-        print("You must select a predictand.") # todo proper error message
-    elif len(predictorSelected) < 1 and not autoRegressionTick:
-        return "Predictor Error" # todo proper error message
-    elif len(predictorSelected) > 1:
-        return "Predictor Error" # todo proper error message
-    elif autoRegressionTick and len(predictorSelected) == 1:
-        return "Predictor Error" # todo proper error message
-    else:
-        nVariables = len(predictorSelected) + 1
-
-        loadedFiles = []
-        loadedFiles = loadFilesIntoMemory(predictandSelected + predictorSelected)
-        nameOfFiles = displayFiles(predictandSelected + predictorSelected)
-
-
-        totalNumbers = 0
-        totalMissing = 0 
-        totalMissingRows = 0
-        totalBelowThreshold = 0
-
-        #todo import from settings
-        threshold = 0 
-        missingCode = -999
-        workingDate = fSDate
-        conditional = False
-        analysisPeriodChosen = 0
-        inputData = []
-        sumData = np.zeros(nVariables)
-        #####################
-        # gets data into an array of shape (length of data, number of files)
-        # only puts data in if date is in the analysis period chosen
-        #####################
-        for i in range((fEDate - fSDate).days):
-            if dateWanted(workingDate, analysisPeriodChosen):
-                totalNumbers += 1    
-                row = [file[i] for file in loadedFiles]
-
-                missingNumber = row.count(missingCode)
-
-                # there are missingCodes
-                if missingNumber > 0:
-                    totalMissingRows += 1
-                    totalMissing += missingNumber
-
-                # there is no missingCodes
-                elif (conditional and row[0] > threshold) or not conditional:
-                    inputData.append(row)
-            increaseDate(workingDate, 1, leapYear)
-
-        inputData = np.array(inputData)
-
-        if autoRegressionTick:
-            nVariables +=1
-            firstColumn = inputData[:, 0]
-
-            # create a new column for position end with the first element shifted down
-            newColumn = np.roll(firstColumn, 1)
-            newColumn[0] = 0  # Replace the first element with 0 or any placeholder value
+            # Replace missing values with zeros for calculations
+            row = np.array([0 if data == missingCode else data for data in row])
+            validRows += 1
             
-            # Append the new column to the original array
-            inputData = np.hstack((inputData, newColumn.reshape(-1, 1)))
+            # Calculate sums
+            sumData += row
+            sumDataSquared += row**2
+            sumDataPredictandPredictor += row * row[0]
+        
+        # Skip month if no valid data
+        if validRows == 0:
+            continue
             
-            if inputData[totalNumbers - 1, 0] != missingCode and (not (inputData[totalNumbers - 1, 0] <= threshold) and conditional):
-                sumData = np.append(sumData, inputData[totalNumbers - 1, 0])
-                
+        # Skip calculations for the predictand itself (i=0) since it correlates perfectly with itself
+        returnData[index, 0, 0] = 1.0  # Correlation with self is 1
+        returnData[index, 1, 0] = 1.0  # R² with self is 1
+        returnData[index, 2, 0] = float('inf')  # T-statistic is infinite
+        returnData[index, 3, 0] = 0.0  # p-value is 0
+
+        denominatorY = (validRows * sumDataSquared[0]) - (sumData[0] ** 2)
+        # Calculate statistics for each variable
+        for i in range(1, nVariables):  
+            
+            # Calculate correlation coefficient
+            numerator = (validRows * sumDataPredictandPredictor[i]) - (sumData[i] * sumData[0])
+            denominatorX = (validRows * sumDataSquared[i]) - (sumData[i] ** 2)
+            
+            # Check if denominator is valid
+            if denominatorX <= 0 or denominatorY <= 0:
+                correlation = 0
             else:
-                sumData = np.append(sumData, sumData[0])
-                nameOfFiles.append("Autoregression")
+                correlation = numerator / (np.sqrt(denominatorX) * np.sqrt(denominatorY))
+            
+            # Ensure correlation is within bounds
+            correlation = max(-1.0, min(1.0, correlation))
+            
+            # Calculate R-squared
+            Rsquared = correlation ** 2
+            
+            # Calculate T-statistic
+            if Rsquared > 0.999:
+                Tstat = 9999
+            else:
+                Tstat = (correlation * np.sqrt(validRows - 2)) / np.sqrt(1 - Rsquared)
+            
+            # Use scipy for accurate p-value calculation
+            pValue = 2 * (1 - stats.t.cdf(abs(Tstat), validRows - 2))
+            
+            # Store results
+            returnData[index, 0, i] = correlation
+            returnData[index, 1, i] = Rsquared
+            returnData[index, 2, i] = Tstat
+            returnData[index, 3, i] = pValue
+    
+    #returnData is for every month of the year there is 4 values.
+    # 0 is correlation
+    # 1 is R Squared, which is what the orgianal vb outputs
+    # 2 is T stat
+    # 3 is p Value or pr in the orgianl vb
+    
+    return returnData
 
-        return inputData.T
+def scatterPlot(predictandSelected, predictorSelected, inputs):
+    settings = getSettings()
+    #analysisPeriod = ["Annual", "Winter", "Spring", "Summer", "Autumn", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+
+    #from settings
+    leapYear = settings["leapYear"]
+    thirtyDay = settings["thirtyDay"]
+    threshold = settings["fixedthreshold"]
+    missingCode = settings["globalmissingcode"]
+    globalSDate = settings["globalsdate"]
+    #globalEDate = settings["globaledate"]
+
+    #from user choices
+    fSDate = inputs.get('fSDate')
+    fEDate = inputs.get('fEDate')
+    if thirtyDay:
+        fSDate = thirtyDate(fSDate.year, fSDate.month, fSDate.day)
+        fEDate = thirtyDate(fEDate.year, fEDate.month, fEDate.day)
+        
+    analysisPeriodChosen = inputs.get('analysisPeriodChosen', 0)
+    conditional = inputs.get('conditional', False)
+    autoRegressionTick = inputs.get('autoRegressionTick', False)
+
+    if predictandSelected == "":
+        return {"error": "Predictand Error"}
+    elif len(predictorSelected) < 1 and not autoRegressionTick:
+        return {"error": "Predictor Error"}
+    elif len(predictorSelected) > 1:
+        return {"error": "Predictor Error"}
+    elif autoRegressionTick and len(predictorSelected) == 1:
+        return {"error": "Predictor Error"}
+
+    nVariables = len(predictorSelected) + 1
+
+    loadedFiles = []
+    loadedFiles = loadFilesIntoMemory(predictandSelected + predictorSelected)
+
+    # Slice the loaded files starting from the file start date
+    loadedFiles = [file[(fSDate - globalSDate).days:] for file in loadedFiles]
+
+    nameOfFiles = displayFiles(predictandSelected + predictorSelected)
+
+
+    totalNumbers = 0
+    totalMissing = 0 
+    totalMissingRows = 0
+    #totalBelowThreshold = 0
+
+    #todo import from settings
+    workingDate = fSDate
+    inputData = []
+    sumData = np.zeros(nVariables)
+    #####################
+    # gets data into an array of shape (length of data, number of files)
+    # only puts data in if date is in the analysis period chosen
+    #####################
+    for i in range((fEDate - fSDate).days):
+        if dateWanted(workingDate, analysisPeriodChosen):
+            totalNumbers += 1    
+            row = [file[i] for file in loadedFiles]
+
+            missingNumber = row.count(missingCode)
+
+            # there are missingCodes
+            if missingNumber > 0:
+                totalMissingRows += 1
+                totalMissing += missingNumber
+
+            # there is no missingCodes
+            elif (conditional and row[0] > threshold) or not conditional:
+                inputData.append(row)
+        increaseDate(workingDate, 1, leapYear)
+
+    inputData = np.array(inputData)
+
+    if autoRegressionTick:
+        nVariables +=1
+        firstColumn = inputData[:, 0]
+
+        # create a new column for position end with the first element shifted down
+        newColumn = np.roll(firstColumn, 1)
+        newColumn[0] = 0  # Replace the first element with 0 or any placeholder value
+        
+        # Append the new column to the original array
+        inputData = np.hstack((inputData, newColumn.reshape(-1, 1)))
+        
+        if inputData[totalNumbers - 1, 0] != missingCode and (not (inputData[totalNumbers - 1, 0] <= threshold) and conditional):
+            sumData = np.append(sumData, inputData[totalNumbers - 1, 0])
+            
+        else:
+            sumData = np.append(sumData, sumData[0])
+            nameOfFiles.append("Autoregression")
+
+    return {"error": "NA", "Data": inputData.T}
 
 def format_correlation_results(results):
     """
@@ -545,7 +601,7 @@ def format_correlation_results(results):
     total_missing = results['stats']['missingValues']
     total_missing_rows = results['stats']['missingRows']
     total_below_threshold = results['stats']['belowThreshold']
-    effective_sample_size = results['stats']['effectiveSampleSize']
+    #effective_sample_size = results['stats']['effectiveSampleSize']
     conditional = results['settings_used']['conditionalAnalysis']
     
     # Data
@@ -737,6 +793,18 @@ class CorrelationAnalysisApp(QMainWindow):
 
 if __name__ == '__main__':
     print("NOO")
+    # Create a QApplication instance first
+    app = QApplication(sys.argv)
+    # Create an instance of the ContentWidget class
+    widget = ContentWidget()
+    # Call the loadSettings method
+    widget.loadSettings('settings.ini')  # Pass the path to the INI file
+    # Call the get_settings_json method on the widget instance (without passing any arguments)
+    settings_json = widget.get_settings_json()
+    # Print or use the settings as needed
+    print(settings_json)
+    # Start the application's event loop
+    sys.exit(app.exec_())
     #leapYear = True
     #data = analyseData(predictandSelected, predictorSelected, fSDate, fEDate, globalSDate, globalEDate, autoRegressionTick, leapYear, sigLevelInput)
 

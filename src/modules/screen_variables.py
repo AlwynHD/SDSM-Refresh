@@ -446,7 +446,7 @@ class ContentWidget(QWidget):
         'fSDate': self.QDateEditToDateTime(self.fitStartDateChooser),
         'fEDate': self.QDateEditToDateTime(self.fitEndDateChooser),
         'analysisPeriodChosen': 0,
-        'conditional': self.conditionalRadioButton,
+        'conditional': self.conditionalRadioButton.isChecked(),
         'autoRegressionTick': self.autoregressionCheckBox.isChecked(),
         'sigLevelInput': 0.05 #todo check whether this would be a correct input
         }
@@ -547,7 +547,7 @@ class ContentWidget(QWidget):
         'fSDate': self.QDateEditToDateTime(self.fitStartDateChooser),
         'fEDate': self.QDateEditToDateTime(self.fitEndDateChooser),
         'analysisPeriodChosen': 0,
-        'conditional': self.conditionalRadioButton,
+        'conditional': self.conditionalRadioButton.isChecked(),
         'autoRegressionTick': self.autoregressionCheckBox.isChecked(),
         'sigLevelInput': 0.05 #todo check whether this would be a correct input
         }

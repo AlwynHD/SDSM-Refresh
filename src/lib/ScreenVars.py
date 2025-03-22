@@ -772,9 +772,9 @@ class CorrelationAnalysisApp(QMainWindow):
         # Set the central widget
         self.setCentralWidget(self.tab_widget)
         
-        results = correlation(predictandSelected, predictorSelected, settings)
+        #results = correlation(predictandSelected, predictorSelected, settings)
         # Test with some data
-        self.load_results(results)  # Your results dictionary
+        #self.load_results(results)  # Your results dictionary
     
     def load_results(self, results):
         # Display text format

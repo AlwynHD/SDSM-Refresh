@@ -8,7 +8,7 @@ import src.core.data_settings
 ## It does if you run the debugRun test configuration
 
 ##DEBUGGING FUNCTIONS:
-debug = False
+debug = True
 def debugMsg(msg):
     if debug == True:
         print(msg)
@@ -45,7 +45,7 @@ def calibrateModelDefaultExperience():
     fsDate = date(1948, 1, 1)
     #feDate = deepcopy(globalEndDate)
     feDate = date(1965, 1, 10)
-    modelType = 2 #0
+    modelType = 0 #0
     parmOpt = False  ## Whether Conditional or Unconditional. True = Cond, False = Uncond. 
     ##ParmOpt(1) = Uncond = False
     ##ParmOpt(0) = Cond = True
@@ -70,13 +70,16 @@ def calibrateModelDefaultExperience():
     ] #note - ncep_prec.dat is absent - nice round number of 30
     for i in range(len(fileList)):
         fileList[i] = "predictor files/ncep_" + fileList[i] + ".dat"
-    PARfilePath = "do_nothing.PAR"
+    PARfilePath = "JOHN_PARFILE.PAR"
     ## Predictor files should be in the format [path/to/predictor/file.dat]
     ## Files usually begin with ncep_
     results = calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType, parmOpt, autoRegression, includeChow, detrendOption, xValidation)
 
     ## Output for similar results to the OG software:
     print(f"FINAL RESULTS (Assumes Default):")
+    debugMsg(f"Debug data:")
+    debugMsg(f"Fit Start Date: {fsDate}")
+    debugMsg(f"Fit End Date: {feDate}")
     #print(f"Predictand: {PTandRoot}")
     print(f"\nPredictors:\n")
     for i in fileList:
@@ -512,7 +515,7 @@ def calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType=2
                         for j in range(1, NPredictors + 1): #MODEL? ##+1 bc Range is not INCLUSIVE
                             xMatrix[i, j] = dataReadIn[0, j, i]
                             #debugMsg(f"XMatrix C#{j} Value #{i} Loaded: {dataReadIn[0, j, i]}")
-                else:
+                else: ## Autoregression option
                     xMatrix = np.ndarray((sizeOfDataArray[0] - 1, NPredictors + 2))
                     yMatrix = np.ndarray((sizeOfDataArray[0] - 1))
                     for i in range(sizeOfDataArray[0] - 1):
@@ -544,6 +547,7 @@ def calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType=2
                     detrendData(yMatrix, yMatrixAboveThreshPos, detrendOption, periodWorkingOn, False)
 
                 savedYMatrix = deepcopy(yMatrix)
+
                 if parmOpt:
                     ##call PropogateUnConditional
                     propogateUnconditional(yMatrix, thresh)
@@ -688,17 +692,16 @@ def calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType=2
 
                     ## Copied from above section (SeasonCode == 1), but sizeOfDataArray swapped for periodWorkingOn
                     if not autoRegression:
-                        xMatrix = np.ndarray((periodWorkingOn + 1, NPredictors))
-                        yMatrix = np.ndarray((periodWorkingOn + 1))
+                        xMatrix = np.ndarray((sizeOfDataArray[periodWorkingOn], NPredictors + 1))
+                        yMatrix = np.ndarray((sizeOfDataArray[periodWorkingOn]))
                         yMatrixAboveThreshPos = np.ndarray((sizeOfDataArray[0]))
                         for i in range(sizeOfDataArray[periodWorkingOn]):
-                            yMatrix[i] = dataReadIn[0, 0, i]
-                            #xMatrix[i, 0] = 1# --> What does this meen?
+                            yMatrix[i] = dataReadIn[periodWorkingOn, 0, i]
                             xMatrix[i, 0] = 1
-                            for j in range(NPredictors):
-                                xMatrix[i, j] = dataReadIn[0, j+1, i]
+                            for j in range(1, NPredictors + 1):
+                                xMatrix[i, j] = dataReadIn[periodWorkingOn, j, i]
                         ###### End of Sorta Copy ######
-                    else:
+                    else: ## Autoregression option
                         NPredictors += 1
                         binsTotal = sizeOfDataArray[periodWorkingOn]
                         okSectionCount = 0
@@ -754,9 +757,9 @@ def calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType=2
                         ###call PropogateUnconditional
                         propogateUnconditional(yMatrix, thresh)
                     
-                    if xValidationCheck:
+                    if xValidation:
                         ##call xValUnconditional
-                        xValUnconditional()
+                        xValUnConditional()
 
                     conditionalPart = False
 
@@ -773,7 +776,7 @@ def calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType=2
                     yMatrix = savedYMatrix
 
                     if seasonCode == 4:
-                        for i in range(3):
+                        for i in range(4):
                             for j in range(NPredictors):
                                 parameterResultsArray[seasonMonths[periodWorkingOn, i], j] = params["betaMatrix"][i]
                             ##next j
@@ -927,22 +930,25 @@ def calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType=2
                                 if autoRegression:
                                     sectionSize -= 1
 
-                                for j in range(sectionSize - 1):
+                                for j in range(1, sectionSize):
                                     ##curious
-                                    DWNumerator += (residualMatrix[j + positionStart, 0] - residualMatrix[j + positionStart - 1, 0]) ** 2
+                                    DWNumerator += (residualMatrix[j + positionStart] - residualMatrix[j + positionStart - 1]) ** 2
                                 #next j
                                 positionStart += sectionSize
                             #endif
                         #next i
+
+                        positionStart = 0
                         for i in range(noOfSections[periodWorkingOn]):
                             sectionSize = sectionSizes[periodWorkingOn, i]
                             if sectionSize > 1:
                                 if autoRegression:
                                     sectionSize -= 1
 
-                                for j in range(sectionSize - 1):
+                                for j in range(1, sectionSize):
                                     ##curious+
-                                    DWDenom += residualMatrix[j + positionStart, 0] ** 2
+                                    #debugMsg(f"sectionSize: {sectionSize}, residualMatrix size: {len(residualMatrix)}, j ({j}) + positionStart ({positionStart}) = {j + positionStart} < {sectionSize}")
+                                    DWDenom += residualMatrix[j + positionStart] ** 2
                                 #next j
                                 positionStart += sectionSize
                             #endif

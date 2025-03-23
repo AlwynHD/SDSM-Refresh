@@ -1,13 +1,14 @@
 import configparser
 from datetime import datetime, timedelta
 import os
+import json
 from PyQt5.QtWidgets import (QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, QFrame, QLabel, QLineEdit, QCheckBox, QFileSystemModel, QGroupBox, QApplication, QHeaderView, QFileDialog, QMessageBox)
 from PyQt5.QtCore import Qt, QDir
 from PyQt5.QtGui import QPalette, QColor
 import sys
 
 # Constants
-defaultIniFile = 'settings.ini'
+defaultIniFile = os.path.join("src", "lib", "settings.ini")
 
 # Default Values for Reset
 defaultValues = {
@@ -20,7 +21,7 @@ defaultValues = {
     'allowNeg': True,
     'randomSeed': True,
     'thresh': 0,
-    'defaultDir': QDir.homePath(),
+    'defaultDir': os.path.join("src", "lib"),
     'globalMissingCode': -999,
     'varianceInflation': 12,
     'biasCorrection': 1,
@@ -231,6 +232,29 @@ class ContentWidget(QWidget):
         except configparser.Error as e:
             QMessageBox.critical(self, "Error", f"Error loading settings: {e}")
 
+    def get_settings_json(self):
+        settings = {
+        "yearIndicator": yearIndicator,
+        "globalSDate": globalSDate,
+        "globalEDate": globalEDate,
+        "allowNeg": allowNeg,
+        "randomSeed": randomSeed,
+        "thresh": thresh,
+        "globalMissingCode": globalMissingCode,
+        "defaultDir": defaultDir,
+        "varianceInflation": varianceInflation,
+        "biasCorrection": biasCorrection,
+        "fixedThreshold": fixedThreshold,
+        "modelTransformation": modelTransformation,
+        "optimizationAlgorithm": optimizationAlgorithm,
+        "criteriaType": criteriaType,
+        "stepwiseRegression": stepwiseRegression,
+        "conditionalSelection": conditionalSelection,
+        "months": months
+        }
+        return json.dumps(settings, indent=4)
+
+
     def safeGetInt(self, config, section, option, fallback):
         try:
             return config.getint(section, option, fallback=fallback)
@@ -243,13 +267,15 @@ class ContentWidget(QWidget):
         except ValueError:
             return fallback
 
-    def saveSettings(self, iniFile=None):
+    def saveSettings(self, iniFile=None, silent=False):
+        global yearIndicator, globalSDate, globalEDate, allowNeg, randomSeed, thresh, globalMissingCode, defaultDir
+        global varianceInflation, biasCorrection, fixedThreshold, modelTransformation, optimizationAlgorithm, criteriaType, stepwiseRegression, conditionalSelection, months
+
         if iniFile is None:
             iniFile = QFileDialog.getExistingDirectory(None, "Select Directory to Save Settings", defaultDir)
-
-        if not iniFile:
-            return
-        iniFile = os.path.join(iniFile, 'settings.ini')
+            if not iniFile:
+                return
+            iniFile = os.path.join(iniFile, 'settings.ini')
 
         config = configparser.ConfigParser()
         config['Settings'] = {
@@ -273,13 +299,12 @@ class ContentWidget(QWidget):
         }
 
         try:
-            if os.path.isdir(iniFile):
-                iniFile = os.path.join(iniFile, 'settings.ini')
             with open(iniFile, 'w') as configfile:
                 config.write(configfile)
+            if not silent:
                 QMessageBox.information(self, "Info", f"Settings saved to '{iniFile}'")
         except OSError as e:
-            QMessageBox.critical(self, "Error", f"Error: Could not save settings to the specified location '{iniFile}'. Reason: {e}")
+            QMessageBox.critical(self, "Error", f"Error: Could not save settings to '{iniFile}'. Reason: {e}")
 
     def loadSettingsIntoUi(self, ini=True):
         if ini:
@@ -359,6 +384,56 @@ class ContentWidget(QWidget):
 
         # Load the default values into the UI elements
         self.loadSettingsIntoUi(False)
+
+    def hideEvent(self, event):
+        """
+        Upon hiding the window, validate the UI values and silently save them to the default INI file.
+        All validation prompts (e.g. for date or numeric errors) remain active.
+        """
+        global globalSDate, globalEDate, thresh, globalMissingCode, allowNeg, randomSeed
+
+        # Validate Start Date
+        globalSDate = self.startDateEdit.text()
+        startDate = self.validateDate(globalSDate)
+        if not startDate:
+            event.ignore()
+            return
+
+        # Validate End Date
+        globalEDate = self.endDateEdit.text()
+        endDate = self.validateDate(globalEDate)
+        if not endDate:
+            event.ignore()
+            return
+
+        # Check date order
+        if startDate > endDate:
+            QMessageBox.critical(self, "Error", "Error: Start date cannot be after end date. Abandoning save process.")
+            event.ignore()
+            return
+
+        # Validate Threshold
+        thresh = self.validateNumeric(self.eventThresholdEdit.text(), minValue=0)
+        if thresh is None:
+            event.ignore()
+            return
+
+        # Validate Missing Data Code
+        if self.missingDataEdit.text():
+            globalMissingCode = self.validateNumeric(self.missingDataEdit.text())
+            if globalMissingCode is None:
+                event.ignore()
+                return
+        else:
+            globalMissingCode = -999
+
+        # Update checkboxes
+        allowNeg = self.allowNegativeCheckBox.isChecked()
+        randomSeed = self.randomSeedCheckBox.isChecked()
+
+        # Save settings silently to the default ini file without file-dialog or confirmation prompt.
+        self.saveSettings(defaultIniFile, silent=True)
+        event.accept()
 
 # Main function for testing the UI
 def main():

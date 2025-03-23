@@ -4,6 +4,7 @@ import os
 import re
 import calendar
 import numpy as np
+import configparser
 
 class thirtyDate:
     """
@@ -152,7 +153,7 @@ def loadFilesIntoMemory(filesToLoad):
     return loadedFiles
 
 def increaseDate(startDate, noDays, leapYear): #todo check if the leap year thing was important
-    """increases datatime object by noDays, can skip leapYears if leapYear is false"""
+    """increases datatime object by noDays, can t leapYears if leapYear is false"""
     # this might have to change back to orginal vb code as not sure why it was done the way it was
     finalDate = startDate + datetime.timedelta(days=noDays)
     if not leapYear:
@@ -274,10 +275,91 @@ def checkIfFileFormatted(file):
     f.close()
     return
 
+def getSettings():
+    """
+    goes to the dfualt settings location and fetches the settings, returning a dictionary of 
+    {'thirtyDay': False, 
+    'leapYear': True, 
+    'globalsdate': datetime.date(1999, 1, 1), 
+    'globaledate': datetime.date(2001, 12, 31), 
+    'allowneg': False, 
+    'randomseed': True, 
+    'thresh': 5.0, 
+    'globalmissingcode': -999, 
+    'defaultdir': ['', 'Users', 'madhuchakravarthy'], 
+    'varianceinflation': 12, 
+    'biascorrection': 1, 
+    'fixedthreshold': 0.5, 
+    'modeltransformation': 'Natural log', 
+    'optimizationalgorithm': 'Dual Simplex', 
+    'criteriatype': 'AIC Criteria', 
+    'stepwiseregression': True, 
+    'conditionalselection': 'Fixed Threshold', 
+    'months': ['0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0']}
+    """
+
+    defaultIniFile = os.path.join("src", "lib", "settings.ini")
+    file = open(defaultIniFile, "r")
+    settings = file.readlines()
+    file.close()
+    settingsDictionary = {}
+    for line in settings:
+        # Strip unnecessary whitespaces and newline characters
+        line = line.strip()
+        
+        # Skip lines that don't contain an '=' (e.g., [Settings], empty lines)
+        if '=' not in line:
+            continue
+        
+        # Split each line into key and value
+        key, value = line.split('=', 1)
+        
+        # Strip leading and trailing whitespaces from key and value
+        key = key.strip()
+        value = value.strip()
+        
+        # Handle cases where the value is a boolean, integer, or float
+        if key == "yearindicator":
+            if value == str(366):
+                settingsDictionary["thirtyDay"] = False
+                key = "leapYear"
+                value = "true"
+            elif value == str(365):
+                settingsDictionary["thirtyDay"] = False
+                key = "leapYear"
+                value = "false"
+            elif value == str(360):
+                settingsDictionary["thirtyDay"] = True
+                key = "leapYear"
+                value = "false"
+        if value.lower() == 'true':
+            value = True
+        elif value.lower() == 'false':
+            value = False
+        elif value.isdigit() or (value[0] == '-' and value[1:].isdigit()):
+            value = int(value)
+        elif value.replace('.', '', 1).isdigit():
+            value = float(value)
+        elif ',' in value:
+            value = [x.strip() for x in value.split(',')]
+        elif '/' in value:
+            value = [x.strip() for x in value.split('/')]
+            if (value[0].isdigit() and value[1].isdigit() and value[2].isdigit()):
+                if settingsDictionary["thirtyDay"] == True:
+                    value = thirtyDate(int(int(value[2])), int(value[1]), int(value[0]))
+                else:
+                    value = datetime.date(int(value[2]), int(value[1]), int(value[0]))
+
+            #A usual annual year (with leap years as appropriate)
+            #A non-leap version – so all years are 365 days.
+            #And a 360 day year – where each month has 30 days.
+        
+        # Add the key-value pair to the dictionary
+        settingsDictionary[key] = value
+        
+    return settingsDictionary
+
 
 if __name__ == '__main__':
     #Module tests go here
-    date1 = thirtyDate(2025, 4, 1)
-    date2 = thirtyDate(2025, 5, 1)
-    date3 = datetime.date(2025, 4, 1)
-    fSDateOK(date1, date2, date3)
+    getSettings()

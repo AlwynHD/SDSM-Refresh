@@ -3,3 +3,4 @@ gitignore
 venv
 SDSMVenv
 .venv
+src/core/__pycache__/home.cpython-37.pyc

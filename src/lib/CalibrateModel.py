@@ -45,12 +45,12 @@ def calibrateModelDefaultExperience():
     fsDate = date(1948, 1, 1)
     #feDate = deepcopy(globalEndDate)
     feDate = date(1965, 1, 10)
-    modelType = 1 #0
+    modelType = 0
     parmOpt = False  ## Whether Conditional or Unconditional. True = Cond, False = Uncond. 
     ##ParmOpt(1) = Uncond = False
     ##ParmOpt(0) = Cond = True
     autoRegression = False ## Replaces AutoRegressionCheck
-    includeChow = False
+    includeChow = True
     detrendOption = 0 #0, 1 or 2...
     xValidation = False
 
@@ -86,7 +86,7 @@ def calibrateModelDefaultExperience():
         print(i)
             
     print(f"\nUnconditional Statistics:")
-    print(f"\nMonth\t\tRSquared\tSE\t\tFRatio\t\tD-Watson")
+    print(f"\nMonth\t\tRSquared\tSE\t\tFRatio\t\tD-Watson\tChow")
 
     ##Useful info on how to display/format the resutls...
     #from calendar import month_name
@@ -106,7 +106,7 @@ def calibrateModelDefaultExperience():
         "December ",
         ]
     for i in range(12):
-        print(f"{month_name[i]}\t{results[i]['RSquared']:.4f}\t\t{results[i]['SE']:.4f}\t\t{results[i]['FRatio']:.2f}\t\t{results[i]['D-Watson']:.4f}\t")
+        print(f"{month_name[i]}\t{results[i]['RSquared']:.4f}\t\t{results[i]['SE']:.4f}\t\t{results[i]['FRatio']:.2f}\t\t{results[i]['D-Watson']:.4f}\t\t{results[i]['Chow']:.4f}")
     #debugMsg(f"TotalNumbers: {totalNumbers}, Missing Days: {noOfDays2Fit - totalNumbers}")
 
 def calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=False, autoRegression=False, includeChow=False, detrendOption=0, xValidation=False):
@@ -1071,7 +1071,10 @@ def calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType=2
                 output[i]["SE"] = statsSummary[i,1]
                 output[i]["FRatio"] = statsSummary[i,4]
                 output[i]["D-Watson"] = statsSummary[i,2]
-                output[i]["Chow"] = None ##Coming soon!
+
+            if includeChow:
+                for i in range(12):
+                    output[i]["Chow"] = statsSummary[i, 3]
 
             ##Done with "prelim data"
             
@@ -1247,17 +1250,16 @@ def calculateParameters(xMatrix: np.ndarray, yMatrix: np.ndarray, optimisationCh
         #CalcParams does not modify xMatrix or yMatrix
         xtemp = xMatrix #deepcopy(xMatrix)
         ytemp = yMatrix #deepcopy(yMatrix)
-        firstHalf = np.round(xMatrix.shape[0] / 2) ##Should use the same rounding algorithm as original software
+        firstHalf = int(np.round(xMatrix.shape[0] / 2)) ##Should use the same rounding algorithm as original software
         #secondHalf = xMatrix.shape[0] - firstHalf ##Might be unnecesary
         isValid = (xMatrix.shape[0] // 2) > 10
 
         if (isValid): #Do we have enough data? Are both halves >10?
             ##Cool python hackz
-
             results = calculateParameters2(xtemp[:firstHalf], ytemp[:firstHalf], optimisationChoice, NPredictors) #ignore error
             RSS1 = results["RSS"]
 
-            results = calculateParameters2(xtemp[firstHalf:], ytemp[firstHalf:], optimisatioChoice, NPredictors) #ignore error
+            results = calculateParameters2(xtemp[firstHalf:], ytemp[firstHalf:], optimisationChoice, NPredictors) #ignore error
             RSS2 = results["RSS"]
         #endif
     #endif

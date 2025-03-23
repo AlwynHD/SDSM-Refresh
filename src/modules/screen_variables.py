@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import (QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, 
                              QFrame, QLabel, QFileDialog, QScrollArea, QDateEdit, QCheckBox,
                              QButtonGroup, QRadioButton, QLineEdit, QGroupBox, QMessageBox,
-                             QApplication
+                             QApplication, QComboBox
                              )
 from PyQt5.QtCore import Qt, QSize, QDate
 
@@ -363,6 +363,10 @@ class ContentWidget(QWidget):
         self.fitEndDateChooser.setDate(QDate(2015,12,31))
         fitEndDateLayout.addWidget(self.fitEndDateChooser)
 
+        self.dropdownBox = QComboBox()
+        self.dropdownBox.addItems(["Annual", "Winter", "Spring", "Summer", "Autumn", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"])
+        selectDateLayout.addWidget(self.dropdownBox)
+
         #Create a label that gets updated on predictandButtonClick
         self.predictorDescriptionLabel = QLabel("No predictor selected")
         predictorDescriptionLayout.addWidget(self.predictorDescriptionLabel)
@@ -439,13 +443,19 @@ class ContentWidget(QWidget):
     def doCorrelation(self):
         #Get dates
         from src.lib.ScreenVars import CorrelationAnalysisApp, correlation
+        analysisPeriods = ["Annual", "Winter", "Spring", "Summer", "Autumn", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+
+        analysisPeriodIndex = self.dropdownBox.currentIndex()
+        print(analysisPeriodIndex)
+        #analysisPeriodIndex = analysisPeriods.index(analysisPeriod)
+        
         fitStartDate = self.QDateEditToDateTime(self.fitStartDateChooser)
         fitEndDate = self.QDateEditToDateTime(self.fitEndDateChooser)
 
         userInput = {
         'fSDate': self.QDateEditToDateTime(self.fitStartDateChooser),
         'fEDate': self.QDateEditToDateTime(self.fitEndDateChooser),
-        'analysisPeriodChosen': 0,
+        'analysisPeriodChosen': analysisPeriodIndex,
         'conditional': self.conditionalRadioButton.isChecked(),
         'autoRegressionTick': self.autoregressionCheckBox.isChecked(),
         'sigLevelInput': 0.05 #todo check whether this would be a correct input

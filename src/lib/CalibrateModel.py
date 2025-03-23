@@ -70,9 +70,10 @@ def calibrateModelDefaultExperience():
     ] #note - ncep_prec.dat is absent - nice round number of 30
     for i in range(len(fileList)):
         fileList[i] = "predictor files/ncep_" + fileList[i] + ".dat"
+    PARfilePath = "do_nothing.PAR"
     ## Predictor files should be in the format [path/to/predictor/file.dat]
     ## Files usually begin with ncep_
-    results = calibrateModel(PTandRoot, fileList, fsDate, feDate, modelType, parmOpt, autoRegression, includeChow, detrendOption, xValidation)
+    results = calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType, parmOpt, autoRegression, includeChow, detrendOption, xValidation)
 
     ## Output for similar results to the OG software:
     print(f"FINAL RESULTS (Assumes Default):")
@@ -105,7 +106,7 @@ def calibrateModelDefaultExperience():
         print(f"{month_name[i]}\t{results[i]['RSquared']:.4f}\t\t{results[i]['SE']:.4f}\t\t{results[i]['FRatio']:.2f}\t\t{results[i]['D-Watson']:.4f}\t")
     #debugMsg(f"TotalNumbers: {totalNumbers}, Missing Days: {noOfDays2Fit - totalNumbers}")
 
-def calibrateModel(PTandRoot, fileList, fsDate, feDate, modelType=2, parmOpt=False, autoRegression=False, includeChow=False, detrendOption=0, xValidation=False):
+def calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=False, autoRegression=False, includeChow=False, detrendOption=0, xValidation=False):
     """
         Core Calibrate Model Function (v0.4.1)
         PTandRoot -> Predictand file path

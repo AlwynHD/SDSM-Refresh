@@ -45,14 +45,14 @@ def calibrateModelDefaultExperience():
     fsDate = date(1948, 1, 1)
     #feDate = deepcopy(globalEndDate)
     feDate = date(1965, 1, 10)
-    modelType = 0 #0
+    modelType = 1 #0
     parmOpt = False  ## Whether Conditional or Unconditional. True = Cond, False = Uncond. 
     ##ParmOpt(1) = Uncond = False
     ##ParmOpt(0) = Cond = True
     autoRegression = False ## Replaces AutoRegressionCheck
     includeChow = False
     detrendOption = 0 #0, 1 or 2...
-    xValidation = True
+    xValidation = False
 
     #if PTandRoot == None:
     PTandRoot = "predictand files/NoviSadPrecOBS.dat" ##Predictand file
@@ -204,6 +204,12 @@ def calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType=2
     #fRatio = 0
     parameterResultsArray = np.zeros((24,50))
     #CondPropCorrect = 5
+
+    seasonMonths = [ ##Necesary for Season Month Lookups
+        [0, 1, 11], #Winter
+        [2, 3, 4], #Spring
+        [5, 6, 7], #Summer
+        [8, 9, 10]] #Autumn
 
     ## Note: The following vars were not adjusted to use 0 as their base:
     # ModelTrans
@@ -776,16 +782,18 @@ def calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType=2
                     yMatrix = savedYMatrix
 
                     if seasonCode == 4:
-                        for i in range(4):
+                        for i in range(3):
                             for j in range(NPredictors):
-                                parameterResultsArray[seasonMonths[periodWorkingOn, i], j] = params["betaMatrix"][i]
+                                debugMsg(f"periodW: {periodWorkingOn}, i: {i}, j: {j}")
+                                debugMsg(f"seasonMonths: {seasonMonths[periodWorkingOn][i]}")
+                                parameterResultsArray[seasonMonths[periodWorkingOn][i], j] = params["betaMatrix"][j]
                             ##next j
-                            parameterResultsArray[seasonMonths[periodWorkingOn, i], NPredictors + 1] = params["SE"]
-                            parameterResultsArray[seasonMonths[periodWorkingOn, i], NPredictors + 2] = params["RSQR"]
-                            statsSummary[seasonMonths[periodWorkingOn, i], 0] = params["RSQR"]
-                            statsSummary[seasonMonths[periodWorkingOn, i], 1] = params["SE"]
-                            statsSummary[seasonMonths[periodWorkingOn, i], 3] = params["chowStat"]
-                            statsSummary[seasonMonths[periodWorkingOn, i], 4] = params["fRatio"]
+                            parameterResultsArray[seasonMonths[periodWorkingOn][i], NPredictors + 1] = params["SE"]
+                            parameterResultsArray[seasonMonths[periodWorkingOn][i], NPredictors + 2] = params["RSQR"]
+                            statsSummary[seasonMonths[periodWorkingOn][i], 0] = params["RSQR"]
+                            statsSummary[seasonMonths[periodWorkingOn][i], 1] = params["SE"]
+                            statsSummary[seasonMonths[periodWorkingOn][i], 3] = params["chowStat"]
+                            statsSummary[seasonMonths[periodWorkingOn][i], 4] = params["fRatio"]
                         ##next i
                     else: ##Monthly?
                         for i in range(NPredictors):
@@ -812,7 +820,7 @@ def calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType=2
                             statsSummary[periodWorkingOn, 2] = params["condPropCorrect"]
                         else:
                             for i in range(3):
-                                statsSummary[seasonMonths[periodWorkingOn, i], 2] = params["condPropCorrect"]
+                                statsSummary[seasonMonths[periodWorkingOn][i], 2] = params["condPropCorrect"]
                             ##next
                         ##endif
 
@@ -885,7 +893,7 @@ def calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType=2
                         if modelTrans == 4:
                             if seasonCode == 4:
                                 for i in range(1,4): ##???
-                                    biasCorrection[seasonMonths[periodWorkingOn, i]] = calculateBiasCorrection()
+                                    biasCorrection[seasonMonths[periodWorkingOn][i]] = calculateBiasCorrection()
                                 ##next i
                             else:
                                 biasCorrection[periodWorkingOn] = calculateBiasCorrection()
@@ -893,16 +901,16 @@ def calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType=2
                         ##endif
 
                         if seasonCode == 4:
-                            for i in range(1,4): ##???
+                            for i in range(3): ##???
                                 for j in range(NPredictors):
-                                    parameterResultsArray[seasonMonths[periodWorkingOn, i] + 12, j] = params["betaMatrix"][j]
+                                    parameterResultsArray[seasonMonths[periodWorkingOn][i] + 12, j] = params["betaMatrix"][j]
                                 ##next j
-                                parameterResultsArray[seasonMonths[periodWorkingOn, i] + 11, NPredictors + 1] = params["SE"]
-                                parameterResultsArray[seasonMonths[periodWorkingOn, i] + 11, NPredictors + 2] = params["RSQR"]
-                                statsSummary[seasonMonths[periodWorkingOn, i] + 11, 0] = params["RSQR"]
-                                statsSummary[seasonMonths[periodWorkingOn, i] + 11, 1] = params["SE"]
-                                statsSummary[seasonMonths[periodWorkingOn, i] + 11, 3] = params["chowStat"]
-                                statsSummary[seasonMonths[periodWorkingOn, i] + 11, 4] = params["fRatio"]
+                                parameterResultsArray[seasonMonths[periodWorkingOn][i] + 12, NPredictors + 1] = params["SE"]
+                                parameterResultsArray[seasonMonths[periodWorkingOn][i] + 12, NPredictors + 2] = params["RSQR"]
+                                statsSummary[seasonMonths[periodWorkingOn][i] + 12, 0] = params["RSQR"]
+                                statsSummary[seasonMonths[periodWorkingOn][i] + 12, 1] = params["SE"]
+                                statsSummary[seasonMonths[periodWorkingOn][i] + 12, 3] = params["chowStat"]
+                                statsSummary[seasonMonths[periodWorkingOn][i] + 12, 4] = params["fRatio"]
                             ##next i
                         else:
                             for j in range(NPredictors):
@@ -958,7 +966,7 @@ def calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType=2
                                 statsSummary[periodWorkingOn, 2] = DWNumerator / DWDenom
                             else:
                                 for i in range(3):
-                                    statsSummary[seasonMonths[periodWorkingOn, i], 2] = DWNumerator / DWDenom
+                                    statsSummary[seasonMonths[periodWorkingOn][i], 2] = DWNumerator / DWDenom
                             ##endif
                         ##endif
                     ##endif
@@ -1792,12 +1800,12 @@ def calcPropCorrect(modMatrix: np.ndarray, yMatrix: np.ndarray, limit: int):
     return propCorrect
 
 def getSeason(month):
-    if month < 11 and month >= 8: #10/9/8 -> Months 9,10,11 (Autumn)
+    if month < 12 and month >= 9: #Months 9,10,11 (Autumn)
         return 3
-    elif month < 8 and month >= 5: #7/6/5 -> Months 6,7,8 (Summer)
+    elif month < 9 and month >= 6: #Months 6,7,8 (Summer)
         return 2
-    elif month < 5 and month >= 2: #4/3/2 -> Months 3,4,5 (Spring)
+    elif month < 6 and month >= 3: #Months 3,4,5 (Spring)
         return 1
-    else: #1/0/11 -> Months 12,1,2 (Winter)
+    else: #Months 12,1,2 (Winter)
         return 0
 ##

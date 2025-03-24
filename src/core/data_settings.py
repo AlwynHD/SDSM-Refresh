@@ -130,15 +130,33 @@ class ContentWidget(QWidget):
         miscLayout.addWidget(self.missingDataEdit)
         miscLayout.addWidget(self.randomSeedCheckBox)
         
+        # Default Directory Group Box
+        directoryGroupBox = QGroupBox("Default Directory")
+        directoryGroupBox.setStyleSheet("color: white;")
+        directoryLayout = QVBoxLayout()
+        directoryLayout.setAlignment(Qt.AlignCenter)
+        directoryGroupBox.setLayout(directoryLayout)
+        
+        # Create the label, read-only text box, and button
+        currentDirLabel = QLabel("Current Directory:")
+        self.defaultDirDisplay = QLineEdit(defaultDir)
+        self.defaultDirDisplay.setReadOnly(True)
+        self.defaultDirDisplay.setAlignment(Qt.AlignCenter)
+        chooseDirButton = QPushButton("Choose Folder")
+        chooseDirButton.clicked.connect(self.chooseDefaultDir)
+        
+        directoryLayout.addWidget(currentDirLabel)
+        directoryLayout.addWidget(self.defaultDirDisplay)
+        directoryLayout.addWidget(chooseDirButton)
+        
         # Add the group boxes to the horizontal layout with proportional sizing
-        groupLayout.addWidget(dataGroupBox, 1)  # 1/3rd width for data group
-        groupLayout.addWidget(miscGroupBox, 2)  # 2/3rd width for misc group
+        groupLayout.addWidget(dataGroupBox, 1)         # Data group on the left
+        groupLayout.addWidget(miscGroupBox, 1)         # Miscellaneous group in the center
+        groupLayout.addWidget(directoryGroupBox, 2)    # Default Directory group on the right
         
         # Add the horizontal group layout to the main layout
         mainLayout.addLayout(groupLayout)
         
-
-
         # Reset Button (moved outside the Miscellaneous Group Box)
         resetButton = QPushButton("Reset")
         resetButton.clicked.connect(self.resetSettings)
@@ -167,6 +185,13 @@ class ContentWidget(QWidget):
         buttonLayout.addWidget(loadButton)
 
         mainLayout.addLayout(buttonLayout)
+
+    def chooseDefaultDir(self):
+        global defaultDir
+        directory = QFileDialog.getExistingDirectory(self, "Select Default Directory", defaultDir)
+        if directory:
+            defaultDir = directory
+            self.defaultDirDisplay.setText(defaultDir)
 
     def validateDate(self, dateStr):
         try:
@@ -234,26 +259,25 @@ class ContentWidget(QWidget):
 
     def get_settings_json(self):
         settings = {
-        "yearIndicator": yearIndicator,
-        "globalSDate": globalSDate,
-        "globalEDate": globalEDate,
-        "allowNeg": allowNeg,
-        "randomSeed": randomSeed,
-        "thresh": thresh,
-        "globalMissingCode": globalMissingCode,
-        "defaultDir": defaultDir,
-        "varianceInflation": varianceInflation,
-        "biasCorrection": biasCorrection,
-        "fixedThreshold": fixedThreshold,
-        "modelTransformation": modelTransformation,
-        "optimizationAlgorithm": optimizationAlgorithm,
-        "criteriaType": criteriaType,
-        "stepwiseRegression": stepwiseRegression,
-        "conditionalSelection": conditionalSelection,
-        "months": months
+            "yearIndicator": yearIndicator,
+            "globalSDate": globalSDate,
+            "globalEDate": globalEDate,
+            "allowNeg": allowNeg,
+            "randomSeed": randomSeed,
+            "thresh": thresh,
+            "globalMissingCode": globalMissingCode,
+            "defaultDir": defaultDir,
+            "varianceInflation": varianceInflation,
+            "biasCorrection": biasCorrection,
+            "fixedThreshold": fixedThreshold,
+            "modelTransformation": modelTransformation,
+            "optimizationAlgorithm": optimizationAlgorithm,
+            "criteriaType": criteriaType,
+            "stepwiseRegression": stepwiseRegression,
+            "conditionalSelection": conditionalSelection,
+            "months": months
         }
         return json.dumps(settings, indent=4)
-
 
     def safeGetInt(self, config, section, option, fallback):
         try:
@@ -315,6 +339,8 @@ class ContentWidget(QWidget):
         self.missingDataEdit.setText(str(globalMissingCode))
         self.allowNegativeCheckBox.setChecked(allowNeg)
         self.randomSeedCheckBox.setChecked(randomSeed)
+        # Update the default directory display
+        self.defaultDirDisplay.setText(defaultDir)
 
     def saveSettingsFromUi(self):
         global globalSDate, globalEDate, thresh, globalMissingCode, allowNeg, randomSeed, defaultDir

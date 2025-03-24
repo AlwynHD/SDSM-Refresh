@@ -39,17 +39,36 @@ def readSumStatsFile(path):
                 populateStats = True
     return fields, stats
 
-def plotLine(fields, stats, fieldId):
+def plotMultiple(fieldGroup, statGroup, fieldIds, line):
+    if line:
+        plt.title("SDSM Line Chart")
+    else:
+        plt.title("SDSM Bar Chart")
+
     months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-    data = []
+    width = 0.4
 
-    for i in range(12):
-        data.append(float(stats[i][fieldId]))
+    for i in range(len(fieldIds)):
+        data = []
+        
+        fields = fieldGroup[i]
+        stats = statGroup[i]
+        fieldId = fieldIds[i]
 
-    print(data)
-    plt.title("SDSM Line Chart")
-    plt.plot(months, data)
+        for month in range(12):
+            data.append(float(stats[month][fieldId]))
+
+        if line:
+            plt.plot(data, label = "File " + str(i + 1) + ": " + fields[fieldId])
+        else:
+            plt.bar(np.arange(12) + (width * i), data, 0.4, label = "File " + str(i + 1) + ": " +  fields[fieldId])
+    
+    plt.xticks(np.arange(12), months)
+    plt.legend()
     plt.show()
 
-fields, stats = readSumStatsFile(r"C:\Users\ajs25\Downloads\precOut.dat")
-plotLine(fields, stats, 0)
+if __name__ == "__main__":
+    fields1, stats1 = readSumStatsFile(r"C:\Users\ajs25\Downloads\precOut.dat")
+    fields2, stats2 = readSumStatsFile(r"C:\Users\ajs25\Downloads\tempOut.dat")
+
+    plotMultiple([fields1, fields2], [stats1, stats2], [0, 0], False)

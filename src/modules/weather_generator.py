@@ -1,8 +1,9 @@
 from PyQt5.QtWidgets import (QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, 
                              QFrame, QLabel, QLineEdit, QFileDialog, QGroupBox, 
-                             QGridLayout, QListWidget)
+                             QGridLayout, QListWidget, QMessageBox)
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
+import os
 
 class ContentWidget(QWidget):
     """
@@ -119,7 +120,79 @@ class ContentWidget(QWidget):
         file_name, _ = QFileDialog.getOpenFileName(self, "Select Parameter File", "", "PAR Files (*.PAR);;All Files (*.*)")
         if file_name:
             self.parFileText.setText(f"📂 {file_name}")
-            # In a real application, you would parse the PAR file and update the UI fields
+
+        self.par_file_path = file_name
+        self.par_file_text.setText(f"📂 {os.path.basename(file_name)}")
+
+        try:
+            self.predictor_list.clear()
+            
+            # Parse PAR file
+            with open(file_name, 'r') as par_file:
+                # Read number of predictors
+                line = par_file.readline().strip()
+                n_predictors = int(line)
+                
+                detrend_applied = False
+                if n_predictors < 0:
+                    detrend_applied = True
+                    n_predictors = abs(n_predictors)
+                
+                self.no_of_pred_text.setText(f"📊 No. of predictors: {n_predictors}")
+                
+                season_code = int(par_file.readline().strip())
+                
+                year_length = int(par_file.readline().strip())
+                
+                record_start_date = par_file.readline().strip()
+                self.r_start_text.setText(f"📅 Record Start: {record_start_date}")
+                
+                record_length = int(par_file.readline().strip())
+                self.r_length_text.setText(f"📏 Record Length: {record_length}")
+                
+                calibration_start_date = par_file.readline().strip()
+                self.f_start_text.setText(calibration_start_date)
+                
+                calibration_days = int(par_file.readline().strip())
+                self.f_length_text.setText(str(calibration_days))
+                
+                rain_flag = par_file.readline().strip().lower() == "true"
+                if rain_flag:
+                    self.process_label.setText("⚙️ Process: Conditional")
+                else:
+                    self.process_label.setText("⚙️ Process: Unconditional")
+                
+                model_trans = int(par_file.readline().strip())
+                
+                _ = par_file.readline().strip()
+                
+                line = par_file.readline().strip()
+                
+                if line.lower() == "true" or line.lower() == "false":
+                    auto_regression = line.lower() == "true"
+                    self.auto_regress_label.setText(f"🔄 Autoregression: {auto_regression}")
+                    predictand_filename = par_file.readline().strip()
+                else:
+                    auto_regression = False
+                    self.auto_regress_label.setText("🔄 Autoregression: False")
+                    predictand_filename = line
+                
+                self.predictor_list.addItem(predictand_filename)
+
+                for i in range(n_predictors):
+                    predictor_filename = par_file.readline().strip()
+                    self.predictor_list.addItem(predictor_filename)
+            
+            # Show success message
+            QMessageBox.information(self, "PAR File Loaded", 
+                                f"Successfully loaded parameter file with {n_predictors} predictors.")
+            
+        except Exception as e:
+            QMessageBox.critical(self, "Error Loading PAR File", f"Failed to parse the parameter file: {str(e)}")
+            # Reset file path on error
+            self.par_file_path = ""
+            self.par_file_text.setText("Not selected")
+    
 
     def selectOutputFile(self):
         """Opens a file dialog to select an output file."""
@@ -129,20 +202,48 @@ class ContentWidget(QWidget):
             
     def viewPredictors(self):
         """Loads and displays predictors from the PAR file."""
-        # In a real application, this would read the PAR file and populate the predictorList
-        if self.parFileText.text() != "Not selected":
-            self.predictorList.clear()
-            # Example items for demonstration
-            self.predictorList.addItem("Predictand.DAT")
-            self.predictorList.addItem("Predictor1.DAT")
-            self.predictorList.addItem("Predictor2.DAT")
+        if not self.par_file_path:
+            QMessageBox.critical(self, "No PAR file selected", 
+                            "You must select a parameter file first.")
+            return
             
-            # Update predictor info
-            self.noOfPredText.setText("📊 No. of predictors: 2")
-            self.autoRegressLabel.setText("🔄 Autoregression: False")
-            self.processLabel.setText("⚙️ Processssss: Conditional")
-            self.rStartText.setText("📅 Record Start: 01/01/1961")
-            self.rLengthText.setText("📏 Record Length: 14610")
+        try:
+        
+            par_dir = os.path.dirname(self.par_file_path)
+            
+            # Check predictor file existence
+            missing_files = []
+            found_files = []
+            
+            for index in range(self.predictor_list.count()):
+                predictor_file = self.predictor_list.item(index).text()
+                
+                # Remove previous warning marks
+                if predictor_file.startswith('⚠️ '):
+                    predictor_file = predictor_file.split(' (Missing)')[0][2:]
+                    self.predictor_list.item(index).setText(predictor_file)
+                
+                predictor_path = os.path.join(par_dir, predictor_file)
+                
+                # Mark the missing files with prefix 
+                if not os.path.exists(predictor_path):
+                    missing_files.append(predictor_file)
+                    self.predictor_list.item(index).setText(f"⚠️ {predictor_file} (Missing)")
+                else:
+                    found_files.append(predictor_file)
+            
+            # file missing warning
+            if missing_files:
+                missing_list = "\n- ".join(missing_files)
+                QMessageBox.warning(self, "Missing Predictor Files", 
+                                f"The following predictor files were not found in the PAR file directory:\n- {missing_list}\n\nPlease ensure all predictor files are in the same directory as the PAR file.")
+            else:
+                QMessageBox.information(self, "Predictors Verified", 
+                                    f"All {len(found_files)} predictor files were found in the directory.")
+                
+        except Exception as e:
+            QMessageBox.critical(self, "Error Checking Predictors", 
+                            f"An error occurred while checking predictor files: {str(e)}")
     
     def synthesizeData(self):
         """Handles the synthesis of weather data."""

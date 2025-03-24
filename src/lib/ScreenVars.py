@@ -115,14 +115,11 @@ def correlation(predictandSelected, predictorSelected, inputs):
         return {"error": "Predictor Error"}
     elif autoRegressionTick and len(predictorSelected) == 1:
         return {"error": "Predictor Error"}
-    
     # Set up variables
     nVariables = len(predictorSelected) + 1
     
     # Load data files
     loadedFiles = loadFilesIntoMemory(predictandSelected + predictorSelected)
-    print((fSDate - globalSDate).days)
-    print(fEDate)
     loadedFiles = [file[(fSDate - globalSDate).days:] for file in loadedFiles]
 
     nameOfFiles = displayFiles(predictandSelected + predictorSelected)
@@ -139,7 +136,6 @@ def correlation(predictandSelected, predictorSelected, inputs):
     sumData = np.zeros(nVariables)
     
     # Collect data points
-    print((fEDate - fSDate).days)
     for i in range((fEDate - fSDate).days):
         if dateWanted(workingDate, analysisPeriodChosen):
             totalNumbers += 1
@@ -160,7 +156,7 @@ def correlation(predictandSelected, predictorSelected, inputs):
                 totalBelowThreshold += 1
                 
             inputData.append(row)
-        increaseDate(workingDate, 1, leapYear)
+        workingDate = increaseDate(workingDate, 1, leapYear)
     
     inputData = np.array(inputData)
     
@@ -249,6 +245,7 @@ def correlation(predictandSelected, predictorSelected, inputs):
     
     # Create dictionary with all results
     results = {
+        "error": "NA",
         'analysisPeriod': {
             'startDate': fSDate,
             'endDate': fEDate,
@@ -792,27 +789,4 @@ class CorrelationAnalysisApp(QMainWindow):
     sys.exit(app.exec_())"""
 
 if __name__ == '__main__':
-    print("NOO")
-    # Create a QApplication instance first
-    app = QApplication(sys.argv)
-    # Create an instance of the ContentWidget class
-    widget = ContentWidget()
-    # Call the loadSettings method
-    widget.loadSettings('settings.ini')  # Pass the path to the INI file
-    # Call the get_settings_json method on the widget instance (without passing any arguments)
-    settings_json = widget.get_settings_json()
-    # Print or use the settings as needed
-    print(settings_json)
-    # Start the application's event loop
-    sys.exit(app.exec_())
-    #leapYear = True
-    #data = analyseData(predictandSelected, predictorSelected, fSDate, fEDate, globalSDate, globalEDate, autoRegressionTick, leapYear, sigLevelInput)
-
-    #for line in data:
-    #    print(line[1][1])
-    #predictorSelected = selectFile()
-    #predictandSelected = selectFile()
-
-    #correlation(predictandSelected, predictorSelected, settings)
-    #scatterPlot(predictandSelected, predictorSelected, fSDate, fEDate, globalSDate, globalEDate, autoRegressionTick, leapYear)
-    #print(np.random.normal(size=(2, 200), scale=1e-5))
+    thing = "here"

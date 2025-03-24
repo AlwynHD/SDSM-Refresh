@@ -472,12 +472,14 @@ class ContentWidget(QWidget):
         print(["predictor files/"+predictor for predictor in self.predictorsSelected])
         data = correlation([self.predictandSelected], [predictor for predictor in self.predictorsSelected], userInput)
 
-        if data == "Predictand Error":
+        if data["error"] == "Predictand Error":
             return displayBox("Predictand Error","No predictand file selected.","Error",isError=True)
-        elif data == "Predictor Error":
+        elif data["error"] == "Predictor Error":
             return displayBox("Predictor Error",
                               "There can only be between one and twelve predictor files selected.",
                               "Error",isError=True)
+        if data["error"] == "No valid dates in time period choosen":
+            return displayBox("Date Error","No valid dates in time period choosen.","Error",isError=True)
         self.newWindow = CorrelationAnalysisApp()
         
         self.newWindow.load_results(data)

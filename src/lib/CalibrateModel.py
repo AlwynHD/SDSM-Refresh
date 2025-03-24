@@ -44,12 +44,13 @@ def calibrateModelDefaultExperience():
     #fsDate = deepcopy(globalStartDate)
     fsDate = date(1948, 1, 1)
     #feDate = deepcopy(globalEndDate)
+    #feDate = date(1961, 1, 10)
     feDate = date(1965, 1, 10)
     modelType = 0
     parmOpt = False  ## Whether Conditional or Unconditional. True = Cond, False = Uncond. 
     ##ParmOpt(1) = Uncond = False
     ##ParmOpt(0) = Cond = True
-    autoRegression = False ## Replaces AutoRegressionCheck
+    autoRegression = True ## Replaces AutoRegressionCheck
     includeChow = True
     detrendOption = 0 #0, 1 or 2...
     xValidation = False
@@ -525,20 +526,19 @@ def calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType=2
                     xMatrix = np.ndarray((sizeOfDataArray[0] - 1, NPredictors + 2))
                     yMatrix = np.ndarray((sizeOfDataArray[0] - 1))
                     for i in range(sizeOfDataArray[0] - 1):
-                        yMatrix[i] = dataReadIn(0, 0, i + 1)
-                        #xMatrix[i, 0] = 1#
-                        xMatrix[i, 0] = loadedFiles[0]
-                        for j in range(NPredictors):
-                            xMatrix[i, j] = dataReadIn[0, j+1, i]
+                        yMatrix[i] = dataReadIn[0, 0, i + 1]
+                        xMatrix[i, 0] = 1
+                        for j in range(1, NPredictors + 1):
+                            xMatrix[i, j] = dataReadIn[0, j, i + 1]
                         ##next
                         if parmOpt:
                             if dataReadIn[0, 0, i] > thresh:
-                                xMatrix[i, NPredictors] = 1
+                                xMatrix[i, NPredictors + 1] = 1
                             else:
-                                xMatrix[i, NPredictors] = 0
+                                xMatrix[i, NPredictors + 1] = 0
                             ##endif
                         else:
-                            xMatrix[i, NPredictors] = dataReadIn[0, 0, i-1]
+                            xMatrix[i, NPredictors + 1] = dataReadIn[0, 0, i]
                         ##endif
                     ##next
                     NPredictors += 1
@@ -608,7 +608,8 @@ def calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType=2
                     ##call newprogressbar
                     if autoRegression:
                         ##Funky resize stuffs here - come back later...
-                        xMatrixClone = deepcopy(xMatrix)
+                        #xMatrixClone = deepcopy(xMatrix)
+                        xMatrix = np.delete(xMatrix, NPredictors + 2, 1)
                         #xmatrix size
                         #for loop
                         #extra for loop
@@ -719,28 +720,27 @@ def calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType=2
                         binsTotal -= okSectionCount
                         ##xMatrix resize 
                         ##yMatrix resize
-                        xMatrix = np.zeros((binsTotal + 1, NPredictors))
-                        yMatrix = np.zeros((binsTotal + 1))
+                        xMatrix = np.zeros((binsTotal, NPredictors + 1))
+                        yMatrix = np.zeros((binsTotal))
 
                         tempCounter = 0
-                        progressThroughData = 1
+                        progressThroughData = 0
                         for i in range(noOfSections[periodWorkingOn]):
                             if sectionSizes[periodWorkingOn, i] > 1:
                                 for j in range(sectionSizes[periodWorkingOn, i] - 1):
-                                    yMatrix[tempCounter] = dataReadIn[periodWorkingOn, 0, i]
-                                    for subloop in range(NPredictors - 1):
-                                        xMatrix[tempCounter, subloop] = dataReadIn[periodWorkingOn, subloop, j+progressThroughData]
+                                    yMatrix[tempCounter] = dataReadIn[periodWorkingOn, 0, j+progressThroughData+1]
+                                    xMatrix[tempCounter, 0] = 1
+                                    for subloop in range(1, NPredictors):
+                                        xMatrix[tempCounter, subloop] = dataReadIn[periodWorkingOn, subloop, j+progressThroughData + 1]
                                     ##next (subloop)
-                                    ##xmatrix[tempCounter, 0] = 1#
-                                    xMatrix[tempCounter, 0] = 1 #loadedFiles[0] - Whoops, actually just a 1
                                     if parmOpt:
-                                        if dataReadIn[periodWorkingOn, 0, j + progressThroughData - 1] > thresh:
-                                            xMatrix[tempCounter, NPredictors - 1] = 1
+                                        if dataReadIn[periodWorkingOn, 0, j + progressThroughData] > thresh:
+                                            xMatrix[tempCounter, NPredictors] = 1
                                         else:
-                                            xMatrix[tempCounter, NPredictors - 1] = 0
+                                            xMatrix[tempCounter, NPredictors] = 0
                                         ##endif
                                     else:
-                                        xMatrix[tempCounter, NPredictors - 1] = dataReadIn[periodWorkingOn, 0, j+progressThroughData - 1]
+                                        xMatrix[tempCounter, NPredictors] = dataReadIn[periodWorkingOn, 0, j+progressThroughData]
                                     ##endif
                                     tempCounter += 1
                                 ##next j
@@ -1349,6 +1349,8 @@ def calculateParameters2(xMatrix: np.ndarray, yMatrix: np.ndarray, optimisationC
     if optimisationChoice == 1:
         debugMsg("Oridanry LeastSquares")
         xTransY = np.matmul(xMatrix.transpose(), yMatrix)
+        debugMsg(f"xMatrix: {xMatrix}")
+        debugMsg(f"yMatrix: {yMatrix}")
         xTransXInverse = np.linalg.inv(np.matmul(xMatrix.transpose(), xMatrix))
         betaMatrix = np.matmul(xTransXInverse, xTransY)
 

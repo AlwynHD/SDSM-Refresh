@@ -47,10 +47,10 @@ def calibrateModelDefaultExperience():
     #feDate = date(1961, 1, 10)
     feDate = date(1965, 1, 10)
     modelType = 1
-    parmOpt = False  ## Whether Conditional or Unconditional. True = Cond, False = Uncond. 
+    parmOpt = True  ## Whether Conditional or Unconditional. True = Cond, False = Uncond. 
     ##ParmOpt(1) = Uncond = False
     ##ParmOpt(0) = Cond = True
-    autoRegression = True ## Replaces AutoRegressionCheck
+    autoRegression = False ## Replaces AutoRegressionCheck -> Might be mutually exclusive with parmOpt - will check later...
     includeChow = True
     detrendOption = 0 #0, 1 or 2...
     xValidation = False
@@ -77,7 +77,7 @@ def calibrateModelDefaultExperience():
     results = calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType, parmOpt, autoRegression, includeChow, detrendOption, xValidation)
 
     ## Output for similar results to the OG software:
-    print(f"FINAL RESULTS (Assumes Default):")
+    print(f"FINAL RESULTS:")
     debugMsg(f"Debug data:")
     debugMsg(f"Fit Start Date: {fsDate}")
     debugMsg(f"Fit End Date: {feDate}")
@@ -87,7 +87,7 @@ def calibrateModelDefaultExperience():
         print(i)
             
     print(f"\nUnconditional Statistics:")
-    print(f"\nMonth\t\tRSquared\tSE\t\tFRatio\t\tD-Watson\tChow")
+    print(f"\nMonth\t\tRSquared\tSE\t\tFRatio\t\t{'D-Watson' if not parmOpt else 'Prop Correct'}\t{'Chow' if includeChow else ''}")
 
     ##Useful info on how to display/format the resutls...
     #from calendar import month_name
@@ -106,8 +106,35 @@ def calibrateModelDefaultExperience():
         "November ",
         "December ",
         ]
-    for i in range(12):
-        print(f"{month_name[i]}\t{results[i]['RSquared']:.4f}\t\t{results[i]['SE']:.4f}\t\t{results[i]['FRatio']:.2f}\t\t{results[i]['D-Watson']:.4f}\t\t{results[i]['Chow']:.4f}")
+    u = "Unconditional"
+    if not parmOpt:
+        for i in range(12):
+            if includeChow:
+                print(f"{month_name[i]}\t{results[u][i]['RSquared']:.4f}\t\t{results[u][i]['SE']:.4f}\t\t{results[u][i]['FRatio']:.2f}\t\t{results[u][i]['D-Watson']:.4f}\t\t{results[u][i]['Chow']:.4f}")
+            else:
+                print(f"{month_name[i]}\t{results[u][i]['RSquared']:.4f}\t\t{results[u][i]['SE']:.4f}\t\t{results[u][i]['FRatio']:.2f}\t\t{results[u][i]['D-Watson']:.4f}")
+    else:
+        c = "Conditional"
+        if includeChow:
+            for i in range(12):
+                print(f"{month_name[i]}\t{results[u][i]['RSquared']:.4f}\t\t{results[u][i]['SE']:.4f}\t\t{results[u][i]['FRatio']:.4f}\t\t{results[u][i]['PropCorrect']:.4f}\t\t{results[u][i]['Chow']:.4f}")
+            print(f"\nConditional Statistics:")
+            print(f"\nMonth\t\tRSquared\tSE\t\tFRatio\t\tChow")
+            for i in range(12):
+                print(f"{month_name[i]}\t{results[c][i]['RSquared']:.4f}\t\t{results[c][i]['SE']:.4f}\t\t{results[c][i]['FRatio']:.4f}\t\t{results[c][i]['Chow']:.4f}")
+        else:
+            for i in range(12):
+                print(f"{month_name[i]}\t{results[u][i]['RSquared']:.4f}\t\t{results[u][i]['SE']:.4f}\t\t{results[u][i]['FRatio']:.4f}\t\t{results[u][i]['PropCorrect']:.4f}")
+            print(f"\nConditional Statistics:")
+            print(f"\nMonth\t\tRSquared\tSE\t\tFRatio")
+            for i in range(12):
+                print(f"{month_name[i]}\t{results[c][i]['RSquared']:.4f}\t\t{results[c][i]['SE']:.4f}\t\t{results[c][i]['FRatio']:.4f}")
+            
+            
+        
+        #print(f"\nConditional Statistics:")
+        #print(f"\nMonth\t\tRSquared\tSE\t\tFRatio\t\t{'D-Watson' if not parmOpt else 'Prop Correct'}\t{'Chow' if includeChow else 0}")
+
     #debugMsg(f"TotalNumbers: {totalNumbers}, Missing Days: {noOfDays2Fit - totalNumbers}")
 
 def calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=False, autoRegression=False, includeChow=False, detrendOption=0, xValidation=False):
@@ -115,6 +142,7 @@ def calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType=2
         Core Calibrate Model Function (v0.4.1)
         PTandRoot -> Predictand file path
         fileList -> Array of predictor file paths
+        PARfilePath -> Save path for the output file (PARfile)
         fsDate -> Fit start date (currently accepts Date object, may adjust to accept string)
         feDate -> Fit end date
         modelType -> Monthly/Seasonal/Annual (0/1/2), can change easily according to the will of the GUI Developer Gods
@@ -168,6 +196,13 @@ def calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType=2
     ## Revised parameters for CalibrateModel
     ## Explicitly separated parameters read from the settings
     ## Adjusted output format
+
+    ## In v0.5.0
+    ## Finished implementation of:
+    ## - Autoregression
+    ## - ChowStat
+    ## - Annual/Monthly/Season options
+    ## - parmOpt
 
     #------------------------
     # FUNCTION DEFINITITIONS:
@@ -610,15 +645,25 @@ def calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType=2
                         ##Funky resize stuffs here - come back later...
                         #xMatrixClone = deepcopy(xMatrix)
                         xMatrix = np.delete(xMatrix, NPredictors + 2, 1)
-                        #xmatrix size
-                        #for loop
-                        #extra for loop
-                        #somethign else...
                     ##endif
 
                     #call PropogateConditional
-                    propogateConditional(xMatrix, yMatrix, yMatrixAboveThreshPos, thresh, NPredictor) 
+                    #propogateConditional(xMatrix, yMatrix, yMatrixAboveThreshPos, thresh, NPredictors) 
+                    
+                    ### propogateConditional Code ###
 
+                    rejectedIndex = []
+                    for i in range(len(yMatrix)):
+                        if yMatrix[i] <= thresh:
+                            ## NEW AND IMPROVED RESIZE CODE HERE:
+                            rejectedIndex.append(i)
+                        #End If
+                    #Next i
+                    xMatrix = np.delete(xMatrix, rejectedIndex, 0)
+                    yMatrix = np.delete(yMatrix, rejectedIndex)
+
+                    ### End of propogateConditional Code ###
+                    
                     if xValidation:
                         #call xvalConditional
                         xValConditional()
@@ -784,9 +829,7 @@ def calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType=2
                     if seasonCode == 4:
                         for i in range(3):
                             for j in range(NPredictors):
-                                debugMsg(f"periodW: {periodWorkingOn}, i: {i}, j: {j}")
-                                debugMsg(f"seasonMonths: {seasonMonths[periodWorkingOn][i]}")
-                                parameterResultsArray[seasonMonths[periodWorkingOn][i], j] = params["betaMatrix"][j]
+                               parameterResultsArray[seasonMonths[periodWorkingOn][i], j] = params["betaMatrix"][j]
                             ##next j
                             parameterResultsArray[seasonMonths[periodWorkingOn][i], NPredictors + 1] = params["SE"]
                             parameterResultsArray[seasonMonths[periodWorkingOn][i], NPredictors + 2] = params["RSQR"]
@@ -827,14 +870,26 @@ def calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType=2
                         if autoRegression:
                             ##Funky resize stuffs here - come back later...
                             xMatrixClone = deepcopy(xMatrix)
-                            #xmatrix size
-                            #for loop
-                            #extra for loop
-                            #somethign else...
+                            #xMatrix = np.delete(xMatrix, NPredictors + 2, 1)
                         ##endif
 
                         #call PropogateConditional
-                        propogateConditional(xMatrix, yMatrix, yMatrixAboveThreshPos, thresh, NPredictor) 
+                        #propogateConditional(xMatrix, yMatrix, yMatrixAboveThreshPos, thresh, NPredictors) 
+
+                        ### propogateConditional Code ###
+
+                        rejectedIndex = []
+                        for i in range(len(yMatrix)):
+                            if yMatrix[i] <= thresh:
+                                ## NEW AND IMPROVED RESIZE CODE HERE:
+                                rejectedIndex.append(i)
+                                #yMatrixAboveThreshPos
+                            #End If
+                        #Next i
+                        xMatrix = np.delete(xMatrix, rejectedIndex, 0)
+                        yMatrix = np.delete(yMatrix, rejectedIndex)
+
+                        ### End of propogateConditional Code ###
 
                         if xValidation:
                             #call xValConditional
@@ -1065,17 +1120,33 @@ def calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType=2
             #    output[months[i]]["FRatio"] = statsSummary[i,4]
             #    output[months[i]]["D-Watson"] = statsSummary[i,2]
             #    output[months[i]]["Chow"] = None ##Coming soon!
+            u = "Unconditional"
+            output[u] = {}
             for i in range(12):
-                output[i] = {} # Initialize month associative array / dict
-                output[i]["RSquared"] = statsSummary[i,0]
-                output[i]["SE"] = statsSummary[i,1]
-                output[i]["FRatio"] = statsSummary[i,4]
-                output[i]["D-Watson"] = statsSummary[i,2]
-
+                output[u][i] = {} # Initialize month associative array / dict
+                output[u][i]["RSquared"] = statsSummary[i,0]
+                output[u][i]["SE"] = statsSummary[i,1]
+                output[u][i]["FRatio"] = statsSummary[i,4]
             if includeChow:
                 for i in range(12):
-                    output[i]["Chow"] = statsSummary[i, 3]
-
+                    output[u][i]["Chow"] = statsSummary[i, 3]
+            if not parmOpt:
+                for i in range(12):
+                    output[u][i]["D-Watson"] = statsSummary[i,2]
+            else:
+                for i in range(12):
+                    output[u][i]["PropCorrect"] = statsSummary[i,2]
+                c = "Conditional"
+                for i in range(12):
+                    output[c] = {}
+                for i in range(12):
+                    output[c][i] = {} # Initialize month associative array / dict
+                    output[c][i]["RSquared"] = statsSummary[i + 12,0]
+                    output[c][i]["SE"] = statsSummary[i + 12,1]
+                    output[c][i]["FRatio"] = statsSummary[i + 12,4]
+                if includeChow:
+                    for i in range(12):
+                        output[c][i]["Chow"] = statsSummary[i + 12, 3]
             ##Done with "prelim data"
             
             #call PrintResults
@@ -1207,8 +1278,10 @@ def propogateConditional(xMatrix: np.ndarray, yMatrix: np.ndarray, yMatrixAboveT
         #End If
     #Next i
 
-    np.delete(xMatrix, rejectedIndex, 0)
-    np.delete(yMatrix, rejectedIndex)
+    xMatrix = np.delete(xMatrix, rejectedIndex, 0)
+    yMatrix = np.delete(yMatrix, rejectedIndex)
+
+    return 
 
 def xValUnConditional():
     """
@@ -1290,6 +1363,7 @@ def calculateParameters(xMatrix: np.ndarray, yMatrix: np.ndarray, optimisationCh
     if parmOpt:
         if conditionalPart:
             ##call untransformdata
+            ##Useful when processing Transformed Data
             pass
         else: #i.e. Not conditionalPart
             condPropCorrect = calcPropCorrect(modMatrix2Test, yMatrix2Test, len(yMatrix2Test))
@@ -1309,8 +1383,6 @@ def calculateParameters(xMatrix: np.ndarray, yMatrix: np.ndarray, optimisationCh
     if propResiduals:
         for i in range(len(results["residualMatrix"])):
             nOfR = residualArray["noOfResiduals"]
-            debugMsg(f"i + nOfR: {i} + {nOfR} ({i + nOfR}) < len(residualArray): {len(residualArray['predicted'])}")
-            debugMsg(f"i: {i} < len(resultsPredicted): {len(results['predictedMatrix'])}")
             residualArray["predicted"][i + nOfR] = results["predictedMatrix"][i]
             residualArray["residual"][i + nOfR] = results["residualMatrix"][i]
         residualArray["noOfResiduals"] += len(results["residualMatrix"])
@@ -1347,10 +1419,7 @@ def calculateParameters2(xMatrix: np.ndarray, yMatrix: np.ndarray, optimisationC
     yBar = np.sum(yMatrix) / len(yMatrix)
 
     if optimisationChoice == 1:
-        debugMsg("Oridanry LeastSquares")
         xTransY = np.matmul(xMatrix.transpose(), yMatrix)
-        debugMsg(f"xMatrix: {xMatrix}")
-        debugMsg(f"yMatrix: {yMatrix}")
         xTransXInverse = np.linalg.inv(np.matmul(xMatrix.transpose(), xMatrix))
         betaMatrix = np.matmul(xTransXInverse, xTransY)
 
@@ -1681,7 +1750,7 @@ def transformData(xMatrix: np.ndarray, yMatrix: np.array, yMatrixAboveThreshPos:
         fxOld = fxNormal(fx)         #'normal
         i = 1 #Counter
         while ((i <= 50000) and (area > zStart)):
-            debugMsg("Loop3")
+            #debugMsg("Loop3")
             fx -= delta
             fxNew = fxNormal(fx)         #'normal
             area -= (delta * 0.5 * (fxOld + fxNew))
@@ -1701,7 +1770,7 @@ def transformData(xMatrix: np.ndarray, yMatrix: np.array, yMatrixAboveThreshPos:
             cp += percentileChange
             j = 1
             while ((j <= 50000) and (area < cp)):
-                debugMsg("Loop4")
+                #debugMsg("Loop4")
                 fx += delta
                 fxNew = fxNormal(fx)         #'normal
                 area = area + (delta * 0.5 * (fxOld + fxNew))
@@ -1786,7 +1855,7 @@ def calcPropCorrect(modMatrix: np.ndarray, yMatrix: np.ndarray, limit: int):
     correctCount = 0
     missing = 0
     for i in range(limit):
-        if (modMatrix != GlobalMissingCode and yMatrix != GlobalMissingCode):
+        if (modMatrix[i] != GlobalMissingCode and yMatrix[i] != GlobalMissingCode):
             if (yMatrix[i] == 0 and modMatrix[i] < 0.5):
                 correctCount += 1
             elif (yMatrix[i] == 1 and modMatrix[i] >= 0.5):

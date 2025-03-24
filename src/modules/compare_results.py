@@ -4,7 +4,6 @@ from PyQt5.QtWidgets import (QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSi
                              QApplication, QComboBox
                              )
 from PyQt5.QtCore import Qt, QSize, QDate
-
 # Define the name of the module for display in the content area
 moduleName = "Compare Results"
 
@@ -26,7 +25,10 @@ class borderedQGroupBox(QGroupBox):
 class comparedFileBox(borderedQGroupBox):
     def __init__(self,args):
         super().__init__(args)
-        self.fileSelected = ""
+
+        self.pathSelected = ""
+        self.statSelected = ""
+
         layout = QVBoxLayout()
         layout.setContentsMargins(0,25,0,25)
         layout.setSpacing(25)
@@ -36,10 +38,13 @@ class comparedFileBox(borderedQGroupBox):
         fileFrame.setFrameStyle(QFrame.NoFrame)
         fileLayout = QVBoxLayout()
         fileFrame.setLayout(fileLayout)
+
         fileButton = QPushButton("Select First File")
         fileButton.setContentsMargins(25,25,25,25)
         fileButton.setMaximumWidth(200)
+        fileButton.clicked.connect(self.selectFile)
         fileLayout.addWidget(fileButton)
+
         self.fileLabel = QLabel("File: Not Selected")
         self.fileLabel.setContentsMargins(25,25,25,25)
         fileLayout.addWidget(self.fileLabel)
@@ -86,6 +91,53 @@ class comparedFileBox(borderedQGroupBox):
         statsScrollArea.setWidget(statsScrollFrame)
 
         layout.addWidget(selectStatsFrame)
+    def selectFile(self):
+        fileName = QFileDialog.getOpenFileName(self, "Select statistic file", '', "DAT Files (*.DAT)")
+        if fileName[0] != '':
+            self.pathSelected = fileName[0]
+            self.fileLabel.setText("File: "+self.pathSelected.split("/")[-1]) #Only show the name of the file, not the whole path
+            self.writeStats()
+        else:
+            self.pathSelected = ""
+            self.fileLabel.setText("File: Not Selected")
+            self.writeStats()
+    def writeStats(self):
+        from src.lib.CompareResults import readSumStatsFile
+        #Remove all stats
+        while self.statsScrollLayout.count():
+            item = self.statsScrollLayout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.setParent(None)
+
+        #Add in new stats
+        if self.pathSelected == "":
+            return None
+        stats, data = readSumStatsFile(self.pathSelected)
+        self.statButtons = []
+        for stat in stats:
+            statScrollLabelButton = QPushButton(stat)
+            statScrollLabelButton.setFlat = True
+            statScrollLabelButton.clicked.connect(self.statLabelClicked)
+            statScrollLabelButton.setBaseSize(200, 20)
+            statScrollLabelButton.setStyleSheet("color: black; background-color: #F0F0F0")
+            statScrollLabelButton.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+            self.statsScrollLayout.addWidget(statScrollLabelButton)
+            self.statButtons.append(statScrollLabelButton)
+    def statLabelClicked(self):
+        button = self.sender()
+        for statButton in self.statButtons:
+            statButton.setStyleSheet("color: black; background-color: #F0F0F0")
+        button.setStyleSheet("color: white; background-color: blue")
+        if self.statSelected == button.text():
+            button.setStyleSheet("color: black; background-color: #F0F0F0")
+            self.statSelected = ""
+            return None
+        self.statSelected = button.text()
+        
+        
+
+
 
 
 
@@ -171,13 +223,13 @@ class ContentWidget(QWidget):
         #Frame that holds the selectPredictand frame and the selectDate frame
         
     
-        fileOneFrame = comparedFileBox("Input File One")
+        self.fileOneFrame = comparedFileBox("Input File One")
         
-        contentAreaLayout.addWidget(fileOneFrame)
+        contentAreaLayout.addWidget(self.fileOneFrame)
         
 
-        fileTwoFrame = comparedFileBox("Input File Two")
-        contentAreaLayout.addWidget(fileTwoFrame)
+        self.fileTwoFrame = comparedFileBox("Input File Two")
+        contentAreaLayout.addWidget(self.fileTwoFrame)
 
         buttonFrame = QFrame()
         buttonFrame.setBaseSize(600,60)
@@ -204,11 +256,17 @@ class ContentWidget(QWidget):
 
         #Predictand file selector button
        
-        correlationButton = QPushButton("Compare")
-        correlationButton.clicked.connect(self.goCompare)
-        correlationButton.setStyleSheet("background-color: #4CAF50; color: white; font-weight: bold;")
+        barGraphButton = QPushButton("Bar Chart")
+        barGraphButton.clicked.connect(self.doBarChart)
+        barGraphButton.setStyleSheet("background-color: #4CAF50; color: white; font-weight: bold;")
 
-        buttonLayout.addWidget(correlationButton)
+        buttonLayout.addWidget(barGraphButton)
+
+        lineGraphButton = QPushButton("Line Chart")
+        lineGraphButton.clicked.connect(self.doLineChart)
+        lineGraphButton.setStyleSheet("background-color: #1FC7F5; color: white; font-weight: bold;")
+
+        buttonLayout.addWidget(lineGraphButton)
 
 
 
@@ -217,8 +275,31 @@ class ContentWidget(QWidget):
         #titleLayout.addStretch()
         #contentAreaLayout.addStretch()
 
-    def goCompare(self):
-        print()
+    
+
+    def doBarChart(self):
+        from src.lib.CompareResults import readSumStatsFile, plotMultiple
+        if self.fileOneFrame.pathSelected == "" or self.fileTwoFrame.pathSelected == "":
+            return displayBox("File Error", "Two statistics files must be selected","Files Not Selected",isError=True)
+        if self.fileOneFrame.statSelected == "" or self.fileTwoFrame.statSelected == "":
+            return displayBox("Stats Error", "One statistic to be compared must be selected per file.","Statistics Not Selected",isError=True)
+        fieldsOne, statsOne = readSumStatsFile(self.fileOneFrame.pathSelected)
+        fieldsTwo, statsTwo = readSumStatsFile(self.fileTwoFrame.pathSelected)
+        statIndexOne = fieldsOne.index(self.fileOneFrame.statSelected)
+        statIndexTwo = fieldsTwo.index(self.fileTwoFrame.statSelected)
+        plotMultiple([fieldsOne,fieldsTwo],[statsOne,statsTwo],[statIndexOne,statIndexTwo],False)
+
+    def doLineChart(self):
+        from src.lib.CompareResults import readSumStatsFile, plotMultiple
+        if self.fileOneFrame.pathSelected == "" or self.fileTwoFrame.pathSelected == "":
+            return displayBox("File Error", "Two statistics files must be selected","Files Not Selected",isError=True)
+        if self.fileOneFrame.statSelected == "" or self.fileTwoFrame.statSelected == "":
+            return displayBox("Stats Error", "One statistic to be compared must be selected per file.","Statistics Not Selected",isError=True)
+        fieldsOne, statsOne = readSumStatsFile(self.fileOneFrame.pathSelected)
+        fieldsTwo, statsTwo = readSumStatsFile(self.fileTwoFrame.pathSelected)
+        statIndexOne = fieldsOne.index(self.fileOneFrame.statSelected)
+        statIndexTwo = fieldsTwo.index(self.fileTwoFrame.statSelected)
+        plotMultiple([fieldsOne,fieldsTwo],[statsOne,statsTwo],[statIndexOne,statIndexTwo],True)
 
     def QDateEditToDateTime(self, dateEdit):
         rawStartDate = dateEdit.date()

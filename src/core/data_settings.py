@@ -129,16 +129,16 @@ class ContentWidget(QWidget):
         miscLayout.addWidget(QLabel("Missing Data Identifier:"))
         miscLayout.addWidget(self.missingDataEdit)
         miscLayout.addWidget(self.randomSeedCheckBox)
-        
+
         # Default Directory Group Box
         directoryGroupBox = QGroupBox("Default Directory")
-        directoryGroupBox.setStyleSheet("color: white;")
+        directoryGroupBox.setStyleSheet("QGroupBox::title { color: white; }")
         directoryLayout = QVBoxLayout()
         directoryLayout.setAlignment(Qt.AlignCenter)
         directoryGroupBox.setLayout(directoryLayout)
         
-        # Create the label, read-only text box, and button
         currentDirLabel = QLabel("Current Directory:")
+        currentDirLabel.setStyleSheet("color: white;")
         self.defaultDirDisplay = QLineEdit(defaultDir)
         self.defaultDirDisplay.setReadOnly(True)
         chooseDirButton = QPushButton("Choose Folder")

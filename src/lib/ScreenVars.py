@@ -555,7 +555,7 @@ def scatterPlot(predictandSelected, predictorSelected, inputs):
             # there is no missingCodes
             elif (conditional and row[0] > threshold) or not conditional:
                 inputData.append(row)
-        increaseDate(workingDate, 1, leapYear)
+        workingDate = increaseDate(workingDate, 1, leapYear)
 
     inputData = np.array(inputData)
 

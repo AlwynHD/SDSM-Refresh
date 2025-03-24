@@ -1,4 +1,5 @@
 import sys
+import os
 import math
 import random
 import datetime
@@ -9,67 +10,176 @@ from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, QP
                              QButtonGroup, QFileDialog, QGroupBox, QMessageBox)
 from PyQt5.QtCore import Qt
 
-
+###############################################################################
+# 1. SDSMContext: Stores parameters and data for scenario generation.
+###############################################################################
 class SDSMContext:
     """
     A context for storing parameters and data for scenario generation.
-    This will be changed in future to match the other module's data structures.
+    Extended to store parameters read from a .PAR file.
     """
     def __init__(self):
         # File paths
-        self.in_file = ""
-        self.in_root = ""
+        self.in_file = ""   # data file name (short)
+        self.in_root = ""   # data file full path
         self.out_file = ""
         self.out_root = ""
-        # Date and threshold
+
+        # Basic parameters
         self.start_date = datetime.date(2000, 1, 1)
         self.local_thresh = 0.1
-        # Ensemble and data array
         self.ensemble_size = 1
-        self.data_array = []   # a list (one per ensemble) of lists (one per day)
         self.no_of_days = 0
-        self.mean_array = []   # list of (mean, sd) tuples for each ensemble
-        # Occurrence treatment
+
+        # Data array (size: ensemble_size x no_of_days)
+        self.data_array = []
+        self.mean_array = []  # list of (mean, sd) for each ensemble
+
+        # Condition / Occurrence
         self.occurrence_check = False
         self.conditional_check = False
-        self.occurrence_factor = 0           # raw percentage value, e.g. 5 means +5%
-        self.occurrence_factor_percent = 1.0   # (occurrence_factor + 100)/100
-        self.occurrence_option = 0           # 0 = stochastic; 1 = forced
+        self.occurrence_factor = 0
+        self.occurrence_factor_percent = 1.0
+        self.occurrence_option = 0  # 0=stochastic, 1=forced
         self.preserve_totals_check = False
-        # Amount (or “mean”) treatment – modifies rainfall amounts
+
+        # Amount (mean) treatment
         self.amount_check = False
-        self.amount_option = 0    # 0 = factor; 1 = addition
-        self.amount_factor = 0    # e.g. 5 means +5%
-        self.amount_factor_percent = 1.0  # (100 + amount_factor)/100
+        self.amount_option = 0  # 0=factor, 1=addition
+        self.amount_factor = 0
+        self.amount_factor_percent = 1.0
         self.amount_addition = 0.0
+
         # Variance treatment
         self.variance_check = False
         self.variance_factor = 0
-        self.variance_factor_percent = 1.0  # (100+variance_factor)/100
+        self.variance_factor_percent = 1.0
+
         # Trend treatment
         self.trend_check = False
         self.linear_trend = 0.0
         self.exp_trend = 0.0
         self.logistic_trend = 0.0
-        # Which trend(s) to apply – list of booleans [linear, exponential, logistic]
-        self.trend_option = [False, False, False]
-        # For Box–Cox transform
+        self.trend_option = [False, False, False]  # [linear, exponential, logistic]
+
+        # Box–Cox transform
         self.lamda = 0.0
+
         # Global missing code
         self.global_missing_code = -999
 
+        # Additional .PAR data
+        self.num_predictors = 0
+        self.num_months = 12
+        self.year_length = 365
 
+        # Monthly regression coefficients, if provided.
+        self.monthly_coeffs = []
+        # Predictor file paths (if provided)
+        self.predictor_files = []
+
+
+###############################################################################
+# 2. Parse .PAR file and build absolute paths for data file(s)
+###############################################################################
+def parse_par_file(par_path: str, ctx: SDSMContext):
+    """
+    Parse a .PAR file and update the SDSMContext.
+    This parser assumes a fixed format:
+      Line 1: Number of predictors
+      Line 2: Number of months
+      Line 3: Year length
+      Line 4: Start date (DD/MM/YYYY)
+      Line 5: Number of days
+      Line 6: (Possibly second start date - ignored)
+      Line 7: (Possibly second number of days - ignored)
+      Line 8: Conditional flag (#TRUE# or #FALSE#)
+      Line 9: Ensemble size
+      Line 10: (A numeric field, ignored)
+      Line 11: (A boolean, ignored)
+      Next [num_predictors] lines: predictor file names
+      Next line: observed (predictand) file name
+      Next [num_months] lines: monthly coefficient lines.
+    Relative file names are converted to absolute paths based on the .PAR file directory.
+    """
+    lines = []
+    with open(par_path, "r") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                lines.append(line)
+    idx = 0
+    try:
+        # Line 1: Number of predictors
+        ctx.num_predictors = int(lines[idx]); idx += 1
+        # Line 2: Number of months
+        ctx.num_months = int(lines[idx]); idx += 1
+        # Line 3: Year length
+        ctx.year_length = int(lines[idx]); idx += 1
+        # Line 4: Start date
+        start_date_str = lines[idx]; idx += 1
+        ctx.start_date = datetime.datetime.strptime(start_date_str, "%d/%m/%Y").date()
+        # Line 5: Number of days
+        ctx.no_of_days = int(lines[idx]); idx += 1
+        # Lines 6-7: Possibly repeat date and days (skip)
+        idx += 2
+        # Line 8: Conditional flag
+        cond_str = lines[idx]; idx += 1
+        ctx.conditional_check = (cond_str.upper() == "#TRUE#")
+        # Line 9: Ensemble size
+        ensemble_str = lines[idx]; idx += 1
+        ctx.ensemble_size = int(ensemble_str)
+        # Line 10: Ignored numeric field
+        idx += 1
+        # Line 11: Ignored boolean
+        idx += 1
+
+        # Next [num_predictors] lines: predictor file names
+        ctx.predictor_files = []
+        par_dir = os.path.dirname(par_path)
+        for _ in range(ctx.num_predictors):
+            pfile = lines[idx]
+            idx += 1
+            abs_pfile = os.path.join(par_dir, pfile)
+            ctx.predictor_files.append(abs_pfile)
+
+        # Next line: observed (predictand) file name
+        if idx < len(lines):
+            data_file = lines[idx]
+            idx += 1
+            abs_data_file = os.path.join(par_dir, data_file)
+            ctx.in_file = os.path.basename(abs_data_file)
+            ctx.in_root = abs_data_file
+
+        # Next [num_months] lines: monthly coefficients
+        ctx.monthly_coeffs = []
+        for m in range(ctx.num_months):
+            if idx >= len(lines):
+                break
+            coeff_strs = lines[idx].split()
+            coeffs = [float(x) for x in coeff_strs]
+            ctx.monthly_coeffs.append(coeffs)
+            idx += 1
+
+        QMessageBox.information(None, "Info", f"Loaded .PAR file:\n"
+                                             f"Predictors: {ctx.num_predictors}, "
+                                             f"Months: {ctx.num_months}, "
+                                             f"Days: {ctx.no_of_days}, "
+                                             f"Ensemble: {ctx.ensemble_size}, "
+                                             f"Conditional: {ctx.conditional_check}")
+    except (IndexError, ValueError) as e:
+        QMessageBox.critical(None, "Error", f"Error parsing .PAR file:\n{e}")
+
+
+###############################################################################
+# 3. Main Scenario Generation Functions (apply treatments, plotting, etc.)
+###############################################################################
 def increase_date(date_obj):
     """Increase the date by one day."""
     return date_obj + datetime.timedelta(days=1)
 
 
 def parse_value(str_val, ctx):
-    """
-    Parses a string value from the file.
-    If the value is "-999", returns the global missing code.
-    Otherwise, returns the float value.
-    """
     val_str = str_val.strip()
     if val_str == "-999":
         return ctx.global_missing_code
@@ -80,9 +190,8 @@ def parse_value(str_val, ctx):
 
 
 def check_settings(ctx: SDSMContext) -> bool:
-    """Perform basic sanity checks on the context settings."""
     if not ctx.in_file or len(ctx.in_file) < 5:
-        QMessageBox.critical(None, "Error", "You must select an input file first.")
+        QMessageBox.critical(None, "Error", "You must select an input file first (or a .PAR file).")
         return False
     if not ctx.out_file:
         QMessageBox.critical(None, "Error", "You must select an output file.")
@@ -97,11 +206,9 @@ def check_settings(ctx: SDSMContext) -> bool:
 
 
 def modify_data(ctx: SDSMContext):
-    """Main routine: read the input file, apply selected treatments, and write the output file."""
     if not check_settings(ctx):
         return
 
-    # --- Read Data File ---
     try:
         with open(ctx.in_root, "r") as f:
             lines = f.readlines()
@@ -113,30 +220,23 @@ def modify_data(ctx: SDSMContext):
         QMessageBox.critical(None, "Error", "Input file is empty.")
         return
 
-    # Determine if multi-column (by checking length of first line)
     multi_column = len(lines[0]) > 14
-
-    # Prepare data_array: a list of lists, one for each ensemble member.
     ctx.data_array = [[] for _ in range(ctx.ensemble_size)]
-
     def process_line(line: str):
         if ctx.ensemble_size == 1 and not multi_column:
             num = parse_value(line, ctx)
             ctx.data_array[0].append(num)
         else:
-            # Assume fixed-width fields of width 14 per ensemble member.
             for i in range(ctx.ensemble_size):
                 start = i * 14
                 end = start + 14
                 num_str = line[start:end]
                 num = parse_value(num_str, ctx)
                 ctx.data_array[i].append(num)
-
     for line in lines:
         process_line(line)
     ctx.no_of_days = len(ctx.data_array[0])
 
-    # --- Apply Treatments in Order ---
     if ctx.occurrence_check:
         apply_occurrence(ctx)
     if ctx.variance_check:
@@ -148,7 +248,6 @@ def modify_data(ctx: SDSMContext):
     if ctx.trend_check:
         apply_trend(ctx)
 
-    # --- Write Output File (without showing -999 values) ---
     try:
         with open(ctx.out_root, "w") as f:
             for i in range(ctx.no_of_days):
@@ -156,7 +255,7 @@ def modify_data(ctx: SDSMContext):
                 for j in range(ctx.ensemble_size):
                     val = ctx.data_array[j][i]
                     if val == ctx.global_missing_code:
-                        line_out += "\t"  # output blank instead of -999
+                        line_out += "\t"
                     else:
                         line_out += f"{val:8.3f}\t"
                 f.write(line_out + "\n")
@@ -166,13 +265,10 @@ def modify_data(ctx: SDSMContext):
 
     QMessageBox.information(None, "Success",
                             f"Scenario generated.\n{ctx.no_of_days} days processed.")
-
-    # Plot the final data
     plot_scenario(ctx)
 
 
 def apply_amount(ctx: SDSMContext):
-    """Apply an amount (multiplicative or additive) treatment to data."""
     for j in range(ctx.ensemble_size):
         for i in range(ctx.no_of_days):
             val = ctx.data_array[j][i]
@@ -185,10 +281,8 @@ def apply_amount(ctx: SDSMContext):
 
 
 def apply_occurrence(ctx: SDSMContext):
-    """Apply occurrence treatment (adding or removing wet days)."""
     random.seed()
     for j in range(ctx.ensemble_size):
-        # Prepare per-month lists (months 1 to 12)
         DryCount = [0] * 12
         WetCount = [0] * 12
         DayCount = [0] * 12
@@ -197,7 +291,6 @@ def apply_occurrence(ctx: SDSMContext):
         DryArray = [[] for _ in range(12)]
         TotalRainfall = 0.0
         TotalWetCount = 0
-
         current_date = ctx.start_date
         for i in range(ctx.no_of_days):
             val = ctx.data_array[j][i]
@@ -215,20 +308,18 @@ def apply_occurrence(ctx: SDSMContext):
             current_date = increase_date(current_date)
         for m in range(12):
             OrigWetCount[m] = WetCount[m]
-
         if TotalWetCount <= 0:
             QMessageBox.information(None, "Warning",
                                     f"Ensemble {j+1} has zero wet days; occurrence treatment skipped.")
             continue
-
-        if ctx.occurrence_option == 0:  # stochastic option
+        if ctx.occurrence_option == 0:
             if ctx.occurrence_factor_percent < 1:
                 DaysToDelete = int(TotalWetCount - (TotalWetCount * ctx.occurrence_factor_percent))
                 for _ in range(DaysToDelete):
                     m = random.choice([ix for ix in range(12) if WetCount[ix] > 0])
                     idx = random.randint(0, WetCount[m] - 1)
                     day = WetArray[m][idx]
-                    ctx.data_array[j][day] = ctx.local_thresh  # mark as dry
+                    ctx.data_array[j][day] = ctx.local_thresh
                     WetArray[m].pop(idx)
                     WetCount[m] -= 1
             elif ctx.occurrence_factor_percent > 1:
@@ -258,7 +349,6 @@ def apply_occurrence(ctx: SDSMContext):
 
 
 def calc_means(ctx: SDSMContext):
-    """Calculate mean and standard deviation for each ensemble member."""
     ctx.mean_array = []
     for j in range(ctx.ensemble_size):
         total = 0.0
@@ -283,33 +373,13 @@ def calc_means(ctx: SDSMContext):
         ctx.mean_array.append((mean, sd))
 
 
-def unbox_cox(value: float, lamda: float, ctx: SDSMContext) -> float:
-    """Un–apply a Box–Cox transformation to a value."""
-    if value == ctx.global_missing_code:
-        return ctx.global_missing_code
-    if lamda == 0:
-        return math.exp(value)
-    else:
-        return ((value * lamda) + 1) ** (1 / lamda)
-
-
-def calc_variance(trans_array, factor, mean, no_of_days, ctx: SDSMContext) -> float:
-    """Calculate the variance after applying a factor to transformed data."""
-    temp = []
-    for i in range(no_of_days):
-        if trans_array[i] != ctx.global_missing_code:
-            t = ((trans_array[i] - mean) * factor) + mean
-            t = unbox_cox(t, ctx.lamda, ctx)
-            temp.append(t)
-    if not temp:
-        return ctx.global_missing_code
-    new_mean = sum(temp) / len(temp)
-    var = sum((x - new_mean) ** 2 for x in temp) / len(temp)
-    return var
+def frange(start, stop, step):
+    while start <= stop:
+        yield start
+        start += step
 
 
 def find_min_lambda(ctx: SDSMContext, ensemble: int, start: float, finish: float, step: float) -> float:
-    """Find an optimal lamda for the Box–Cox transformation (a simplified version)."""
     best_lam = start
     min_d = float('inf')
     for k in frange(start, finish, step):
@@ -336,23 +406,39 @@ def find_min_lambda(ctx: SDSMContext, ensemble: int, start: float, finish: float
     return best_lam
 
 
-def frange(start, stop, step):
-    """Floating–point range generator."""
-    while start <= stop:
-        yield start
-        start += step
+def unbox_cox(value: float, lamda: float, ctx: SDSMContext) -> float:
+    if value == ctx.global_missing_code:
+        return ctx.global_missing_code
+    if lamda == 0:
+        return math.exp(value)
+    else:
+        return ((value * lamda) + 1) ** (1 / lamda)
+
+
+def calc_variance(trans_array, factor, mean, no_of_days, ctx: SDSMContext) -> float:
+    temp = []
+    for i in range(no_of_days):
+        if trans_array[i] != ctx.global_missing_code:
+            t = ((trans_array[i] - mean) * factor) + mean
+            t = unbox_cox(t, ctx.lamda, ctx)
+            temp.append(t)
+    if not temp:
+        return ctx.global_missing_code
+    new_mean = sum(temp) / len(temp)
+    var = sum((x - new_mean) ** 2 for x in temp) / len(temp)
+    return var
 
 
 def apply_variance(ctx: SDSMContext):
-    """Apply variance treatment (using a Box–Cox transform for conditional processing)."""
     for j in range(ctx.ensemble_size):
         if not ctx.conditional_check:
             for i in range(ctx.no_of_days):
                 if ctx.data_array[j][i] != ctx.global_missing_code:
+                    mean_j = ctx.mean_array[j][0]
                     ctx.data_array[j][i] = (
-                        (ctx.data_array[j][i] - ctx.mean_array[j][0]) *
+                        (ctx.data_array[j][i] - mean_j) *
                         math.sqrt(ctx.variance_factor_percent) +
-                        ctx.mean_array[j][0]
+                        mean_j
                     )
         else:
             lamda = find_min_lambda(ctx, j, -2, 2, 0.25)
@@ -394,7 +480,6 @@ def apply_variance(ctx: SDSMContext):
 
 
 def apply_trend(ctx: SDSMContext):
-    """Apply trend treatment(s) to the data."""
     for j in range(ctx.ensemble_size):
         if ctx.trend_option[0]:
             year_days = 365
@@ -435,23 +520,13 @@ def apply_trend(ctx: SDSMContext):
                             ctx.data_array[j][i] *= ((100 + delta) / 100)
 
 
-# =============================================================================
-#   Plotting the final data
-# =============================================================================
-
 def plot_scenario(ctx: SDSMContext):
-    """
-    Creates a simple time series plot of the final data in ctx.data_array.
-    Missing values (== -999) are converted to NaN so they are not plotted.
-    One line per ensemble member.
-    """
     if ctx.no_of_days == 0:
         return
     plt.figure(figsize=(10, 5))
     x_values = np.arange(1, ctx.no_of_days + 1)
     for j in range(ctx.ensemble_size):
         y_values = np.array(ctx.data_array[j], dtype=float)
-        # Replace missing values (-999) with NaN so matplotlib leaves a gap.
         y_values[y_values == ctx.global_missing_code] = np.nan
         plt.plot(x_values, y_values, label=f"Ensemble {j+1}")
     plt.title("Scenario Output (Final Daily Values)")
@@ -462,17 +537,13 @@ def plot_scenario(ctx: SDSMContext):
     plt.show()
 
 
-# =============================================================================
-#   PyQt5 User Interface
-# =============================================================================
-
-class ContentWidget(QWidget):
-    """
-    A modernized UI for the SDSM Scenario Generator.
-    """
+###############################################################################
+# 4. PyQt5 User Interface (Renamed as ScenarioGeneratorWidget)
+###############################################################################
+class ScenarioGeneratorWidget(QWidget):
     def __init__(self):
         super().__init__()
-        self.ctx = SDSMContext()  # Our processing context
+        self.ctx = SDSMContext()
         mainLayout = QVBoxLayout()
         mainLayout.setContentsMargins(30, 30, 30, 30)
         mainLayout.setSpacing(20)
@@ -481,7 +552,7 @@ class ContentWidget(QWidget):
         # --- File Selection Section ---
         fileSelectionGroup = QGroupBox("File Selection")
         fileSelectionLayout = QHBoxLayout()
-        self.inputFileButton = QPushButton("📂 Select Input File")
+        self.inputFileButton = QPushButton("📂 Select Input (.PAR or Data) File")
         self.inputFileButton.clicked.connect(self.selectInputFile)
         self.inputFileLabel = QLabel("No file selected")
         self.outputFileButton = QPushButton("💾 Save To File")
@@ -495,7 +566,7 @@ class ContentWidget(QWidget):
         fileSelectionGroup.setLayout(fileSelectionLayout)
         mainLayout.addWidget(fileSelectionGroup)
 
-        # --- General Parameters ---
+        # --- General Parameters Section ---
         generalParamsGroup = QGroupBox("General Parameters")
         generalParamsLayout = QGridLayout()
         self.startDateInput = QLineEdit()
@@ -515,7 +586,7 @@ class ContentWidget(QWidget):
         generalParamsGroup.setLayout(generalParamsLayout)
         mainLayout.addWidget(generalParamsGroup)
 
-        # --- Treatments Section ---
+        # --- Treatment Parameters Section ---
         treatmentsGroup = QGroupBox("Treatment Parameters")
         treatmentsLayout = QGridLayout()
         # Occurrence
@@ -525,9 +596,9 @@ class ContentWidget(QWidget):
         self.stochasticRadio = QRadioButton("Stochastic")
         self.forcedRadio = QRadioButton("Forced")
         self.preserveTotalCheck = QCheckBox("Preserve Total?")
-        occurrenceButtonGroup = QButtonGroup()
-        occurrenceButtonGroup.addButton(self.stochasticRadio)
-        occurrenceButtonGroup.addButton(self.forcedRadio)
+        occButtonGroup = QButtonGroup()
+        occButtonGroup.addButton(self.stochasticRadio)
+        occButtonGroup.addButton(self.forcedRadio)
         treatmentsLayout.addWidget(self.occurrenceCheck, 0, 0)
         treatmentsLayout.addWidget(QLabel("Frequency change:"), 0, 1)
         treatmentsLayout.addWidget(self.frequencyChangeInput, 0, 2)
@@ -541,7 +612,7 @@ class ContentWidget(QWidget):
         treatmentsLayout.addWidget(self.varianceCheck, 1, 0)
         treatmentsLayout.addWidget(QLabel("Factor:"), 1, 1)
         treatmentsLayout.addWidget(self.varianceFactorInput, 1, 2)
-        # Amount (Mean) Treatment
+        # Amount Treatment
         self.meanCheck = QCheckBox("📊 Mean (Amount)")
         self.meanFactorInput = QLineEdit()
         self.meanFactorInput.setPlaceholderText("e.g. 5 for +5%")
@@ -552,7 +623,7 @@ class ContentWidget(QWidget):
         treatmentsLayout.addWidget(self.meanFactorInput, 2, 2)
         treatmentsLayout.addWidget(QLabel("Addition:"), 2, 3)
         treatmentsLayout.addWidget(self.meanAdditionInput, 2, 4)
-        # Trend
+        # Trend Treatment
         self.trendCheck = QCheckBox("📉 Trend")
         self.linearInput = QLineEdit()
         self.linearInput.setPlaceholderText("Linear trend (/year)")
@@ -583,59 +654,62 @@ class ContentWidget(QWidget):
         mainLayout.addLayout(buttonLayout)
 
     def selectInputFile(self):
-        """Opens a file dialog to select an input file."""
-        file_name, _ = QFileDialog.getOpenFileName(self, "Select Input File")
+        file_name, _ = QFileDialog.getOpenFileName(self, "Select Input (.PAR or Data) File")
         if file_name:
             self.inputFileLabel.setText(file_name)
-            self.ctx.in_file = file_name.split("/")[-1]
-            self.ctx.in_root = file_name
+            if file_name.lower().endswith(".par"):
+                parse_par_file(file_name, self.ctx)
+            else:
+                self.ctx.in_file = os.path.basename(file_name)
+                self.ctx.in_root = file_name
 
     def selectOutputFile(self):
-        """Opens a file dialog to select an output file."""
-        file_name, _ = QFileDialog.getSaveFileName(self, "Save To File")
+        file_name, _ = QFileDialog.getSaveFileName(self, "Save To File", "", "OUT Files (*.OUT);;All Files (*.*)")
         if file_name:
+            # If the file name doesn't end with ".OUT", append it.
+            if not file_name.lower().endswith(".out"):
+                file_name += ".OUT"
             self.outputFileLabel.setText(file_name)
-            self.ctx.out_file = file_name.split("/")[-1]
+            self.ctx.out_file = os.path.basename(file_name)
             self.ctx.out_root = file_name
 
+
     def generateScenario(self):
-        """Collect parameters from the UI, update the context, and run the scenario generation."""
-        try:
-            dt = datetime.datetime.strptime(self.startDateInput.text(), "%d/%m/%Y")
-            self.ctx.start_date = dt.date()
-        except Exception:
-            QMessageBox.critical(self, "Error", "Start Date must be in DD/MM/YYYY format.")
-            return
-        try:
-            ens = int(self.ensembleSizeInput.text())
-            self.ctx.ensemble_size = ens
-        except Exception:
-            QMessageBox.critical(self, "Error", "Ensemble Size must be an integer.")
-            return
-        try:
-            thresh = float(self.eventThresholdInput.text())
-            self.ctx.local_thresh = thresh
-        except Exception:
-            self.ctx.local_thresh = 0.1
-
+        if self.startDateInput.text():
+            try:
+                dt = datetime.datetime.strptime(self.startDateInput.text(), "%d/%m/%Y")
+                self.ctx.start_date = dt.date()
+            except Exception:
+                QMessageBox.critical(self, "Error", "Start Date must be in DD/MM/YYYY format.")
+                return
+        if self.ensembleSizeInput.text():
+            try:
+                ens = int(self.ensembleSizeInput.text())
+                self.ctx.ensemble_size = ens
+            except Exception:
+                QMessageBox.critical(self, "Error", "Ensemble Size must be an integer.")
+                return
+        if self.eventThresholdInput.text():
+            try:
+                thresh_val = float(self.eventThresholdInput.text())
+                self.ctx.local_thresh = thresh_val
+            except Exception:
+                self.ctx.local_thresh = 0.1
         self.ctx.conditional_check = self.conditionalProcessCheck.isChecked()
-
-        # Occurrence treatment
         self.ctx.occurrence_check = self.occurrenceCheck.isChecked()
-        try:
-            freq = float(self.frequencyChangeInput.text())
-            self.ctx.occurrence_factor = freq
-            self.ctx.occurrence_factor_percent = (100 + freq) / 100
-        except Exception:
-            self.ctx.occurrence_factor = 0
-            self.ctx.occurrence_factor_percent = 1.0
+        if self.frequencyChangeInput.text():
+            try:
+                freq = float(self.frequencyChangeInput.text())
+                self.ctx.occurrence_factor = freq
+                self.ctx.occurrence_factor_percent = (100 + freq) / 100
+            except Exception:
+                self.ctx.occurrence_factor = 0
+                self.ctx.occurrence_factor_percent = 1.0
         if self.stochasticRadio.isChecked():
             self.ctx.occurrence_option = 0
         elif self.forcedRadio.isChecked():
             self.ctx.occurrence_option = 1
         self.ctx.preserve_totals_check = self.preserveTotalCheck.isChecked()
-
-        # Amount (Mean) treatment
         self.ctx.amount_check = self.meanCheck.isChecked()
         try:
             factor = float(self.meanFactorInput.text())
@@ -653,35 +727,32 @@ class ContentWidget(QWidget):
             self.ctx.amount_option = 0
         elif self.ctx.amount_addition != 0:
             self.ctx.amount_option = 1
-
-        # Variance treatment
         self.ctx.variance_check = self.varianceCheck.isChecked()
-        try:
-            vfac = float(self.varianceFactorInput.text())
-            self.ctx.variance_factor = vfac
-            self.ctx.variance_factor_percent = (100 + vfac) / 100
-        except Exception:
-            self.ctx.variance_factor = 0
-            self.ctx.variance_factor_percent = 1.0
-
-        # Trend treatment
+        if self.varianceFactorInput.text():
+            try:
+                vfac = float(self.varianceFactorInput.text())
+                self.ctx.variance_factor = vfac
+                self.ctx.variance_factor_percent = (100 + vfac) / 100
+            except Exception:
+                self.ctx.variance_factor = 0
+                self.ctx.variance_factor_percent = 1.0
         self.ctx.trend_check = self.trendCheck.isChecked()
         try:
-            linear = float(self.linearInput.text())
+            linear = float(self.linearInput.text()) if self.linearInput.text() else 0.0
             self.ctx.linear_trend = linear
             self.ctx.trend_option[0] = (linear != 0)
         except Exception:
             self.ctx.linear_trend = 0.0
             self.ctx.trend_option[0] = False
         try:
-            exp = float(self.exponentialInput.text())
+            exp = float(self.exponentialInput.text()) if self.exponentialInput.text() else 0.0
             self.ctx.exp_trend = exp
             self.ctx.trend_option[1] = (exp != 0)
         except Exception:
             self.ctx.exp_trend = 0.0
             self.ctx.trend_option[1] = False
         try:
-            logistic = float(self.logisticInput.text())
+            logistic = float(self.logisticInput.text()) if self.logisticInput.text() else 0.0
             self.ctx.logistic_trend = logistic
             self.ctx.trend_option[2] = (logistic != 0)
         except Exception:
@@ -691,7 +762,6 @@ class ContentWidget(QWidget):
         modify_data(self.ctx)
 
     def resetFields(self):
-        """Reset all input fields to defaults."""
         self.startDateInput.clear()
         self.ensembleSizeInput.clear()
         self.eventThresholdInput.clear()
@@ -714,18 +784,19 @@ class ContentWidget(QWidget):
         self.logisticInput.clear()
 
 
-# =============================================================================
-#   Main Application
-# =============================================================================
-
+###############################################################################
+# 5. Main Application Entry Point
+###############################################################################
 def main():
     app = QApplication(sys.argv)
-    window = ContentWidget()
-    window.setWindowTitle("SDSM Scenario Generator")
+    window = ScenarioGeneratorWidget()
+    window.setWindowTitle("SDSM Scenario Generator (with .PAR support)")
     window.resize(800, 600)
     window.show()
     sys.exit(app.exec_())
 
-
 if __name__ == "__main__":
     main()
+
+# Alias for dynamic module loading:
+ContentWidget = ScenarioGeneratorWidget

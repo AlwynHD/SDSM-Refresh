@@ -141,7 +141,6 @@ class ContentWidget(QWidget):
         currentDirLabel = QLabel("Current Directory:")
         self.defaultDirDisplay = QLineEdit(defaultDir)
         self.defaultDirDisplay.setReadOnly(True)
-        self.defaultDirDisplay.setAlignment(Qt.AlignCenter)
         chooseDirButton = QPushButton("Choose Folder")
         chooseDirButton.clicked.connect(self.chooseDefaultDir)
         
@@ -170,6 +169,7 @@ class ContentWidget(QWidget):
         self.endDateEdit.setStyleSheet("color: black;")
         self.eventThresholdEdit.setStyleSheet("color: black;")
         self.missingDataEdit.setStyleSheet("color: black;")
+        self.defaultDirDisplay.setStyleSheet("color: black;")
 
         # Load existing settings into UI elements
         self.loadSettingsIntoUi()

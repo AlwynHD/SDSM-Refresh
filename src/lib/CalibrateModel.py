@@ -46,7 +46,7 @@ def calibrateModelDefaultExperience():
     #feDate = deepcopy(globalEndDate)
     #feDate = date(1961, 1, 10)
     feDate = date(1965, 1, 10)
-    modelType = 0
+    modelType = 1
     parmOpt = False  ## Whether Conditional or Unconditional. True = Cond, False = Uncond. 
     ##ParmOpt(1) = Uncond = False
     ##ParmOpt(0) = Cond = True
@@ -725,28 +725,28 @@ def calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType=2
 
                         tempCounter = 0
                         progressThroughData = 0
-                        for i in range(noOfSections[periodWorkingOn]):
-                            if sectionSizes[periodWorkingOn, i] > 1:
-                                for j in range(sectionSizes[periodWorkingOn, i] - 1):
-                                    yMatrix[tempCounter] = dataReadIn[periodWorkingOn, 0, j+progressThroughData+1]
+                        for section in range(noOfSections[periodWorkingOn]):
+                            if sectionSizes[periodWorkingOn, section] > 1:
+                                for i in range(sectionSizes[periodWorkingOn, section] - 1):
+                                    yMatrix[tempCounter] = dataReadIn[periodWorkingOn, 0, i + progressThroughData + 1]
                                     xMatrix[tempCounter, 0] = 1
-                                    for subloop in range(1, NPredictors):
-                                        xMatrix[tempCounter, subloop] = dataReadIn[periodWorkingOn, subloop, j+progressThroughData + 1]
-                                    ##next (subloop)
+                                    for j in range(1, NPredictors):
+                                        xMatrix[tempCounter, j] = dataReadIn[periodWorkingOn, j, i + progressThroughData + 1]
+                                    ##next (j)
                                     if parmOpt:
-                                        if dataReadIn[periodWorkingOn, 0, j + progressThroughData] > thresh:
+                                        if dataReadIn[periodWorkingOn, 0, i + progressThroughData] > thresh:
                                             xMatrix[tempCounter, NPredictors] = 1
                                         else:
                                             xMatrix[tempCounter, NPredictors] = 0
                                         ##endif
                                     else:
-                                        xMatrix[tempCounter, NPredictors] = dataReadIn[periodWorkingOn, 0, j+progressThroughData]
+                                        xMatrix[tempCounter, NPredictors] = dataReadIn[periodWorkingOn, 0, i + progressThroughData]
                                     ##endif
                                     tempCounter += 1
-                                ##next j
+                                ##next i
                             ##endif
-                            progressThroughData += sectionSizes[periodWorkingOn, i]
-                        ##next i
+                            progressThroughData += sectionSizes[periodWorkingOn, section]
+                        ##next section
                     ##endif
 
                     #------------------------

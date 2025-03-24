@@ -170,16 +170,22 @@ class ContentWidget(QWidget):
         print("Synthesis completed.")
     
     def reset_all(self):
-        
-        """Resets all settings to default values."""
-        self.parFileText.setText("Not selected")
-        self.outFileText.setText("Not selected")
-        self.eSize.setText("20")
-        self.predictorList.clear()
-        self.noOfPredText.setText("📊 No. of predictors: 0")
-        self.autoRegressLabel.setText("🔄 Autoregression: Unknown")
-        self.processLabel.setText("⚙️ Process: Unknown")
-        self.rStartText.setText("📅 Record Start: Unknown")
-        self.rLengthText.setText("📏 Record Length: Unknown")
-        self.fStartText.setText("")
-        self.fLengthText.setText("")
+        try:
+            self.parFileText.setText("Not selected")
+            self.outFileText.setText("Not selected")
+            self.eSize.setText("20")
+            self.predictorList.clear()
+            self.noOfPredText.setText("📊 No. of predictors: 0")
+            self.autoRegressLabel.setText("🔄 Autoregression: Unknown")
+            self.processLabel.setText("⚙️ Process: Unknown")
+            self.rStartText.setText("📅 Record Start: Unknown")
+            self.rLengthText.setText("📏 Record Length: Unknown")
+            self.fStartText.setText("")
+            self.fLengthText.setText("")
+        except OSError as e:
+            if e.errno == 2:
+                print("Error: default directory no good")
+                raise
+            else:
+                print("Error Number: ", e.errno)
+                raise

@@ -679,80 +679,6 @@ def format_correlation_results(results):
     # Join all lines with newlines
     return "\n".join(output)
 
-def formatAnalysisResults(data):
-    """
-    Format results of variance analysis with precise column alignment.
-    
-    Calculates max length of predictors and predictand for first column,
-    applies consistent padding across header and data rows.
-    
-    Expected dictionary keys:
-    - FSDate: Start date of analysis
-    - FEdate: End date of analysis
-    - SigLevel: Significance level
-    - TotalMissing: Total missing values
-    - PTandFile: Predictand file name
-    - FileList: List of predictor files
-    - NVariables: Number of variables
-    - RSQD: 2D list/array of R-squared values
-    - pr: 2D list/array of p-values
-    """
-    # Initialize output string
-    results = []
-    
-    # Print header with consistent formatting
-    results.append("RESULTS: EXPLAINED VARIANCE")
-    results.append("")
-    
-    # Analysis details with consistent indentation
-    results.append(f"Analysis Period: {data['FSDate']} - {data['FEDate']}")
-    results.append(f"Significance level: {data['SigLevel']}")
-    results.append("")
-
-    # Calculate max length for predictors and predictand
-    predictor_names = displayFiles(data['FileList'])
-    predictand_name = displayFiles(data['PTandFile'])
-    
-    # Combine all names to find max length
-    all_names = predictor_names + [predictand_name, "Predictors:"]
-    max_name_length = max(len(name) for name in all_names)
-    
-    # Missing values and predictand information
-    results.append(f"Total missing values: {data['TotalMissing']}")
-    results.append(f"Predictand: {predictand_name}")
-    
-    # Months for header
-    months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", 
-              "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
-    
-    # Prepare month headers with consistent first column padding and 7-character month width
-    header_parts = [f"{'Predictors:':<{max_name_length + 2}}"] + [f"{month:>7}" for month in months]
-    header = "".join(header_parts)
-    results.append(header)
-    
-    # Print results for each predictor with precise alignment
-    for i in range(1, data['NVariables']):
-        # Get the filename for this predictor, left-aligned with consistent padding
-        predictor_name = predictor_names[i-1]
-        line = f"{predictor_name:<{max_name_length + 2}}"
-        
-        for mm in range(12):
-            # Check if p-value is significant
-            if data['pr'][mm][i] <= data['SigLevel']:
-                # Format R-squared value with consistent precision
-                rsqd_val = f"{data['RSQD'][mm][i]:.3f}"
-                
-                # Use right-aligned 7-character width for each column
-                line += f"{rsqd_val:>7}"
-            else:
-                # Add empty space for non-significant months
-                line += f"{'':>7}"
-        
-        results.append(line)
-    
-    # Convert to single string with newline separators
-    return "\n".join(results)
-
 def display_correlation_results_qt(results, text_widget):
     """
     Display correlation results in a PyQt5 text widget.
@@ -867,6 +793,207 @@ class CorrelationAnalysisApp(QMainWindow):
         # Create and add table view
         table_widget = create_correlation_table_widget(results)
         self.tab_widget.addTab(table_widget, "Table View")
+
+
+
+def formatAnalysisResults(data):
+    """
+    Format results of variance analysis with precise column alignment.
+    
+    Calculates max length of predictors and predictand for first column,
+    applies consistent padding across header and data rows.
+    
+    Expected dictionary keys:
+    - FSDate: Start date of analysis
+    - FEdate: End date of analysis
+    - SigLevel: Significance level
+    - TotalMissing: Total missing values
+    - PTandFile: Predictand file name
+    - FileList: List of predictor files
+    - NVariables: Number of variables
+    - RSQD: 2D list/array of R-squared values
+    - pr: 2D list/array of p-values
+    """
+    # Initialize output string
+    results = []
+    
+    # Print header with consistent formatting
+    results.append("RESULTS: EXPLAINED VARIANCE")
+    results.append("")
+    
+    # Analysis details with consistent indentation
+    results.append(f"Analysis Period: {data['FSDate']} - {data['FEDate']}")
+    results.append(f"Significance level: {data['SigLevel']}")
+    results.append("")
+
+    # Calculate max length for predictors and predictand
+    predictor_names = displayFiles(data['FileList'])
+    predictand_name = displayFiles(data['PTandFile'])
+    
+    # Combine all names to find max length
+    all_names = predictor_names + [predictand_name, "Predictors:"]
+    max_name_length = max(len(name) for name in all_names)
+    
+    # Missing values and predictand information
+    results.append(f"Total missing values: {data['TotalMissing']}")
+    results.append(f"Predictand: {predictand_name}")
+    
+    # Months for header
+    months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", 
+              "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
+    
+    # Prepare month headers with consistent first column padding and 7-character month width
+    header_parts = [f"{'Predictors:':<{max_name_length + 2}}"] + [f"{month:>7}" for month in months]
+    header = "".join(header_parts)
+    results.append(header)
+    
+    # Print results for each predictor with precise alignment
+    for i in range(1, data['NVariables']):
+        # Get the filename for this predictor, left-aligned with consistent padding
+        predictor_name = predictor_names[i-1]
+        line = f"{predictor_name:<{max_name_length + 2}}"
+        
+        for mm in range(12):
+            # Check if p-value is significant
+            if data['pr'][mm][i] <= data['SigLevel']:
+                # Format R-squared value with consistent precision
+                rsqd_val = f"{data['RSQD'][mm][i]:.3f}"
+                
+                # Use right-aligned 7-character width for each column
+                line += f"{rsqd_val:>7}"
+            else:
+                # Add empty space for non-significant months
+                line += f"{'':>7}"
+        
+        results.append(line)
+    
+    # Convert to single string with newline separators
+    return "\n".join(results)
+
+def display_analyse_data_results_qt(results, text_widget):
+    """
+    Display analysis results in a PyQt5 text widget using the same formatting as formatAnalysisResults.
+    
+    Parameters:
+    results (dict): Dictionary containing analysis results with the same structure as formatAnalysisResults
+    text_widget (QTextEdit/QPlainTextEdit): PyQt5 text widget to display the results
+    """
+    # Format the results
+    formatted_text = formatAnalysisResults(results)
+    
+    # Set the font to a monospaced font for proper alignment
+    font = QFont("Courier New", 10)
+    text_widget.setFont(font)
+    
+    # Display the formatted text
+    text_widget.setPlainText(formatted_text)
+
+def create_analysis_results_table_widget(results):
+    """
+    Create a QTableWidget to display the analysis results in a tabular format.
+    
+    Parameters:
+    results (dict): Dictionary containing analysis results
+    
+    Returns:
+    QTableWidget: Table widget displaying the analysis results
+    """
+    from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem
+    from PyQt5.QtGui import QColor, QBrush
+    from PyQt5.QtCore import Qt
+    
+    # Months list for column headers
+    months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", 
+              "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
+    
+    # Predictor names
+    predictor_names = displayFiles(results['FileList'])
+    
+    # Create table widget
+    table = QTableWidget()
+    
+    # Set table dimensions
+    # Rows: Predictors
+    # Columns: Predictor name + 12 months
+    table.setRowCount(len(predictor_names))
+    table.setColumnCount(len(months) + 1)
+    
+    # Set headers
+    headers = ['Predictor'] + months
+    table.setHorizontalHeaderLabels(headers)
+    
+    # Add a description in the table's header or tooltip if needed
+    table.setToolTip(
+        f"Analysis Period: {results['FSDate']} - {results['FEDate']}\n"
+        f"Significance Level: {results['SigLevel']}\n"
+        f"Total Missing Values: {results['TotalMissing']}\n"
+        f"Predictand: {displayFiles(results['PTandFile'])}"
+    )
+    
+    # Populate table with R-squared values
+    for i, predictor_name in enumerate(predictor_names):
+        # Predictor name
+        name_item = QTableWidgetItem(predictor_name)
+        name_item.setFlags(Qt.ItemIsEnabled)
+        table.setItem(i, 0, name_item)
+        
+        # R-squared values for each month
+        for j in range(12):
+            # Check significance
+            if results['pr'][j][i+1] <= results['SigLevel']:
+                rsqd_value = results['RSQD'][j][i+1]
+                
+                # Create table item
+                value_item = QTableWidgetItem(f"{rsqd_value:.3f}")
+                value_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                value_item.setFlags(Qt.ItemIsEnabled)
+                
+                # Color coding based on R-squared value
+                # Use blue shades, darker blue for higher values
+                intensity = min(255, int(rsqd_value * 255))
+                color = QColor(255 - intensity, 255 - intensity, 255)
+                value_item.setBackground(QBrush(color))
+            else:
+                # Non-significant values
+                value_item = QTableWidgetItem("N/S")
+                value_item.setTextAlignment(Qt.AlignCenter)
+                value_item.setFlags(Qt.ItemIsEnabled)
+                value_item.setBackground(QBrush(QColor(240, 240, 240)))
+            
+            table.setItem(i, j + 1, value_item)
+    
+    # Adjust table appearance
+    table.resizeColumnsToContents()
+    table.resizeRowsToContents()
+    
+    return table
+
+# Update the AnalysisResultsApp to include the table view
+class AnalysisResultsApp(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Analysis Results")
+        self.resize(1000, 600)
+        
+        # Create a tab widget
+        self.tab_widget = QTabWidget()
+        
+        # Text view tab
+        self.text_widget = QTextEdit()
+        self.text_widget.setReadOnly(True)
+        self.tab_widget.addTab(self.text_widget, "Text View")
+        
+        # Set the central widget
+        self.setCentralWidget(self.tab_widget)
+    
+    def load_results(self, results):
+        # Display text format
+        display_analyse_data_results_qt(results, self.text_widget)
+        
+        # Create and add table view
+        table_widget = create_analysis_results_table_widget(results)
+        self.tab_widget.addTab(table_widget, "Table View")
+
 
 # Run the application
 """if __name__ == "__main__":

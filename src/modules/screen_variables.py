@@ -422,7 +422,7 @@ class ContentWidget(QWidget):
         #titleLayout.addStretch()
         #contentAreaLayout.addStretch()
     def doAnalysis(self):
-        from src.lib.ScreenVars import analyseData, formatAnalysisResults
+        from src.lib.ScreenVars import analyseData, formatAnalysisResults, AnalysisResultsApp
         fitStartDate = self.QDateEditToDateTime(self.fitStartDateChooser)
         fitEndDate = self.QDateEditToDateTime(self.fitEndDateChooser)
 
@@ -437,12 +437,15 @@ class ContentWidget(QWidget):
         if fitEndDate <= fitStartDate:
             return displayBox("Date Error","End date cannot be before start date.","Error",isError=True)
         
-        print([self.predictandSelected])
-        print([predictor for predictor in self.predictorsSelected])
-        #todo change this back
         data = analyseData([self.predictandSelected],[predictor for predictor in self.predictorsSelected], userInput)
+        #todo error handling
         #print(data)
         print(formatAnalysisResults(data))
+
+        self.newWindow = AnalysisResultsApp()
+        
+        self.newWindow.load_results(data)
+        self.newWindow.show()
 
 
 

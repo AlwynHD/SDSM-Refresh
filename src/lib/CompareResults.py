@@ -47,7 +47,7 @@ def plotMultiple(fieldGroup, statGroup, fieldIds, line):
         plt.title("SDSM Bar Chart")
 
     months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-    width = 0.4
+    width = 0.8 / len(fieldIds)
 
     for i in range(len(fieldIds)):
         data = []
@@ -62,7 +62,7 @@ def plotMultiple(fieldGroup, statGroup, fieldIds, line):
         if line:
             plt.plot(data, label = "File " + str(i + 1) + ": " + fields[fieldId])
         else:
-            plt.bar(np.arange(12) + (width * i), data, 0.4, label = "File " + str(i + 1) + ": " +  fields[fieldId])
+            plt.bar(np.arange(12) + ((-0.4 + (width * i)) + (width / 2)), data, width, label = "File " + str(i + 1) + ": " +  fields[fieldId])
     
     plt.xticks(np.arange(12), months)
     plt.legend()
@@ -72,4 +72,6 @@ if __name__ == "__main__":
     fields1, stats1 = readSumStatsFile(r"C:\Users\ajs25\Downloads\precOut.dat")
     fields2, stats2 = readSumStatsFile(r"C:\Users\ajs25\Downloads\tempOut.dat")
 
-    plotMultiple([fields1, fields2], [stats1, stats2], [0, 2], False)
+    plotMultiple([fields1], [stats1], [0], False)
+    plotMultiple([fields1, fields2], [stats1, stats2], [0, 0], False)
+    plotMultiple([fields1, fields1, fields1, fields1], [stats1, stats1, stats1, stats1], [0, 1, 2, 3], False)

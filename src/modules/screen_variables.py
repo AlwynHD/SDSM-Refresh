@@ -444,7 +444,7 @@ class ContentWidget(QWidget):
 
         self.newWindow = AnalysisResultsApp()
         
-        self.newWindow.load_results(data)
+        self.newWindow.loadResults(data)
         self.newWindow.show()
 
 
@@ -491,7 +491,7 @@ class ContentWidget(QWidget):
             return displayBox("Date Error","No valid dates in time period choosen.","Error",isError=True)
         self.newWindow = CorrelationAnalysisApp()
         
-        self.newWindow.load_results(data)
+        self.newWindow.loadResults(data)
         self.newWindow.show()
     def writePredictors(self):
         for predictor in listdir(self.predictorPath):

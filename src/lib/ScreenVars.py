@@ -592,6 +592,8 @@ def scatterPlot(predictandSelected, predictorSelected, inputs):
 
     return {"error": "NA", "Data": inputData.T}
 
+
+
 def format_correlation_results(results):
     """
     Format correlation analysis results for display in a PyQt5 application.
@@ -679,29 +681,111 @@ def format_correlation_results(results):
     # Join all lines with newlines
     return "\n".join(output)
 
-def display_correlation_results_qt(results, text_widget):
+def formatCorrelationResults(results):
+    """
+    Format correlation analysis results for display in a PyQt5 application.
+    
+    Parameters:
+    results (dict): Dictionary containing correlation analysis results
+    
+    Returns:
+    str: Formatted string representation of the correlation results
+    """
+    # Extract necessary data from results dictionary
+    startDate = results['analysisPeriod']['startDate']
+    endDate = results['analysisPeriod']['endDate']
+    periodName = results['analysisPeriod']['periodName']
+    
+    # Statistics
+    totalMissing = results['stats']['missingValues']
+    totalMissingRows = results['stats']['missingRows']
+    totalBelowThreshold = results['stats']['belowThreshold']
+    conditional = results['settings_used']['conditionalAnalysis']
+    
+    # Data
+    fileNames = results['names']
+    crossCorr = results['crossCorrelation']
+    partialCorrelations = results['partialCorrelations'] if 'partialCorrelations' in results else None
+    
+    # Format output as a string
+    output = []
+    
+    # Header section
+    output.append("CORRELATION MATRIX")
+    output.append("")
+    output.append(f"Analysis Period: {startDate} - {endDate} ({periodName})")
+    output.append("")
+    output.append(f"Missing values: {totalMissing}")
+    output.append(f"Missing rows: {totalMissingRows}")
+    if conditional:
+        output.append(f"Values less than or equal to threshold: {totalBelowThreshold}")
+    output.append("")
+    
+    # Calculate the maximum length of file names for formatting
+    maxLength = max(len(file) for file in fileNames) + 1
+    nVariables = len(fileNames)
+    
+    # Cross-correlation matrix header
+    headerRow = " "
+    for j in range(1, nVariables + 1):
+        headerRow += f" {j:{maxLength + 1}}"
+    output.append(headerRow)
+    
+    # Cross-correlation matrix rows
+    for j in range(nVariables):
+        row = f"{j+1} {fileNames[j]:{maxLength}}"
+        
+        for k in range(nVariables):
+            corrValue = crossCorr[j][k]
+            if k == j:
+                tempY = "1"
+            else:
+                tempY = f"{corrValue:.3f}"
+            row += f"{tempY:{maxLength + 2}}"
+        
+        output.append(row)
+    
+    output.append("")
+    
+    # Partial correlations section
+    if nVariables < 3:
+        output.append("NO PARTIAL CORRELATIONS TO CALCULATE")
+    else:
+        output.append(f"PARTIAL CORRELATIONS WITH {fileNames[0]}")
+        output.append("")
+        output.append(" " * 24 + f"{'Partial r':12}{'P value':12}")
+        output.append("")
+        
+        # Add partial correlation results if available
+        if partialCorrelations:
+            for i in range(1, nVariables):
+                if i-1 < len(partialCorrelations):
+                    partialR = partialCorrelations[i-1]['correlation']
+                    pValue = partialCorrelations[i-1]['p_value']
+                    output.append(f"{fileNames[i]:24}{partialR:<12.3f}{pValue:<12.3f}")
+    
+    # Join all lines with newlines
+    return "\n".join(output)
+
+def displayCorrelationResultsQt(results, textWidget):
     """
     Display correlation results in a PyQt5 text widget.
     
     Parameters:
     results (dict): Dictionary containing correlation analysis results
-    text_widget (QTextEdit/QPlainTextEdit): PyQt5 text widget to display the results
+    textWidget (QTextEdit/QPlainTextEdit): PyQt5 text widget to display the results
     """
     # Format the results
-    formatted_text = format_correlation_results(results)
+    formattedText = formatCorrelationResults(results)
     
     # Set the font to a monospaced font for proper alignment
     font = QFont("Courier New", 10)
-    text_widget.setFont(font)
+    textWidget.setFont(font)
     
     # Display the formatted text
-    text_widget.setPlainText(formatted_text)
-    
-    # Alternatively, if you want to preserve formatting with rich text:
-    # formatted_html = "<pre>" + formatted_text.replace("\n", "<br>") + "</pre>"
-    # text_widget.setHtml(formatted_html)
-    
-def create_correlation_table_widget(results):
+    textWidget.setPlainText(formattedText)
+
+def createCorrelationTableWidget(results):
     """
     Create a QTableWidget to display the correlation matrix.
     This provides a more interactive way to view correlations.
@@ -716,45 +800,45 @@ def create_correlation_table_widget(results):
     from PyQt5.QtGui import QColor, QBrush
     from PyQt5.QtCore import Qt
     
-    file_names = results['names']
-    cross_corr = results['crossCorrelation']
-    n_variables = len(file_names)
+    fileNames = results['names']
+    crossCorr = results['crossCorrelation']
+    nVariables = len(fileNames)
     
     # Create table widget
     table = QTableWidget()
-    table.setRowCount(n_variables)
-    table.setColumnCount(n_variables + 1)  # +1 for row headers
+    table.setRowCount(nVariables)
+    table.setColumnCount(nVariables + 1)  # +1 for row headers
     
     # Set headers
-    table.setHorizontalHeaderLabels(['Variable'] + file_names)
+    table.setHorizontalHeaderLabels(['Variable'] + fileNames)
     
     # Populate table
-    for i in range(n_variables):
+    for i in range(nVariables):
         # Add row label
-        name_item = QTableWidgetItem(file_names[i])
-        name_item.setFlags(Qt.ItemIsEnabled)  # Make it non-editable
-        table.setItem(i, 0, name_item)
+        nameItem = QTableWidgetItem(fileNames[i])
+        nameItem.setFlags(Qt.ItemIsEnabled)  # Make it non-editable
+        table.setItem(i, 0, nameItem)
         
         # Add correlation values
-        for j in range(n_variables):
-            corr_value = cross_corr[i][j]
-            value_item = QTableWidgetItem(f"{corr_value:.3f}" if i != j else "1.000")
-            value_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            value_item.setFlags(Qt.ItemIsEnabled)  # Make it non-editable
+        for j in range(nVariables):
+            corrValue = crossCorr[i][j]
+            valueItem = QTableWidgetItem(f"{corrValue:.3f}" if i != j else "1.000")
+            valueItem.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            valueItem.setFlags(Qt.ItemIsEnabled)  # Make it non-editable
             
             # Color coding based on correlation strength
             if i != j:  # Skip the diagonal
                 # Use blue shades for positive correlations, red for negative
-                if corr_value > 0:
-                    intensity = min(255, int(corr_value * 255))
+                if corrValue > 0:
+                    intensity = min(255, int(corrValue * 255))
                     color = QColor(255 - intensity, 255 - intensity, 255)
                 else:
-                    intensity = min(255, int(abs(corr_value) * 255))
+                    intensity = min(255, int(abs(corrValue) * 255))
                     color = QColor(255, 255 - intensity, 255 - intensity)
                     
-                value_item.setBackground(QBrush(color))
+                valueItem.setBackground(QBrush(color))
             
-            table.setItem(i, j + 1, value_item)
+            table.setItem(i, j + 1, valueItem)
     
     # Adjust table appearance
     table.resizeColumnsToContents()
@@ -769,50 +853,27 @@ class CorrelationAnalysisApp(QMainWindow):
         self.resize(800, 600)
         
         # Create a tab widget for different views
-        self.tab_widget = QTabWidget()
+        self.tabWidget = QTabWidget()
         
         # Text view tab
-        self.text_widget = QTextEdit()
-        self.text_widget.setReadOnly(True)
-        self.tab_widget.addTab(self.text_widget, "Text View")
-        
-        # Table view tab
-        # The table will be created when data is available
+        self.textWidget = QTextEdit()
+        self.textWidget.setReadOnly(True)
+        self.tabWidget.addTab(self.textWidget, "Text View")
         
         # Set the central widget
-        self.setCentralWidget(self.tab_widget)
-        
-        #results = correlation(predictandSelected, predictorSelected, settings)
-        # Test with some data
-        #self.load_results(results)  # Your results dictionary
+        self.setCentralWidget(self.tabWidget)
     
-    def load_results(self, results):
+    def loadResults(self, results):
         # Display text format
-        display_correlation_results_qt(results, self.text_widget)
+        displayCorrelationResultsQt(results, self.textWidget)
         
         # Create and add table view
-        table_widget = create_correlation_table_widget(results)
-        self.tab_widget.addTab(table_widget, "Table View")
-
-
+        tableWidget = createCorrelationTableWidget(results)
+        self.tabWidget.addTab(tableWidget, "Table View")
 
 def formatAnalysisResults(data):
     """
     Format results of variance analysis with precise column alignment.
-    
-    Calculates max length of predictors and predictand for first column,
-    applies consistent padding across header and data rows.
-    
-    Expected dictionary keys:
-    - FSDate: Start date of analysis
-    - FEdate: End date of analysis
-    - SigLevel: Significance level
-    - TotalMissing: Total missing values
-    - PTandFile: Predictand file name
-    - FileList: List of predictor files
-    - NVariables: Number of variables
-    - RSQD: 2D list/array of R-squared values
-    - pr: 2D list/array of p-values
     """
     # Initialize output string
     results = []
@@ -827,40 +888,40 @@ def formatAnalysisResults(data):
     results.append("")
 
     # Calculate max length for predictors and predictand
-    predictor_names = displayFiles(data['FileList'])
-    predictand_name = displayFiles(data['PTandFile'])
+    predictorNames = displayFiles(data['FileList'])
+    predictandName = displayFiles(data['PTandFile'])
     
     # Combine all names to find max length
-    all_names = predictor_names + [predictand_name, "Predictors:"]
-    max_name_length = max(len(name) for name in all_names)
+    allNames = predictorNames + [predictandName, "Predictors:"]
+    maxNameLength = max(len(name) for name in allNames)
     
     # Missing values and predictand information
     results.append(f"Total missing values: {data['TotalMissing']}")
-    results.append(f"Predictand: {predictand_name}")
+    results.append(f"Predictand: {predictandName}")
     
     # Months for header
     months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", 
               "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
     
     # Prepare month headers with consistent first column padding and 7-character month width
-    header_parts = [f"{'Predictors:':<{max_name_length + 2}}"] + [f"{month:>7}" for month in months]
-    header = "".join(header_parts)
+    headerParts = [f"{'Predictors:':<{maxNameLength + 2}}"] + [f"{month:>7}" for month in months]
+    header = "".join(headerParts)
     results.append(header)
     
     # Print results for each predictor with precise alignment
     for i in range(1, data['NVariables']):
         # Get the filename for this predictor, left-aligned with consistent padding
-        predictor_name = predictor_names[i-1]
-        line = f"{predictor_name:<{max_name_length + 2}}"
+        predictorName = predictorNames[i-1]
+        line = f"{predictorName:<{maxNameLength + 2}}"
         
         for mm in range(12):
             # Check if p-value is significant
             if data['pr'][mm][i] <= data['SigLevel']:
                 # Format R-squared value with consistent precision
-                rsqd_val = f"{data['RSQD'][mm][i]:.3f}"
+                rsqdVal = f"{data['RSQD'][mm][i]:.3f}"
                 
                 # Use right-aligned 7-character width for each column
-                line += f"{rsqd_val:>7}"
+                line += f"{rsqdVal:>7}"
             else:
                 # Add empty space for non-significant months
                 line += f"{'':>7}"
@@ -870,33 +931,23 @@ def formatAnalysisResults(data):
     # Convert to single string with newline separators
     return "\n".join(results)
 
-def display_analyse_data_results_qt(results, text_widget):
+def displayAnalyseDataResultsQt(results, textWidget):
     """
     Display analysis results in a PyQt5 text widget using the same formatting as formatAnalysisResults.
-    
-    Parameters:
-    results (dict): Dictionary containing analysis results with the same structure as formatAnalysisResults
-    text_widget (QTextEdit/QPlainTextEdit): PyQt5 text widget to display the results
     """
     # Format the results
-    formatted_text = formatAnalysisResults(results)
+    formattedText = formatAnalysisResults(results)
     
     # Set the font to a monospaced font for proper alignment
     font = QFont("Courier New", 10)
-    text_widget.setFont(font)
+    textWidget.setFont(font)
     
     # Display the formatted text
-    text_widget.setPlainText(formatted_text)
+    textWidget.setPlainText(formattedText)
 
-def create_analysis_results_table_widget(results):
+def createAnalysisResultsTableWidget(results):
     """
     Create a QTableWidget to display the analysis results in a tabular format.
-    
-    Parameters:
-    results (dict): Dictionary containing analysis results
-    
-    Returns:
-    QTableWidget: Table widget displaying the analysis results
     """
     from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem
     from PyQt5.QtGui import QColor, QBrush
@@ -907,7 +958,7 @@ def create_analysis_results_table_widget(results):
               "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
     
     # Predictor names
-    predictor_names = displayFiles(results['FileList'])
+    predictorNames = displayFiles(results['FileList'])
     
     # Create table widget
     table = QTableWidget()
@@ -915,7 +966,7 @@ def create_analysis_results_table_widget(results):
     # Set table dimensions
     # Rows: Predictors
     # Columns: Predictor name + 12 months
-    table.setRowCount(len(predictor_names))
+    table.setRowCount(len(predictorNames))
     table.setColumnCount(len(months) + 1)
     
     # Set headers
@@ -931,36 +982,36 @@ def create_analysis_results_table_widget(results):
     )
     
     # Populate table with R-squared values
-    for i, predictor_name in enumerate(predictor_names):
+    for i, predictorName in enumerate(predictorNames):
         # Predictor name
-        name_item = QTableWidgetItem(predictor_name)
-        name_item.setFlags(Qt.ItemIsEnabled)
-        table.setItem(i, 0, name_item)
+        nameItem = QTableWidgetItem(predictorName)
+        nameItem.setFlags(Qt.ItemIsEnabled)
+        table.setItem(i, 0, nameItem)
         
         # R-squared values for each month
         for j in range(12):
             # Check significance
             if results['pr'][j][i+1] <= results['SigLevel']:
-                rsqd_value = results['RSQD'][j][i+1]
+                rsqdValue = results['RSQD'][j][i+1]
                 
                 # Create table item
-                value_item = QTableWidgetItem(f"{rsqd_value:.3f}")
-                value_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-                value_item.setFlags(Qt.ItemIsEnabled)
+                valueItem = QTableWidgetItem(f"{rsqdValue:.3f}")
+                valueItem.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                valueItem.setFlags(Qt.ItemIsEnabled)
                 
                 # Color coding based on R-squared value
                 # Use blue shades, darker blue for higher values
-                intensity = min(255, int(rsqd_value * 255))
+                intensity = min(255, int(rsqdValue * 255))
                 color = QColor(255 - intensity, 255 - intensity, 255)
-                value_item.setBackground(QBrush(color))
+                valueItem.setBackground(QBrush(color))
             else:
                 # Non-significant values
-                value_item = QTableWidgetItem("N/S")
-                value_item.setTextAlignment(Qt.AlignCenter)
-                value_item.setFlags(Qt.ItemIsEnabled)
-                value_item.setBackground(QBrush(QColor(240, 240, 240)))
+                valueItem = QTableWidgetItem("N/S")
+                valueItem.setTextAlignment(Qt.AlignCenter)
+                valueItem.setFlags(Qt.ItemIsEnabled)
+                valueItem.setBackground(QBrush(QColor(240, 240, 240)))
             
-            table.setItem(i, j + 1, value_item)
+            table.setItem(i, j + 1, valueItem)
     
     # Adjust table appearance
     table.resizeColumnsToContents()
@@ -968,7 +1019,6 @@ def create_analysis_results_table_widget(results):
     
     return table
 
-# Update the AnalysisResultsApp to include the table view
 class AnalysisResultsApp(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -976,24 +1026,23 @@ class AnalysisResultsApp(QMainWindow):
         self.resize(1000, 600)
         
         # Create a tab widget
-        self.tab_widget = QTabWidget()
+        self.tabWidget = QTabWidget()
         
         # Text view tab
-        self.text_widget = QTextEdit()
-        self.text_widget.setReadOnly(True)
-        self.tab_widget.addTab(self.text_widget, "Text View")
+        self.textWidget = QTextEdit()
+        self.textWidget.setReadOnly(True)
+        self.tabWidget.addTab(self.textWidget, "Text View")
         
         # Set the central widget
-        self.setCentralWidget(self.tab_widget)
+        self.setCentralWidget(self.tabWidget)
     
-    def load_results(self, results):
+    def loadResults(self, results):
         # Display text format
-        display_analyse_data_results_qt(results, self.text_widget)
+        displayAnalyseDataResultsQt(results, self.textWidget)
         
         # Create and add table view
-        table_widget = create_analysis_results_table_widget(results)
-        self.tab_widget.addTab(table_widget, "Table View")
-
+        tableWidget = createAnalysisResultsTableWidget(results)
+        self.tabWidget.addTab(tableWidget, "Table View")
 
 # Run the application
 """if __name__ == "__main__":

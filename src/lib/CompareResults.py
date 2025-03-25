@@ -29,8 +29,9 @@ def readSumStatsFile(path):
             populateFields = False
 
         if populateStats:
-            #List comprehension just removes whitespace from line
-            stats.append([newStat[:-1] for newStat in line.split(", ")[1:]])
+            newStatLine = line.split(",")[1:]
+            newStatLine = [entry.strip() for entry in newStatLine]
+            stats.append(newStatLine)
 
         if line == "-":
             if len(fields) == 0:
@@ -71,4 +72,4 @@ if __name__ == "__main__":
     fields1, stats1 = readSumStatsFile(r"C:\Users\ajs25\Downloads\precOut.dat")
     fields2, stats2 = readSumStatsFile(r"C:\Users\ajs25\Downloads\tempOut.dat")
 
-    plotMultiple([fields1, fields2], [stats1, stats2], [0, 0], False)
+    plotMultiple([fields1, fields2], [stats1, stats2], [0, 2], False)

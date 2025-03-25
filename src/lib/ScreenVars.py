@@ -7,13 +7,6 @@ from src.lib.utils import *
 from PyQt5.QtWidgets import QApplication, QMainWindow, QTextEdit, QTabWidget
 from PyQt5.QtGui import QFont
 
-import sys
-
-from PyQt5.QtWidgets import QApplication
-
-from src.core.data_settings import ContentWidget  # Import the ContentWidget class
-
-
 #Local version
 predictorSelected = ['predictor files/ncep_dswr.dat']
 predictandSelected = ['predictand files/NoviSadPrecOBS.dat']
@@ -320,8 +313,6 @@ def analyseData(predictandSelected, predictorSelected, inputs):
     autoRegressionTick = inputs.get('autoRegressionTick', False)
     sigLevelInput = inputs.get('sigLevelInput', 0.05)
 
-
-
     # Input validation
     if predictandSelected == "":
         return {"error": "You must select a predictand."}
@@ -405,6 +396,7 @@ def analyseData(predictandSelected, predictorSelected, inputs):
     # Process each month
     for index, monthData in enumerate(months):
         if len(monthData) == 0:
+            print("ERROR NO DATA")
             continue  # Skip empty months
             
         # Initialize statistics arrays
@@ -481,8 +473,29 @@ def analyseData(predictandSelected, predictorSelected, inputs):
     # 1 is R Squared, which is what the orgianal vb outputs
     # 2 is T stat
     # 3 is p Value or pr in the orgianl vb
+    results = {
+        "FSDate": inputs.get('fSDate'),  # Start date of analysis
+        "FEDate": inputs.get('fEDate'),  # End date of analysis
+        "SigLevel": inputs.get('sigLevelInput', 0.05),  # Significance level
+        "PTandFile": predictandSelected,  # Predictand file name
+        "FileList": predictorSelected,  # List of predictor files
+        "TotalMissing": int(np.sum(missing)),  # Total missing values
+        "NVariables": len(predictorSelected) + 1,  # Number of variables
+        
+        # Prepare R-squared and p-value matrices
+        "RSQD": [],  # 2D list of R-squared values
+        "pr": []     # 2D list of p-values
+    }
     
-    return returnData
+    # Convert returnData to lists for dictionary
+    for month_data in returnData:
+        month_rsqd = month_data[1].tolist()  # R-squared values
+        month_pvalues = month_data[3].tolist()  # p-values
+        
+        results["RSQD"].append(month_rsqd)
+        results["pr"].append(month_pvalues)
+    
+    return results
 
 def scatterPlot(predictandSelected, predictorSelected, inputs):
     settings = getSettings()
@@ -665,6 +678,80 @@ def format_correlation_results(results):
     
     # Join all lines with newlines
     return "\n".join(output)
+
+def formatAnalysisResults(data):
+    """
+    Format results of variance analysis with precise column alignment.
+    
+    Calculates max length of predictors and predictand for first column,
+    applies consistent padding across header and data rows.
+    
+    Expected dictionary keys:
+    - FSDate: Start date of analysis
+    - FEdate: End date of analysis
+    - SigLevel: Significance level
+    - TotalMissing: Total missing values
+    - PTandFile: Predictand file name
+    - FileList: List of predictor files
+    - NVariables: Number of variables
+    - RSQD: 2D list/array of R-squared values
+    - pr: 2D list/array of p-values
+    """
+    # Initialize output string
+    results = []
+    
+    # Print header with consistent formatting
+    results.append("RESULTS: EXPLAINED VARIANCE")
+    results.append("")
+    
+    # Analysis details with consistent indentation
+    results.append(f"Analysis Period: {data['FSDate']} - {data['FEDate']}")
+    results.append(f"Significance level: {data['SigLevel']}")
+    results.append("")
+
+    # Calculate max length for predictors and predictand
+    predictor_names = displayFiles(data['FileList'])
+    predictand_name = displayFiles(data['PTandFile'])
+    
+    # Combine all names to find max length
+    all_names = predictor_names + [predictand_name, "Predictors:"]
+    max_name_length = max(len(name) for name in all_names)
+    
+    # Missing values and predictand information
+    results.append(f"Total missing values: {data['TotalMissing']}")
+    results.append(f"Predictand: {predictand_name}")
+    
+    # Months for header
+    months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", 
+              "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
+    
+    # Prepare month headers with consistent first column padding and 7-character month width
+    header_parts = [f"{'Predictors:':<{max_name_length + 2}}"] + [f"{month:>7}" for month in months]
+    header = "".join(header_parts)
+    results.append(header)
+    
+    # Print results for each predictor with precise alignment
+    for i in range(1, data['NVariables']):
+        # Get the filename for this predictor, left-aligned with consistent padding
+        predictor_name = predictor_names[i-1]
+        line = f"{predictor_name:<{max_name_length + 2}}"
+        
+        for mm in range(12):
+            # Check if p-value is significant
+            if data['pr'][mm][i] <= data['SigLevel']:
+                # Format R-squared value with consistent precision
+                rsqd_val = f"{data['RSQD'][mm][i]:.3f}"
+                
+                # Use right-aligned 7-character width for each column
+                line += f"{rsqd_val:>7}"
+            else:
+                # Add empty space for non-significant months
+                line += f"{'':>7}"
+        
+        results.append(line)
+    
+    # Convert to single string with newline separators
+    return "\n".join(results)
 
 def display_correlation_results_qt(results, text_widget):
     """

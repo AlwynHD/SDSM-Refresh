@@ -422,7 +422,7 @@ class ContentWidget(QWidget):
         #titleLayout.addStretch()
         #contentAreaLayout.addStretch()
     def doAnalysis(self):
-        from src.lib.ScreenVars import analyseData
+        from src.lib.ScreenVars import analyseData, formatAnalysisResults
         fitStartDate = self.QDateEditToDateTime(self.fitStartDateChooser)
         fitEndDate = self.QDateEditToDateTime(self.fitEndDateChooser)
 
@@ -430,15 +430,21 @@ class ContentWidget(QWidget):
         'fSDate': self.QDateEditToDateTime(self.fitStartDateChooser),
         'fEDate': self.QDateEditToDateTime(self.fitEndDateChooser),
         'analysisPeriodChosen': 0,
-        'conditional': self.conditionalRadioButton,
+        'conditional': self.conditionalRadioButton.isChecked(),
         'autoRegressionTick': self.autoregressionCheckBox.isChecked(),
         'sigLevelInput': 0.05 #todo check whether this would be a correct input
         }
         if fitEndDate <= fitStartDate:
             return displayBox("Date Error","End date cannot be before start date.","Error",isError=True)
         
-        data = analyseData([self.predictandSelected], [predictor for predictor in self.predictorsSelected], userInput)
-        print(data)
+        print([self.predictandSelected])
+        print([predictor for predictor in self.predictorsSelected])
+        #todo change this back
+        data = analyseData([self.predictandSelected],[predictor for predictor in self.predictorsSelected], userInput)
+        #print(data)
+        print(formatAnalysisResults(data))
+
+
 
     def doCorrelation(self):
         #Get dates

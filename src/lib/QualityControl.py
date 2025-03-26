@@ -429,6 +429,40 @@ def getOutliersNew(data, sdFilterValue, applyThresh):
     infoString = str(len(outliers)) + " outliers identified and written to file."
     return outputData, infoString
 
+def qualityCheckNew(data, applyThresh):
+    totalCount = len(data)
+    missingCount = sum(1 if entry == globalMissingCode else 0 for entry in data)
+    okCount = totalCount - missingCount
+    threshCount = sum(1 if valueIsValid(entry, True) else 0 for entry in data)
+    
+    validData = [entry for entry in data if valueIsValid(entry, applyThresh)]
+    dataSum = sum(validData)
+    dataMax = max(validData)
+    dataMin = min(validData)
+
+    prevValue = globalMissingCode
+    maxDifference = -9999
+    for i in range(len(data)):
+        if prevValue != globalMissingCode:
+            if (valueIsValid(data[i], applyThresh)):
+                difference = abs(prevValue - data[i])
+                if difference > maxDifference:
+                    maxDifference = round(difference, 4) #Floating point calc
+                    maxDiffVal1 = prevValue
+                    maxDiffVal2 = data[i]
+        
+        if (applyThresh and data[i] > thresh) or (not applyThresh):
+            prevValue = data[i]
+
+    if applyThresh and threshCount > 0:
+        mean = round(dataSum / threshCount, 4)
+    elif okCount > 0:
+        mean = round(dataSum / okCount, 4)
+    else:
+        mean = globalMissingCode
+
+    return dataMin, dataMax, mean, totalCount, missingCount, okCount, maxDifference, maxDiffVal1, maxDiffVal2, threshCount, globalMissingCode, thresh
+
 if __name__ == '__main__':
     file = selectFile()
     data = loadFilesIntoMemory(file)[0]

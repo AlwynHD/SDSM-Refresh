@@ -273,8 +273,8 @@ class ContentWidget(QWidget):
 
         #Threshold elements
 
-        thresholdCheckBox = QCheckBox("Apply Threshold")
-        thresholdLayout.addWidget(thresholdCheckBox)
+        self.thresholdCheckBox = QCheckBox("Apply Threshold")
+        thresholdLayout.addWidget(self.thresholdCheckBox)
 
         #Outliers elements
 
@@ -420,7 +420,7 @@ class ContentWidget(QWidget):
     def getDailyStats(self):
         from src.lib.QualityControl import dailyMeans
         try:
-            stats = dailyMeans(self.selectedFile)
+            stats = dailyMeans(self.selectedFile,self.thresholdCheckBox.isChecked())
             displayBox("Daily Stats:", stats, "Daily Results")
         except FileNotFoundError:
             displayBox("File Error", "Please ensure a predictand file is selected and exists.", "Error", isError=True)

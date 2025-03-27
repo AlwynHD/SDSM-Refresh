@@ -404,8 +404,13 @@ def dailyMeansNew(filePath, applyThresh):
 
     return output
 
+<<<<<<< Updated upstream
 def getOutliersNew(filePath, sdFilterValue, applyThresh):
     data = loadFilesIntoMemory(filePath[0])[0]
+=======
+def getOutliersNew(filePath, outlierFile, sdFilterValue, applyThresh):
+    data = loadFilesIntoMemory(filePath)[0]
+>>>>>>> Stashed changes
     workingData = [value for value in data if valueIsValid(value, applyThresh)]
     if len(workingData) > 0:
             mean = sum(workingData) / len(workingData)
@@ -423,12 +428,13 @@ def getOutliersNew(filePath, sdFilterValue, applyThresh):
             index.append(i + 1)
             outliers.append(data[i])
 
-    outputData = []
+    file = open(outlierFile, "w")
     for i in range(len(outliers)):
-        outputData.append([index[i], outliers[i]])
+        whitespaceCount = 30 - len(str(index[i]))
+        file.write(str(index[i]) + (" " * whitespaceCount) + str(outliers[i]) + "\n")
+    file.close()
 
-    infoString = str(len(outliers)) + " outliers identified and written to file."
-    return outputData, infoString
+    return str(len(outliers)) + " outliers identified and written to file."
 
 def qualityCheckNew(filePath, applyThresh):
     data = loadFilesIntoMemory(filePath)[0]
@@ -495,7 +501,7 @@ if __name__ == '__main__':
     applyThresh = False
     standardDeviations = 5
 
-    print(qualityCheckNew(filePath, applyThresh))
+    print(getOutliersNew(filePath, r"C:\Users\ajs25\Downloads\outliers.dat", standardDeviations, applyThresh))
 
     data = [2, 3, 4, 5, 6, 7, 8, 9, 10, 100, 120, 145, 145, 555, 444, 333, 333, 333, 333, 333]
     #print(performPettittTest(data))

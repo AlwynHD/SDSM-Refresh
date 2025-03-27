@@ -28,6 +28,8 @@ def valueIsValid(value, applyThresh):
     return value != globalMissingCode and (not applyThresh or value > thresh)
 
 def genericTransform(data, func, applyThresh):
+    """ Takes all transformations which require a single function and applies them to all values in all columns.
+        Specific transformations used are listed below."""
     returnData = np.empty_like(data)
     success = 0
     overflow = 0
@@ -64,11 +66,11 @@ def eToTheN(n): return np.float_power(np.e, n) if n <= 709 else globalMissingCod
 def tenToTheN(n): return np.float_power(10, n) if n <= 308 else globalMissingCode
 def powHalf(n): return np.float_power(n, 1/2) if n <= 1e308 else globalMissingCode
 def powThird(n): return np.float_power(n, 1/3) if n <= 1e308 else globalMissingCode
-def powQuarter(n): return np.float_power(n, 1/4) if n<= 1e308 else globalMissingCode
+def powQuarter(n): return np.float_power(n, 1/4) if n <= 1e308 else globalMissingCode
 def returnSelf(n): return n
 
 def backwardsChange(data, applyThresh):
-    """Returns the difference between each value and the previous value"""
+    """Returns the difference between each value in a column and the previous value in that column"""
     returnData = np.empty_like(data)
     success = 0
     failure = 0
@@ -92,7 +94,9 @@ def backwardsChange(data, applyThresh):
     return returnData, infoString
 
 def lag(data, n, wrap):
-    """Rewrite data so it begins at position n. Values before n wrap to bottom."""
+    """ Rewrite data so it begins at position n.
+        If wrap selected, values before n are written at the bottom of the file.
+        Else, values before n are replaced with the global missing code."""
     returnData = np.empty_like(data)
     processed = 0
 
@@ -111,7 +115,7 @@ def lag(data, n, wrap):
     return returnData, infoString
 
 def binomial(data, binomial, applyThresh):
-    """Returns 1 if value in column is above binomial value, otherwise returns 0"""
+    """ For every value in every column, return 1 if above binomial value else return 0"""
     returnData = np.empty_like(data)
     success = 0
     failure = 0
@@ -132,14 +136,19 @@ def binomial(data, binomial, applyThresh):
     return returnData, infoString
 
 def extractEnsemble(data, column):
+    """Select a column"""
     return data[:, column - 1]
 
 def padData(data, dataSDate, dataEDate):
+    """ Adds the global missing code based on the difference between dates.
+        For every day the dataSDate is ahead of the globalSDate, one line of global missing code is written at the start of the file.
+        For every day the dataEDate is behind the globalEDate, one line of global missing code is written at the end of the file."""
     startDiff = dataSDate - globalSDate
     endDiff = globalEDate - dataEDate
     return np.pad(data, [(startDiff.days, endDiff.days), (0, 0)], mode='constant', constant_values=globalMissingCode)
 
 def removeOutliers(data, sdFilterValue, applyThresh):
+    """Identifies outliers and removes them from the file"""
     returnData = np.empty_like(data)
     remained = 0
     removed = 0
@@ -173,27 +182,27 @@ def removeOutliers(data, sdFilterValue, applyThresh):
     return returnData, infoString
 
 def boxCox(data, applyThresh):
-    #todo check with Chris if we can use auto generated lambda or if he wants his method
-    #todo also check if he will let us boxcox data with fewer than 50 entries
-    #todo and if we can run this for multiple columns
+    """Performs the boxcox transformation on a set of data."""
+    #todo get back from Chris of whether he wants his lamda or the package's lamda
     returnData = np.empty_like(data)
     success = 0
 
     for c in range(len(data.T)):
         boxCoxData = [entry for entry in data[:, c] if valueIsValid(entry, applyThresh)]
+
+        #Right shift data
         minVal = np.min(boxCoxData)
-        print(minVal)
         boxCoxData = [entry + abs(minVal) for entry in boxCoxData]
 
-        for entry in boxCoxData:
-            if entry <= 0:
-                print(entry)
+        #Remove all zero values
+        boxCoxData = [entry for entry in boxCoxData if entry > 0]
 
+        #Box Cox Transform
         boxCoxData = sci.stats.boxcox(boxCoxData)
 
         invalidCount = 0
         for r in range(len(data[:, c])):
-            if valueIsValid(data[r][c], applyThresh):
+            if valueIsValid(data[r][c], applyThresh) or data[r][c] == minVal:
                 returnData[r][c] = boxCoxData[0][r - invalidCount]
                 success += 1
             else:
@@ -209,6 +218,7 @@ def boxCox(data, applyThresh):
     return returnData, infoString
 
 def unBoxCox(data, lamda, leftShift, applyThresh):
+    """Reverse a box cox transformation. Requires a value for lamda and left shift."""
     returnData = np.empty_like(data)
     success = 0
 
@@ -249,14 +259,11 @@ if __name__ == "__main__":
     leftShift = 5
     wrap = False
 
-    print(np.log10(1e309))
-
     file = selectFile()
     data = loadData(file)
-    data = np.array([[0], [1], [2], [3], [4], [5]])
 
     genericTransform(data, ln, applyThresh)
-    genericTransform(data, np.log10, applyThresh)
+    genericTransform(data, log, applyThresh)
     genericTransform(data, square, applyThresh)
     genericTransform(data, cube, applyThresh)
     genericTransform(data, powFour, applyThresh)

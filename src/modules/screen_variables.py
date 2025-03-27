@@ -308,7 +308,7 @@ class ContentWidget(QWidget):
         selectPredictandButton.clicked.connect(self.selectPredictandButtonClicked)
         selectPredictandFileLayout.addWidget(selectPredictandButton)
 
-        self.selectPredictandLabel = QLabel("No predictand selected")
+        self.selectPredictandLabel = QLabel("No Predictand Selected")
         selectPredictandFileLayout.addWidget(self.selectPredictandLabel)
 
         #Create predictor label
@@ -381,22 +381,22 @@ class ContentWidget(QWidget):
         #Process radio buttons
         processRadioButtonGroup = QButtonGroup()
         processRadioButtonGroup.setExclusive(True)
-        unconditionalRadioButton = QRadioButton("Unconditional")
-        unconditionalRadioButton.setChecked(True)
+        self.unconditionalRadioButton = QRadioButton("Unconditional")
+        self.unconditionalRadioButton.setChecked(True)
         self.conditionalRadioButton = QRadioButton("Conditional")
         #conditionalRadioButton.setStyleSheet("QRadioButton::indicator{;width:14px;height:14px;border-radius:8px;}QRadioButton::indicator::checked{background-color: #FF00A0;border:1px solid grey;}QRadioButton::indicator::unchecked{background-color: white;border:1px solid grey}")
-        processRadioButtonGroup.addButton(unconditionalRadioButton)
+        processRadioButtonGroup.addButton(self.unconditionalRadioButton)
         processRadioButtonGroup.addButton(self.conditionalRadioButton)
 
-        processLayout.addWidget(unconditionalRadioButton)
+        processLayout.addWidget(self.unconditionalRadioButton)
         processLayout.addWidget(self.conditionalRadioButton)
 
         #Significance input
 
         significanceLabel = QLabel("Significance")
         significanceLayout.addWidget(significanceLabel)
-        significanceInput = QLineEdit("0.05")
-        significanceLayout.addWidget(significanceInput)
+        self.significanceInput = QLineEdit("0.05")
+        significanceLayout.addWidget(self.significanceInput)
 
         correlationButton = QPushButton("Correlation")
         correlationButton.clicked.connect(self.doCorrelation)
@@ -415,14 +415,35 @@ class ContentWidget(QWidget):
         scatterButton.setStyleSheet("background-color: #F57F0C; color: white; font-weight: bold")
         buttonLayout.addWidget(scatterButton)
 
+        resetButton = QPushButton("🔄 Reset")
+        resetButton.setStyleSheet("background-color: #F44336; color: white; font-weight: bold;")
+        resetButton.clicked.connect(self.resetAll)
+        buttonLayout.addWidget(resetButton)
+
 
 
         # Add a spacer to ensure content is properly spaced
         
         #titleLayout.addStretch()
         #contentAreaLayout.addStretch()
+    def resetAll(self):
+        print()
+        self.predictorPath = 'predictor files'
+        self.predictandSelected = ""
+        self.predictorsSelected = []
+        self.selectPredictandLabel.setText("No Predictand Selected")
+        self.updatePredictors(remove=True)
+        self.fitStartDateChooser.setDate(QDate(1948,1,1))
+        self.fitEndDateChooser.setDate(QDate(2015,12,31))
+        self.dropdownBox.setCurrentText("Annual")
+        self.predictorDescriptionLabel.setText("")
+        self.autoregressionCheckBox.setChecked(False)
+        self.unconditionalRadioButton.setChecked(True)
+        self.significanceInput.setText("0.05")
+        
+
     def doAnalysis(self):
-        from src.lib.ScreenVars import analyseData
+        from src.lib.ScreenVars import analyseData, formatAnalysisResults, AnalysisResultsApp
         fitStartDate = self.QDateEditToDateTime(self.fitStartDateChooser)
         fitEndDate = self.QDateEditToDateTime(self.fitEndDateChooser)
 
@@ -430,15 +451,24 @@ class ContentWidget(QWidget):
         'fSDate': self.QDateEditToDateTime(self.fitStartDateChooser),
         'fEDate': self.QDateEditToDateTime(self.fitEndDateChooser),
         'analysisPeriodChosen': 0,
-        'conditional': self.conditionalRadioButton,
+        'conditional': self.conditionalRadioButton.isChecked(),
         'autoRegressionTick': self.autoregressionCheckBox.isChecked(),
         'sigLevelInput': 0.05 #todo check whether this would be a correct input
         }
         if fitEndDate <= fitStartDate:
             return displayBox("Date Error","End date cannot be before start date.","Error",isError=True)
         
-        data = analyseData([self.predictandSelected], [predictor for predictor in self.predictorsSelected], userInput)
-        print(data)
+        data = analyseData([self.predictandSelected],[predictor for predictor in self.predictorsSelected], userInput)
+        #todo error handling
+        #print(data)
+        print(formatAnalysisResults(data))
+
+        self.newWindow = AnalysisResultsApp()
+        
+        self.newWindow.loadResults(data)
+        self.newWindow.show()
+
+
 
     def doCorrelation(self):
         #Get dates
@@ -472,15 +502,17 @@ class ContentWidget(QWidget):
         print(["predictor files/"+predictor for predictor in self.predictorsSelected])
         data = correlation([self.predictandSelected], [predictor for predictor in self.predictorsSelected], userInput)
 
-        if data == "Predictand Error":
+        if data["error"] == "Predictand Error":
             return displayBox("Predictand Error","No predictand file selected.","Error",isError=True)
-        elif data == "Predictor Error":
+        elif data["error"] == "Predictor Error":
             return displayBox("Predictor Error",
                               "There can only be between one and twelve predictor files selected.",
                               "Error",isError=True)
+        if data["error"] == "No valid dates in time period choosen":
+            return displayBox("Date Error","No valid dates in time period choosen.","Error",isError=True)
         self.newWindow = CorrelationAnalysisApp()
         
-        self.newWindow.load_results(data)
+        self.newWindow.loadResults(data)
         self.newWindow.show()
     def writePredictors(self):
         for predictor in listdir(self.predictorPath):
@@ -496,19 +528,21 @@ class ContentWidget(QWidget):
                 predictorScrollLabelButton.setStyleSheet("color: black; background-color: #F0F0F0")
                 predictorScrollLabelButton.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
                 self.predictorsScrollLayout.addWidget(predictorScrollLabelButton) 
-    def updatePredictors(self):
-        pathName = QFileDialog.getExistingDirectory(self)
-        self.predictorPath = pathName
-        
-        while self.predictorsScrollLayout.count():
-            item = self.predictorsScrollLayout.takeAt(0)
-            widget = item.widget()
-            if widget is not None:
-                widget.setParent(None)
-        if(self.predictorPath != ""):
-            self.writePredictors()
-        else:
-            self.predictorPath = "predictor files"
+    def updatePredictors(self,remove=False):
+        if not(remove):
+            pathName = QFileDialog.getExistingDirectory(self)
+            self.predictorPath = pathName
+        if remove:
+            while self.predictorsScrollLayout.count():
+                item = self.predictorsScrollLayout.takeAt(0)
+                widget = item.widget()
+                if widget is not None:
+                    widget.setParent(None)
+            if(self.predictorPath != ""):
+                self.writePredictors()
+            else:
+                self.predictorPath = "predictor files"
+                self.writePredictors()
       
     def selectPredictandButtonClicked(self):
         #Will have to be changed soon, as it relies on known file "predictand files"

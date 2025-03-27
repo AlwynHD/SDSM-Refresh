@@ -172,7 +172,7 @@ def sigLevelOK(sigLevelInput):
     """checks if sigLevel is good returns default diglevel if not"""
     correctSigValue = False
     sigLevel = 0.05
-    if sigLevelInput == "" or not type(sigLevelInput) is int:              #SigLevelText is the input from the user
+    if sigLevelInput == "" or not type(sigLevelInput) is float:              #SigLevelText is the input from the user
         #todo error message to user orgianl: MsgBox "Significance level must be a value.", 0 + vbCritical, "Error Message" 
         print("Significance level must be a value.")
     else:

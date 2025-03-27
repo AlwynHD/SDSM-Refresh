@@ -35,7 +35,7 @@ def genericTransform(data, func, applyThresh, missingCode, thresh):
     for c in range(len(data.T)):
         for r in range(len(data[:, c])):
             if valueIsValid(data[r][c], applyThresh, missingCode, thresh):
-                newVal = func(data[r][c])
+                newVal = func(data[r][c], missingCode)
                 returnData[r][c] = newVal
                 if newVal == missingCode:
                     overflow += 1
@@ -53,17 +53,17 @@ def genericTransform(data, func, applyThresh, missingCode, thresh):
 
     return returnData, infoString
 
-def ln(n): return np.log(n) if 0 < n <= 1e308 else missingCode
-def log(n): return np.log10(n) if 0 < n <= 1e308 else missingCode
-def square(n): return np.float_power(n, 2) if n <= 1e154 else missingCode
-def cube(n): return np.float_power(n, 3) if n <= 1e102 else missingCode
-def powFour(n): return np.float_power(n, 4) if n <= 1e77 else missingCode
-def powMinusOne(n): return np.float_power(n, -1) if n >= 1e-308 else missingCode
-def eToTheN(n): return np.float_power(np.e, n) if n <= 709 else missingCode
-def tenToTheN(n): return np.float_power(10, n) if n <= 308 else missingCode
-def powHalf(n): return np.float_power(n, 1/2) if n <= 1e308 else missingCode
-def powThird(n): return np.float_power(n, 1/3) if n <= 1e308 else missingCode
-def powQuarter(n): return np.float_power(n, 1/4) if n <= 1e308 else missingCode
+def ln(n, missingCode): return np.log(n) if 0 < n <= 1e308 else missingCode
+def log(n, missingCode): return np.log10(n) if 0 < n <= 1e308 else missingCode
+def square(n, missingCode): return np.float_power(n, 2) if n <= 1e154 else missingCode
+def cube(n, missingCode): return np.float_power(n, 3) if n <= 1e102 else missingCode
+def powFour(n, missingCode): return np.float_power(n, 4) if n <= 1e77 else missingCode
+def powMinusOne(n, missingCode): return np.float_power(n, -1) if n >= 1e-308 else missingCode
+def eToTheN(n, missingCode): return np.float_power(np.e, n) if n <= 709 else missingCode
+def tenToTheN(n, missingCode): return np.float_power(10, n) if n <= 308 else missingCode
+def powHalf(n, missingCode): return np.float_power(n, 1/2) if n <= 1e308 else missingCode
+def powThird(n, missingCode): return np.float_power(n, 1/3) if n <= 1e308 else missingCode
+def powQuarter(n, missingCode): return np.float_power(n, 1/4) if n <= 1e308 else missingCode
 def returnSelf(n): return n
 
 def backwardsChange(data, applyThresh, missingCode, thresh):
@@ -263,11 +263,13 @@ if __name__ == "__main__":
 
     file = selectFile()
     data = loadData(file)
-    
+
     settings = getSettings()
 
     missingCode = settings["globalmissingcode"]
     thresh = settings["fixedthreshold"]
+    globalSDate = settings["globalsdate"]
+    globalEDate = settings["globaledate"]
 
 
     genericTransform(data, ln, applyThresh, missingCode, thresh)
@@ -290,7 +292,7 @@ if __name__ == "__main__":
 
     extractEnsemble(data, ensembleCol, missingCode, thresh)
 
-    padData(data, dataSDate, dataEDate, missingCode, thresh)
+    padData(data, dataSDate, dataEDate, globalSDate, globalEDate, missingCode)
 
     removeOutliers(data, sdFilter, applyThresh, missingCode, thresh)
 

@@ -6,7 +6,6 @@ try:
 except ModuleNotFoundError:
     from utils import loadFilesIntoMemory, selectFile, getSettings
 
-
 def loadData(file):
     data = loadFilesIntoMemory(file)[0]
 

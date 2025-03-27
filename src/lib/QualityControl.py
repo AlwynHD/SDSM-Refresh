@@ -404,13 +404,8 @@ def dailyMeansNew(filePath, applyThresh):
 
     return output
 
-<<<<<<< Updated upstream
-def getOutliersNew(filePath, sdFilterValue, applyThresh):
-    data = loadFilesIntoMemory(filePath[0])[0]
-=======
 def getOutliersNew(filePath, outlierFile, sdFilterValue, applyThresh):
     data = loadFilesIntoMemory(filePath)[0]
->>>>>>> Stashed changes
     workingData = [value for value in data if valueIsValid(value, applyThresh)]
     if len(workingData) > 0:
             mean = sum(workingData) / len(workingData)

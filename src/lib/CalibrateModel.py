@@ -1298,11 +1298,116 @@ def xValConditional():
     ----> Coming Soon
     """
 
-def stepWiseRegression():
+def stepWiseRegression(xMatrix: np.ndarray, yMatrix: np.ndarray, optimisationChoice: int, NPredictors: int, includeChow: bool, conditionalPart: bool, parmOpt: bool, propResiduals:bool, residualArray:np.ndarray):
     """
     Stepwise Regression function
     -- Currently a placeholder
     """
+    aicWanted = False
+    jMatrix = np.ones((len(yMatrix, len(yMatrix))))
+
+    determinePermutations(NPredictors)
+
+    for i in range(totalPerms):
+        ##Update ProgressBar
+
+        ##DoEvents
+
+        noOfCols = 1
+        for j in range(9):
+            if permArray[i, j] > 0:
+                noOfCols += 1
+            #endif
+        #next j
+
+        newXMatrix = np.ones((len(yMatrix), noOfCols))
+        for j in range(1, noOfCols - 1):
+            for k in range(len(yMatrix) - 1):
+                newXMatrix[k, j] = xMatrix[k, permArray[i, j]]
+            #next k
+        #next j
+
+        results = calculateParameters2(newXMatrix, newYMatrix, optimisatinonChoice, NPredictors)
+
+        #if not terminated
+
+        SSR = np.matmul(results["betaMatrix"].transpose(), np.matmul(newXMatrix.transpose(), newYMatrix))[0,0]
+        SSRMinus = np.matmul(newYMatrix.transpose(), np.matmul(jMatrix, newYMatrix))[0,0]
+        RMSE = np.sqrt(SSR / len(newYMatrix))
+        if aicWanted:
+            PermErrors[i] = (newXMatrix.shape[0] * np.log(RMSE)) + ((newXMatrix.shape[1] - 1) * 2)
+        else:
+            PermErrors[i] = (newXMatrix.shape[0] * np.log(RMSE)) + ((newXMatrix.shape[1] - 1) * np.log(newXMatrix.shape[0]))
+
+        ##Stop using newXMatrix now
+
+        maxError = -99999
+        maxLocation = 1
+        for i in range(totalPerms):
+            pass
+        
+
+def determinePermutations(numbers):
+    """
+    Returns totalPerms, permArray, and Numbers?
+    """
+    permArray = np.zeros((500, 9))
+    totalPerms = numbers #0
+    for i in range(numbers):
+        #totalPerms += 1
+        permArray[i, 0] = i
+    #next i
+    if numbers > 1:
+        totalPerms += 1
+        for i in range(numbers):
+            permArray[totalPerms, i] = i #seems like a fair bit of redundancy imo
+        #next i
+    #endif
+    
+    ##The following looks like loop hell
+    ##Must be a more efficient way of doing things
+    ##Also, how is this not going to overflow
+    if numbers > 2:
+        for i in range(1, numbers - 1):
+            generateIfromN(i, numbers, "")
+
+    return {
+        "TotalPerms": totalPerms,
+        "permArray": permArray
+        }
+
+def generateIfromN(sizeToPermute, numbers, appendString, totalPerms, permArray):
+    """
+    Curious Description
+    Genuinely not sure what this is supposed to do...
+    """
+    #what the fuck
+    valueString = ""
+    if sizeToPermute == numbers:
+        for i in range(numbers):
+            valueString += str(i+1) ## Trying to stay true to the original code
+        #next i
+        valueString += appendString.strip()
+        totalPerms += 1
+        for i in range(len(valueString)):
+            permArray[totalPerms, i] = int(valueString[i])
+        #next i
+    elif sizeToPermute == 1:
+        for i in range(numbers):
+            totalPerms += 1
+            valueString = (str(i) + appendString).strip()
+            for j in range(len(valueString)):
+                permArray[totalPerms, j] = int(valueString[j])
+            #next j
+        #next i
+    elif sizeToPermute > 1:
+        generateIfromN(sizeToPermute, numbers - 1, appendString, totalPerms, permArray)
+        valueString = (str(numbers) + appendString)
+        generateIfromN(sizeToPermute - 1, numbers - 1, valueString, totalPerms, permArray)
+    #endif
+
+
+
 
 def calculateParameters(xMatrix: np.ndarray, yMatrix: np.ndarray, optimisationChoice: int, NPredictors: int, includeChow: bool, conditionalPart: bool, parmOpt: bool, propResiduals:bool, residualArray:np.ndarray):
     """

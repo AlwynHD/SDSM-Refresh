@@ -430,6 +430,7 @@ def getOutliersNew(data, sdFilterValue, applyThresh):
     return outputData, infoString
 
 def qualityCheckNew(data, applyThresh):
+    #data = loadFilesIntoMemory(data[0])[0]
     totalCount = len(data)
     missingCount = sum(1 if entry == globalMissingCode else 0 for entry in data)
     okCount = totalCount - missingCount
@@ -461,7 +462,7 @@ def qualityCheckNew(data, applyThresh):
     else:
         mean = globalMissingCode
 
-    return dataMin, dataMax, mean, totalCount, missingCount, okCount, maxDifference, maxDiffVal1, maxDiffVal2, threshCount, globalMissingCode, thresh
+    return dataMin, dataMax, mean, totalCount, missingCount, okCount, maxDifference, maxDiffVal1, maxDiffVal2, threshCount,0,0, globalMissingCode, thresh
 
 def pettittTest(data, ptPercent):
     place = "holder"

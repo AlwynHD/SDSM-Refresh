@@ -364,6 +364,9 @@ class ContentWidget(QWidget):
         self.outliersButton.setStyleSheet("background-color: #F57F0C; color: white; font-weight: bold")
         buttonLayout.addWidget(self.outliersButton)
 
+        resetButton = QPushButton("🔄 Reset")
+        resetButton.setStyleSheet("background-color: #F44336; color: white; font-weight: bold;")
+        buttonLayout.addWidget(resetButton)
         
 
 
@@ -395,14 +398,15 @@ class ContentWidget(QWidget):
     
     def checkFile(self):
         #https://www.youtube.com/watch?v=QY4KKG4TBFo im keeping this in the comments
-        from src.lib.QualityControl import qualityCheck
+        from src.lib.QualityControl import qualityCheckNew
         print("https://www.youtube.com/watch?v=QY4KKG4TBFo") #Are easter eggs allowed?
         try:
-            min, max, count, missing, mean, maxDiff,maxDiff1, maxDiff2,threshCount, pettitt, pettitMaxPos, globalMissingCount, thresh = qualityCheck(self.selectedFile)
+            print(self.selectedFile)
+            min, max,  mean,totalCount, missing,count, maxDiff,maxDiff1, maxDiff2,threshCount, pettitt, pettitMaxPos, globalMissingCount, thresh = qualityCheckNew([self.selectedFile],self.thresholdCheckBox.isChecked())
             self.minimumFrame.contentLabel.setText(min)
             self.maximumFrame.contentLabel.setText(max)
             self.meanFrame.contentLabel.setText(mean)
-            self.numOfValuesFrame.contentLabel.setText(count+missing)
+            self.numOfValuesFrame.contentLabel.setText(totalCount)
             self.missingFrame.contentLabel.setText(missing)
             self.numOfOKValuesFrame.contentLabel.setText(count)
             self.maximumDifferenceFrame.contentLabel.setText(maxDiff)

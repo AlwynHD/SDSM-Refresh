@@ -370,7 +370,8 @@ def pettittTest(pettittArray, ptPercent):
 def valueIsValid(value, applyThresh):
     return value != globalMissingCode and (not applyThresh or value > thresh)
 
-def dailyMeansNew(data, applyThresh):
+def dailyMeansNew(filePath, applyThresh):
+    data = loadFilesIntoMemory(filePath)[0]
     dailyStats = np.zeros((7, 4), float)
     #[i][0]: sum, [i][1]: count, [i][2]: mean, [i][3] standard deviation
     #i represents the day
@@ -403,8 +404,8 @@ def dailyMeansNew(data, applyThresh):
 
     return output
 
-def getOutliersNew(data, sdFilterValue, applyThresh):
-    #todo return location of data
+def getOutliersNew(filePath, sdFilterValue, applyThresh):
+    data = loadFilesIntoMemory(filePath)[0]
     workingData = [value for value in data if valueIsValid(value, applyThresh)]
     if len(workingData) > 0:
             mean = sum(workingData) / len(workingData)
@@ -429,8 +430,8 @@ def getOutliersNew(data, sdFilterValue, applyThresh):
     infoString = str(len(outliers)) + " outliers identified and written to file."
     return outputData, infoString
 
-def qualityCheckNew(data, applyThresh):
-    #data = loadFilesIntoMemory(data[0])[0]
+def qualityCheckNew(filePath, applyThresh):
+    data = loadFilesIntoMemory(filePath)[0]
     totalCount = len(data)
     missingCount = sum(1 if entry == globalMissingCode else 0 for entry in data)
     okCount = totalCount - missingCount
@@ -462,7 +463,7 @@ def qualityCheckNew(data, applyThresh):
     else:
         mean = globalMissingCode
 
-    return dataMin, dataMax, mean, totalCount, missingCount, okCount, maxDifference, maxDiffVal1, maxDiffVal2, threshCount,0,0, globalMissingCode, thresh
+    return dataMin, dataMax, mean, totalCount, missingCount, okCount, maxDifference, maxDiffVal1, maxDiffVal2, threshCount, 0, 0, globalMissingCode, thresh
 
 def pettittTest(data, ptPercent):
     place = "holder"
@@ -489,11 +490,12 @@ def performPettittTest(data):
     return round(2 * np.e ** ((-6 * max(petMatrix[:, 3]) ** 2) / ((20 ** 3) + (20 ** 2))), 5)
 
 if __name__ == '__main__':
-    file = selectFile()
-    data = loadFilesIntoMemory(file)[0]
+    filePath = selectFile()
     pettittPercent = 90
     applyThresh = False
     standardDeviations = 5
 
+    print(qualityCheckNew(filePath, applyThresh))
+
     data = [2, 3, 4, 5, 6, 7, 8, 9, 10, 100, 120, 145, 145, 555, 444, 333, 333, 333, 333, 333]
-    print(performPettittTest(data))
+    #print(performPettittTest(data))

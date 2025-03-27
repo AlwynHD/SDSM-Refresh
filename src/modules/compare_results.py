@@ -39,7 +39,7 @@ class comparedFileBox(borderedQGroupBox):
         fileLayout = QVBoxLayout()
         fileFrame.setLayout(fileLayout)
 
-        fileButton = QPushButton("Select First File")
+        fileButton = QPushButton("Select File")
         fileButton.setContentsMargins(25,25,25,25)
         fileButton.setMaximumWidth(200)
         fileButton.clicked.connect(self.selectFile)
@@ -241,6 +241,8 @@ class ContentWidget(QWidget):
 
         buttonFrame.setLayout(buttonLayout)
 
+        
+
         mainLayout.addWidget(buttonFrame)
         
 
@@ -268,14 +270,26 @@ class ContentWidget(QWidget):
 
         buttonLayout.addWidget(lineGraphButton)
 
-
+        resetButton = QPushButton("🔄 Reset")
+        resetButton.setStyleSheet("background-color: #F44336; color: white; font-weight: bold;")
+        resetButton.clicked.connect(self.resetAll)
+        buttonLayout.addWidget(resetButton)
 
         # Add a spacer to ensure content is properly spaced
         
         #titleLayout.addStretch()
         #contentAreaLayout.addStretch()
 
-    
+    def resetAll(self):
+        self.fileOneFrame.pathSelected = ""
+        self.fileOneFrame.statSelected = ""
+        self.fileOneFrame.fileLabel.setText("File: Not Selected")
+        self.fileOneFrame.writeStats()
+
+        self.fileTwoFrame.pathSelected = ""
+        self.fileTwoFrame.statSelected = ""
+        self.fileTwoFrame.fileLabel.setText("File: Not Selected")
+        self.fileTwoFrame.writeStats()
 
     def doBarChart(self):
         from src.lib.CompareResults import readSumStatsFile, plotMultiple

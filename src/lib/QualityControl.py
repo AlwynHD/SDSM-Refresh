@@ -463,9 +463,36 @@ def qualityCheckNew(data, applyThresh):
 
     return dataMin, dataMax, mean, totalCount, missingCount, okCount, maxDifference, maxDiffVal1, maxDiffVal2, threshCount, globalMissingCode, thresh
 
+def pettittTest(data, ptPercent):
+    place = "holder"
+
+def performPettittTest(data):
+    petMatrix = np.zeros((len(data), 4), float)
+
+    petMatrix[:, 0] = [i for i in range(1, len(data) + 1)]
+    petMatrix[:, 1] = data
+
+    data.sort()
+
+    for i in range(len(data)):
+        for j in range(len(data)):
+            if petMatrix[j][1] == data[i] and petMatrix[j][2] == 0:
+                petMatrix[j][2] = i + 1
+
+    sum = 0
+    for i in range(len(data)):
+        sum += petMatrix[i][2]
+        petMatrix[i][3] = (2 * sum) - ((i + 1) * (len(data) + 1))
+
+    petMatrix[:, 3] = np.abs(petMatrix[:, 3])
+    return round(2 * np.e ** ((-6 * max(petMatrix[:, 3]) ** 2) / ((20 ** 3) + (20 ** 2))), 5)
+
 if __name__ == '__main__':
     file = selectFile()
     data = loadFilesIntoMemory(file)[0]
     pettittPercent = 90
     applyThresh = False
     standardDeviations = 5
+
+    data = [2, 3, 4, 5, 6, 7, 8, 9, 10, 100, 120, 145, 145, 555, 444, 333, 333, 333, 333, 333]
+    print(performPettittTest(data))

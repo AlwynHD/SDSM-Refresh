@@ -403,28 +403,29 @@ class ContentWidget(QWidget):
         try:
             print(self.selectedFile)
             min, max,  mean,totalCount, missing,count, maxDiff,maxDiff1, maxDiff2,threshCount, pettitt, pettitMaxPos, globalMissingCount, thresh = qualityCheckNew([self.selectedFile],self.thresholdCheckBox.isChecked())
-            self.minimumFrame.contentLabel.setText(min)
-            self.maximumFrame.contentLabel.setText(max)
-            self.meanFrame.contentLabel.setText(mean)
-            self.numOfValuesFrame.contentLabel.setText(totalCount)
-            self.missingFrame.contentLabel.setText(missing)
-            self.numOfOKValuesFrame.contentLabel.setText(count)
-            self.maximumDifferenceFrame.contentLabel.setText(maxDiff)
-            self.maximumDifferenceValOneFrame.contentLabel.setText(maxDiff1)
-            self.maximumDifferenceValTwoFrame.contentLabel.setText(maxDiff2)
-            self.valueOverThreshFrame.contentLabel.setText(threshCount)
-            self.pettittSigFrame.contentLabel.setText(pettitt)
-            self.pettittMaxFrame.contentLabel.setText(pettitMaxPos)
-            self.missingValCodeFrame.contentLabel.setText(globalMissingCount)
-            self.eventThreshFrame.contentLabel.setText(thresh)
+            self.minimumFrame.contentLabel.setText(str(min))
+            self.maximumFrame.contentLabel.setText(str(max))
+            self.meanFrame.contentLabel.setText(str(mean))
+            self.numOfValuesFrame.contentLabel.setText(str(totalCount))
+            self.missingFrame.contentLabel.setText(str(missing))
+            self.numOfOKValuesFrame.contentLabel.setText(str(count))
+            self.maximumDifferenceFrame.contentLabel.setText(str(maxDiff))
+            self.maximumDifferenceValOneFrame.contentLabel.setText(str(maxDiff1))
+            self.maximumDifferenceValTwoFrame.contentLabel.setText(str(maxDiff2))
+            self.valueOverThreshFrame.contentLabel.setText(str(threshCount))
+            self.pettittSigFrame.contentLabel.setText(str(pettitt))
+            self.pettittMaxFrame.contentLabel.setText(str(pettitMaxPos))
+            self.missingValCodeFrame.contentLabel.setText(str(globalMissingCount))
+            self.eventThreshFrame.contentLabel.setText(str(thresh))
             
         except FileNotFoundError:
             displayBox("File Error", "Please ensure a predictand file is selected and exists.","Error", isError=True)
 
     def getDailyStats(self):
-        from src.lib.QualityControl import dailyMeans
+        from src.lib.QualityControl import dailyMeansNew
         try:
-            stats = dailyMeans(self.selectedFile,self.thresholdCheckBox.isChecked())
+            print(self.selectedFile)
+            stats = dailyMeansNew([self.selectedFile],self.thresholdCheckBox.isChecked())
             displayBox("Daily Stats:", stats, "Daily Results")
         except FileNotFoundError:
             displayBox("File Error", "Please ensure a predictand file is selected and exists.", "Error", isError=True)

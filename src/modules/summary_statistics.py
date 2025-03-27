@@ -1,7 +1,6 @@
 import os
 import datetime
 import numpy as np
-import pandas as pd
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QGroupBox,
     QPushButton, QRadioButton, QCheckBox, QFileDialog, QMessageBox,

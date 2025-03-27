@@ -293,8 +293,8 @@ class ContentWidget(QWidget):
 
         standardDeviationLabel = QLabel("Standard Deviations: ")
         standardDeviationLayout.addWidget(standardDeviationLabel)
-        standardDeviationInput = QLineEdit("0")
-        standardDeviationLayout.addWidget(standardDeviationInput)
+        self.standardDeviationInput = QLineEdit("0")
+        standardDeviationLayout.addWidget(self.standardDeviationInput)
 
         selectOutlierFileButton = QPushButton("📂 Select File")
         selectOutlierFileButton.clicked.connect(self.selectFile)
@@ -445,9 +445,9 @@ class ContentWidget(QWidget):
 
     def checkOutliers(self):
         self.outliersButton.setText("Calculating")
-        from src.lib.QualityControl import outliersID
+        from src.lib.QualityControl import getOutliersNew
         try:
-            message= outliersID(self.selectedFile, self.selectedOutlier)
+            message= getOutliersNew([self.selectedFile],[self.selectedOutlier],int(self.standardDeviationInput.text()) , self.thresholdCheckBox.isChecked())
             self.outliersButton.setText("Outliers")
             print("message in checkOutliers=",message)
             #proc = threading.Thread(target=displayBox, args=("Outliers Identified", message, "Outlier Results"))
@@ -459,7 +459,7 @@ class ContentWidget(QWidget):
             self.outliersButton.setText("Outliers")
 
         except FileNotFoundError:
-            
+            displayBox("File Error", "Please ensure an outlier file is selected and exists.","Error", isError=True)
             self.outliersButton.setText("Outliers")
     
 

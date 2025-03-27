@@ -405,7 +405,7 @@ def dailyMeansNew(filePath, applyThresh):
     return output
 
 def getOutliersNew(filePath, sdFilterValue, applyThresh):
-    data = loadFilesIntoMemory(filePath)[0]
+    data = loadFilesIntoMemory(filePath[0])[0]
     workingData = [value for value in data if valueIsValid(value, applyThresh)]
     if len(workingData) > 0:
             mean = sum(workingData) / len(workingData)
@@ -431,7 +431,7 @@ def getOutliersNew(filePath, sdFilterValue, applyThresh):
     return outputData, infoString
 
 def qualityCheckNew(filePath, applyThresh):
-    data = loadFilesIntoMemory(filePath[0])[0]
+    data = loadFilesIntoMemory(filePath)[0]
     totalCount = len(data)
     missingCount = sum(1 if entry == globalMissingCode else 0 for entry in data)
     okCount = totalCount - missingCount

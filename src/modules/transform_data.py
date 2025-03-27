@@ -521,12 +521,13 @@ class ContentWidget(QWidget):
                     button.setChecked(False)
 
     def doTransform(self):
+        from src.lib.utils import getSettings
         from src.lib.TransformData import square, cube, powFour, powMinusOne, eToTheN, tenToTheN, lag, binomial, backwardsChange, removeOutliers
         from src.lib.TransformData import powHalf, powThird,powQuarter,returnSelf, padData, genericTransform, loadData, boxCox, unBoxCox
         from numpy import log, log10, ndim, empty,longdouble
         #print("https://www.youtube.com/watch?v=7F2QE8O-Y1g")
 
-        
+        settings = getSettings()
         try: #Check if an input file is selected
             file = open(self.inputSelected,"r")
             file.close()

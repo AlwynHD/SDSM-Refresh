@@ -10,9 +10,12 @@ except ModuleNotFoundError:
 def valueIsValid(value, applyThresh, missingCode, thresh):
     return value != missingCode and (not applyThresh or value > thresh)
 
-def dailyMeans(filePath, applyThresh, missingCode, thresh, globalSDate):
+def dailyMeans(filePath, applyThresh, globalSDate):
+    settings = getSettings()
     data = loadFilesIntoMemory(filePath)[0]
     dailyStats = np.zeros((7, 4), float)
+    missingCode = settings["globalmissingcode"]
+    thresh = settings["fixedthreshold"]
     #[i][0]: sum, [i][1]: count, [i][2]: mean, [i][3] standard deviation
     #i represents the day
 
@@ -44,7 +47,10 @@ def dailyMeans(filePath, applyThresh, missingCode, thresh, globalSDate):
 
     return output
 
-def getOutliers(filePath, outlierFile, sdFilterValue, applyThresh, missingCode, thresh):
+def getOutliers(filePath, outlierFile, sdFilterValue, applyThresh):
+    settings = getSettings()
+    missingCode = settings["globalmissingcode"]
+    thresh = settings["fixedthreshold"]
     data = loadFilesIntoMemory(filePath)[0]
     workingData = [value for value in data if valueIsValid(value, applyThresh, missingCode, thresh)]
     if len(workingData) > 0:
@@ -71,7 +77,10 @@ def getOutliers(filePath, outlierFile, sdFilterValue, applyThresh, missingCode, 
 
     return str(len(outliers)) + " outliers identified and written to file."
 
-def qualityCheck(filePath, applyThresh, missingCode, thresh):
+def qualityCheck(filePath, applyThresh):
+    settings = getSettings()
+    missingCode = settings["globalmissingcode"]
+    thresh = settings["fixedthreshold"]
     data = loadFilesIntoMemory(filePath)[0]
     totalCount = len(data)
     missingCount = sum(1 if entry == missingCode else 0 for entry in data)

@@ -1,8 +1,8 @@
 from PyQt5.QtWidgets import (QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, QFrame, QLabel, QFileDialog,
                              QLineEdit, QCheckBox, QMessageBox, QGroupBox)
-from PyQt5.QtCore import Qt, QSize
-from PyQt5.QtGui import QPalette, QColor, QIcon
-from QualityControl import qualityCheck, outliersID, dailyMeans
+from PyQt5.QtCore import Qt
+import threading
+import time
 # Define the name of the module for display in the content area
 moduleName = "Quality Control"
 
@@ -17,7 +17,20 @@ def displayBox(messageType, messageInfo, messageTitle, isError=False):
     messageBox.setWindowTitle(messageTitle)
     messageBox.exec_()
 
+class ThreadWithReturnValue(threading.Thread):
+    
+    def __init__(self, group=None, target=None, name=None,
+                 args=(), kwargs={}, Verbose=None):
+        threading.Thread.__init__(self, group, target, name, args, kwargs)
+        self._return = None
 
+    def run(self):
+        if self._target is not None:
+            self._return = self._target(*self._args,
+                                                **self._kwargs)
+            return self._return
+ 
+        
 
 class borderedQGroupBox(QGroupBox):
     def __init__(self,args):
@@ -53,15 +66,35 @@ class ContentWidget(QWidget):
         super().__init__()
 
         self.setStyleSheet("""
-                           QFrame{
-                                background-color: #F0F0F0;}
-                           borderedQGroupBox{
+                            
+                            QFrame{
+                                background-color: #F0F0F0;
+                                font-size: 18px;}
+                           
+                            QRadioButton
+                           {
+                                font-size: 18px;
+                           }
+                           QDateEdit
+                           {
+                                font-size: 18px;
+                           }
+                           QLineEdit
+                           {
+                                font-size: 18px;
+                           }
+                           QCheckBox
+                           {
+                                font-size: 18px;
+                           }
+                            borderedQGroupBox{
                                 background-color: #F0F0F0;
                                 border : 1px solid #CECECE;
                                 border-top-left-radius : 20px;
                                 border-top-right-radius : 20px;
                                 border-bottom-left-radius : 20px;
                                 border-bottom-right-radius : 20px;}""")
+
         self.selectedFile = ""
         self.selectedOutlier = ""
 
@@ -71,33 +104,7 @@ class ContentWidget(QWidget):
         mainLayout.setSpacing(0)  # No spacing between elements
         self.setLayout(mainLayout)  # Apply the main layout to the widget
 
-        # --- Button Bar ---
-        # Layout for the buttonBar at the top of the screen
-        buttonBarLayout = QHBoxLayout()
-        buttonBarLayout.setSpacing(0)  # No spacing between buttons
-        buttonBarLayout.setContentsMargins(0, 0, 0, 0)  # No margins around the layout
-        buttonBarLayout.setAlignment(Qt.AlignLeft)  # Align buttons to the left
 
-        # Create placeholder buttons for the buttonBar
-        buttonNames = ["Reset","Check File", "Daily Stats", "Outliers", "Settings"]  # Names of the buttons for clarity
-        for name in buttonNames:
-            button = QPushButton(name)  # Create a button with the given name
-            button.setIcon(QIcon("placeholder_icon.png"))  # Placeholder icon
-            button.clicked.connect(self.handleMenuButtonClicks)
-            button.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)  # Fixed size policy
-            button.sizeHint()  # Set a fixed size for the button
-            button.setStyleSheet(
-                "border: 1px solid lightgray; background-color: #F0F0F0; text-align: left;"
-            )  # Style to match the overall design
-            buttonBarLayout.addWidget(button)  # Add the button to the buttonBar layout
-
-        # Frame for the buttonBar
-        buttonBarFrame = QFrame()
-        buttonBarFrame.setLayout(buttonBarLayout)  # Apply the button layout to the frame
-        buttonBarFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
-        buttonBarFrame.setFixedHeight(50)  # Match height with other UI elements
-        buttonBarFrame.setStyleSheet("background-color: #F0F0F0;")  
-        mainLayout.addWidget(buttonBarFrame)  # Add the buttonBar frame to the main layout
 
         # --- Content Frames ---
         # Frame for the title
@@ -227,6 +234,17 @@ class ContentWidget(QWidget):
         
         SPTOLayout.addWidget(outliersFrame)
 
+        buttonFrame = QFrame()
+        buttonFrame.setBaseSize(600,60)
+        buttonFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Fixed)
+
+        buttonLayout = QHBoxLayout()
+        buttonLayout.setContentsMargins(25,25,25,25)
+        buttonLayout.setSpacing(10)
+
+        buttonFrame.setLayout(buttonLayout)
+
+        mainLayout.addWidget(buttonFrame)
         
 
 
@@ -238,7 +256,7 @@ class ContentWidget(QWidget):
         titleLayout.addWidget(moduleLabel)  # Add the label to the contentArea layout'''
 
 
-        selectFileButton = QPushButton("Select File")
+        selectFileButton = QPushButton("📂 Select File")
         selectFileButton.setObjectName("check file")
 
         selectFileButton.clicked.connect(self.selectFile)
@@ -278,7 +296,7 @@ class ContentWidget(QWidget):
         standardDeviationInput = QLineEdit("0")
         standardDeviationLayout.addWidget(standardDeviationInput)
 
-        selectOutlierFileButton = QPushButton("Select File")
+        selectOutlierFileButton = QPushButton("📂 Select File")
         selectOutlierFileButton.clicked.connect(self.selectFile)
         selectOutlierFileButton.setObjectName("outlier file")
         outliersLayout.addWidget(selectOutlierFileButton)
@@ -328,6 +346,25 @@ class ContentWidget(QWidget):
         self.eventThreshFrame = resultsQFrame("Event threshold: ")
         resultsLayout.addWidget(self.eventThreshFrame)
 
+        checkFileButton = QPushButton("Check File")
+        checkFileButton.clicked.connect(self.checkFile)
+        checkFileButton.setStyleSheet("background-color: #4CAF50; color: white; font-weight: bold;")
+
+        buttonLayout.addWidget(checkFileButton)
+
+        dailyStatsButton = QPushButton("Daily Stats")
+        dailyStatsButton.clicked.connect(self.getDailyStats)
+        dailyStatsButton.setStyleSheet("background-color: #1FC7F5; color: white; font-weight: bold")
+
+        buttonLayout.addWidget(dailyStatsButton)
+
+        self.outliersButton = QPushButton("Outliers")
+        
+        self.outliersButton.clicked.connect(self.doOutliers)
+        self.outliersButton.setStyleSheet("background-color: #F57F0C; color: white; font-weight: bold")
+        buttonLayout.addWidget(self.outliersButton)
+
+        
 
 
 
@@ -356,35 +393,60 @@ class ContentWidget(QWidget):
             label.setText("No file selected")
             return ""
     
-    def handleMenuButtonClicks(self):
-        button = self.sender().text()
-        if button == "Check File":
-            #https://www.youtube.com/watch?v=QY4KKG4TBFo im keeping this in the comments
-            print("https://www.youtube.com/watch?v=QY4KKG4TBFo") #Are easter eggs allowed?
-            try:
-                min, max, count, missing, mean = qualityCheck(self.selectedFile)
-                self.minimumFrame.contentLabel.setText(min)
-                self.maximumFrame.contentLabel.setText(max)
-                self.meanFrame.contentLabel.setText(mean)
-                self.numOfValuesFrame.contentLabel.setText(count)
-                self.missingFrame.contentLabel.setText(missing)
-            except FileNotFoundError:
-                displayBox("File Error", "Please ensure a predictand file is selected and exists.","Error", isError=True)
-
-           
-        elif button == "Outliers":
-            try:
-                message = outliersID(self.selectedFile, self.selectedOutlier)
-                displayBox("Outliers Identified", message, "Outlier Results")
-
-            except FileNotFoundError:
-                displayBox("File Error", "Please ensure predictand and output files are selected.", "Error", isError=True)
-        elif button == "Daily Stats":
-            try:
-                stats = dailyMeans(self.selectedFile)
-                displayBox("Daily Stats:", stats, "Daily Results")
-            except FileNotFoundError:
-                displayBox("File Error", "Please ensure a predictand file is selected and exists.", "Error", isError=True)
+    def checkFile(self):
+        #https://www.youtube.com/watch?v=QY4KKG4TBFo im keeping this in the comments
+        from src.lib.QualityControl import qualityCheck
+        print("https://www.youtube.com/watch?v=QY4KKG4TBFo") #Are easter eggs allowed?
+        try:
+            min, max, count, missing, mean, maxDiff,maxDiff1, maxDiff2,threshCount, pettitt, pettitMaxPos, globalMissingCount, thresh = qualityCheck(self.selectedFile)
+            self.minimumFrame.contentLabel.setText(min)
+            self.maximumFrame.contentLabel.setText(max)
+            self.meanFrame.contentLabel.setText(mean)
+            self.numOfValuesFrame.contentLabel.setText(count+missing)
+            self.missingFrame.contentLabel.setText(missing)
+            self.numOfOKValuesFrame.contentLabel.setText(count)
+            self.maximumDifferenceFrame.contentLabel.setText(maxDiff)
+            self.maximumDifferenceValOneFrame.contentLabel.setText(maxDiff1)
+            self.maximumDifferenceValTwoFrame.contentLabel.setText(maxDiff2)
+            self.valueOverThreshFrame.contentLabel.setText(threshCount)
+            self.pettittSigFrame.contentLabel.setText(pettitt)
+            self.pettittMaxFrame.contentLabel.setText(pettitMaxPos)
+            self.missingValCodeFrame.contentLabel.setText(globalMissingCount)
+            self.eventThreshFrame.contentLabel.setText(thresh)
             
-        else:
-            print("work in progress, pardon our dust")
+        except FileNotFoundError:
+            displayBox("File Error", "Please ensure a predictand file is selected and exists.","Error", isError=True)
+
+    def getDailyStats(self):
+        from src.lib.QualityControl import dailyMeans
+        try:
+            stats = dailyMeans(self.selectedFile)
+            displayBox("Daily Stats:", stats, "Daily Results")
+        except FileNotFoundError:
+            displayBox("File Error", "Please ensure a predictand file is selected and exists.", "Error", isError=True)
+    def doOutliers(self):
+        proc = ThreadWithReturnValue(target=self.checkOutliers)
+        proc.daemon = True
+        proc.start()
+        
+
+    def checkOutliers(self):
+        self.outliersButton.setText("Calculating")
+        from src.lib.QualityControl import outliersID
+        try:
+            message= outliersID(self.selectedFile, self.selectedOutlier)
+            self.outliersButton.setText("Outliers")
+            print("message in checkOutliers=",message)
+            #proc = threading.Thread(target=displayBox, args=("Outliers Identified", message, "Outlier Results"))
+            #proc.start()
+            #displayBox("Outliers Identified", message, "Outlier Results")
+
+            self.outliersButton.setText(message)
+            time.sleep(5)
+            self.outliersButton.setText("Outliers")
+
+        except FileNotFoundError:
+            self.outliersButton.setText("Outliers")
+    
+
+

@@ -440,28 +440,33 @@ class ContentWidget(QWidget):
         #Radio buttons for model type
 
         #Process radio buttons
-        modelRadioButtonGroup = QButtonGroup()
-        modelRadioButtonGroup.setExclusive(True)
+        self.modelRadioButtonGroup = QButtonGroup()
+        self.modelRadioButtonGroup.setExclusive(True)
         self.monthlyRadioButton = QRadioButton("Monthly")
         self.monthlyRadioButton.setChecked(True)
+        self.monthlyRadioButton.setObjectName("0")
         seasonalRadioButton = QRadioButton("Seasonal")
+        seasonalRadioButton.setObjectName("1")
         annualRadioButton = QRadioButton("Annual")
-        modelRadioButtonGroup.addButton(self.monthlyRadioButton)
-        modelRadioButtonGroup.addButton(seasonalRadioButton)
-        modelRadioButtonGroup.addButton(annualRadioButton)
+        annualRadioButton.setObjectName("2")
+        self.modelRadioButtonGroup.addButton(self.monthlyRadioButton)
+        self.modelRadioButtonGroup.addButton(seasonalRadioButton)
+        self.modelRadioButtonGroup.addButton(annualRadioButton)
 
         modelTypeLayout.addWidget(self.monthlyRadioButton)
         modelTypeLayout.addWidget(seasonalRadioButton)
         modelTypeLayout.addWidget(annualRadioButton)
 
         #Process radio buttons
-        processRadioButtonGroup = QButtonGroup()
-        processRadioButtonGroup.setExclusive(True)
+        self.processRadioButtonGroup = QButtonGroup()
+        self.processRadioButtonGroup.setExclusive(True)
         self.unconditionalRadioButton = QRadioButton("Unconditional")
+        self.unconditionalRadioButton.setObjectName("False")
         self.unconditionalRadioButton.setChecked(True)
         conditionalRadioButton = QRadioButton("Conditional")
-        processRadioButtonGroup.addButton(self.unconditionalRadioButton)
-        processRadioButtonGroup.addButton(conditionalRadioButton)
+        conditionalRadioButton.setObjectName("True")
+        self.processRadioButtonGroup.addButton(self.unconditionalRadioButton)
+        self.processRadioButtonGroup.addButton(conditionalRadioButton)
 
         processLayout.addWidget(self.unconditionalRadioButton)
         processLayout.addWidget(conditionalRadioButton)
@@ -471,15 +476,15 @@ class ContentWidget(QWidget):
         autoregressionLayout.addWidget(self.autoregressionCheck)
 
         #Residual Analysis radio buttons
-        residualRadioButtonGroup = QButtonGroup()
-        residualRadioButtonGroup.setExclusive(True)
+        self.residualRadioButtonGroup = QButtonGroup()
+        self.residualRadioButtonGroup.setExclusive(True)
         self.noneRadioButton = QRadioButton("None")
         self.noneRadioButton.setChecked(True)
         scatterRadioButton = QRadioButton("Scatter Plot")
         histogramRadioButton = QRadioButton("Histogram")
-        residualRadioButtonGroup.addButton(self.noneRadioButton)
-        residualRadioButtonGroup.addButton(scatterRadioButton)
-        residualRadioButtonGroup.addButton(histogramRadioButton)
+        self.residualRadioButtonGroup.addButton(self.noneRadioButton)
+        self.residualRadioButtonGroup.addButton(scatterRadioButton)
+        self.residualRadioButtonGroup.addButton(histogramRadioButton)
 
         residualLayout.addWidget(self.noneRadioButton)
         residualLayout.addWidget(scatterRadioButton)
@@ -501,15 +506,18 @@ class ContentWidget(QWidget):
 
         #De Trend Radio Buttons
 
-        deTrendRadioButtonGroup = QButtonGroup()
-        deTrendRadioButtonGroup.setExclusive(True)
+        self.deTrendRadioButtonGroup = QButtonGroup()
+        self.deTrendRadioButtonGroup.setExclusive(True)
         self.noneTrendRadioButton = QRadioButton("None")
         self.noneTrendRadioButton.setChecked(True)
+        self.noneTrendRadioButton.setObjectName("0")
         linearRadioButton = QRadioButton("Linear")
+        linearRadioButton.setObjectName("1")
         powerRadioButton = QRadioButton("Power Function")
-        deTrendRadioButtonGroup.addButton(self.noneTrendRadioButton)
-        deTrendRadioButtonGroup.addButton(linearRadioButton)
-        deTrendRadioButtonGroup.addButton(powerRadioButton)
+        powerRadioButton.setObjectName("2")
+        self.deTrendRadioButtonGroup.addButton(self.noneTrendRadioButton)
+        self.deTrendRadioButtonGroup.addButton(linearRadioButton)
+        self.deTrendRadioButtonGroup.addButton(powerRadioButton)
 
         deTrendLayout.addWidget(self.noneTrendRadioButton)
         deTrendLayout.addWidget(linearRadioButton)
@@ -528,7 +536,7 @@ class ContentWidget(QWidget):
         crossValLayout.addWidget(self.crossValInput) 
 
         cailbrateButton = QPushButton("Calibrate")
-        #correlationButton.clicked.connect(self.doCorrelation)
+        cailbrateButton.clicked.connect(self.doCalibration)
         cailbrateButton.setStyleSheet("background-color: #4CAF50; color: white; font-weight: bold;")
 
         buttonLayout.addWidget(cailbrateButton)
@@ -537,6 +545,17 @@ class ContentWidget(QWidget):
         resetButton.clicked.connect(self.resetAll)
         resetButton.setStyleSheet("background-color: #F44336; color: white; font-weight: bold;")
         buttonLayout.addWidget(resetButton)
+
+    def doCalibration(self):
+        from src.lib.CalibrateModel import calibrateModel
+        print(self.predictandSelected)
+        fitStartDate = self.QDateEditToDateTime(self.fitStartDateChooser)
+        fitEndDate = self.QDateEditToDateTime(self.fitEndDateChooser)
+        modelType = int(self.modelRadioButtonGroup.checkedButton().objectName())
+        parmOpt = bool(self.processRadioButtonGroup.checkedButton().objectName())
+        deTrend = int(self.deTrendRadioButtonGroup.checkedButton().objectName())
+        data = calibrateModel(self.predictandSelected,self.predictorsSelected,self.outputSelected,fitStartDate,fitEndDate,
+                              modelType,parmOpt,self.autoregressionCheck.isChecked(), self.chowCheck.isChecked(),deTrend, self.crossValCalcCheck.isChecked())
 
     def resetAll(self):
         #Reset file and path variables and labels
@@ -563,6 +582,10 @@ class ContentWidget(QWidget):
         self.histogramInput.setText("14")
         self.crossValInput.setText("2")
 
+    def QDateEditToDateTime(self, dateEdit):
+        rawStartDate = dateEdit.date()
+        dateTime = rawStartDate.toPyDate()
+        return dateTime
 
     def writePredictors(self):
         for predictor in listdir(self.predictorPath):
@@ -619,10 +642,10 @@ class ContentWidget(QWidget):
         print(fileName)
         if fileName[0] != '':
             self.outputSelected = fileName[0]
-            self.selectPredictandLabel.setText("File: "+self.outputSelected.split("/")[-1]) #Only show the name of the file, not the whole path
+            self.selectOutputLabel.setText("File: "+self.outputSelected.split("/")[-1]) #Only show the name of the file, not the whole path
         else:
             self.outputSelected = None
-            self.outputSelected.setText("No output file selected.")
+            self.selectOutputLabel.setText("No Output Selected.")
 
     def predictorLabelClicked(self,*args):
         button = self.sender() #Get the buttonLabel that was clicked

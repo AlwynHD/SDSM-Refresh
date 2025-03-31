@@ -319,9 +319,9 @@ def analyseData(predictandSelected, predictorSelected, inputs):
     elif len(predictorSelected) < 1 and not autoRegressionTick:
         return {"error": "You must select at least one predictor."}
     elif not fSDateOK(fSDate, fEDate, globalSDate):
-        return {"error": "file start date is not okay"}
+        return {"error": "File start date is not okay"}
     elif not fEDateOK(fSDate, fEDate, globalEDate):
-        return {"error": "file end date is not okay"}
+        return {"error": "File end date is not okay"}
     elif not sigLevelOK(sigLevelInput):
         return {"error": "Sig level is not okay"}
 
@@ -333,7 +333,10 @@ def analyseData(predictandSelected, predictorSelected, inputs):
         nVariables += 1
 
     # Load files into memory
-    loadedFiles = loadFilesIntoMemory(predictandSelected + predictorSelected)
+    try:
+        loadedFiles = loadFilesIntoMemory(predictandSelected + predictorSelected)
+    except FileNotFoundError:
+        return {"error": "Predictand file must be selected"}
     
     # Slice the loaded files starting from the file start date
     loadedFiles = [file[(fSDate - globalSDate).days:] for file in loadedFiles]
@@ -481,7 +484,7 @@ def analyseData(predictandSelected, predictorSelected, inputs):
         "FileList": predictorSelected,  # List of predictor files
         "TotalMissing": int(np.sum(missing)),  # Total missing values
         "NVariables": len(predictorSelected) + 1,  # Number of variables
-        
+        "error": None,
         # Prepare R-squared and p-value matrices
         "RSQD": [],  # 2D list of R-squared values
         "pr": []     # 2D list of p-values

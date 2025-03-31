@@ -463,6 +463,10 @@ class ContentWidget(QWidget):
         data = analyseData([self.predictandSelected],[predictor for predictor in self.predictorsSelected], userInput)
         #todo error handling
         #print(data)
+
+        if data['error'] != None:
+            return displayBox("Error",data['error'], "Error",isError=True)
+
         print(formatAnalysisResults(data))
 
         self.newWindow = AnalysisResultsApp()

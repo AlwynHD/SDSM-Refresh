@@ -555,8 +555,14 @@ class ContentWidget(QWidget):
         parmOpt = bool(int(self.processRadioButtonGroup.checkedButton().objectName()))
         deTrend = int(self.deTrendRadioButtonGroup.checkedButton().objectName())
         print(parmOpt)
-        data = calibrateModel(self.predictandSelected,self.predictorsSelected,self.outputSelected,fitStartDate,fitEndDate,
+        print(self.predictorsSelected)
+        fileList = [] #Copy predictors to a new list so when calibrateModel messes with it it doesnt break absolutely everything
+        for predictor in self.predictorsSelected:
+            fileList.append(predictor)
+        data = calibrateModel(self.predictandSelected,fileList,self.outputSelected,fitStartDate,fitEndDate,
                               modelType,parmOpt,self.autoregressionCheck.isChecked(), self.chowCheck.isChecked(),deTrend, self.crossValCalcCheck.isChecked())
+        print(self.predictorsSelected)
+
 
     def resetAll(self):
         #Reset file and path variables and labels

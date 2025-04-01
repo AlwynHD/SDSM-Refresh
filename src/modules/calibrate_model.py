@@ -461,10 +461,10 @@ class ContentWidget(QWidget):
         self.processRadioButtonGroup = QButtonGroup()
         self.processRadioButtonGroup.setExclusive(True)
         self.unconditionalRadioButton = QRadioButton("Unconditional")
-        self.unconditionalRadioButton.setObjectName("False")
+        self.unconditionalRadioButton.setObjectName("0")
         self.unconditionalRadioButton.setChecked(True)
         conditionalRadioButton = QRadioButton("Conditional")
-        conditionalRadioButton.setObjectName("True")
+        conditionalRadioButton.setObjectName("1")
         self.processRadioButtonGroup.addButton(self.unconditionalRadioButton)
         self.processRadioButtonGroup.addButton(conditionalRadioButton)
 
@@ -552,8 +552,9 @@ class ContentWidget(QWidget):
         fitStartDate = self.QDateEditToDateTime(self.fitStartDateChooser)
         fitEndDate = self.QDateEditToDateTime(self.fitEndDateChooser)
         modelType = int(self.modelRadioButtonGroup.checkedButton().objectName())
-        parmOpt = bool(self.processRadioButtonGroup.checkedButton().objectName())
+        parmOpt = bool(int(self.processRadioButtonGroup.checkedButton().objectName()))
         deTrend = int(self.deTrendRadioButtonGroup.checkedButton().objectName())
+        print(parmOpt)
         data = calibrateModel(self.predictandSelected,self.predictorsSelected,self.outputSelected,fitStartDate,fitEndDate,
                               modelType,parmOpt,self.autoregressionCheck.isChecked(), self.chowCheck.isChecked(),deTrend, self.crossValCalcCheck.isChecked())
 

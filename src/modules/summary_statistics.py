@@ -219,13 +219,13 @@ class ContentWidget(QWidget):
         self.fs_date_text = QLineEdit()
         current_date = datetime.datetime.now()
         self.fs_date_text.setText(current_date.strftime("%Y-%m-%d"))
-        self.fs_date_text.textChanged.connect(self.fs_date_changed)
+        self.fs_date_text.editingFinished.connect(self.fs_date_changed)
         period_layout.addWidget(self.fs_date_text)
         
         period_layout.addWidget(QLabel("End Date:"))
         self.fe_date_text = QLineEdit()
         self.fe_date_text.setText(current_date.strftime("%Y-%m-%d"))
-        self.fe_date_text.textChanged.connect(self.fe_date_changed)
+        self.fe_date_text.editingFinished.connect(self.fe_date_changed)
         period_layout.addWidget(self.fe_date_text)
         
         period_layout.addWidget(QLabel("No. of Days:"))

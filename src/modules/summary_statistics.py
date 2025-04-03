@@ -88,8 +88,8 @@ class ContentWidget(QWidget):
         ]
         
         # Period labels
-        self.labels = ["January", "February", "March", "April", "May", "June", 
-                     "July", "August", "September", "October", "November", "December",
+        self.labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", 
+                     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
                      "Winter", "Spring", "Summer", "Autumn", "Annual"]
         
         # Results arrays

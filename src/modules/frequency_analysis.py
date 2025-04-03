@@ -1,6 +1,7 @@
-from PyQt5.QtWidgets import QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, QFrame, QLabel
+from PyQt5.QtWidgets import QApplication, QCheckBox,QPushButton, QComboBox,QFrame,QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTextEdit, QLabel, QTableWidget, QTableWidgetItem, QRadioButton, QGroupBox, QSpinBox, QLineEdit, QDateEdit, QFileDialog
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPalette, QColor, QIcon
+import sys
 
 # Define the name of the module for display in the content area
 moduleName = "Frequency Analysis"
@@ -16,61 +17,277 @@ class ContentWidget(QWidget):
         """
         super().__init__()
 
-        # Main layout for the entire widget
-        mainLayout = QVBoxLayout()
-        mainLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
-        mainLayout.setSpacing(0)  # No spacing between elements
-        self.setLayout(mainLayout)  # Apply the main layout to the widget
+        self.setWindowTitle("Frequency Analysis")
+        self.setGeometry(100, 100, 800, 600)
 
-        # --- Button Bar ---
-        # Layout for the buttonBar at the top of the screen
-        buttonBarLayout = QHBoxLayout()
-        buttonBarLayout.setSpacing(0)  # No spacing between buttons
-        buttonBarLayout.setContentsMargins(0, 0, 0, 0)  # No margins around the layout
-        buttonBarLayout.setAlignment(Qt.AlignLeft)  # Align buttons to the left
+        layout = QVBoxLayout()  # Main vertical layout
+        
+        # ---- Row 1: Observed Data & Modelled Data ---- #
+        dataLayout = QHBoxLayout()
+        
+        # Observed Data Group Box (Reduced Width)
+        obsDataGroupBox = QGroupBox("Observed Data")
+        obsDataGroupBox.setStyleSheet("color: black;")
+        obsDataLayout = QVBoxLayout()
+        self.obs_data_button = QPushButton("Select Observed Data 📂 ")
+        self.obs_data_label = QLabel("File: Not selected")
+        self.obs_data_button.clicked.connect(self.select_observed_data)
+        obsDataLayout.addWidget(self.obs_data_button)
+        obsDataLayout.addWidget(self.obs_data_label)
+        obsDataGroupBox.setLayout(obsDataLayout)
+        obsDataGroupBox.setFixedHeight(100)  # Reduce width
+        
+        # Modelled Data Group Box (Reduced Width)
+        modDataGroupBox = QGroupBox("Modelled Data")
+        modDataGroupBox.setStyleSheet("color: black;")
+        modDataLayout = QVBoxLayout()
+        self.mod_data_button = QPushButton("Select Modelled Data 📂 ")
+        self.mod_data_label = QLabel("File: Not selected")
+        self.mod_data_button.clicked.connect(self.select_modeled_data)
+        modDataLayout.addWidget(self.mod_data_button)
+        modDataLayout.addWidget(self.mod_data_label)
+        modDataGroupBox.setLayout(modDataLayout)
+        modDataGroupBox.setFixedHeight(100)  # Reduce width
+        
+        dataLayout.addWidget(obsDataGroupBox)
+        dataLayout.addWidget(modDataGroupBox)
+        layout.addLayout(dataLayout)
+        
+        
+        # ---- Row 2: Analysis Series & Frequency Analysis ---- #
+        analysisFreqLayout = QHBoxLayout()
+        
+        # Left Side: Analysis Series + Ensemble
+        leftSideLayout = QVBoxLayout()
+        
+        # Analysis Series Group Box (Reduced Height)
+        analysisGroupBox = QGroupBox("Analysis Series")
+        analysisGroupBox.setStyleSheet("color: black;")
+        analysisLayoutBox = QVBoxLayout()
+        self.start_date_label = QLabel("Analysis start date:")
+        self.start_date = QDateEdit()
+        self.end_date_label = QLabel("Analysis end date:")
+        self.end_date = QDateEdit()
+        analysisLayoutBox.addWidget(self.start_date_label)
+        analysisLayoutBox.addWidget(self.start_date)
+        analysisLayoutBox.addWidget(self.end_date_label)
+        analysisLayoutBox.addWidget(self.end_date)
+        analysisGroupBox.setLayout(analysisLayoutBox)
+        analysisGroupBox.setFixedHeight(200)  # Reduce height
+        
+        # Ensemble Group Box (Referencing the Image)
+        ensembleGroupBox = QGroupBox("Ensemble")
+        ensembleGroupBox.setStyleSheet("color: black;")
+        ensembleLayout = QVBoxLayout()
+        
+        self.all_members_radio = QRadioButton("All Members")
+        self.ensemble_mean_radio = QRadioButton("Ensemble Mean")
+        self.ensemble_member_radio = QRadioButton("Ensemble Member:")
+        self.ensemble_member_spinbox = QSpinBox()
+        self.ensemble_member_spinbox.setValue(0)
+        self.all_mean_ensemble_radio = QRadioButton("All + Mean Ensemble")
+        
+        self.all_members_radio.setChecked(True)
+        
+        ensembleRow = QHBoxLayout()
+        ensembleRow.addWidget(self.ensemble_member_radio)
+        ensembleRow.addWidget(self.ensemble_member_spinbox)
+        
+        ensembleLayout.addWidget(self.all_members_radio)
+        ensembleLayout.addWidget(self.ensemble_mean_radio)
+        ensembleLayout.addLayout(ensembleRow)
+        ensembleLayout.addWidget(self.all_mean_ensemble_radio)
+        
+        ensembleGroupBox.setLayout(ensembleLayout)
+        ensembleGroupBox.setFixedHeight(150)  # Same height as Analysis Series
+        
+        # Add both group boxes to left side
+        leftSideLayout.addWidget(analysisGroupBox)
+        leftSideLayout.addWidget(ensembleGroupBox)
+        
+        
+               # ---- Frequency Analysis Group Box ---- #
+        faGroupBox = QGroupBox("Frequency Analysis")
+        faGroupBox.setStyleSheet("color: black;")
+        faLayout = QVBoxLayout()
+        
+        # Confidence Input
+        self.confidence_label = QLabel("Confidence (%):")
+        self.confidence_input = QSpinBox()
+        self.confidence_input.setValue(5)
+        faLayout.addWidget(self.confidence_label)
+        faLayout.addWidget(self.confidence_input)
+        
+        # Probability Distribution Options
+        self.empirical_radio = QRadioButton("Empirical")
+        self.gev_radio = QRadioButton("GEV")
+        self.gumbel_radio = QRadioButton("Gumbel")
+        self.stretched_exp_radio = QRadioButton("Stretched Exponential")
+        self.empirical_radio.setChecked(True)
+        
+        faLayout.addWidget(self.empirical_radio)
+        faLayout.addWidget(self.gev_radio)
+        faLayout.addWidget(self.gumbel_radio)
+        faLayout.addWidget(self.stretched_exp_radio)
+        
+        # Threshold Input
+        self.threshold_label = QLabel("Threshold:")
+        self.threshold_input = QSpinBox()
+        self.threshold_input.setValue(10)
+        faLayout.addWidget(self.threshold_label)
+        faLayout.addWidget(self.threshold_input)
+        
+        # ---- Separator Line ---- #
+        separator = QFrame()
+        separator.setFrameShape(QFrame.HLine)  # Horizontal line
+        separator.setFrameShadow(QFrame.Sunken)
+        faLayout.addWidget(separator)
+        
+        # Save Results Button
+        self.save_button = QPushButton("Save Results To 💾")
+        self.save_label = QLabel("File: Not selected")
+        self.save_button.clicked.connect(self.save_results)
+        faLayout.addWidget(self.save_button)
+        faLayout.addWidget(self.save_label)
+        faGroupBox.setFixedHeight(350)
+        faGroupBox.setLayout(faLayout)
+        
+        # Add both sections to the row
+        analysisFreqLayout.addLayout(leftSideLayout)
+        analysisFreqLayout.addWidget(faGroupBox)
+        layout.addLayout(analysisFreqLayout)
 
-        # Create placeholder buttons for the buttonBar
-        buttonNames = ["Reset", "Settings"]  # Names of the buttons for clarity
-        for name in buttonNames:
-            button = QPushButton(name)  # Create a button with the given name
-            button.setIcon(QIcon("placeholder_icon.png"))  # Placeholder icon
-            button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)  # Fixed size policy
-            button.setFixedSize(50, 50)  # Set a fixed size for the button
-            button.setStyleSheet(
-                "border: 1px solid lightgray; background-color: #F0F0F0; text-align: left;"
-            )  # Style to match the overall design
-            buttonBarLayout.addWidget(button)  # Add the button to the buttonBar layout
+        # ---- Data Period, Threshold & PDF Categories (Stacked) ---- #
+        extraSettingsLayout = QHBoxLayout()
 
-        # Frame for the buttonBar
-        buttonBarFrame = QFrame()
-        buttonBarFrame.setLayout(buttonBarLayout)  # Apply the button layout to the frame
-        buttonBarFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
-        buttonBarFrame.setFixedHeight(50)  # Match height with other UI elements
-        buttonBarFrame.setStyleSheet("background-color: #A9A9A9;")  # Dark gray background
-        mainLayout.addWidget(buttonBarFrame)  # Add the buttonBar frame to the main layout
+        dataPeriodGroupBox = QGroupBox("Data Period")
+        dataPeriodLayout = QVBoxLayout()
+        self.data_period_combo = QComboBox()
+        self.data_period_combo.addItems(["All Data", "January","February","March", "April", "May", "June", "July", "August", "Septemeber","October", "November", "December", "Winter", "Autumn","Summer","Spring"])
+        dataPeriodLayout.addWidget(self.data_period_combo)
+        dataPeriodGroupBox.setFixedHeight(100)
+        dataPeriodGroupBox.setLayout(dataPeriodLayout)
 
-        # --- Content Area ---
-        # Frame for the contentArea
-        contentAreaFrame = QFrame()
-        contentAreaFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
+        thresholdGroupBox = QGroupBox("Threshold")
+        thresholdLayout = QVBoxLayout()
+        self.apply_threshold_checkbox = QCheckBox("Apply threshold?")
+        thresholdLayout.addWidget(self.apply_threshold_checkbox)
+        thresholdGroupBox.setFixedHeight(100)
+        thresholdGroupBox.setLayout(thresholdLayout)
 
-        # Layout for the contentArea frame
-        contentAreaLayout = QVBoxLayout()
-        contentAreaLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
-        contentAreaLayout.setSpacing(0)  # No spacing between elements
-        contentAreaFrame.setLayout(contentAreaLayout)  # Apply the layout to the frame
+        pdfGroupBox = QGroupBox("PDF Categories")
+        pdfLayout = QVBoxLayout()
+        self.pdf_label = QLabel("No of PDF categories")
+        self.pdf_spinbox = QSpinBox()
+        self.pdf_spinbox.setValue(20)
+        pdfLayout.addWidget(self.pdf_label)
+        pdfLayout.addWidget(self.pdf_spinbox)
+        pdfGroupBox.setFixedHeight(100)
+        pdfGroupBox.setLayout(pdfLayout)
 
-        # Set a light gray background color for the contentArea
-        contentAreaFrame.setStyleSheet("background-color: #D3D3D3;")
+        extraSettingsLayout.addWidget(dataPeriodGroupBox)
+        extraSettingsLayout.addWidget(thresholdGroupBox)
+        extraSettingsLayout.addWidget(pdfGroupBox)
 
-        # Add the contentArea frame to the main layout
-        mainLayout.addWidget(contentAreaFrame)
+        layout.addLayout(extraSettingsLayout)
 
-        # --- Center Label (Placeholder) ---
-        # Label to display the name of the module (Frequency Analysis)
-        moduleLabel = QLabel(moduleName, self)
-        moduleLabel.setStyleSheet("font-size: 24px; color: black;")  # Style the label text
-        contentAreaLayout.addWidget(moduleLabel)  # Add the label to the contentArea layout
 
-        # Add a spacer to ensure content is properly spaced
-        contentAreaLayout.addStretch()
+        idfSettingsLayout = QHBoxLayout()
+        # IDF Settings Group Box
+        idfGroupBox = QGroupBox("IDF Settings")
+        idfLayout = QHBoxLayout()
+         
+        self.method_moments_radio = QRadioButton("Method of Moments")
+        self.parameter_power_radio = QRadioButton("Parameter Power Scaling")
+        self.parameter_linear_radio = QRadioButton("Parameter Linear Scaling")
+        self.method_moments_radio.setChecked(True)  # Default selection
+        
+        self.running_sum_label = QLabel("Running Sum Length (Days):")
+        self.running_sum_input = QSpinBox()
+        self.running_sum_input.setValue(2)
+        
+        # Adding elements to IDF Layout
+        idfLayout.addWidget(self.method_moments_radio)
+        idfLayout.addWidget(self.parameter_power_radio)
+        idfLayout.addWidget(self.parameter_linear_radio)
+        idfLayout.addWidget(self.running_sum_label)
+        idfLayout.addWidget(self.running_sum_input)
+        idfGroupBox.setLayout(idfLayout)
+
+        idfSettingsLayout.addWidget(idfGroupBox)
+
+        layout.addLayout(idfSettingsLayout)
+        
+            
+        graphButtonsLayout= QHBoxLayout()
+
+        qqPlotButton = QPushButton("Q-Q Plot")
+        #qqPlotButton.clicked.connect(self.checkFile)
+        qqPlotButton.setStyleSheet("background-color: #4CAF50; color: white; font-weight: bold;")
+       
+        pdfPlotButton = QPushButton("PDF Plot")
+        #pdfPlotButton.clicked.connect(self.getDailyStats)
+        pdfPlotButton.setStyleSheet("background-color: #1FC7F5; color: white; font-weight: bold")
+
+        linePlotButton = QPushButton("Line Plot")
+        #linePlotButton.clicked.connect(self.doOutliers)
+        linePlotButton.setStyleSheet("background-color: #F57F0C; color: white; font-weight: bold")
+       
+        faGraphicalButton = QPushButton("FA Graphical")
+        #qqPlotButton.clicked.connect(self.checkFile)
+        faGraphicalButton.setStyleSheet("background-color: #5adbb5; color: white; font-weight: bold;")
+
+        
+        graphButtonsLayout.addWidget(qqPlotButton)
+        graphButtonsLayout.addWidget(pdfPlotButton)
+        graphButtonsLayout.addWidget(linePlotButton)
+        graphButtonsLayout.addWidget(faGraphicalButton)
+        layout.addLayout(graphButtonsLayout)
+
+        tabButtonsLayout= QHBoxLayout()
+
+        faTabButton = QPushButton("FA Tabular")
+        #qqPlotButton.clicked.connect(self.checkFile)
+        faTabButton.setStyleSheet("background-color: #ffbd03; color: white; font-weight: bold;")
+
+        
+        idfPlotButton = QPushButton("IDF Plot")
+        #pdfPlotButton.clicked.connect(self.getDailyStats)
+        idfPlotButton.setStyleSheet("background-color: #dd7973; color: white; font-weight: bold")
+
+        idfTabButton = QPushButton("IDF Tabular")
+        #linePlotButton.clicked.connect(self.doOutliers)
+        idfTabButton.setStyleSheet("background-color: #4681f4; color: white; font-weight: bold")
+        
+        resetButton = QPushButton(" 🔄 Reset Values")
+        #qqPlotButton.clicked.connect(self.checkFile)
+        resetButton.setStyleSheet("background-color: #ED0800; color: white; font-weight: bold;")
+
+        tabButtonsLayout.addWidget(faTabButton)
+        tabButtonsLayout.addWidget(idfPlotButton)
+        tabButtonsLayout.addWidget(idfTabButton)
+        tabButtonsLayout.addWidget(resetButton)
+        layout.addLayout(tabButtonsLayout)
+
+        self.setLayout(layout)
+    
+    def select_observed_data(self):
+        file_name, _ = QFileDialog.getOpenFileName(self, "Select Observed Data File")
+        if file_name:
+            self.obs_data_label.setText(f"File: {file_name}")
+    
+    def select_modeled_data(self):
+        file_name, _ = QFileDialog.getOpenFileName(self, "Select Modeled Data File")
+        if file_name:
+            self.mod_data_label.setText(f"File: {file_name}")
+    
+    def save_results(self):
+        file_name, _ = QFileDialog.getSaveFileName(self, "Save Results File")
+        if file_name:
+            self.save_label.setText(f"File: {file_name}")
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = ContentWidget()
+    window.show()
+    sys.exit(app.exec_())

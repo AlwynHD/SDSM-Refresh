@@ -62,7 +62,7 @@ class ContentWidget(QWidget):
 
         # --- Load Settings ---
         default_settings = {
-            'allowNeg': True, 'randomSeed': True, 'thresh': 0.0,
+            'allowNeg': True, 'randomSeed': False, 'thresh': 0.0,
             'globalMissingCode': -999.0, 'varianceInflation': 12,
             'biasCorrection': 1.0, 'fixedThreshold': 0.5,
             'conditionalSelection': 'Stochastic', # 'Stochastic' or 'Fixed'
@@ -73,7 +73,7 @@ class ContentWidget(QWidget):
 
         # Get values from settings, ensuring correct types
         self.allow_neg = bool(self.settings.get('allowNeg', True))
-        self.use_random_seed = bool(self.settings.get('randomSeed', True))
+        self.use_random_seed = bool(self.settings.get('randomSeed', False))
         self.thresh = float(self.settings.get('thresh', 0.0))
         self.global_missing_code = float(self.settings.get('globalMissingCode', -999.0))
         self.prec_n = int(self.settings.get('varianceInflation', 12)) # Variance Inflation / N for residual sum
@@ -1327,7 +1327,7 @@ class ContentWidget(QWidget):
 # --- Main Application Runner (Example) ---
 if __name__ == '__main__':
     import sys
-
+    
     # --- EXAMPLE: Define your settings dictionary here ---
     # This would typically be loaded from a config file or separate settings module
     app_settings = {

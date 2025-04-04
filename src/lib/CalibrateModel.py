@@ -3,6 +3,7 @@ from datetime import date as realdate
 from src.lib.utils import loadFilesIntoMemory, increaseDate, thirtyDate
 from copy import deepcopy
 import src.core.data_settings
+#from scipy.stats import spearmanr
 
 ## NOTE TO READERS: THIS FILE **DOES NOT** WORK
 ## It does if you run the debugRun test configuration
@@ -43,17 +44,21 @@ def calibrateModelDefaultExperience():
     ## Parameters
     #fsDate = deepcopy(globalStartDate)
     fsDate = date(1948, 1, 1)
+    #fsDate = date(1961, 1, 1)
     #feDate = deepcopy(globalEndDate)
     #feDate = date(1961, 1, 10)
     feDate = date(1965, 1, 10)
-    modelType = 1
-    parmOpt = True  ## Whether Conditional or Unconditional. True = Cond, False = Uncond. 
+    #feDate = date(1996, 12, 31)
+    #feDate = date(1997, 12, 31)
+    #feDate = date(2015, 12, 31)
+    modelType = 2 #0
+    parmOpt = False  ## Whether Conditional or Unconditional. True = Cond, False = Uncond. 
     ##ParmOpt(1) = Uncond = False
     ##ParmOpt(0) = Cond = True
     autoRegression = False ## Replaces AutoRegressionCheck -> Might be mutually exclusive with parmOpt - will check later...
     includeChow = True
     detrendOption = 0 #0, 1 or 2...
-    xValidation = False
+    doCrossValidation = True
 
     #if PTandRoot == None:
     PTandRoot = "predictand files/NoviSadPrecOBS.dat" ##Predictand file
@@ -68,13 +73,18 @@ def calibrateModelDefaultExperience():
     #    "p8zh", "shum", "dswr", 
     #    "lftx", #"pottmp", "pr_wtr",
         "p__f", "p__u", "p__v", "p__z"
+    #"p5th"
     ] #note - ncep_prec.dat is absent - nice round number of 30
     for i in range(len(fileList)):
         fileList[i] = "predictor files/ncep_" + fileList[i] + ".dat"
     PARfilePath = "JOHN_PARFILE.PAR"
     ## Predictor files should be in the format [path/to/predictor/file.dat]
     ## Files usually begin with ncep_
-    results = calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType, parmOpt, autoRegression, includeChow, detrendOption, xValidation)
+
+    ## NOTE: FOR OPTIMAL PERFORMANCE, MERGE PTandRoot with fileList:
+    fileList.insert(0, PTandRoot)
+    
+    results = calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType, parmOpt, autoRegression, includeChow, detrendOption, doCrossValidation)
 
     ## Output for similar results to the OG software:
     print(f"FINAL RESULTS:")
@@ -86,9 +96,6 @@ def calibrateModelDefaultExperience():
     for i in fileList:
         print(i)
             
-    print(f"\nUnconditional Statistics:")
-    print(f"\nMonth\t\tRSquared\tSE\t\tFRatio\t\t{'D-Watson' if not parmOpt else 'Prop Correct'}\t{'Chow' if includeChow else ''}")
-
     ##Useful info on how to display/format the resutls...
     #from calendar import month_name
     ## Better formatted Month Names so they are all same length
@@ -107,29 +114,48 @@ def calibrateModelDefaultExperience():
         "December ",
         ]
     u = "Unconditional"
+    print(f"\nUnconditional Statistics:")
+    print(f"\nMonth\t\tRSquared\tSE\t\tFRatio\t\t{'D-Watson' if not parmOpt else 'Prop Correct'}\t{'Chow' if includeChow else ''}")
     if not parmOpt:
         for i in range(12):
             if includeChow:
                 print(f"{month_name[i]}\t{results[u][i]['RSquared']:.4f}\t\t{results[u][i]['SE']:.4f}\t\t{results[u][i]['FRatio']:.2f}\t\t{results[u][i]['D-Watson']:.4f}\t\t{results[u][i]['Chow']:.4f}")
             else:
                 print(f"{month_name[i]}\t{results[u][i]['RSquared']:.4f}\t\t{results[u][i]['SE']:.4f}\t\t{results[u][i]['FRatio']:.2f}\t\t{results[u][i]['D-Watson']:.4f}")
+        if doCrossValidation:
+            x = "xValidation"
+            print(f"\nCross Validation Results:")
+            print(f"\nMonth\t\tRSquared\tSE\t\tD-Watson\tSpearman\tBias")
+            for i in range(12):
+                print(f"{month_name[i]}\t{results[u][x][i]['RSquared']:.4f}\t\t{results[u][x][i]['SE']:.4f}\t\t{results[u][x][i]['D-Watson']:.4f}\t\t{results[u][x][i]['SpearmanR']:.4f}\t\t{results[u][x][i]['Bias']:.4f}")
     else:
-        c = "Conditional"
-        if includeChow:
-            for i in range(12):
+        for i in range(12):
+            if includeChow:
                 print(f"{month_name[i]}\t{results[u][i]['RSquared']:.4f}\t\t{results[u][i]['SE']:.4f}\t\t{results[u][i]['FRatio']:.4f}\t\t{results[u][i]['PropCorrect']:.4f}\t\t{results[u][i]['Chow']:.4f}")
-            print(f"\nConditional Statistics:")
-            print(f"\nMonth\t\tRSquared\tSE\t\tFRatio\t\tChow")
-            for i in range(12):
-                print(f"{month_name[i]}\t{results[c][i]['RSquared']:.4f}\t\t{results[c][i]['SE']:.4f}\t\t{results[c][i]['FRatio']:.4f}\t\t{results[c][i]['Chow']:.4f}")
-        else:
-            for i in range(12):
+            else:
                 print(f"{month_name[i]}\t{results[u][i]['RSquared']:.4f}\t\t{results[u][i]['SE']:.4f}\t\t{results[u][i]['FRatio']:.4f}\t\t{results[u][i]['PropCorrect']:.4f}")
-            print(f"\nConditional Statistics:")
-            print(f"\nMonth\t\tRSquared\tSE\t\tFRatio")
+        if doCrossValidation:
+            x = "xValidation"
+            print(f"\nCross Validation Results:")
+            print(f"\nMonth\t\tRSquared\tSE\t\tProp Correct")
             for i in range(12):
+                print(f"{month_name[i]}\t{results[u][x][i]['RSquared']:.4f}\t\t{results[u][x][i]['SE']:.4f}\t\t{results[u][x][i]['PropCorrect']:.4f}")
+        c = "Conditional"
+        print(f"\nConditional Statistics:")
+        print(f"\nMonth\t\tRSquared\tSE\t\tFRatio\t\t{'Chow' if includeChow else ''}")
+        for i in range(12):
+            if includeChow:
+                print(f"{month_name[i]}\t{results[c][i]['RSquared']:.4f}\t\t{results[c][i]['SE']:.4f}\t\t{results[c][i]['FRatio']:.4f}\t\t{results[c][i]['Chow']:.4f}")
+            else:
                 print(f"{month_name[i]}\t{results[c][i]['RSquared']:.4f}\t\t{results[c][i]['SE']:.4f}\t\t{results[c][i]['FRatio']:.4f}")
-            
+        if doCrossValidation:
+            x = "xValidation"
+            print(f"\nCross Validation (Conditional Part) Results:")
+            print(f"\nMonth\t\tRSquared\tSE\t\tSpearman")
+            for i in range(12):
+                print(f"{month_name[i]}\t{results[c][x][i]['RSquared']:.4f}\t\t{results[c][x][i]['SE']:.4f}\t\t{results[c][x][i]['SpearmanR']:.4f}")
+        
+        
             
         
         #print(f"\nConditional Statistics:")
@@ -137,11 +163,10 @@ def calibrateModelDefaultExperience():
 
     #debugMsg(f"TotalNumbers: {totalNumbers}, Missing Days: {noOfDays2Fit - totalNumbers}")
 
-def calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=False, autoRegression=False, includeChow=False, detrendOption=0, xValidation=False):
+def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=False, autoRegression=False, includeChow=False, detrendOption=0, doCrossValidation=False):
     """
         Core Calibrate Model Function (v0.4.1)
-        PTandRoot -> Predictand file path
-        fileList -> Array of predictor file paths
+        fileList -> Array of predictor file paths. First entry should be the predictand file
         PARfilePath -> Save path for the output file (PARfile)
         fsDate -> Fit start date (currently accepts Date object, may adjust to accept string)
         feDate -> Fit end date
@@ -150,7 +175,7 @@ def calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType=2
         autoRegression -> Autoregression tickbox
         includeChow -> Chow Test Tickbox
         detrendOption -> Detrend Options: 0-> None, 1-> Linear, 2-> Power function.
-        xValidation -> Cross Validation Tickbox
+        doCrossValidation -> Cross Validation Tickbox
         ----------------------------------------
         CalibrateModel (will in the future) also reads the following from the Global Setings:
         > globalStartDate & globalEndDate -> "Standard" start / end date
@@ -204,6 +229,13 @@ def calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType=2
     ## - Annual/Monthly/Season options
     ## - parmOpt
 
+    ## In v0.5.1
+    ## Fixed bug regarding residualArrays being calculated twice during Conditional, and never during uncond
+    ## Removed PTandRoot - Will be handled externally. Assume that its been merged into the filelist
+
+    ## In v0.6.0
+    ## Finished implementation of CrossValidation
+
     #------------------------
     # FUNCTION DEFINITITIONS:
     #------------------------
@@ -221,10 +253,8 @@ def calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType=2
     countLeapYear = True
     ## End of Settings Imports (Default Values for now)
 
-    NPredictors = len(fileList)
+    NPredictors = len(fileList) - 1
     debugMsg(fileList)
-    ## NOTE: FOR OPTIMAL PERFORMANCE, MERGE PTandRoot with fileList:
-    fileList.insert(0, PTandRoot)
     ## Other Vars:
     progValue = 0 ## Progress Bar
 
@@ -267,7 +297,8 @@ def calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType=2
         #------ SECTION #2 ------ Unknown/Initialisation?
         #------------------------
         
-        xValidationResults = np.ndarray((13, 7)).fill(GlobalMissingCode) ## Original array is XValidationResults(1 To 13, 1 To 7) As Double
+        #xValidationResults = np.ndarray((13, 7)).fill(GlobalMissingCode) ## Original array is XValidationResults(1 To 13, 1 To 7) As Double
+        xValidationOutput = {}
         xValidMessageShown = False
 
         #if ApplyStepwise:
@@ -525,7 +556,6 @@ def calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType=2
                 "residual": np.zeros((totalNumbers)),
                 "noOfResiduals": 0
             }
-            
             #------------------------
             #---- SECTION #5.1.0 ---- SeasonCode 1 -> Annuals
             #------------------------
@@ -593,9 +623,14 @@ def calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType=2
                     ##call PropogateUnConditional
                     propogateUnconditional(yMatrix, thresh)
 
-                if xValidation:
+                if doCrossValidation:
                     ##call xValUnConditional
-                    xValUnConditional()
+                    #xValUnConditional()
+                    xValResults = xValidation(xMatrix, yMatrix, parmOpt)
+                    xValidationOutput["Unconditional"] = {}
+                    for i in range(12):
+                        xValidationOutput["Unconditional"][i] = xValResults
+
 
                 conditionalPart = False ##Needed for CalcParameters
 
@@ -604,7 +639,7 @@ def calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType=2
                     stepWiseRegression() ##very wise #betamatrix defined here
                 else:
                     ##call CalculateParameters(parmOpt)
-                    params = calculateParameters(xMatrix, yMatrix, optimisationChoice, NPredictors, includeChow, conditionalPart, parmOpt, parmOpt, residualArray)   #betamatrix defined here
+                    params = calculateParameters(xMatrix, yMatrix, optimisationChoice, NPredictors, includeChow, conditionalPart, parmOpt, not parmOpt, residualArray)   #betamatrix defined here
                 ##endif
 
                 if processTerminated:
@@ -664,9 +699,13 @@ def calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType=2
 
                     ### End of propogateConditional Code ###
                     
-                    if xValidation:
+                    if doCrossValidation:
                         #call xvalConditional
-                        xValConditional()
+                        #xValConditional()
+                        xValResults = xValidation(xMatrix, yMatrix, parmOpt, True)
+                        xValidationOutput["Conditional"] = {}
+                        for i in range(12):
+                            xValidationOutput["Conditional"][i] = xValResults
 
                     #call TransformData
                     transformData(xMatrix, yMatrix, yMatrixAboveThreshPos, modelTrans)
@@ -710,25 +749,29 @@ def calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType=2
                     #---- SECTION #5.1.3 ---- DW calculations
                     #------------------------
 
-                    DWNumerator = 0
-                    DWDenom = 0
+                    #DWNumerator = 0
+                    #DWDenom = 0
                     ##Need to properly calc residualMatrixRows
                     residualMatrix = params["residualMatrix"]
-                    for i in range(1, len(residualMatrix)):
-                        DWNumerator += (residualMatrix[i] - residualMatrix[i - 1]) ** 2
+                    #for i in range(1, len(residualMatrix)):
+                    #    DWNumerator += (residualMatrix[i] - residualMatrix[i - 1]) ** 2
                     ##next
-                    for i in range(len(residualMatrix)):
-                        DWDenom += residualMatrix[i] ** 2
+                    #for i in range(len(residualMatrix)):
+                    #    DWDenom += residualMatrix[i] ** 2
                     ##next
-                    if DWDenom > 0:
-                        for i in range(12):
-                            statsSummary[i, 2] = DWNumerator / DWDenom
+                    #if DWDenom > 0:
+                    #    for i in range(12):
+                    #        statsSummary[i, 2] = DWNumerator / DWDenom
                         ##next
-                    else:
-                        for i in range(12):
-                            statsSummary[i, 2] = GlobalMissingCode
+                    #else:
+                    #    for i in range(12):
+                    #        statsSummary[i, 2] = GlobalMissingCode
                         ##next
                     ##endif
+                    dw = calcDW(residualMatrix)
+                    for i in range(12):
+                        statsSummary[i, 2] = dw
+                       
 
                 ##next
 
@@ -808,17 +851,24 @@ def calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType=2
                         ###call PropogateUnconditional
                         propogateUnconditional(yMatrix, thresh)
                     
-                    if xValidation:
-                        ##call xValUnconditional
-                        xValUnConditional()
-
                     conditionalPart = False
+                    
+                    if doCrossValidation:
+                        ##call xValUnconditional
+                        #xValUnConditional()
+                        xValResults = xValidation(xMatrix, yMatrix, parmOpt)
+                        xValidationOutput["Unconditional"] = {}
+                        if seasonCode == 4:
+                            for i in range(3):
+                                xValidationOutput["Unconditional"][seasonMonths[periodWorkingOn][i]] = xValResults
+                        else: #Assume monthly
+                            xValidationOutput["Unconditional"][periodWorkingOn] = xValResults
 
                     ###until now, #6.2.1 is near identical to #6.1.1,
                     ###but is notably missing the ApplyStepwise condition for CalcualteParameters
 
                     ##call CalculateParameters(parmOpt) ##Adjust to make sure its correct...?
-                    params = calculateParameters(xMatrix, yMatrix, optimisationChoice, NPredictors, includeChow, conditionalPart, parmOpt, parmOpt, residualArray)     #betaMatrix Defined Here
+                    params = calculateParameters(xMatrix, yMatrix, optimisationChoice, NPredictors, includeChow, conditionalPart, parmOpt, not parmOpt, residualArray)     #betaMatrix Defined Here
 
                     if processTerminated:
                         ##call mini_reset
@@ -891,9 +941,16 @@ def calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType=2
 
                         ### End of propogateConditional Code ###
 
-                        if xValidation:
+                        if doCrossValidation:
                             #call xValConditional
-                            xValConditional()
+                            #xValConditional()
+                            xValResults = xValidation(xMatrix, yMatrix, parmOpt, True)
+                            xValidationOutput["Conditional"] = {}
+                            if seasonCode == 4:
+                                for i in range(3):
+                                    xValidationOutput["Conditional"][seasonMonths[periodWorkingOn][i]] = xValResults
+                            else: #Assume monthly
+                                xValidationOutput["Conditional"][periodWorkingOn] = xValResults
                         
                         #call TransformData
                         transformData(xMatrix, yMatrix, yMatrixAboveThreshPos, modelTrans)
@@ -1110,8 +1167,8 @@ def calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType=2
             ##real change here:
             #from calendar import month_name as months
 
-            output = {"Predictand": PTandRoot}
-            for subloop in range(NPredictors):
+            output = {"Predictand": fileList[0]}
+            for subloop in range(1, NPredictors + 1):
                 output[f"Predictor#{subloop}"] = fileList[subloop]
             #for i in range(1, 13):
             #    output[months[i]] = {} # Initialize month associative array / dict
@@ -1121,6 +1178,7 @@ def calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType=2
             #    output[months[i]]["D-Watson"] = statsSummary[i,2]
             #    output[months[i]]["Chow"] = None ##Coming soon!
             u = "Unconditional"
+            c = "Conditional"
             output[u] = {}
             for i in range(12):
                 output[u][i] = {} # Initialize month associative array / dict
@@ -1136,7 +1194,6 @@ def calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType=2
             else:
                 for i in range(12):
                     output[u][i]["PropCorrect"] = statsSummary[i,2]
-                c = "Conditional"
                 for i in range(12):
                     output[c] = {}
                 for i in range(12):
@@ -1147,6 +1204,10 @@ def calibrateModel(PTandRoot, fileList, PARfilePath, fsDate, feDate, modelType=2
                 if includeChow:
                     for i in range(12):
                         output[c][i]["Chow"] = statsSummary[i + 12, 3]
+            if doCrossValidation:
+                output[u]["xValidation"] = xValidationOutput[u]
+                if parmOpt:
+                    output[c]["xValidation"] = xValidationOutput[c]
             ##Done with "prelim data"
             
             #call PrintResults
@@ -1297,6 +1358,262 @@ def xValConditional():
     ----> Might merge code if possible
     ----> Coming Soon
     """
+
+def xValidation(xMatrix: np.ndarray, yMatrix: np.ndarray, parmOpt, conditionalPart=False):
+    """
+    Cross Validation - Combined Function
+    Currently has a minor issue in Section #1, leading to innacuracy after 3dp for all values
+    - Error may be larger for more data
+    """
+
+    ### GOLBALS ###
+    noOfFolds = 2
+    xValidMessageShown = False
+    #xMatrix = np.ndarray()
+    #yMatrix = np.ndarray()
+    #modelledMatrix = np.ndarray() #"Vertical" Array / Matrix with only 1 column in use 
+    thresh = 0 #--> Import later...
+    GlobalMissingCode = -999
+    ### ####### ###  
+
+    #------------------------
+    #------ SECTION #1 ------ Modelled Matrix generation
+    #------------------------
+
+    blockSize = len(yMatrix) // noOfFolds           #'calculate the size of a block (this is rounded down so 428/5 = 85 block size. 85x5=425 so 3 values lost at end)
+    maxEnd = noOfFolds * blockSize - 1          #'index of max value - make sure we don't go over this (eg 424 for example above: lose values 425,426,427)
+    modMatrix = np.zeros((maxEnd + 1))
+    #Set ModelledMatrix = New Matrix
+    #modelledMatrix.Size (maxEnd + 1), 1         #'stores untransformed modelled values to compare with YMatrix observed values
+    
+    if blockSize < 10:
+        #Error: not enough data
+        exit()
+    #End If
+
+    for foldOn in range(noOfFolds):      #'loop through creating appropriate blocks for each block based on other excluded blocks to determine parameters using OLS
+        blockStart = (foldOn) * blockSize            #'work out INDEX of block start and end (index starts at zero)
+        blockEnd = blockStart + blockSize - 1           #'INDEX of block end eg 0-84,85-169,170-254 etc
+        tempXMatrix = np.zeros((maxEnd - blockSize + 1, xMatrix.shape[1]))
+        tempYMatrix = np.zeros((maxEnd - blockSize + 1))
+        rowCount = 0
+        for j in range(maxEnd + 1):                       #'now set up temporary x and y arrays with all data except excluded fold
+            if (j < blockStart) or (j > blockEnd):
+                rowCount = rowCount + 1
+                for k in range(xMatrix.shape[1]):
+                    tempXMatrix[rowCount - 1, k] = xMatrix[j, k]
+                #Next k
+                tempYMatrix[rowCount - 1] = yMatrix[j]
+            #End If
+        #Next j
+        #'tempXMatrix and tempYMatrix now have all data except excluded fold.
+        
+        if conditionalPart: ##IF we be doin conditional crossvalidation, we need to transform the data first
+            ##fn TransformDataForXValidation()
+            if len(tempYMatrix) < 10:           #make sure we still have enough data after transformation
+                if not (xValidMessageShown):
+                    xValidMessageShown = True       #'make sure message only shows once
+                    #MsgBox "Sorry - insufficient data for all cross validation metrics to be calculated.", 0 + vbCritical, "Error Message"
+                #End If
+                exit() #Exit Sub                         'make sure we have enough data to work with
+        #End If
+
+        ##Generate Beta Matrix
+
+        xTransY = np.matmul(tempXMatrix.transpose(), tempYMatrix)
+        xTransXInv = np.linalg.inv(np.matmul(tempXMatrix.transpose(), tempXMatrix))
+        xBetaMatrix = np.matmul(xTransXInv, xTransY)
+        
+        #                 'now cycle through calculating modelled y (transformed value) for excluded block
+
+        for j in range(blockStart, blockEnd +1): #PC: Do we need +1 here?
+            for k in range(xMatrix.shape[1]):               #'calculate values
+                modMatrix[j] += (xBetaMatrix[k] * xMatrix[j][k])
+            #Next k
+        #Next j7
+
+        if conditionalPart & parmOpt:
+            pass
+            # unTransformDataInXVal(blockStart, blockEnd)
+    #next foldon
+
+
+    #------------------------
+    #------ SECTION #2 ------ Preprocessing
+    #------------------------
+    
+    #Clip the ends off yMatrix if its larger than modMatrix
+    #Useful for Spearman Rank calculations
+    if len(yMatrix) > len(modMatrix):
+        #Don't want to keep this... I dont think?
+        removeIndex = [i + len(modMatrix) for i in range(len(yMatrix) - len(modMatrix))] 
+        #for i in range(len(yMatrix) - len(modMatrix)):
+        #    removeIndex.append(len(modMatrix) + i)
+        yMatrix = np.delete(yMatrix, removeIndex)
+
+    
+    output = {}
+    if not parmOpt: ##If Unconditional, do spearman before filtering out erroneous values?
+        debugMsg("not parmOpt")
+        debugMsg(f"modMatrix size: {modMatrix.size}, yMatrix size: {yMatrix.size}")
+        output["SpearmanR"] = spearmanr(modMatrix, yMatrix)
+    
+    ## "Cleanse" yMat and modMat arrays (filter out missing values, and values below the threshold for the conditional part)
+    removeIndex = []
+    if parmOpt and conditionalPart:
+        removeIndex = [i for i in range(len(modMatrix)) if (yMatrix[i] <= thresh or modMatrix[i] <= thresh or yMatrix[i] == GlobalMissingCode or modMatrix[i] == GlobalMissingCode)]
+    else:
+        removeIndex = [i for i in range(len(modMatrix)) if (yMatrix[i] == GlobalMissingCode or modMatrix[i] == GlobalMissingCode)]
+    #xMatrix = np.delete(xMatrix, rejectedIndex, 0)
+    yMatrix = np.delete(yMatrix, removeIndex)
+    modMatrix = np.delete(modMatrix, removeIndex)
+    values = len(modMatrix) #number of valid values (shortcut bc lazy)
+    
+    #------------------------
+    #------ SECTION #3 ------ Calculate Statistics
+    #------------------------
+
+    ## If Unconditional, or Conditional part of the Conditional process, calc Spearman Rank
+    #if (parmOpt and conditionalPart) or not parmOpt: ##If Conditional Part of conditional process, do spearman after filtering out values
+    if parmOpt and conditionalPart: ##If Conditional Part of conditional process, do spearman after filtering out values
+        debugMsg("parmOpt++")
+        debugMsg(f"modMatrix size: {modMatrix.size}, yMatrix size: {yMatrix.size}")
+        output["SpearmanR"] = spearmanr(modMatrix, yMatrix)
+
+    ## Calculate Statistics
+    if (conditionalPart and values > 10) or (not conditionalPart and values >= 2): #Conditional needs at least 10 values, unconditional apparently only needs 2
+
+        ##SERROR
+        SError = 0
+        for i in range(values):
+            SError += (modMatrix[i] - yMatrix[i]) ** 2 ##Order matters not because square
+        SError = SError / (values - 1)
+        SError = np.sqrt(SError)
+        output["SE"] = SError
+
+        ##RSQR
+        limit = len(modMatrix) #maxEnd + 1 (-1)...?
+        checkMissing = False #because pre-filtered
+        missingLim = limit #because missing < maxEnd + 1
+        rsqr = calcRSQR(modMatrix, yMatrix, limit, checkMissing, missingLim)
+        output["RSquared"] = rsqr
+
+        if not parmOpt: #If Unconditional
+            ##Durbin Watson Calculations
+            ##First generate the residual array
+            residualMatrix = np.zeros((maxEnd + 1))
+            for i in range(maxEnd + 1):
+                residualMatrix[i] = yMatrix[i] - modMatrix[i]
+            ##Calc Durbin Watson:
+            xvDW = calcDW(residualMatrix)
+            output["D-Watson"] = xvDW
+
+            #Calculate Bias:
+            meanModelled = np.sum(modMatrix)
+            meanObserved = np.sum(yMatrix)
+            if meanObserved != 0:
+                bias = (meanModelled - meanObserved) / meanObserved
+            else:
+                bias = GlobalMissingCode
+            output["Bias"] = bias
+
+        elif parmOpt and not conditionalPart: #If Unconditional part of Conditional process
+            #Calculate Occurance Stats
+            correctCount = 0
+            for i in range(maxEnd + 1):
+                if yMatrix[i] == 0 and modMatrix[i] < 0.5:
+                    correctCount += 1
+                elif yMatrix[i] == 1 and modMatrix[i] >= 0.5:
+                    correctCount += 1
+            propCorrect = correctCount / len(yMatrix)
+            output["PropCorrect"] = propCorrect
+            #Consider switching to the calcPropCorrect function later...
+        #else #Conditional Part does not have any extra features
+
+    elif not conditionalPart: ##Unconditional part is happy to provide missing values
+        output["SE"] = GlobalMissingCode
+        output["RSquared"] = GlobalMissingCode
+        if parmOpt:
+            output["PropCorrect"] = GlobalMissingCode
+        else:
+            output["D-Watson"] = GlobalMissingCode
+            output["Bias"] = GlobalMissingCode
+    else: #Lo Data, Crash now...
+        print("Error: Not enough data for the conditional part of xValidation")
+        exit()
+
+    return output
+
+def spearmanr(modMatrix, yMatrix):
+    """
+    Calculates Spearman Rank R Value
+    - Uses Same technique as original SDSM code
+    - Assumes Clean Data (no missing values)
+    """
+
+    ##Init
+    spearMod = np.zeros((3, len(modMatrix)))
+    spearMod[0] = modMatrix
+    spearMod[1] = np.array(range(len(modMatrix)))
+    spearObs = np.zeros((3, len(yMatrix)))
+    spearObs[0] = yMatrix
+    spearObs[1] = np.array(range(len(yMatrix)))
+
+    ##Sort Rows
+    argSortMod = np.argsort(modMatrix)
+    spearMod[0] = spearMod[0][argSortMod]
+    spearMod[1] = spearMod[1][argSortMod]
+    argSortObs = np.argsort(yMatrix)
+    spearObs[0] = spearObs[0][argSortObs]
+    spearObs[1] = spearObs[1][argSortObs]
+
+    spearMod[2] = np.array(range(len(modMatrix)))
+    spearObs[2] = np.array(range(len(yMatrix)))
+
+    for i in range(1, len(modMatrix)):
+        if spearMod[0][i] == spearMod[0][i-1]:
+            spearMod[2][i] = spearMod[2][i-1]
+        if spearObs[0][i] == spearObs[0][i-1]:
+            spearObs[2][i] = spearObs[2][i-1]
+
+    ##Sort back to normal
+    ##sorting sounds##
+    argSortMod = np.argsort(spearMod[1])
+    argSortObs = np.argsort(spearObs[1])
+    spearMod[2] = spearMod[2][argSortMod]
+    spearObs[2] = spearObs[2][argSortObs]
+
+    d = 0
+    for i in range(len(modMatrix)):
+        d += (spearMod[2][i] - spearObs[2][i]) ** 2
+    denom = ((len(modMatrix) ** 2)- 1) * len(modMatrix)
+    d = 1 - ((6 * d) / denom)
+    
+    return d
+
+
+
+
+def calcDW(residualMatrix: np.ndarray):
+    """
+    Durbin Watson Shared Code for XValidation and CalibrateModel (Unconditional)
+    - ASSUMES CLEAN DATA
+    """
+
+    numerator = 0
+    denom = 0
+    for i in range(len(residualMatrix) - 1):
+        numerator += (residualMatrix[i + 1] - residualMatrix[i]) ** 2
+    #Next i
+    for i in range(len(residualMatrix)):
+        denom += residualMatrix[i] ** 2
+    #Next i
+    if denom > 0:
+        return (numerator / denom)
+    #Next i
+    else:
+        return GlobalMissingCode
+    #Next i   
 
 def stepWiseRegression(xMatrix: np.ndarray, yMatrix: np.ndarray, optimisationChoice: int, NPredictors: int, includeChow: bool, conditionalPart: bool, parmOpt: bool, propResiduals:bool, residualArray:np.ndarray):
     """
@@ -1486,8 +1803,8 @@ def calculateParameters(xMatrix: np.ndarray, yMatrix: np.ndarray, optimisationCh
     ## Aka RSquared
 
     if propResiduals:
+        nOfR = residualArray["noOfResiduals"]
         for i in range(len(results["residualMatrix"])):
-            nOfR = residualArray["noOfResiduals"]
             residualArray["predicted"][i + nOfR] = results["predictedMatrix"][i]
             residualArray["residual"][i + nOfR] = results["residualMatrix"][i]
         residualArray["noOfResiduals"] += len(results["residualMatrix"])

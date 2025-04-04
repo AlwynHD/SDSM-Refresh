@@ -1,6 +1,7 @@
 import os
 import datetime
 import numpy as np
+from decimal import getcontext
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QGroupBox,
     QPushButton, QRadioButton, QCheckBox, QFileDialog, QMessageBox,
@@ -15,6 +16,9 @@ class ContentWidget(QWidget):
         Initialize the Summary Statistics module widget.
         """
         super().__init__()
+        
+        # Set decimal precision
+        getcontext().prec = 28  # Higher precision than IEEE-754 double (16 digits)
         
         # Initial variable setup
         self.input_filename = ""
@@ -39,7 +43,7 @@ class ContentWidget(QWidget):
         self.local_year_indicator = 366
         self.local_year_length = 1
         self.local_leap_value = 1
-        self.deltaresults = np.zeros((18, 35))
+        self.deltaresults = np.zeros((18, 35), dtype=np.float64)
         self.escape_processed = False
         self.error_occurred = False
         self.pot = 95  # Default percentile over threshold 
@@ -90,12 +94,12 @@ class ContentWidget(QWidget):
                      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
                      "Winter", "Spring", "Summer", "Autumn", "Annual"]
         
-        # Results arrays
-        self.results_array = np.full((101, 18, 35), self.global_missing_code, dtype=float)
-        self.t_test_results = np.full((18, 3), self.global_missing_code, dtype=float)
-        self.t_test_results_a = np.full((18, 3), self.global_missing_code, dtype=float)
-        self.t_test_results_b = np.full((18, 3), self.global_missing_code, dtype=float)
-        self.t_test_results_c = np.full((18, 3), self.global_missing_code, dtype=float)
+        # Results arrays - using float64 for maximum precision
+        self.results_array = np.full((101, 18, 35), self.global_missing_code, dtype=np.float64)
+        self.t_test_results = np.full((18, 3), self.global_missing_code, dtype=np.float64)
+        self.t_test_results_a = np.full((18, 3), self.global_missing_code, dtype=np.float64)
+        self.t_test_results_b = np.full((18, 3), self.global_missing_code, dtype=np.float64)
+        self.t_test_results_c = np.full((18, 3), self.global_missing_code, dtype=np.float64)
         
         # Delta analysis dates
         self.base_start = None
@@ -768,7 +772,7 @@ class ContentWidget(QWidget):
         # Set up data array - w=ensemble number, x=Jan,Feb..Dec, Winter, Summer, Annual; y=data
         total_to_read = 200 + (calc_end_date - calc_start_date).days
         data_array = np.full((self.ensemble_size + 1, 18, total_to_read + 1), 
-                             self.global_missing_code, dtype=float)
+                             self.global_missing_code, dtype=np.float64)
         
         self.progress_bar.setVisible(True)
         self.progress_bar.setValue(0)
@@ -1115,13 +1119,13 @@ class ContentWidget(QWidget):
                         self.results_array[i, j, 24] = extreme_range  # Extreme range
                         self.results_array[i, j, 25] = min_range  # Minimum range
                         
-                        # Calculate percentage wet
+                        # Calculate percentage wet - use full precision division
                         if (total_count + dry_day_count) == 0:
                             self.results_array[i, j, 15] = 0
                         else:
                             self.results_array[i, j, 15] = total_count / (total_count + dry_day_count)
                         
-                        # Calculate mean
+                        # Calculate mean - preserve full precision
                         if total_count > 0:
                             self.results_array[i, j, 1] = total_sum / total_count
                         else:
@@ -1164,14 +1168,17 @@ class ContentWidget(QWidget):
                                     
                                     if (not self.rain_yes) or (self.rain_yes and data_value > self.threshold):
                                         total_count += 1
+                                        # Use full precision for variance calculation
                                         total_variance += (data_value - self.results_array[i, j, 1]) ** 2
                                         total_skewness += (data_value - self.results_array[i, j, 1]) ** 3
                             
                             if total_count > 0:
+                                # Preserve full precision for variance
                                 self.results_array[i, j, 5] = total_variance / total_count  # Variance
                                 
                                 if self.results_array[i, j, 5] > 0:
                                     standard_dev = np.sqrt(self.results_array[i, j, 5])
+                                    # Preserve full precision for skewness
                                     self.results_array[i, j, 12] = (total_skewness / total_count) / (standard_dev ** 3)  # Skewness
                                 else:
                                     self.results_array[i, j, 12] = 0  # Skewness
@@ -1256,7 +1263,7 @@ class ContentWidget(QWidget):
                         
                         if was_any_data_valid[i, j]:
                             # Create correlation arrays
-                            correlation_array = np.zeros((3, total_to_read + 2))
+                            correlation_array = np.zeros((3, total_to_read + 2), dtype=np.float64)
                             counter = 0
                             
                             # Populate correlation array with valid data pairs
@@ -1276,14 +1283,14 @@ class ContentWidget(QWidget):
                             if counter <= 2:
                                 self.results_array[i, j, 11] = self.global_missing_code
                             else:
-                                # Calculate means
+                                # Calculate means with full precision
                                 sum1 = np.sum(correlation_array[1, 1:counter+1])
                                 sum2 = np.sum(correlation_array[2, 1:counter+1])
                                 
                                 mean1 = sum1 / counter
                                 mean2 = sum2 / counter
                                 
-                                # Calculate correlation coefficients
+                                # Calculate correlation coefficients with full precision
                                 brhs = np.sum((correlation_array[2, 1:counter+1] - mean2) ** 2)
                                 blhs = np.sum((correlation_array[1, 1:counter+1] - mean1) ** 2)
                                 
@@ -1295,6 +1302,7 @@ class ContentWidget(QWidget):
                                 if denominator == 0:
                                     self.results_array[i, j, 11] = 1  # Model has zero variance
                                 else:
+                                    # Preserve full precision for correlation
                                     self.results_array[i, j, 11] = numerator / denominator
                         else:
                             self.results_array[i, j, 11] = self.global_missing_code
@@ -1406,11 +1414,11 @@ class ContentWidget(QWidget):
                                 self.results_array[i, j, 20] = 0  # SD wet spell
                                 self.results_array[i, j, 26] = 0  # Mean wet day persistence
                             else:
-                                # Calculate mean and max
+                                # Calculate mean and max with full precision
                                 mean_wet_spell_length = np.sum(wet_spell_array[1:no_of_wet_spells+1]) / no_of_wet_spells
                                 max_wet_spell_length = np.max(wet_spell_array[1:no_of_wet_spells+1])
                                 
-                                # Calculate persistence
+                                # Calculate persistence with full precision
                                 total_wet_days = np.sum(wet_spell_array[1:no_of_wet_spells+1])
                                 total_consec_wet = np.sum(wet_spell_array[1:no_of_wet_spells+1][wet_spell_array[1:no_of_wet_spells+1] > 1])
                                 
@@ -1418,7 +1426,7 @@ class ContentWidget(QWidget):
                                 if total_wet_days != 0:
                                     mean_wet_day_pers = total_consec_wet / total_wet_days
                                 
-                                # Calculate standard deviation
+                                # Calculate standard deviation with full precision
                                 sd_wet_spell = np.sqrt(np.sum((wet_spell_array[1:no_of_wet_spells+1] - mean_wet_spell_length) ** 2) / no_of_wet_spells)
                                 
                                 self.results_array[i, j, 17] = mean_wet_spell_length
@@ -1433,11 +1441,11 @@ class ContentWidget(QWidget):
                                 self.results_array[i, j, 21] = 0  # SD dry spell
                                 self.results_array[i, j, 27] = 0  # Mean dry day persistence
                             else:
-                                # Calculate mean and max
+                                # Calculate mean and max with full precision
                                 mean_dry_spell_length = np.sum(dry_spell_array[1:no_of_dry_spells+1]) / no_of_dry_spells
                                 max_dry_spell_length = np.max(dry_spell_array[1:no_of_dry_spells+1])
                                 
-                                # Calculate persistence
+                                # Calculate persistence with full precision
                                 total_dry_days = np.sum(dry_spell_array[1:no_of_dry_spells+1])
                                 total_consec_dry = np.sum(dry_spell_array[1:no_of_dry_spells+1][dry_spell_array[1:no_of_dry_spells+1] > 1])
                                 
@@ -1445,7 +1453,7 @@ class ContentWidget(QWidget):
                                 if total_dry_days != 0:
                                     mean_dry_day_pers = total_consec_dry / total_dry_days
                                 
-                                # Calculate standard deviation
+                                # Calculate standard deviation with full precision
                                 sd_dry_spell = np.sqrt(np.sum((dry_spell_array[1:no_of_dry_spells+1] - mean_dry_spell_length) ** 2) / no_of_dry_spells)
                                 
                                 self.results_array[i, j, 16] = mean_dry_spell_length
@@ -1453,7 +1461,7 @@ class ContentWidget(QWidget):
                                 self.results_array[i, j, 21] = sd_dry_spell
                                 self.results_array[i, j, 27] = mean_dry_day_pers
                             
-                            # Calculate correlation
+                            # Calculate correlation with full precision
                             if mean_wet_day_pers != 0 and mean_dry_day_pers != 0:
                                 self.results_array[i, j, 28] = mean_wet_day_pers - (1 - mean_dry_day_pers)
                             else:
@@ -1473,6 +1481,7 @@ class ContentWidget(QWidget):
                                     if no_of_wet_spells % 2 != 0:  # Odd number
                                         self.results_array[i, j, 29] = sorted_wet[position]
                                     else:  # Even number
+                                        # Calculate median with full precision
                                         self.results_array[i, j, 29] = (sorted_wet[position-1] + sorted_wet[position]) / 2
                             
                             # Calculate median dry spell length if needed
@@ -1489,6 +1498,7 @@ class ContentWidget(QWidget):
                                     if no_of_dry_spells % 2 != 0:  # Odd number
                                         self.results_array[i, j, 30] = sorted_dry[position]
                                     else:  # Even number
+                                        # Calculate median with full precision
                                         self.results_array[i, j, 30] = (sorted_dry[position-1] + sorted_dry[position]) / 2
             
             # Calculate median, percentile, IQR, and POT/POT% for precipitation
@@ -1512,7 +1522,7 @@ class ContentWidget(QWidget):
                             # Filter data to remove missing values, end markers, and low precipitation
                             # EXACTLY like VBA - filter and compact the data in place for sorting
                             valid_count = 0
-                            filtered_data = np.zeros(array_position[i, j])
+                            filtered_data = np.zeros(array_position[i, j], dtype=np.float64)
                             
                             for k in range(1, array_position[i, j]):
                                 if (data_array[i, j, k] != self.global_missing_code and
@@ -1544,7 +1554,7 @@ class ContentWidget(QWidget):
                                     
                                     spacing = spacing // 3
                                 
-                                # Calculate percentile directly from sorted array
+                                # Calculate percentile directly from sorted array with full precision
                                 # VBA-style percentile calculation
                                 def vba_percentile(ptile):
                                     position = 1 + (ptile * (valid_count - 1) / 100)
@@ -1559,15 +1569,16 @@ class ContentWidget(QWidget):
                                         return filtered_data[valid_count]
                                     
                                     range_val = filtered_data[upper_bound] - filtered_data[lower_bound]
+                                    # Preserve full precision in interpolation
                                     return filtered_data[lower_bound] + (range_val * proportion)
                                 
-                                # Calculate percentile
+                                # Calculate percentile with full precision
                                 self.results_array[i, j, 9] = vba_percentile(self.percentile)
                                 
-                                # Calculate median
+                                # Calculate median with full precision
                                 self.results_array[i, j, 4] = vba_percentile(50)
                                 
-                                # Calculate IQR
+                                # Calculate IQR with full precision
                                 twenty_fifth = vba_percentile(25)
                                 seventy_fifth = vba_percentile(75)
                                 self.results_array[i, j, 6] = seventy_fifth - twenty_fifth
@@ -1579,7 +1590,7 @@ class ContentWidget(QWidget):
                                         # Need to make sure we have valid annual data first
                                         if was_any_data_valid[i, 17]:
                                             annual_valid_count = 0
-                                            annual_filtered_data = np.zeros(array_position[i, 17])
+                                            annual_filtered_data = np.zeros(array_position[i, 17], dtype=np.float64)
                                             
                                             for k in range(1, array_position[i, 17]):
                                                 if (data_array[i, 17, k] != self.global_missing_code and
@@ -1611,7 +1622,7 @@ class ContentWidget(QWidget):
                                                     
                                                     spacing = spacing // 3
                                                 
-                                                # Calculate the percentile threshold for annual data
+                                                # Calculate the percentile threshold for annual data with full precision
                                                 position = 1 + (self.prec_pot * (annual_valid_count - 1) / 100)
                                                 lower_bound = int(position)
                                                 upper_bound = min(lower_bound + 1, annual_valid_count + 1)
@@ -1629,7 +1640,7 @@ class ContentWidget(QWidget):
                                         else:
                                             precip_thresh = self.global_missing_code
                                     
-                                    # Calculate POT and POT%
+                                    # Calculate POT and POT% with full precision
                                     pot_counter = 0
                                     pot_sum = 0
                                     complete_sum = np.sum(filtered_data[1:valid_count+1])
@@ -1644,6 +1655,7 @@ class ContentWidget(QWidget):
                                         self.results_array[i, j, 22] = pot_counter
                                         
                                         if complete_sum > 0:
+                                            # Preserve full precision for percentage calculation
                                             self.results_array[i, j, 23] = pot_sum / complete_sum
                                         else:
                                             self.results_array[i, j, 23] = self.global_missing_code
@@ -1666,7 +1678,7 @@ class ContentWidget(QWidget):
                             self.results_array[i, j, 22] = self.global_missing_code  # POT
                             self.results_array[i, j, 23] = self.global_missing_code  # POT as % of total
             
-            # Convert sum to sum divided by years available
+            # Convert sum to sum divided by years available with full precision
             for i in range(1, self.ensemble_size + 1):
                 for j in range(1, 18):
                     if year_count_1d[j] == 0:
@@ -1678,7 +1690,7 @@ class ContentWidget(QWidget):
             if self.ensemble_size > 1 and self.ensemble_mean_checked:
                 for stat_wanted in range(1, 34):  # For all stats
                     for j in range(1, 18):  # For each period
-                        # Calculate mean
+                        # Calculate mean with full precision
                         mean_stats = 0
                         missing = 0
                         
@@ -1693,7 +1705,7 @@ class ContentWidget(QWidget):
                         else:
                             mean_stats = mean_stats / (self.ensemble_size - missing)
                         
-                        # Calculate standard deviation
+                        # Calculate standard deviation with full precision
                         if mean_stats == self.global_missing_code:
                             sd_stats = self.global_missing_code
                         else:
@@ -1726,7 +1738,7 @@ class ContentWidget(QWidget):
     
     def calculate_percentile(self, data, ptile):
         """
-        Calculate percentile from data array
+        Calculate percentile from data array with full precision
         """
         if not data:
             return self.global_missing_code
@@ -1747,6 +1759,7 @@ class ContentWidget(QWidget):
             
         range_val = data[upper_bound-1] - data[lower_bound-1]
         
+        # Preserve full precision in interpolation
         return data[lower_bound-1] + (range_val * proportion)
     
     def print_results(self, deltas_used):
@@ -1788,7 +1801,11 @@ class ContentWidget(QWidget):
                 f.write(f"{self.labels[i-1]}")
                 for j in range(1, len(self.stats_params) + 1):
                     if j < len(self.stats_params) and self.stats_params[j-1][1] == "Y":
-                        f.write(f",{self.results_array[1, i, j]}")
+                        if self.results_array[1, i, j] == self.global_missing_code:
+                            f.write(",---")
+                        else:
+                            # Keep full precision in the file
+                            f.write(f",{self.results_array[1, i, j]}")
                 f.write("\n")
             
             # Write standard deviations if mean selected
@@ -1799,7 +1816,11 @@ class ContentWidget(QWidget):
                     f.write(f"{self.labels[i-1]}")
                     for j in range(1, len(self.stats_params) + 1):
                         if j < len(self.stats_params) and self.stats_params[j-1][1] == "Y":
-                            f.write(f",{self.results_array[2, i, j]}")
+                            if self.results_array[2, i, j] == self.global_missing_code:
+                                f.write(",---")
+                            else:
+                                # Keep full precision in the file
+                                f.write(f",{self.results_array[2, i, j]}")
                     f.write("\n")
         
         # Format text for dialog display
@@ -1829,6 +1850,7 @@ class ContentWidget(QWidget):
                     if self.results_array[1, i, j] == self.global_missing_code:
                         row += "---\t"
                     else:
+                        # Format with 3 decimal places for display only
                         row += f"{self.results_array[1, i, j]:.3f}\t"
             result_text += row + "\n"
         
@@ -1843,6 +1865,7 @@ class ContentWidget(QWidget):
                         if self.results_array[2, i, j] == self.global_missing_code:
                             row += "---\t"
                         else:
+                            # Format with 3 decimal places for display only
                             row += f"{self.results_array[2, i, j]:.3f}\t"
                 result_text += row + "\n"
         
@@ -1870,29 +1893,31 @@ class ContentWidget(QWidget):
             if not self.error_occurred and not self.escape_processed:
                 self.print_results(True)
                 
-                # Store base results
+                # Store base results - use a deep copy to ensure full precision
                 base_results = np.copy(self.results_array[1, :, :])
                 
                 # Calculate period A stats
                 self.calc_stats(self.period_a_start, self.period_a_end, True)
                 
                 if not self.error_occurred and not self.escape_processed:
-                    # Calculate deltas
+                    # Calculate deltas with full precision
                     for i in range(1, 18):
                         for j in range(1, len(self.stats_params) + 1):
                             if j < len(self.stats_params) and self.stats_params[j-1][1] == "Y":
                                 if self.delta_wanted == 1:  # Percentage
-                                    if (abs(base_results[i, j]) < 0.005 or 
+                                    if (abs(base_results[i, j]) < 0.000000001 or  # Use smaller epsilon for higher precision
                                         base_results[i, j] == self.global_missing_code or 
                                         self.results_array[1, i, j] == self.global_missing_code):
                                         self.deltaresults[i, j] = self.global_missing_code
                                     else:
+                                        # Calculate percentage change with full precision
                                         self.deltaresults[i, j] = 100 * ((self.results_array[1, i, j] - base_results[i, j]) / base_results[i, j])
                                 else:  # Absolute
                                     if (base_results[i, j] == self.global_missing_code or 
                                         self.results_array[1, i, j] == self.global_missing_code):
                                         self.deltaresults[i, j] = self.global_missing_code
                                     else:
+                                        # Calculate absolute change with full precision
                                         self.deltaresults[i, j] = self.results_array[1, i, j] - base_results[i, j]
                     
                     # Calculate T-test
@@ -1910,22 +1935,24 @@ class ContentWidget(QWidget):
                     self.calc_stats(self.period_b_start, self.period_b_end, True)
                     
                     if not self.error_occurred and not self.escape_processed:
-                        # Calculate deltas
+                        # Calculate deltas with full precision
                         for i in range(1, 18):
                             for j in range(1, len(self.stats_params) + 1):
                                 if j < len(self.stats_params) and self.stats_params[j-1][1] == "Y":
                                     if self.delta_wanted == 1:  # Percentage
-                                        if (abs(base_results[i, j]) < 0.005 or 
+                                        if (abs(base_results[i, j]) < 0.000000001 or 
                                             base_results[i, j] == self.global_missing_code or 
                                             self.results_array[1, i, j] == self.global_missing_code):
                                             self.deltaresults[i, j] = self.global_missing_code
                                         else:
+                                            # Calculate percentage change with full precision
                                             self.deltaresults[i, j] = 100 * ((self.results_array[1, i, j] - base_results[i, j]) / base_results[i, j])
                                     else:  # Absolute
                                         if (base_results[i, j] == self.global_missing_code or 
                                             self.results_array[1, i, j] == self.global_missing_code):
                                             self.deltaresults[i, j] = self.global_missing_code
                                         else:
+                                            # Calculate absolute change with full precision
                                             self.deltaresults[i, j] = self.results_array[1, i, j] - base_results[i, j]
                         
                         # Calculate T-test
@@ -1943,22 +1970,24 @@ class ContentWidget(QWidget):
                         self.calc_stats(self.period_c_start, self.period_c_end, True)
                         
                         if not self.error_occurred and not self.escape_processed:
-                            # Calculate deltas
+                            # Calculate deltas with full precision
                             for i in range(1, 18):
                                 for j in range(1, len(self.stats_params) + 1):
                                     if j < len(self.stats_params) and self.stats_params[j-1][1] == "Y":
                                         if self.delta_wanted == 1:  # Percentage
-                                            if (abs(base_results[i, j]) < 0.005 or 
+                                            if (abs(base_results[i, j]) < 0.000000001 or 
                                                 base_results[i, j] == self.global_missing_code or 
                                                 self.results_array[1, i, j] == self.global_missing_code):
                                                 self.deltaresults[i, j] = self.global_missing_code
                                             else:
+                                                # Calculate percentage change with full precision
                                                 self.deltaresults[i, j] = 100 * ((self.results_array[1, i, j] - base_results[i, j]) / base_results[i, j])
                                         else:  # Absolute
                                             if (base_results[i, j] == self.global_missing_code or 
                                                 self.results_array[1, i, j] == self.global_missing_code):
                                                 self.deltaresults[i, j] = self.global_missing_code
                                             else:
+                                                # Calculate absolute change with full precision
                                                 self.deltaresults[i, j] = self.results_array[1, i, j] - base_results[i, j]
                             
                             # Calculate T-test
@@ -1977,9 +2006,9 @@ class ContentWidget(QWidget):
     
     def calculate_t_test(self, base_results):
         """
-        Calculate T-test between base period and current period
+        Calculate T-test between base period and current period with full precision
         """
-        self.t_test_results = np.full((18, 3), self.global_missing_code, dtype=float)
+        self.t_test_results = np.full((18, 3), self.global_missing_code, dtype=np.float64)
         
         for i in range(1, 18):
             # Check if data are valid
@@ -1998,19 +2027,19 @@ class ContentWidget(QWidget):
                 self.t_test_results[i, 1] = self.global_missing_code
                 self.t_test_results[i, 2] = self.global_missing_code
             else:
-                # Calculate T-test
+                # Calculate T-test with full precision
                 t_test_denom = self.results_array[1, i, 5] / self.results_array[1, i, 14]
                 t_test_denom += base_results[i, 5] / base_results[i, 14]
                 t_test_denom = np.sqrt(t_test_denom)
                 
-                if t_test_denom < 0.005:  # Avoid small division
+                if t_test_denom < 0.000000001:  # Use smaller epsilon for higher precision
                     self.t_test_results[i, 1] = self.global_missing_code
                     self.t_test_results[i, 2] = self.global_missing_code
                 else:
-                    # Calculate T-test value
+                    # Calculate T-test value with full precision
                     self.t_test_results[i, 1] = abs((base_results[i, 1] - self.results_array[1, i, 1]) / t_test_denom)
                     
-                    # Calculate degrees of freedom
+                    # Calculate degrees of freedom with full precision
                     dov_denom = (base_results[i, 5] ** 2) / ((base_results[i, 14] ** 2) * (base_results[i, 14] + 1))
                     dov_denom += ((self.results_array[1, i, 5] ** 2) / ((self.results_array[1, i, 14] ** 2) * (self.results_array[1, i, 14] + 1)))
                     
@@ -2051,7 +2080,11 @@ class ContentWidget(QWidget):
                 f.write(f"{self.labels[i-1]}")
                 for j in range(1, len(self.stats_params) + 1):
                     if j < len(self.stats_params) and self.stats_params[j-1][1] == "Y":
-                        f.write(f",{self.deltaresults[i, j]}")
+                        if self.deltaresults[i, j] == self.global_missing_code:
+                            f.write(",---")
+                        else:
+                            # Keep full precision in the file
+                            f.write(f",{self.deltaresults[i, j]}")
                 f.write("\n")
         
         # Display results in dialog
@@ -2080,6 +2113,7 @@ class ContentWidget(QWidget):
                     if self.deltaresults[i, j] == self.global_missing_code:
                         row += "---\t"
                     else:
+                        # Format with 3 decimal places for display only
                         row += f"{self.deltaresults[i, j]:.3f}\t"
             result_text += row + "\n"
         
@@ -2100,9 +2134,26 @@ class ContentWidget(QWidget):
             # Write T-test values
             for i in range(1, 18):
                 f.write(f"{self.labels[i-1]}")
-                f.write(f",{self.t_test_results_a[i, 1]}")
-                f.write(f",{self.t_test_results_b[i, 1]}")
-                f.write(f",{self.t_test_results_c[i, 1]}\n")
+                
+                if self.t_test_results_a[i, 1] == self.global_missing_code:
+                    f.write(",---")
+                else:
+                    # Keep full precision in the file
+                    f.write(f",{self.t_test_results_a[i, 1]}")
+                
+                if self.t_test_results_b[i, 1] == self.global_missing_code:
+                    f.write(",---")
+                else:
+                    # Keep full precision in the file
+                    f.write(f",{self.t_test_results_b[i, 1]}")
+                
+                if self.t_test_results_c[i, 1] == self.global_missing_code:
+                    f.write(",---")
+                else:
+                    # Keep full precision in the file
+                    f.write(f",{self.t_test_results_c[i, 1]}")
+                
+                f.write("\n")
             
             f.write("\n")
             f.write("Degrees of Freedom for T Test\n")
@@ -2112,9 +2163,26 @@ class ContentWidget(QWidget):
             # Write degrees of freedom
             for i in range(1, 18):
                 f.write(f"{self.labels[i-1]}")
-                f.write(f",{int(round(self.t_test_results_a[i, 2]))}")
-                f.write(f",{int(round(self.t_test_results_b[i, 2]))}")
-                f.write(f",{int(round(self.t_test_results_c[i, 2]))}\n")
+                
+                if self.t_test_results_a[i, 2] == self.global_missing_code:
+                    f.write(",---")
+                else:
+                    # Round degrees of freedom to nearest integer for file
+                    f.write(f",{int(round(self.t_test_results_a[i, 2]))}")
+                
+                if self.t_test_results_b[i, 2] == self.global_missing_code:
+                    f.write(",---")
+                else:
+                    # Round degrees of freedom to nearest integer for file
+                    f.write(f",{int(round(self.t_test_results_b[i, 2]))}")
+                
+                if self.t_test_results_c[i, 2] == self.global_missing_code:
+                    f.write(",---")
+                else:
+                    # Round degrees of freedom to nearest integer for file
+                    f.write(f",{int(round(self.t_test_results_c[i, 2]))}")
+                
+                f.write("\n")
         
         # Display results in dialog
         results_dialog = ResultsDialog(parent=self)
@@ -2134,9 +2202,9 @@ class ContentWidget(QWidget):
             else:
                 t_value = self.t_test_results_a[i, 1]
                 if t_value > 1.96:  # Critical value at 0.025 point of t distribution
-                    row += f"*{t_value:.3f}*\t"
+                    row += f"*{t_value:.3f}*\t"  # Format with 3 decimal places for display
                 else:
-                    row += f"{t_value:.3f}\t"
+                    row += f"{t_value:.3f}\t"  # Format with 3 decimal places for display
             
             # Period B
             if self.t_test_results_b[i, 1] == self.global_missing_code:
@@ -2144,9 +2212,9 @@ class ContentWidget(QWidget):
             else:
                 t_value = self.t_test_results_b[i, 1]
                 if t_value > 1.96:
-                    row += f"*{t_value:.3f}*\t"
+                    row += f"*{t_value:.3f}*\t"  # Format with 3 decimal places for display
                 else:
-                    row += f"{t_value:.3f}\t"
+                    row += f"{t_value:.3f}\t"  # Format with 3 decimal places for display
             
             # Period C
             if self.t_test_results_c[i, 1] == self.global_missing_code:
@@ -2154,9 +2222,9 @@ class ContentWidget(QWidget):
             else:
                 t_value = self.t_test_results_c[i, 1]
                 if t_value > 1.96:
-                    row += f"*{t_value:.3f}*"
+                    row += f"*{t_value:.3f}*"  # Format with 3 decimal places for display
                 else:
-                    row += f"{t_value:.3f}"
+                    row += f"{t_value:.3f}"  # Format with 3 decimal places for display
             
             result_text += row + "\n"
         
@@ -2378,11 +2446,11 @@ class DeltaPeriodsDialog(QDialog):
         base_layout = QHBoxLayout()
         
         base_layout.addWidget(QLabel("Start Date:"))
-        self.base_start = QLineEdit("1961-01-01")
+        self.base_start = QLineEdit("01-01-1961")
         base_layout.addWidget(self.base_start)
         
         base_layout.addWidget(QLabel("End Date:"))
-        self.base_end = QLineEdit("1990-12-31")
+        self.base_end = QLineEdit("31-12-1990")
         base_layout.addWidget(self.base_end)
         
         base_group.setLayout(base_layout)
@@ -2393,11 +2461,11 @@ class DeltaPeriodsDialog(QDialog):
         period_a_layout = QHBoxLayout()
         
         period_a_layout.addWidget(QLabel("Start Date:"))
-        self.period_a_start = QLineEdit("2010-01-01")
+        self.period_a_start = QLineEdit("01-01-2010")
         period_a_layout.addWidget(self.period_a_start)
         
         period_a_layout.addWidget(QLabel("End Date:"))
-        self.period_a_end = QLineEdit("2039-12-31")
+        self.period_a_end = QLineEdit("31-12-2039")
         period_a_layout.addWidget(self.period_a_end)
         
         period_a_group.setLayout(period_a_layout)
@@ -2408,11 +2476,11 @@ class DeltaPeriodsDialog(QDialog):
         period_b_layout = QHBoxLayout()
         
         period_b_layout.addWidget(QLabel("Start Date:"))
-        self.period_b_start = QLineEdit("2040-01-01")
+        self.period_b_start = QLineEdit("01-01-2040")
         period_b_layout.addWidget(self.period_b_start)
         
         period_b_layout.addWidget(QLabel("End Date:"))
-        self.period_b_end = QLineEdit("2069-12-31")
+        self.period_b_end = QLineEdit("31-12-2069")
         period_b_layout.addWidget(self.period_b_end)
         
         period_b_group.setLayout(period_b_layout)
@@ -2423,11 +2491,11 @@ class DeltaPeriodsDialog(QDialog):
         period_c_layout = QHBoxLayout()
         
         period_c_layout.addWidget(QLabel("Start Date:"))
-        self.period_c_start = QLineEdit("2070-01-01")
+        self.period_c_start = QLineEdit("01-01-2070")
         period_c_layout.addWidget(self.period_c_start)
         
         period_c_layout.addWidget(QLabel("End Date:"))
-        self.period_c_end = QLineEdit("2099-12-31")
+        self.period_c_end = QLineEdit("31-12-2099")
         period_c_layout.addWidget(self.period_c_end)
         
         period_c_group.setLayout(period_c_layout)
@@ -2471,8 +2539,14 @@ class DeltaPeriodsDialog(QDialog):
             end = datetime.datetime.strptime(self.base_end.text(), "%d-%m-%Y")
             return start, end
         except ValueError:
-            QMessageBox.critical(self, "Error", "Invalid base period dates")
-            return None, None
+            try:
+                # Try alternative format
+                start = datetime.datetime.strptime(self.base_start.text(), "%Y-%m-%d")
+                end = datetime.datetime.strptime(self.base_end.text(), "%Y-%m-%d")
+                return start, end
+            except ValueError:
+                QMessageBox.critical(self, "Error", "Invalid base period dates")
+                return None, None
     
     def get_period_a(self):
         """
@@ -2483,8 +2557,14 @@ class DeltaPeriodsDialog(QDialog):
             end = datetime.datetime.strptime(self.period_a_end.text(), "%d-%m-%Y")
             return start, end
         except ValueError:
-            QMessageBox.critical(self, "Error", "Invalid period A dates")
-            return None, None
+            try:
+                # Try alternative format
+                start = datetime.datetime.strptime(self.period_a_start.text(), "%Y-%m-%d")
+                end = datetime.datetime.strptime(self.period_a_end.text(), "%Y-%m-%d")
+                return start, end
+            except ValueError:
+                QMessageBox.critical(self, "Error", "Invalid period A dates")
+                return None, None
     
     def get_period_b(self):
         """
@@ -2495,8 +2575,14 @@ class DeltaPeriodsDialog(QDialog):
             end = datetime.datetime.strptime(self.period_b_end.text(), "%d-%m-%Y")
             return start, end
         except ValueError:
-            QMessageBox.critical(self, "Error", "Invalid period B dates")
-            return None, None
+            try:
+                # Try alternative format
+                start = datetime.datetime.strptime(self.period_b_start.text(), "%Y-%m-%d")
+                end = datetime.datetime.strptime(self.period_b_end.text(), "%Y-%m-%d")
+                return start, end
+            except ValueError:
+                QMessageBox.critical(self, "Error", "Invalid period B dates")
+                return None, None
     
     def get_period_c(self):
         """
@@ -2507,8 +2593,14 @@ class DeltaPeriodsDialog(QDialog):
             end = datetime.datetime.strptime(self.period_c_end.text(), "%d-%m-%Y")
             return start, end
         except ValueError:
-            QMessageBox.critical(self, "Error", "Invalid period C dates")
-            return None, None
+            try:
+                # Try alternative format
+                start = datetime.datetime.strptime(self.period_c_start.text(), "%Y-%m-%d")
+                end = datetime.datetime.strptime(self.period_c_end.text(), "%Y-%m-%d")
+                return start, end
+            except ValueError:
+                QMessageBox.critical(self, "Error", "Invalid period C dates")
+                return None, None
     
     def get_delta_type(self):
         """

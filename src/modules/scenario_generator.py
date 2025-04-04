@@ -78,7 +78,6 @@ class SDSMContext:
         # Predictor file paths (if provided)
         self.predictor_files = []
 
-
 ###############################################################################
 # 2. Parse .PAR file and build absolute paths for data file(s)
 ###############################################################################
@@ -170,6 +169,52 @@ def parse_par_file(par_path: str, ctx: SDSMContext):
     except (IndexError, ValueError) as e:
         QMessageBox.critical(None, "Error", f"Error parsing .PAR file:\n{e}")
 
+###############################################################################
+# New: Write the .SIM file with the required structure.
+###############################################################################
+def write_sim_file(ctx: SDSMContext):
+    """
+    Write the .SIM file containing metadata for the simulation.
+    The file structure is (each item on a new line):
+      [1] Number of predictor variables.
+      [2] Number of regression models used (e.g., 12 for monthly).
+      [3] Maximum number of days in a year.
+      [4] Start date of the calibration data (DD/MM/YYYY).
+      [5] Number of days simulated.
+      [6] Conditional flag (#TRUE# or #FALSE#).
+      [7] Number of ensemble members.
+      [8] Variance inflation parameter.
+      [9] Transformation code for conditional variables (1=none, 2=fourth root, 3=natural log, 4=inverse normal).
+      [10] Bias correction parameter.
+      [11] Predictand file name.
+      [12 onward] Predictor file name(s).
+    """
+    regression_models = ctx.num_months  # assuming monthly regression models (adjust as needed)
+    transformation_code = 3 if ctx.conditional_check else 1  # default: natural log for conditional; none for unconditional
+    sim_lines = []
+    sim_lines.append(str(ctx.num_predictors))
+    sim_lines.append(str(regression_models))
+    sim_lines.append(str(ctx.year_length))
+    sim_lines.append(ctx.start_date.strftime("%d/%m/%Y"))
+    sim_lines.append(str(ctx.no_of_days))
+    sim_lines.append("#TRUE#" if ctx.conditional_check else "#FALSE#")
+    sim_lines.append(str(ctx.ensemble_size))
+    sim_lines.append(str(ctx.variance_factor_percent))
+    sim_lines.append(str(transformation_code))
+    sim_lines.append("0")  # bias correction parameter (default value; adjust if necessary)
+    sim_lines.append(ctx.in_file)
+    for predictor in ctx.predictor_files:
+        sim_lines.append(os.path.basename(predictor))
+    # Create the SIM file path by replacing the .OUT extension with .SIM.
+    sim_file_path = os.path.splitext(ctx.out_root)[0] + ".SIM"
+    try:
+        with open(sim_file_path, "w") as f:
+            for line in sim_lines:
+                f.write(line + "\n")
+    except Exception as e:
+        QMessageBox.critical(None, "Error", f"Error writing SIM file:\n{e}")
+    # Optionally, print to console or show a message that the SIM file was created.
+    print(f"SIM file written to {sim_file_path}")
 
 ###############################################################################
 # 3. Main Scenario Generation Functions (apply treatments, plotting, etc.)
@@ -263,9 +308,11 @@ def modify_data(ctx: SDSMContext):
         QMessageBox.critical(None, "Error", f"Error writing output file:\n{e}")
         return
 
+    # Write the .SIM file using the new function.
+    write_sim_file(ctx)
+
     QMessageBox.information(None, "Success",
                             f"Scenario generated.\n{ctx.no_of_days} days processed.")
-    plot_scenario(ctx)
 
 
 def apply_amount(ctx: SDSMContext):
@@ -520,21 +567,6 @@ def apply_trend(ctx: SDSMContext):
                             ctx.data_array[j][i] *= ((100 + delta) / 100)
 
 
-def plot_scenario(ctx: SDSMContext):
-    if ctx.no_of_days == 0:
-        return
-    plt.figure(figsize=(10, 5))
-    x_values = np.arange(1, ctx.no_of_days + 1)
-    for j in range(ctx.ensemble_size):
-        y_values = np.array(ctx.data_array[j], dtype=float)
-        y_values[y_values == ctx.global_missing_code] = np.nan
-        plt.plot(x_values, y_values, label=f"Ensemble {j+1}")
-    plt.title("Scenario Output (Final Daily Values)")
-    plt.xlabel("Day Index")
-    plt.ylabel("Value (e.g., mm)")
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
 
 
 ###############################################################################
@@ -672,7 +704,6 @@ class ScenarioGeneratorWidget(QWidget):
             self.outputFileLabel.setText(file_name)
             self.ctx.out_file = os.path.basename(file_name)
             self.ctx.out_root = file_name
-
 
     def generateScenario(self):
         if self.startDateInput.text():

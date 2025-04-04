@@ -5,11 +5,11 @@ from copy import deepcopy
 import src.core.data_settings
 #from scipy.stats import spearmanr
 
-## NOTE TO READERS: THIS FILE **DOES NOT** WORK
-## It does if you run the debugRun test configuration
+## NOTE TO READERS: THIS FILE **DOES** WORK
+## The debugRun test function should give an example configuration
 
 ##DEBUGGING FUNCTIONS:
-debug = True
+debug = False
 def debugMsg(msg):
     if debug == True:
         print(msg)
@@ -47,18 +47,19 @@ def calibrateModelDefaultExperience():
     #fsDate = date(1961, 1, 1)
     #feDate = deepcopy(globalEndDate)
     #feDate = date(1961, 1, 10)
-    feDate = date(1965, 1, 10)
+    #feDate = date(1965, 1, 10)
     #feDate = date(1996, 12, 31)
     #feDate = date(1997, 12, 31)
-    #feDate = date(2015, 12, 31)
-    modelType = 2 #0
-    parmOpt = False  ## Whether Conditional or Unconditional. True = Cond, False = Uncond. 
+    feDate = date(2015, 12, 31)
+    modelType = 0 #0
+    parmOpt = True  ## Whether Conditional or Unconditional. True = Cond, False = Uncond. 
     ##ParmOpt(1) = Uncond = False
     ##ParmOpt(0) = Cond = True
     autoRegression = False ## Replaces AutoRegressionCheck -> Might be mutually exclusive with parmOpt - will check later...
     includeChow = True
     detrendOption = 0 #0, 1 or 2...
     doCrossValidation = True
+    crossValFolds = 7
 
     #if PTandRoot == None:
     PTandRoot = "predictand files/NoviSadPrecOBS.dat" ##Predictand file
@@ -84,7 +85,7 @@ def calibrateModelDefaultExperience():
     ## NOTE: FOR OPTIMAL PERFORMANCE, MERGE PTandRoot with fileList:
     fileList.insert(0, PTandRoot)
     
-    results = calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType, parmOpt, autoRegression, includeChow, detrendOption, doCrossValidation)
+    results = calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType, parmOpt, autoRegression, includeChow, detrendOption, doCrossValidation, crossValFolds)
 
     ## Output for similar results to the OG software:
     print(f"FINAL RESULTS:")
@@ -163,7 +164,7 @@ def calibrateModelDefaultExperience():
 
     #debugMsg(f"TotalNumbers: {totalNumbers}, Missing Days: {noOfDays2Fit - totalNumbers}")
 
-def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=False, autoRegression=False, includeChow=False, detrendOption=0, doCrossValidation=False):
+def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=False, autoRegression=False, includeChow=False, detrendOption=0, doCrossValidation=False, crossValFolds=2):
     """
         Core Calibrate Model Function (v0.4.1)
         fileList -> Array of predictor file paths. First entry should be the predictand file
@@ -176,6 +177,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
         includeChow -> Chow Test Tickbox
         detrendOption -> Detrend Options: 0-> None, 1-> Linear, 2-> Power function.
         doCrossValidation -> Cross Validation Tickbox
+        crossValFolds -> Number of folds for CrossValidation
         ----------------------------------------
         CalibrateModel (will in the future) also reads the following from the Global Setings:
         > globalStartDate & globalEndDate -> "Standard" start / end date
@@ -235,6 +237,9 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
 
     ## In v0.6.0
     ## Finished implementation of CrossValidation
+
+    ## In v0.6.1
+    ## Added crossValFolds parameter
 
     #------------------------
     # FUNCTION DEFINITITIONS:
@@ -298,7 +303,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
         #------------------------
         
         #xValidationResults = np.ndarray((13, 7)).fill(GlobalMissingCode) ## Original array is XValidationResults(1 To 13, 1 To 7) As Double
-        xValidationOutput = {}
+        xValidationOutput = {"Unconditional": {}, "Conditional": {}}
         xValidMessageShown = False
 
         #if ApplyStepwise:
@@ -626,8 +631,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                 if doCrossValidation:
                     ##call xValUnConditional
                     #xValUnConditional()
-                    xValResults = xValidation(xMatrix, yMatrix, parmOpt)
-                    xValidationOutput["Unconditional"] = {}
+                    xValResults = xValidation(xMatrix, yMatrix, crossValFolds, parmOpt)
                     for i in range(12):
                         xValidationOutput["Unconditional"][i] = xValResults
 
@@ -702,8 +706,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                     if doCrossValidation:
                         #call xvalConditional
                         #xValConditional()
-                        xValResults = xValidation(xMatrix, yMatrix, parmOpt, True)
-                        xValidationOutput["Conditional"] = {}
+                        xValResults = xValidation(xMatrix, yMatrix, crossValFolds, parmOpt, True)
                         for i in range(12):
                             xValidationOutput["Conditional"][i] = xValResults
 
@@ -749,25 +752,8 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                     #---- SECTION #5.1.3 ---- DW calculations
                     #------------------------
 
-                    #DWNumerator = 0
-                    #DWDenom = 0
                     ##Need to properly calc residualMatrixRows
                     residualMatrix = params["residualMatrix"]
-                    #for i in range(1, len(residualMatrix)):
-                    #    DWNumerator += (residualMatrix[i] - residualMatrix[i - 1]) ** 2
-                    ##next
-                    #for i in range(len(residualMatrix)):
-                    #    DWDenom += residualMatrix[i] ** 2
-                    ##next
-                    #if DWDenom > 0:
-                    #    for i in range(12):
-                    #        statsSummary[i, 2] = DWNumerator / DWDenom
-                        ##next
-                    #else:
-                    #    for i in range(12):
-                    #        statsSummary[i, 2] = GlobalMissingCode
-                        ##next
-                    ##endif
                     dw = calcDW(residualMatrix)
                     for i in range(12):
                         statsSummary[i, 2] = dw
@@ -856,8 +842,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                     if doCrossValidation:
                         ##call xValUnconditional
                         #xValUnConditional()
-                        xValResults = xValidation(xMatrix, yMatrix, parmOpt)
-                        xValidationOutput["Unconditional"] = {}
+                        xValResults = xValidation(xMatrix, yMatrix, crossValFolds, parmOpt)
                         if seasonCode == 4:
                             for i in range(3):
                                 xValidationOutput["Unconditional"][seasonMonths[periodWorkingOn][i]] = xValResults
@@ -944,8 +929,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                         if doCrossValidation:
                             #call xValConditional
                             #xValConditional()
-                            xValResults = xValidation(xMatrix, yMatrix, parmOpt, True)
-                            xValidationOutput["Conditional"] = {}
+                            xValResults = xValidation(xMatrix, yMatrix, crossValFolds, parmOpt, True)
                             if seasonCode == 4:
                                 for i in range(3):
                                     xValidationOutput["Conditional"][seasonMonths[periodWorkingOn][i]] = xValResults
@@ -1359,7 +1343,7 @@ def xValConditional():
     ----> Coming Soon
     """
 
-def xValidation(xMatrix: np.ndarray, yMatrix: np.ndarray, parmOpt, conditionalPart=False):
+def xValidation(xMatrix: np.ndarray, yMatrix: np.ndarray, noOfFolds, parmOpt, conditionalPart=False):
     """
     Cross Validation - Combined Function
     Currently has a minor issue in Section #1, leading to innacuracy after 3dp for all values
@@ -1367,7 +1351,7 @@ def xValidation(xMatrix: np.ndarray, yMatrix: np.ndarray, parmOpt, conditionalPa
     """
 
     ### GOLBALS ###
-    noOfFolds = 2
+    #noOfFolds = 2
     xValidMessageShown = False
     #xMatrix = np.ndarray()
     #yMatrix = np.ndarray()
@@ -1452,11 +1436,10 @@ def xValidation(xMatrix: np.ndarray, yMatrix: np.ndarray, parmOpt, conditionalPa
         yMatrix = np.delete(yMatrix, removeIndex)
 
     
-    output = {}
-    if not parmOpt: ##If Unconditional, do spearman before filtering out erroneous values?
-        debugMsg("not parmOpt")
-        debugMsg(f"modMatrix size: {modMatrix.size}, yMatrix size: {yMatrix.size}")
-        output["SpearmanR"] = spearmanr(modMatrix, yMatrix)
+    #if not parmOpt: ##If Unconditional, do spearman before filtering out erroneous values?
+    #    debugMsg("not parmOpt")
+    #    debugMsg(f"modMatrix size: {modMatrix.size}, yMatrix size: {yMatrix.size}")
+    #    output["SpearmanR"] = spearmanr(modMatrix, yMatrix)
     
     ## "Cleanse" yMat and modMat arrays (filter out missing values, and values below the threshold for the conditional part)
     removeIndex = []
@@ -1473,11 +1456,10 @@ def xValidation(xMatrix: np.ndarray, yMatrix: np.ndarray, parmOpt, conditionalPa
     #------ SECTION #3 ------ Calculate Statistics
     #------------------------
 
-    ## If Unconditional, or Conditional part of the Conditional process, calc Spearman Rank
-    #if (parmOpt and conditionalPart) or not parmOpt: ##If Conditional Part of conditional process, do spearman after filtering out values
-    if parmOpt and conditionalPart: ##If Conditional Part of conditional process, do spearman after filtering out values
-        debugMsg("parmOpt++")
-        debugMsg(f"modMatrix size: {modMatrix.size}, yMatrix size: {yMatrix.size}")
+    output = {}
+    
+    if conditionalPart or not parmOpt: ## If Unconditional, or Conditional part of the Conditional process, calc Spearman Rank
+        #if parmOpt and conditionalPart: ##If Conditional Part of conditional process, do spearman after filtering out values
         output["SpearmanR"] = spearmanr(modMatrix, yMatrix)
 
     ## Calculate Statistics

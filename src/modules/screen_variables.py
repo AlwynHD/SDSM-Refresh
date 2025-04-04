@@ -427,12 +427,14 @@ class ContentWidget(QWidget):
         #titleLayout.addStretch()
         #contentAreaLayout.addStretch()
     def resetAll(self):
-        print()
+        #Reset file and path variables and labels
         self.predictorPath = 'predictor files'
         self.predictandSelected = ""
         self.predictorsSelected = []
         self.selectPredictandLabel.setText("No Predictand Selected")
-        self.updatePredictors(remove=True)
+        #Reset predictors to standard path
+        self.resetPredictors()
+        #Reset dates, labels, and line edits
         self.fitStartDateChooser.setDate(QDate(1948,1,1))
         self.fitEndDateChooser.setDate(QDate(2015,12,31))
         self.dropdownBox.setCurrentText("Annual")
@@ -461,6 +463,10 @@ class ContentWidget(QWidget):
         data = analyseData([self.predictandSelected],[predictor for predictor in self.predictorsSelected], userInput)
         #todo error handling
         #print(data)
+
+        if data['error'] != None:
+            return displayBox("Error",data['error'], "Error",isError=True)
+
         print(formatAnalysisResults(data))
 
         self.newWindow = AnalysisResultsApp()
@@ -528,21 +534,32 @@ class ContentWidget(QWidget):
                 predictorScrollLabelButton.setStyleSheet("color: black; background-color: #F0F0F0")
                 predictorScrollLabelButton.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
                 self.predictorsScrollLayout.addWidget(predictorScrollLabelButton) 
-    def updatePredictors(self,remove=False):
-        if not(remove):
-            pathName = QFileDialog.getExistingDirectory(self)
-            self.predictorPath = pathName
-        if remove:
-            while self.predictorsScrollLayout.count():
-                item = self.predictorsScrollLayout.takeAt(0)
-                widget = item.widget()
-                if widget is not None:
-                    widget.setParent(None)
-            if(self.predictorPath != ""):
-                self.writePredictors()
-            else:
-                self.predictorPath = "predictor files"
-                self.writePredictors()
+    def updatePredictors(self):
+        self.predictorsSelected = []
+        pathName = QFileDialog.getExistingDirectory(self)
+        self.predictorPath = pathName
+        while self.predictorsScrollLayout.count():
+            item = self.predictorsScrollLayout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.setParent(None)
+        if(self.predictorPath != ""):
+            self.writePredictors()
+        else:
+            self.predictorPath = "predictor files"
+            self.writePredictors()
+    def resetPredictors(self):
+        self.predictorsSelected = []
+        self.predictorPath = "predictor files"
+        while self.predictorsScrollLayout.count():
+            item = self.predictorsScrollLayout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.setParent(None)
+        self.writePredictors()
+            
+                
+
       
     def selectPredictandButtonClicked(self):
         #Will have to be changed soon, as it relies on known file "predictand files"

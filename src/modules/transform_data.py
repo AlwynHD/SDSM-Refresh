@@ -35,6 +35,8 @@ class labeledQLineEditFrame(QFrame):
         self.setLayout(layout)
     def getLineEditVal(self):
         return self.lineEdit.text()
+    def setLineEditVal(self,text):
+        self.lineEdit.setText(text)
     
 
 
@@ -281,8 +283,8 @@ class ContentWidget(QWidget):
         self.selectInputLabel = QLabel("File: Not Selected")
         selectInputFileLayout.addWidget(self.selectInputLabel)
 
-        columnInput = QLineEdit("1")
-        columnLayout.addWidget(columnInput)
+        self.columnInput = QLineEdit("1")
+        columnLayout.addWidget(self.columnInput)
         
         self.simCheckBox = QCheckBox("Create")
         simLayout.addWidget(self.simCheckBox)
@@ -483,6 +485,47 @@ class ContentWidget(QWidget):
 
         buttonLayout.addWidget(transformButton)
 
+        resetButton = QPushButton("🔄 Reset")
+        resetButton.clicked.connect(self.resetAll)
+        resetButton.setStyleSheet("background-color: #F44336; color: white; font-weight: bold;")
+        buttonLayout.addWidget(resetButton)
+        
+
+    def resetAll(self):
+        #Uncheck all buttons
+        buttons = self.transformRadioGroup.buttons()
+        self.transformRadioGroup.setExclusive(False) #Set exclusive to false so that its fine with none being checked
+        for button in buttons:
+            button.setChecked(False)
+        self.transformRadioGroup.setExclusive(True)        
+        #Remove selected files
+        self.inputSelected = ""
+        self.outputSelected = ""
+
+        self.selectInputLabel.setText("File: Not Selected")
+        self.selectOutputLabel.setText("File: Not Selected")
+
+        #Reset check boxes
+        self.simCheckBox.setChecked(False)
+        self.ensembleCheckBox.setChecked(False)
+        self.thresholdCheckBox.setChecked(False)
+        self.outputCheckBox.setChecked(False)
+        self.wrapCheckBox.setChecked(False)
+        self.padDataCheckBox.setChecked(False)
+
+        #Reset line edit fields
+        self.columnInput.setText("1")
+        self.ensembleInput.setText("1")
+        self.lagNLineEdit.setText("0")
+        self.binomialLineEdit.setText("0")
+        self.lambdaFrame.setLineEditVal("1")
+        self.shiftFrame.setLineEditVal("0")
+        self.standardDevFrame.setLineEditVal("0")
+
+        #Reset dates
+        self.startDateEdit.setDate(QDate(1948,1,1))
+        self.endDateEdit.setDate(QDate(2015,12,31))
+
 
     def QDateEditToDateTime(self, dateEdit):
         rawStartDate = dateEdit.date()
@@ -512,7 +555,7 @@ class ContentWidget(QWidget):
             self.selectOutputLabel.setText("File: Not Selected")
 
     def unPressOtherRadios(self,*args):
-         #Needed to make sure function radio and inverse radio buttons cant be clicked at same time
+        #Needed to make sure function radio and inverse radio buttons cant be clicked at same time
         radio = self.sender()
         buttons = self.transformRadioGroup.buttons()
         for button in buttons:

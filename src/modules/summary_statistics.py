@@ -83,8 +83,6 @@ class ContentWidget(QWidget):
             ("CorrSpellLength", "N", "Correlation of spell lengths"),
             ("MedianWetSpell", "N", "Median wet spell length"),
             ("MedianDrySpell", "N", "Median dry spell length"),
-            ("PFL90", "N", "90th percentile of precipitation"),
-            ("PNL90", "N", "90th percentile of number of events")
         ]
         
         # Period labels
@@ -1498,8 +1496,7 @@ class ContentWidget(QWidget):
                 self.stats_params[8][1] == "Y" or
                 self.stats_params[5][1] == "Y" or
                 self.stats_params[21][1] == "Y" or
-                self.stats_params[22][1] == "Y" or
-                self.stats_params[30][1] == "Y"):
+                self.stats_params[22][1] == "Y"):
                 
                 prog_value = 0
                 self.progress_bar.setValue(0)

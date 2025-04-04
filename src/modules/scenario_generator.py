@@ -78,6 +78,9 @@ class SDSMContext:
         # Predictor file paths (if provided)
         self.predictor_files = []
 
+        # Bias Correction Parameter (defaulted here to 0.8)
+        self.bias_correction = 0.8
+
 ###############################################################################
 # 2. Parse .PAR file and build absolute paths for data file(s)
 ###############################################################################
@@ -109,31 +112,19 @@ def parse_par_file(par_path: str, ctx: SDSMContext):
                 lines.append(line)
     idx = 0
     try:
-        # Line 1: Number of predictors
         ctx.num_predictors = int(lines[idx]); idx += 1
-        # Line 2: Number of months
         ctx.num_months = int(lines[idx]); idx += 1
-        # Line 3: Year length
         ctx.year_length = int(lines[idx]); idx += 1
-        # Line 4: Start date
         start_date_str = lines[idx]; idx += 1
         ctx.start_date = datetime.datetime.strptime(start_date_str, "%d/%m/%Y").date()
-        # Line 5: Number of days
         ctx.no_of_days = int(lines[idx]); idx += 1
-        # Lines 6-7: Possibly repeat date and days (skip)
-        idx += 2
-        # Line 8: Conditional flag
+        idx += 2  # Skip possibly repeated date and days
         cond_str = lines[idx]; idx += 1
         ctx.conditional_check = (cond_str.upper() == "#TRUE#")
-        # Line 9: Ensemble size
         ensemble_str = lines[idx]; idx += 1
         ctx.ensemble_size = int(ensemble_str)
-        # Line 10: Ignored numeric field
-        idx += 1
-        # Line 11: Ignored boolean
-        idx += 1
-
-        # Next [num_predictors] lines: predictor file names
+        idx += 1  # Ignored numeric field
+        idx += 1  # Ignored boolean
         ctx.predictor_files = []
         par_dir = os.path.dirname(par_path)
         for _ in range(ctx.num_predictors):
@@ -141,16 +132,12 @@ def parse_par_file(par_path: str, ctx: SDSMContext):
             idx += 1
             abs_pfile = os.path.join(par_dir, pfile)
             ctx.predictor_files.append(abs_pfile)
-
-        # Next line: observed (predictand) file name
         if idx < len(lines):
             data_file = lines[idx]
             idx += 1
             abs_data_file = os.path.join(par_dir, data_file)
             ctx.in_file = os.path.basename(abs_data_file)
             ctx.in_root = abs_data_file
-
-        # Next [num_months] lines: monthly coefficients
         ctx.monthly_coeffs = []
         for m in range(ctx.num_months):
             if idx >= len(lines):
@@ -159,7 +146,6 @@ def parse_par_file(par_path: str, ctx: SDSMContext):
             coeffs = [float(x) for x in coeff_strs]
             ctx.monthly_coeffs.append(coeffs)
             idx += 1
-
         QMessageBox.information(None, "Info", f"Loaded .PAR file:\n"
                                              f"Predictors: {ctx.num_predictors}, "
                                              f"Months: {ctx.num_months}, "
@@ -170,42 +156,68 @@ def parse_par_file(par_path: str, ctx: SDSMContext):
         QMessageBox.critical(None, "Error", f"Error parsing .PAR file:\n{e}")
 
 ###############################################################################
-# New: Write the .SIM file with the required structure.
+# New: Dynamically write the .SIM file corresponding to the input and .OUT file.
 ###############################################################################
 def write_sim_file(ctx: SDSMContext):
     """
-    Write the .SIM file containing metadata for the simulation.
-    The file structure is (each item on a new line):
-      [1] Number of predictor variables.
-      [2] Number of regression models used (e.g., 12 for monthly).
-      [3] Maximum number of days in a year.
-      [4] Start date of the calibration data (DD/MM/YYYY).
-      [5] Number of days simulated.
-      [6] Conditional flag (#TRUE# or #FALSE#).
-      [7] Number of ensemble members.
-      [8] Variance inflation parameter.
-      [9] Transformation code for conditional variables (1=none, 2=fourth root, 3=natural log, 4=inverse normal).
-      [10] Bias correction parameter.
-      [11] Predictand file name.
-      [12 onward] Predictor file name(s).
+    Write the .SIM file with parameters corresponding to the input (or .PAR) and .OUT files.
+    The file structure is as follows:
+      [1] Number of predictor variables (ctx.num_predictors)
+      [2] Number of regression models used (ctx.num_months)
+      [3] Maximum number of days in a year (ctx.year_length)
+      [4] Start date of calibration (formatted from ctx.start_date)
+      [5] Number of days simulated (ctx.no_of_days)
+      [6] Conditional flag (#TRUE# or #FALSE# from ctx.conditional_check)
+      [7] Number of ensemble members (ctx.ensemble_size)
+      [8] Variance inflation parameter (ctx.variance_factor_percent)
+      [9] Transformation code for conditional variables:
+          - If not conditional: 1 (none)
+          - If conditional and abs(ctx.lamda - 0.25) < 0.1 then 2 (fourth root)
+          - If conditional and abs(ctx.lamda) < 0.01 then 3 (natural log)
+          - Otherwise, default to 1.
+      [10] Bias correction parameter (ctx.bias_correction)
+      [11] Predictand file name (ctx.in_file)
+      [12+] Predictor file names (base names from ctx.predictor_files)
     """
-    regression_models = ctx.num_months  # assuming monthly regression models (adjust as needed)
-    transformation_code = 3 if ctx.conditional_check else 1  # default: natural log for conditional; none for unconditional
-    sim_lines = []
-    sim_lines.append(str(ctx.num_predictors))
-    sim_lines.append(str(regression_models))
-    sim_lines.append(str(ctx.year_length))
-    sim_lines.append(ctx.start_date.strftime("%d/%m/%Y"))
-    sim_lines.append(str(ctx.no_of_days))
-    sim_lines.append("#TRUE#" if ctx.conditional_check else "#FALSE#")
-    sim_lines.append(str(ctx.ensemble_size))
-    sim_lines.append(str(ctx.variance_factor_percent))
-    sim_lines.append(str(transformation_code))
-    sim_lines.append("0")  # bias correction parameter (default value; adjust if necessary)
-    sim_lines.append(ctx.in_file)
-    for predictor in ctx.predictor_files:
-        sim_lines.append(os.path.basename(predictor))
-    # Create the SIM file path by replacing the .OUT extension with .SIM.
+    # Line 1
+    line1 = str(ctx.num_predictors)
+    # Line 2
+    line2 = str(ctx.num_months)
+    # Line 3
+    line3 = str(ctx.year_length)
+    # Line 4
+    line4 = ctx.start_date.strftime("%d/%m/%Y")
+    # Line 5
+    line5 = str(ctx.no_of_days)
+    # Line 6
+    line6 = "#TRUE#" if ctx.conditional_check else "#FALSE#"
+    # Line 7
+    line7 = str(ctx.ensemble_size)
+    # Line 8: variance inflation parameter – already computed as ctx.variance_factor_percent
+    line8 = str(ctx.variance_factor_percent)
+    # Line 9: transformation code
+    if ctx.conditional_check:
+        # Check if lambda is approximately 0.25 (fourth root)
+        if abs(ctx.lamda - 0.25) < 0.1:
+            trans_code = "2"
+        # If lambda is essentially zero, use natural log
+        elif abs(ctx.lamda) < 0.01:
+            trans_code = "3"
+        else:
+            trans_code = "1"
+    else:
+        trans_code = "1"
+    line9 = trans_code
+    # Line 10: Bias correction parameter
+    line10 = str(ctx.bias_correction)
+    # Line 11: Predictand file name
+    line11 = ctx.in_file
+    # Lines 12+: Predictor file names (base names)
+    predictor_lines = [os.path.basename(p) for p in ctx.predictor_files]
+
+    sim_lines = [line1, line2, line3, line4, line5, line6, line7, line8, line9, line10, line11]
+    sim_lines.extend(predictor_lines)
+
     sim_file_path = os.path.splitext(ctx.out_root)[0] + ".SIM"
     try:
         with open(sim_file_path, "w") as f:
@@ -213,7 +225,7 @@ def write_sim_file(ctx: SDSMContext):
                 f.write(line + "\n")
     except Exception as e:
         QMessageBox.critical(None, "Error", f"Error writing SIM file:\n{e}")
-    # Optionally, print to console or show a message that the SIM file was created.
+        
     print(f"SIM file written to {sim_file_path}")
 
 ###############################################################################
@@ -223,7 +235,6 @@ def increase_date(date_obj):
     """Increase the date by one day."""
     return date_obj + datetime.timedelta(days=1)
 
-
 def parse_value(str_val, ctx):
     val_str = str_val.strip()
     if val_str == "-999":
@@ -232,7 +243,6 @@ def parse_value(str_val, ctx):
         return float(val_str)
     except ValueError:
         return ctx.global_missing_code
-
 
 def check_settings(ctx: SDSMContext) -> bool:
     if not ctx.in_file or len(ctx.in_file) < 5:
@@ -248,7 +258,6 @@ def check_settings(ctx: SDSMContext) -> bool:
         QMessageBox.critical(None, "Error", "Occurrence treatment cannot be applied to unconditional data.")
         return False
     return True
-
 
 def modify_data(ctx: SDSMContext):
     if not check_settings(ctx):
@@ -308,12 +317,11 @@ def modify_data(ctx: SDSMContext):
         QMessageBox.critical(None, "Error", f"Error writing output file:\n{e}")
         return
 
-    # Write the .SIM file using the new function.
+    # Write the dynamic .SIM file.
     write_sim_file(ctx)
 
     QMessageBox.information(None, "Success",
                             f"Scenario generated.\n{ctx.no_of_days} days processed.")
-
 
 def apply_amount(ctx: SDSMContext):
     for j in range(ctx.ensemble_size):
@@ -325,7 +333,6 @@ def apply_amount(ctx: SDSMContext):
                         ctx.data_array[j][i] = val * ctx.amount_factor_percent
                     else:
                         ctx.data_array[j][i] = val + ctx.amount_addition
-
 
 def apply_occurrence(ctx: SDSMContext):
     random.seed()
@@ -394,7 +401,6 @@ def apply_occurrence(ctx: SDSMContext):
         else:
             QMessageBox.information(None, "Info", "Forced occurrence treatment not implemented in this demo.")
 
-
 def calc_means(ctx: SDSMContext):
     ctx.mean_array = []
     for j in range(ctx.ensemble_size):
@@ -419,12 +425,10 @@ def calc_means(ctx: SDSMContext):
             sd = ctx.global_missing_code
         ctx.mean_array.append((mean, sd))
 
-
 def frange(start, stop, step):
     while start <= stop:
         yield start
         start += step
-
 
 def find_min_lambda(ctx: SDSMContext, ensemble: int, start: float, finish: float, step: float) -> float:
     best_lam = start
@@ -452,7 +456,6 @@ def find_min_lambda(ctx: SDSMContext, ensemble: int, start: float, finish: float
                     best_lam = k
     return best_lam
 
-
 def unbox_cox(value: float, lamda: float, ctx: SDSMContext) -> float:
     if value == ctx.global_missing_code:
         return ctx.global_missing_code
@@ -460,7 +463,6 @@ def unbox_cox(value: float, lamda: float, ctx: SDSMContext) -> float:
         return math.exp(value)
     else:
         return ((value * lamda) + 1) ** (1 / lamda)
-
 
 def calc_variance(trans_array, factor, mean, no_of_days, ctx: SDSMContext) -> float:
     temp = []
@@ -474,7 +476,6 @@ def calc_variance(trans_array, factor, mean, no_of_days, ctx: SDSMContext) -> fl
     new_mean = sum(temp) / len(temp)
     var = sum((x - new_mean) ** 2 for x in temp) / len(temp)
     return var
-
 
 def apply_variance(ctx: SDSMContext):
     for j in range(ctx.ensemble_size):
@@ -525,7 +526,6 @@ def apply_variance(ctx: SDSMContext):
                     trans_array[i] = ((trans_array[i] - mean_trans) * middle) + mean_trans
                     ctx.data_array[j][i] = unbox_cox(trans_array[i], lamda, ctx)
 
-
 def apply_trend(ctx: SDSMContext):
     for j in range(ctx.ensemble_size):
         if ctx.trend_option[0]:
@@ -566,11 +566,8 @@ def apply_trend(ctx: SDSMContext):
                         if ctx.data_array[j][i] > ctx.local_thresh:
                             ctx.data_array[j][i] *= ((100 + delta) / 100)
 
-
-
-
 ###############################################################################
-# 4. PyQt5 User Interface (Renamed as ScenarioGeneratorWidget)
+# 4. PyQt5 User Interface (ScenarioGeneratorWidget)
 ###############################################################################
 class ScenarioGeneratorWidget(QWidget):
     def __init__(self):
@@ -698,7 +695,6 @@ class ScenarioGeneratorWidget(QWidget):
     def selectOutputFile(self):
         file_name, _ = QFileDialog.getSaveFileName(self, "Save To File", "", "OUT Files (*.OUT);;All Files (*.*)")
         if file_name:
-            # If the file name doesn't end with ".OUT", append it.
             if not file_name.lower().endswith(".out"):
                 file_name += ".OUT"
             self.outputFileLabel.setText(file_name)
@@ -813,7 +809,6 @@ class ScenarioGeneratorWidget(QWidget):
         self.linearInput.clear()
         self.exponentialInput.clear()
         self.logisticInput.clear()
-
 
 ###############################################################################
 # 5. Main Application Entry Point

@@ -94,6 +94,7 @@ class ContentWidget(QWidget):
         
         # Results arrays
         self.results_array = np.full((101, 18, 35), self.global_missing_code, dtype=float)
+        self.t_test_results = np.full((18, 3), self.global_missing_code, dtype=float)
         self.t_test_results_a = np.full((18, 3), self.global_missing_code, dtype=float)
         self.t_test_results_b = np.full((18, 3), self.global_missing_code, dtype=float)
         self.t_test_results_c = np.full((18, 3), self.global_missing_code, dtype=float)
@@ -148,7 +149,9 @@ class ContentWidget(QWidget):
         source_layout.addWidget(QLabel("Data Source:"))
         self.source_modelled = QRadioButton("Modelled")
         self.source_modelled.setChecked(True)
+        self.source_modelled.toggled.connect(self.source_changed)
         self.source_observed = QRadioButton("Observed")
+        self.source_observed.toggled.connect(self.source_changed)
         source_layout.addWidget(self.source_modelled)
         source_layout.addWidget(self.source_observed)
         source_layout.addStretch()
@@ -218,13 +221,13 @@ class ContentWidget(QWidget):
         period_layout.addWidget(QLabel("Start Date:"))
         self.fs_date_text = QLineEdit()
         current_date = datetime.datetime.now()
-        self.fs_date_text.setText(current_date.strftime("%Y-%m-%d"))
+        self.fs_date_text.setText(current_date.strftime("%d-%m-%Y"))
         self.fs_date_text.editingFinished.connect(self.fs_date_changed)
         period_layout.addWidget(self.fs_date_text)
         
         period_layout.addWidget(QLabel("End Date:"))
         self.fe_date_text = QLineEdit()
-        self.fe_date_text.setText(current_date.strftime("%Y-%m-%d"))
+        self.fe_date_text.setText(current_date.strftime("%d-%m-%Y"))
         self.fe_date_text.editingFinished.connect(self.fe_date_changed)
         period_layout.addWidget(self.fe_date_text)
         
@@ -290,7 +293,24 @@ class ContentWidget(QWidget):
         main_layout.addWidget(self.progress_bar)
         
         self.setLayout(main_layout)
+    
+    def source_changed(self):
+        """Handle change in data source (Modelled/Observed)"""
+        if self.source_observed.isChecked():
+            self.source_is_modelled = False
+            self.show_file_details_btn.setEnabled(False)
+        else:
+            self.source_is_modelled = True
+            self.show_file_details_btn.setEnabled(True)
         
+        # Reset file details when source changes
+        self.file_n_predictors.setText("unknown")
+        self.file_season_code.setText("unknown")
+        self.file_year_length.setText("unknown")
+        self.file_start_date.setText("unknown")
+        self.file_n_days.setText("unknown")
+        self.file_ensemble_size.setText("unknown")
+    
     def select_input_file(self):
         """
         Opens file dialog to select input file
@@ -340,7 +360,7 @@ class ContentWidget(QWidget):
             self.file_n_predictors.setText(str(self.n_predictors))
             self.file_season_code.setText(str(self.season_code))
             self.file_year_length.setText(str(self.local_year_indicator))
-            self.file_start_date.setText(self.data_s_date.strftime("%Y-%m-%d"))
+            self.file_start_date.setText(self.data_s_date.strftime("%d-%m-%Y"))
             self.file_n_days.setText(str(self.ndays_r))
             self.file_ensemble_size.setText(str(self.ensemble_size))
         else:
@@ -374,7 +394,7 @@ class ContentWidget(QWidget):
                 # 4. Scenario Start date
                 date_str = f.readline().strip()
                 try:
-                    self.data_s_date = datetime.datetime.strptime(date_str, "%Y-%m-%d")
+                    self.data_s_date = datetime.datetime.strptime(date_str, "%d-%m-%Y")
                 except ValueError:
                     try:
                         self.data_s_date = datetime.datetime.strptime(date_str, "%m/%d/%Y")
@@ -415,7 +435,7 @@ class ContentWidget(QWidget):
                 
             # Try to parse the date
             try:
-                new_date = datetime.datetime.strptime(self.fs_date_text.text(), "%Y-%m-%d")
+                new_date = datetime.datetime.strptime(self.fs_date_text.text(), "%d-%m-%Y")
             except ValueError:
                 try:
                     new_date = datetime.datetime.strptime(self.fs_date_text.text(), "%m/%d/%Y")
@@ -425,7 +445,7 @@ class ContentWidget(QWidget):
             # Check if end date is later than start date
             if self.fe_date_text.text():
                 try:
-                    end_date = datetime.datetime.strptime(self.fe_date_text.text(), "%Y-%m-%d")
+                    end_date = datetime.datetime.strptime(self.fe_date_text.text(), "%d-%m-%Y")
                 except ValueError:
                     try:
                         end_date = datetime.datetime.strptime(self.fe_date_text.text(), "%m/%d/%Y")
@@ -434,13 +454,13 @@ class ContentWidget(QWidget):
                 
                 if new_date > end_date:
                     QMessageBox.critical(self, "Error Message", "Analysis start date must be earlier than analysis end date.")
-                    self.fs_date_text.setText(self.fs_date.strftime("%Y-%m-%d"))
+                    self.fs_date_text.setText(self.fs_date.strftime("%d-%m-%Y"))
                     return
                 
                 days_diff = (end_date - new_date).days + 1
                 if days_diff > 150 * 365:
                     QMessageBox.critical(self, "Error Message", "Analysis period must be less than 150 years.")
-                    self.fs_date_text.setText(self.fs_date.strftime("%Y-%m-%d"))
+                    self.fs_date_text.setText(self.fs_date.strftime("%d-%m-%Y"))
                     return
                 
                 self.no_of_days = days_diff
@@ -450,7 +470,7 @@ class ContentWidget(QWidget):
             
         except Exception as e:
             QMessageBox.critical(self, "Error Message", f"Analysis start date is invalid: {e}")
-            self.fs_date_text.setText(self.fs_date.strftime("%Y-%m-%d"))
+            self.fs_date_text.setText(self.fs_date.strftime("%d-%m-%Y"))
     
     def fe_date_changed(self):
         """
@@ -462,7 +482,7 @@ class ContentWidget(QWidget):
                 
             # Try to parse the date
             try:
-                new_date = datetime.datetime.strptime(self.fe_date_text.text(), "%Y-%m-%d")
+                new_date = datetime.datetime.strptime(self.fe_date_text.text(), "%d-%m-%Y")
             except ValueError:
                 try:
                     new_date = datetime.datetime.strptime(self.fe_date_text.text(), "%m/%d/%Y")
@@ -472,7 +492,7 @@ class ContentWidget(QWidget):
             # Check if start date is earlier than end date
             if self.fs_date_text.text():
                 try:
-                    start_date = datetime.datetime.strptime(self.fs_date_text.text(), "%Y-%m-%d")
+                    start_date = datetime.datetime.strptime(self.fs_date_text.text(), "%d-%m-%Y")
                 except ValueError:
                     try:
                         start_date = datetime.datetime.strptime(self.fs_date_text.text(), "%m/%d/%Y")
@@ -481,13 +501,13 @@ class ContentWidget(QWidget):
                 
                 if new_date < start_date:
                     QMessageBox.critical(self, "Error Message", "Analysis end date must be later than analysis start date.")
-                    self.fe_date_text.setText(self.fe_date.strftime("%Y-%m-%d"))
+                    self.fe_date_text.setText(self.fe_date.strftime("%d-%m-%Y"))
                     return
                 
                 days_diff = (new_date - start_date).days + 1
                 if days_diff > 150 * 365:
                     QMessageBox.critical(self, "Error Message", "Analysis period must be less than 150 years.")
-                    self.fe_date_text.setText(self.fe_date.strftime("%Y-%m-%d"))
+                    self.fe_date_text.setText(self.fe_date.strftime("%d-%m-%Y"))
                     return
                 
                 self.no_of_days = days_diff
@@ -497,7 +517,7 @@ class ContentWidget(QWidget):
             
         except Exception as e:
             QMessageBox.critical(self, "Error Message", f"Analysis end date is invalid: {e}")
-            self.fe_date_text.setText(self.fe_date.strftime("%Y-%m-%d"))
+            self.fe_date_text.setText(self.fe_date.strftime("%d-%m-%Y"))
     
     def ensemble_mean_check_click(self, state):
         """
@@ -540,8 +560,8 @@ class ContentWidget(QWidget):
         current_date = datetime.datetime.now()
         self.fs_date = current_date
         self.fe_date = current_date
-        self.fs_date_text.setText(current_date.strftime("%Y-%m-%d"))
-        self.fe_date_text.setText(current_date.strftime("%Y-%m-%d"))
+        self.fs_date_text.setText(current_date.strftime("%d-%m-%Y"))
+        self.fe_date_text.setText(current_date.strftime("%d-%m-%Y"))
         
         # Reset data source
         self.source_modelled.setChecked(True)
@@ -669,6 +689,7 @@ class ContentWidget(QWidget):
             return False
         
         if self.source_modelled.isChecked():
+            # Validation for modelled data
             if not (self.input_filename.lower().endswith('.out')):
                 QMessageBox.critical(self, "Error Message", "You must select an appropriate scenario file for modelled analyses.")
                 return False
@@ -684,7 +705,12 @@ class ContentWidget(QWidget):
             if not self.ensemble_mean_check.isChecked() and self.ensemble_wanted > self.ensemble_size:
                 QMessageBox.critical(self, "Error Message", "Ensemble member does not exist in data file.")
                 return False
-        
+        else:
+            # Validation for observed data
+            self.ensemble_size = 1
+            # For observed data, set the start date to the analysis start date
+            self.data_s_date = self.fs_date
+            
         return True
     
     def calc_stats(self, calc_start_date, calc_end_date, doing_deltas):
@@ -699,7 +725,7 @@ class ContentWidget(QWidget):
         # Convert string dates to datetime if needed
         if isinstance(calc_start_date, str):
             try:
-                calc_start_date = datetime.datetime.strptime(calc_start_date, "%Y-%m-%d")
+                calc_start_date = datetime.datetime.strptime(calc_start_date, "%d-%m-%Y")
             except ValueError:
                 try:
                     calc_start_date = datetime.datetime.strptime(calc_start_date, "%m/%d/%Y")
@@ -708,7 +734,7 @@ class ContentWidget(QWidget):
                 
         if isinstance(calc_end_date, str):
             try:
-                calc_end_date = datetime.datetime.strptime(calc_end_date, "%Y-%m-%d")
+                calc_end_date = datetime.datetime.strptime(calc_end_date, "%d-%m-%Y")
             except ValueError:
                 try:
                     calc_end_date = datetime.datetime.strptime(calc_end_date, "%m/%d/%Y")
@@ -716,6 +742,14 @@ class ContentWidget(QWidget):
                     calc_end_date = datetime.datetime.strptime(calc_end_date, "%d/%m/%Y")
         
         self.escape_processed = False
+        
+        # Set up data parameters based on data source
+        if self.source_observed.isChecked():
+            self.ndays_r = (calc_end_date - calc_start_date).days + 1
+            self.data_s_date = calc_start_date
+            total_to_skip = 0
+        else:
+            total_to_skip = (calc_start_date - self.data_s_date).days
         
         # Set up preliminary variables
         end_of_section = 32766  # Any code to mark end will do
@@ -733,10 +767,6 @@ class ContentWidget(QWidget):
             if i < len(self.stats_params) and self.stats_params[i][1] == "Y":
                 self.rain_yes = True
         
-        # If observed data selected, ensemble size is 1
-        if self.source_observed.isChecked():
-            self.ensemble_size = 1
-        
         # Set up data array - w=ensemble number, x=Jan,Feb..Dec, Winter, Summer, Annual; y=data
         total_to_read = 200 + (calc_end_date - calc_start_date).days
         data_array = np.full((self.ensemble_size + 1, 18, total_to_read + 1), 
@@ -747,135 +777,234 @@ class ContentWidget(QWidget):
         self.progress_bar.setFormat("Analyzing Scenario")
         
         try:
-            with open(self.input_file_root, 'r') as input_file:
-                # Skip data before start date
-                total_to_skip = (calc_start_date - self.data_s_date).days
-                if total_to_skip > 0:
-                    self.progress_bar.setFormat("Skipping Unnecessary Data")
+            # COMPLETELY DIFFERENT APPROACH FOR OBSERVED VS MODELLED DATA
+            if self.source_observed.isChecked():
+                # For observed data: use a flat stream approach
+                with open(self.input_file_root, 'r') as f:
+                    self.progress_bar.setFormat("Reading Observed Data")
                     
-                    current_day = self.data_s_date.day
-                    current_month = self.data_s_date.month
-                    current_year = self.data_s_date.year
-                    total_numbers = 0
+                    # Read the entire file content and split into values
+                    content = f.read()
+                    all_values = []
+                    for val in content.split():
+                        if val.strip():
+                            try:
+                                all_values.append(float(val))
+                            except ValueError:
+                                pass
                     
-                    current_date = datetime.datetime(current_year, current_month, current_day)
-                    while (current_date < calc_start_date):
-                        # Skip a line in the file
-                        _ = input_file.readline()
-                        total_numbers += 1
-                        
-                        current_day, current_month, current_year, _ = self.increase_date(
-                            current_day, current_month, current_year
-                        )
-                        current_date = datetime.datetime(current_year, current_month, current_day)
-                        
-                        prog_value = int((total_numbers / total_to_skip) * 100)
-                        self.progress_bar.setValue(prog_value)
-                        
-                # Now read the actual data needed
-                total_to_read = (calc_end_date - calc_start_date).days
-                self.progress_bar.setValue(0)
-                self.progress_bar.setFormat("Reading in Data")
-                
-                current_day = calc_start_date.day
-                current_month = calc_start_date.month
-                current_year = calc_start_date.year
-                current_season = self.get_season(current_month)
-                
-                total_numbers = 0
-                this_month = current_month
-                this_year = current_year
-                this_season = self.get_season(this_month)
-                
-                # Main loop for reading data
-                while True:
-                    # Check if month changed
-                    if this_month != current_month:
-                        for i in range(1, self.ensemble_size + 1):
-                            data_array[i, this_month, array_position[i, this_month]] = end_of_section
-                            array_position[i, this_month] += 1
-                        this_month = current_month
-                        
-                    # Check if season changed
-                    if this_season != current_season:
-                        for i in range(1, self.ensemble_size + 1):
-                            data_array[i, this_season + 12, array_position[i, this_season + 12]] = end_of_section
-                            array_position[i, this_season + 12] += 1
-                        this_season = current_season
-                        
-                    # Check if year changed
-                    if this_year != current_year:
-                        for i in range(1, self.ensemble_size + 1):
-                            data_array[i, 17, array_position[i, 17]] = end_of_section
-                            array_position[i, 17] += 1
-                        this_year = current_year
-                        
-                    # Read in a line of data
-                    data_string = input_file.readline()
-                    if not data_string:
-                        break
-                        
-                    if self.ensemble_size > 1:
-                        # Parse multiple columns of data
-                        values = data_string.strip().split()
-                        for i in range(1, self.ensemble_size + 1):
-                            if i <= len(values):
-                                try:
-                                    data_value = float(values[i-1])
-                                    data_array[i, this_month, array_position[i, this_month]] = data_value
-                                    data_array[i, this_season + 12, array_position[i, this_season + 12]] = data_value
-                                    data_array[i, 17, array_position[i, 17]] = data_value
-                                    
-                                    array_position[i, this_month] += 1
-                                    array_position[i, this_season + 12] += 1
-                                    array_position[i, 17] += 1
-                                except ValueError:
-                                    pass
-                    else:
-                        # Single value
-                        try:
-                            data_value = float(data_string.strip())
-                            data_array[1, this_month, array_position[1, this_month]] = data_value
-                            data_array[1, this_season + 12, array_position[1, this_season + 12]] = data_value
-                            data_array[1, 17, array_position[1, 17]] = data_value
-                            
-                            array_position[1, this_month] += 1
-                            array_position[1, this_season + 12] += 1
-                            array_position[1, 17] += 1
-                        except ValueError:
-                            pass
+                    # Start assigned values from the analysis start date
+                    current_day = calc_start_date.day
+                    current_month = calc_start_date.month
+                    current_year = calc_start_date.year
+                    current_season = self.get_season(current_month)
                     
-                    # Update current date
+                    # Initialize tracking variables
                     this_month = current_month
                     this_year = current_year
                     this_season = self.get_season(this_month)
                     
-                    current_day, current_month, current_year, current_season = self.increase_date(
-                        current_day, current_month, current_year
-                    )
+                    total_days = (calc_end_date - calc_start_date).days + 1
                     
-                    total_numbers += 1
-                    prog_value = int((total_numbers / total_to_read) * 100)
-                    self.progress_bar.setValue(prog_value)
+                    # Assign values sequentially
+                    value_index = 0
+                    day_count = 0
                     
-                    # Check if we've reached the end date
-                    if datetime.datetime(current_year, current_month, current_day) > calc_end_date:
-                        break
-                
-                # Mark end of sections for the last month/season/year
-                for i in range(1, self.ensemble_size + 1):
-                    data_array[i, this_month, array_position[i, this_month]] = end_of_section
-                    data_array[i, this_season + 12, array_position[i, this_season + 12]] = end_of_section
-                    data_array[i, 17, array_position[i, 17]] = end_of_section
+                    self.progress_bar.setValue(0)
+                    self.progress_bar.setFormat("Processing Observed Data")
                     
-                    array_position[i, this_month] += 1
-                    array_position[i, this_season + 12] += 1
-                    array_position[i, 17] += 1
-                
-                # Mark end of data for all periods
-                for i in range(1, self.ensemble_size + 1):
+                    while day_count < total_days and value_index < len(all_values):
+                        # Update progress bar
+                        if day_count % 100 == 0:
+                            prog_value = int((day_count / total_days) * 100)
+                            self.progress_bar.setValue(prog_value)
+                        
+                        # Check for month/season/year changes
+                        if this_month != current_month:
+                            data_array[1, this_month, array_position[1, this_month]] = end_of_section
+                            array_position[1, this_month] += 1
+                            this_month = current_month
+                            
+                        if this_season != current_season:
+                            data_array[1, this_season + 12, array_position[1, this_season + 12]] = end_of_section
+                            array_position[1, this_season + 12] += 1
+                            this_season = current_season
+                            
+                        if this_year != current_year:
+                            data_array[1, 17, array_position[1, 17]] = end_of_section
+                            array_position[1, 17] += 1
+                            this_year = current_year
+                        
+                        # Store value
+                        data_value = all_values[value_index]
+                        data_array[1, this_month, array_position[1, this_month]] = data_value
+                        data_array[1, this_season + 12, array_position[1, this_season + 12]] = data_value
+                        data_array[1, 17, array_position[1, 17]] = data_value
+                        
+                        array_position[1, this_month] += 1
+                        array_position[1, this_season + 12] += 1
+                        array_position[1, 17] += 1
+                        
+                        # Move to next day and next value
+                        current_day, current_month, current_year, current_season = self.increase_date(
+                            current_day, current_month, current_year
+                        )
+                        
+                        value_index += 1
+                        day_count += 1
+                    
+                    # Mark end of sections for the last month/season/year
+                    data_array[1, this_month, array_position[1, this_month]] = end_of_section
+                    data_array[1, (this_season + 12), array_position[1, (this_season + 12)]] = end_of_section
+                    data_array[1, 17, array_position[1, 17]] = end_of_section
+                    
+                    array_position[1, this_month] += 1
+                    array_position[1, (this_season + 12)] += 1
+                    array_position[1, 17] += 1
+                    
+                    # Mark end of data for all periods
                     for j in range(1, 18):
-                        data_array[i, j, array_position[i, j]] = end_of_data
+                        data_array[1, j, array_position[1, j]] = end_of_data
+                
+            else:
+                # MODELLED DATA APPROACH - LINE BY LINE, COLUMNS FOR ENSEMBLES
+                with open(self.input_file_root, 'r') as input_file:
+                    # Skip data before start date if needed
+                    if total_to_skip > 0:
+                        self.progress_bar.setFormat("Skipping Unnecessary Data")
+                        
+                        current_day = self.data_s_date.day
+                        current_month = self.data_s_date.month
+                        current_year = self.data_s_date.year
+                        total_numbers = 0
+                        
+                        current_date = datetime.datetime(current_year, current_month, current_day)
+                        while (current_date < calc_start_date):
+                            # Skip a line in the file
+                            _ = input_file.readline()
+                            total_numbers += 1
+                            
+                            current_day, current_month, current_year, _ = self.increase_date(
+                                current_day, current_month, current_year
+                            )
+                            current_date = datetime.datetime(current_year, current_month, current_day)
+                            
+                            prog_value = int((total_numbers / total_to_skip) * 100)
+                            self.progress_bar.setValue(prog_value)
+                            
+                    # Now read the actual data needed
+                    total_to_read = (calc_end_date - calc_start_date).days
+                    self.progress_bar.setValue(0)
+                    self.progress_bar.setFormat("Reading in Data")
+                    
+                    current_day = calc_start_date.day
+                    current_month = calc_start_date.month
+                    current_year = calc_start_date.year
+                    current_season = self.get_season(current_month)
+                    
+                    total_numbers = 0
+                    this_month = current_month
+                    this_year = current_year
+                    this_season = self.get_season(this_month)
+                    
+                    # Main loop for reading data
+                    while True:
+                        # Check if month changed
+                        if this_month != current_month:
+                            for i in range(1, self.ensemble_size + 1):
+                                data_array[i, this_month, array_position[i, this_month]] = end_of_section
+                                array_position[i, this_month] += 1
+                            this_month = current_month
+                            
+                        # Check if season changed
+                        if this_season != current_season:
+                            for i in range(1, self.ensemble_size + 1):
+                                data_array[i, this_season + 12, array_position[i, this_season + 12]] = end_of_section
+                                array_position[i, this_season + 12] += 1
+                            this_season = current_season
+                            
+                        # Check if year changed
+                        if this_year != current_year:
+                            for i in range(1, self.ensemble_size + 1):
+                                data_array[i, 17, array_position[i, 17]] = end_of_section
+                                array_position[i, 17] += 1
+                            this_year = current_year
+                            
+                        # Read in a line of data
+                        data_string = input_file.readline()
+                        if not data_string:
+                            break
+                            
+                        if self.ensemble_size > 1:
+                            # Parse multiple columns of data for modelled scenarios
+                            # VBA uses fixed-width parsing (14 chars per value)
+                            for i in range(1, self.ensemble_size + 1):
+                                try:
+                                    # Extract fixed-width field (14 chars per value)
+                                    start_pos = (i - 1) * 14
+                                    end_pos = start_pos + 14
+                                    if start_pos < len(data_string):
+                                        value_str = data_string[start_pos:end_pos].strip()
+                                        data_value = float(value_str)
+                                        
+                                        data_array[i, this_month, array_position[i, this_month]] = data_value
+                                        data_array[i, this_season + 12, array_position[i, this_season + 12]] = data_value
+                                        data_array[i, 17, array_position[i, 17]] = data_value
+                                        
+                                        array_position[i, this_month] += 1
+                                        array_position[i, this_season + 12] += 1
+                                        array_position[i, 17] += 1
+                                except (ValueError, IndexError):
+                                    pass
+                        else:
+                            # Single value for single ensemble
+                            try:
+                                # VBA uses Input #1, DataValue which reads a single value
+                                values = data_string.strip().split()
+                                if values:
+                                    data_value = float(values[0])  # Take just the first value
+                                    
+                                    data_array[1, this_month, array_position[1, this_month]] = data_value
+                                    data_array[1, this_season + 12, array_position[1, this_season + 12]] = data_value
+                                    data_array[1, 17, array_position[1, 17]] = data_value
+                                    
+                                    array_position[1, this_month] += 1
+                                    array_position[1, this_season + 12] += 1
+                                    array_position[1, 17] += 1
+                            except (ValueError, IndexError):
+                                pass
+                        
+                        # Update current date
+                        this_month = current_month
+                        this_year = current_year
+                        this_season = self.get_season(this_month)
+                        
+                        current_day, current_month, current_year, current_season = self.increase_date(
+                            current_day, current_month, current_year
+                        )
+                        
+                        total_numbers += 1
+                        prog_value = int((total_numbers / total_to_read) * 100)
+                        self.progress_bar.setValue(prog_value)
+                        
+                        # Check if we've reached the end date
+                        if datetime.datetime(current_year, current_month, current_day) > calc_end_date:
+                            break
+                    
+                    # Mark end of sections for the last month/season/year
+                    for i in range(1, self.ensemble_size + 1):
+                        data_array[i, this_month, array_position[i, this_month]] = end_of_section
+                        data_array[i, (this_season + 12), array_position[i, (this_season + 12)]] = end_of_section
+                        data_array[i, 17, array_position[i, 17]] = end_of_section
+                        
+                        array_position[i, this_month] += 1
+                        array_position[i, (this_season + 12)] += 1
+                        array_position[i, 17] += 1
+                    
+                    # Mark end of data for all periods
+                    for i in range(1, self.ensemble_size + 1):
+                        for j in range(1, 18):
+                            data_array[i, j, array_position[i, j]] = end_of_data
             
             # Calculate stats from the loaded data
             self.progress_bar.setValue(0)
@@ -1384,7 +1513,9 @@ class ContentWidget(QWidget):
                         
                         if was_any_data_valid[i, j]:
                             # Filter data to remove missing values, end markers, and low precipitation
-                            valid_data = []
+                            # EXACTLY like VBA - filter and compact the data in place for sorting
+                            valid_count = 0
+                            filtered_data = np.zeros(array_position[i, j])
                             
                             for k in range(1, array_position[i, j]):
                                 if (data_array[i, j, k] != self.global_missing_code and
@@ -1392,48 +1523,140 @@ class ContentWidget(QWidget):
                                     data_array[i, j, k] != end_of_data):
                                     
                                     if (not self.rain_yes) or (self.rain_yes and data_array[i, j, k] > self.threshold):
-                                        valid_data.append(data_array[i, j, k])
+                                        valid_count += 1
+                                        filtered_data[valid_count] = data_array[i, j, k]
                             
-                            if len(valid_data) > 1:
-                                # Sort the data
-                                valid_data.sort()
+                            if valid_count > 1:
+                                # Sort the data using Shell sort (like VBA)
+                                spacing = 0
+                                while (9 * spacing) < valid_count:
+                                    spacing = (spacing * 3) + 1
+                                
+                                while spacing > 0:
+                                    for outer in range(spacing + 1, valid_count + 1):
+                                        temp = filtered_data[outer]
+                                        inner = outer - spacing
+                                        
+                                        while inner >= 1:
+                                            if filtered_data[inner] <= temp:
+                                                break
+                                            filtered_data[inner + spacing] = filtered_data[inner]
+                                            inner -= spacing
+                                        
+                                        filtered_data[inner + spacing] = temp
+                                    
+                                    spacing = spacing // 3
+                                
+                                # Calculate percentile directly from sorted array
+                                # VBA-style percentile calculation
+                                def vba_percentile(ptile):
+                                    position = 1 + (ptile * (valid_count - 1) / 100)
+                                    lower_bound = int(position)
+                                    upper_bound = min(lower_bound + 1, valid_count + 1)
+                                    proportion = position - lower_bound
+                                    
+                                    if lower_bound < 1:
+                                        return filtered_data[1]
+                                    
+                                    if lower_bound >= valid_count:
+                                        return filtered_data[valid_count]
+                                    
+                                    range_val = filtered_data[upper_bound] - filtered_data[lower_bound]
+                                    return filtered_data[lower_bound] + (range_val * proportion)
                                 
                                 # Calculate percentile
-                                self.results_array[i, j, 9] = self.calculate_percentile(valid_data, self.percentile)
+                                self.results_array[i, j, 9] = vba_percentile(self.percentile)
                                 
                                 # Calculate median
-                                self.results_array[i, j, 4] = self.calculate_percentile(valid_data, 50)
+                                self.results_array[i, j, 4] = vba_percentile(50)
                                 
                                 # Calculate IQR
-                                twenty_fifth = self.calculate_percentile(valid_data, 25)
-                                seventy_fifth = self.calculate_percentile(valid_data, 75)
+                                twenty_fifth = vba_percentile(25)
+                                seventy_fifth = vba_percentile(75)
                                 self.results_array[i, j, 6] = seventy_fifth - twenty_fifth
                                 
                                 # Calculate Precipitation POT and POT% if needed
                                 if self.rain_yes:
                                     # Use annual percentile as the threshold
                                     if j == 17:  # For annual data, calculate the percentile threshold
-                                        precip_thresh = self.calculate_percentile(valid_data, self.prec_pot)
+                                        # Need to make sure we have valid annual data first
+                                        if was_any_data_valid[i, 17]:
+                                            annual_valid_count = 0
+                                            annual_filtered_data = np.zeros(array_position[i, 17])
+                                            
+                                            for k in range(1, array_position[i, 17]):
+                                                if (data_array[i, 17, k] != self.global_missing_code and
+                                                    data_array[i, 17, k] != end_of_section and
+                                                    data_array[i, 17, k] != end_of_data):
+                                                    
+                                                    if (not self.rain_yes) or (self.rain_yes and data_array[i, 17, k] > self.threshold):
+                                                        annual_valid_count += 1
+                                                        annual_filtered_data[annual_valid_count] = data_array[i, 17, k]
+                                            
+                                            if annual_valid_count > 1:
+                                                # Sort annual data
+                                                spacing = 0
+                                                while (9 * spacing) < annual_valid_count:
+                                                    spacing = (spacing * 3) + 1
+                                                
+                                                while spacing > 0:
+                                                    for outer in range(spacing + 1, annual_valid_count + 1):
+                                                        temp = annual_filtered_data[outer]
+                                                        inner = outer - spacing
+                                                        
+                                                        while inner >= 1:
+                                                            if annual_filtered_data[inner] <= temp:
+                                                                break
+                                                            annual_filtered_data[inner + spacing] = annual_filtered_data[inner]
+                                                            inner -= spacing
+                                                        
+                                                        annual_filtered_data[inner + spacing] = temp
+                                                    
+                                                    spacing = spacing // 3
+                                                
+                                                # Calculate the percentile threshold for annual data
+                                                position = 1 + (self.prec_pot * (annual_valid_count - 1) / 100)
+                                                lower_bound = int(position)
+                                                upper_bound = min(lower_bound + 1, annual_valid_count + 1)
+                                                proportion = position - lower_bound
+                                                
+                                                if lower_bound < 1:
+                                                    precip_thresh = annual_filtered_data[1]
+                                                elif lower_bound >= annual_valid_count:
+                                                    precip_thresh = annual_filtered_data[annual_valid_count]
+                                                else:
+                                                    range_val = annual_filtered_data[upper_bound] - annual_filtered_data[lower_bound]
+                                                    precip_thresh = annual_filtered_data[lower_bound] + (range_val * proportion)
+                                            else:
+                                                precip_thresh = self.global_missing_code
+                                        else:
+                                            precip_thresh = self.global_missing_code
                                     
+                                    # Calculate POT and POT%
                                     pot_counter = 0
                                     pot_sum = 0
-                                    complete_sum = sum(valid_data)
+                                    complete_sum = np.sum(filtered_data[1:valid_count+1])
                                     
-                                    for val in valid_data:
-                                        if val > precip_thresh:
-                                            pot_counter += 1
-                                            pot_sum += val
-                                    
-                                    self.results_array[i, j, 22] = pot_counter
-                                    
-                                    if complete_sum > 0:
-                                        self.results_array[i, j, 23] = pot_sum / complete_sum
+                                    # Only proceed if we have a valid threshold
+                                    if precip_thresh != self.global_missing_code:
+                                        for v in range(1, valid_count+1):
+                                            if filtered_data[v] > precip_thresh:
+                                                pot_counter += 1
+                                                pot_sum += filtered_data[v]
+                                        
+                                        self.results_array[i, j, 22] = pot_counter
+                                        
+                                        if complete_sum > 0:
+                                            self.results_array[i, j, 23] = pot_sum / complete_sum
+                                        else:
+                                            self.results_array[i, j, 23] = self.global_missing_code
                                     else:
+                                        self.results_array[i, j, 22] = self.global_missing_code
                                         self.results_array[i, j, 23] = self.global_missing_code
                                 
-                            elif len(valid_data) == 1:
-                                self.results_array[i, j, 9] = valid_data[0]  # Percentile
-                                self.results_array[i, j, 4] = valid_data[0]  # Median
+                            elif valid_count == 1:
+                                self.results_array[i, j, 9] = filtered_data[1]  # Percentile
+                                self.results_array[i, j, 4] = filtered_data[1]  # Median
                                 self.results_array[i, j, 6] = 0  # IQR
                             else:
                                 self.results_array[i, j, 9] = self.global_missing_code  # Percentile
@@ -1546,8 +1769,8 @@ class ContentWidget(QWidget):
         # Write to file
         with open(self.save_file_root, 'w') as f:
             f.write(f"SUMMARY STATISTICS FOR: {self.input_filename}\n\n")
-            f.write(f"Analysis Start Date: {print_start_date.strftime('%Y-%m-%d')}\n")
-            f.write(f"Analysis End Date: {print_end_date.strftime('%Y-%m-%d')}\n")
+            f.write(f"Analysis Start Date: {print_start_date.strftime('%d-%m-%Y')}\n")
+            f.write(f"Analysis End Date: {print_end_date.strftime('%d-%m-%Y')}\n")
             
             if self.ensemble_size > 1 and self.ensemble_mean_checked:
                 f.write("Ensemble Member(s): ALL\n")
@@ -1584,8 +1807,8 @@ class ContentWidget(QWidget):
         
         # Format text for dialog display
         result_text = f"SUMMARY STATISTICS FOR: {self.input_filename}\n\n"
-        result_text += f"Analysis Start Date: {print_start_date.strftime('%Y-%m-%d')}\n"
-        result_text += f"Analysis End Date: {print_end_date.strftime('%Y-%m-%d')}\n"
+        result_text += f"Analysis Start Date: {print_start_date.strftime('%d-%m-%Y')}\n"
+        result_text += f"Analysis End Date: {print_end_date.strftime('%d-%m-%Y')}\n"
         
         if self.ensemble_size > 1 and self.ensemble_mean_checked:
             result_text += "Ensemble Member(s): ALL\n\n"
@@ -2247,8 +2470,8 @@ class DeltaPeriodsDialog(QDialog):
         Get the base period start and end dates
         """
         try:
-            start = datetime.datetime.strptime(self.base_start.text(), "%Y-%m-%d")
-            end = datetime.datetime.strptime(self.base_end.text(), "%Y-%m-%d")
+            start = datetime.datetime.strptime(self.base_start.text(), "%d-%m-%Y")
+            end = datetime.datetime.strptime(self.base_end.text(), "%d-%m-%Y")
             return start, end
         except ValueError:
             QMessageBox.critical(self, "Error", "Invalid base period dates")
@@ -2259,8 +2482,8 @@ class DeltaPeriodsDialog(QDialog):
         Get period A start and end dates
         """
         try:
-            start = datetime.datetime.strptime(self.period_a_start.text(), "%Y-%m-%d")
-            end = datetime.datetime.strptime(self.period_a_end.text(), "%Y-%m-%d")
+            start = datetime.datetime.strptime(self.period_a_start.text(), "%d-%m-%Y")
+            end = datetime.datetime.strptime(self.period_a_end.text(), "%d-%m-%Y")
             return start, end
         except ValueError:
             QMessageBox.critical(self, "Error", "Invalid period A dates")
@@ -2271,8 +2494,8 @@ class DeltaPeriodsDialog(QDialog):
         Get period B start and end dates
         """
         try:
-            start = datetime.datetime.strptime(self.period_b_start.text(), "%Y-%m-%d")
-            end = datetime.datetime.strptime(self.period_b_end.text(), "%Y-%m-%d")
+            start = datetime.datetime.strptime(self.period_b_start.text(), "%d-%m-%Y")
+            end = datetime.datetime.strptime(self.period_b_end.text(), "%d-%m-%Y")
             return start, end
         except ValueError:
             QMessageBox.critical(self, "Error", "Invalid period B dates")
@@ -2283,8 +2506,8 @@ class DeltaPeriodsDialog(QDialog):
         Get period C start and end dates
         """
         try:
-            start = datetime.datetime.strptime(self.period_c_start.text(), "%Y-%m-%d")
-            end = datetime.datetime.strptime(self.period_c_end.text(), "%Y-%m-%d")
+            start = datetime.datetime.strptime(self.period_c_start.text(), "%d-%m-%Y")
+            end = datetime.datetime.strptime(self.period_c_end.text(), "%d-%m-%Y")
             return start, end
         except ValueError:
             QMessageBox.critical(self, "Error", "Invalid period C dates")

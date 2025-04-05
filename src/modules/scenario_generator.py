@@ -14,10 +14,6 @@ from PyQt5.QtCore import Qt
 # 1. SDSMContext: Stores parameters and data for scenario generation.
 ###############################################################################
 class SDSMContext:
-    """
-    A context for storing parameters and data for scenario generation.
-    Extended to store parameters read from a .PAR file.
-    """
     def __init__(self):
         # File paths
         self.in_file = ""   # data file name (short)
@@ -35,34 +31,30 @@ class SDSMContext:
         self.data_array = []
         self.mean_array = []  # list of (mean, sd) for each ensemble
 
-        # Condition / Occurrence
+        # Treatment flags and parameters
         self.occurrence_check = False
         self.conditional_check = False
-        self.occurrence_factor = 0
-        self.occurrence_factor_percent = 1.0
-        self.occurrence_option = 0  # 0=stochastic, 1=forced
+        self.occurrence_factor = 0              # frequency change in percentage points (e.g., 5 or -5)
+        self.occurrence_factor_percent = 1.0      # computed as (100+freq)/100 for stochastic use
+        self.occurrence_option = 0              # 0 = stochastic, 1 = forced
         self.preserve_totals_check = False
 
-        # Amount (mean) treatment
         self.amount_check = False
-        self.amount_option = 0  # 0=factor, 1=addition
+        self.amount_option = 0                  # 0 = factor, 1 = addition
         self.amount_factor = 0
         self.amount_factor_percent = 1.0
         self.amount_addition = 0.0
 
-        # Variance treatment
         self.variance_check = False
         self.variance_factor = 0
         self.variance_factor_percent = 1.0
 
-        # Trend treatment
         self.trend_check = False
         self.linear_trend = 0.0
         self.exp_trend = 0.0
         self.logistic_trend = 0.0
         self.trend_option = [False, False, False]  # [linear, exponential, logistic]
 
-        # Box–Cox transform
         self.lamda = 0.0
 
         # Global missing code
@@ -82,28 +74,9 @@ class SDSMContext:
         self.bias_correction = 0.8
 
 ###############################################################################
-# 2. Parse .PAR file and build absolute paths for data file(s)
+# 2. PAR File Parsing and SIM File Writing
 ###############################################################################
 def parse_par_file(par_path: str, ctx: SDSMContext):
-    """
-    Parse a .PAR file and update the SDSMContext.
-    This parser assumes a fixed format:
-      Line 1: Number of predictors
-      Line 2: Number of months
-      Line 3: Year length
-      Line 4: Start date (DD/MM/YYYY)
-      Line 5: Number of days
-      Line 6: (Possibly second start date - ignored)
-      Line 7: (Possibly second number of days - ignored)
-      Line 8: Conditional flag (#TRUE# or #FALSE#)
-      Line 9: Ensemble size
-      Line 10: (A numeric field, ignored)
-      Line 11: (A boolean, ignored)
-      Next [num_predictors] lines: predictor file names
-      Next line: observed (predictand) file name
-      Next [num_months] lines: monthly coefficient lines.
-    Relative file names are converted to absolute paths based on the .PAR file directory.
-    """
     lines = []
     with open(par_path, "r") as f:
         for line in f:
@@ -156,51 +129,20 @@ def parse_par_file(par_path: str, ctx: SDSMContext):
         QMessageBox.critical(None, "Error", f"Error parsing .PAR file:\n{e}")
 
 ###############################################################################
-# New: Dynamically write the .SIM file corresponding to the input and .OUT file.
+# write the .SIM file corresponding to the input and .OUT file.
 ###############################################################################
 def write_sim_file(ctx: SDSMContext):
-    """
-    Write the .SIM file with parameters corresponding to the input (or .PAR) and .OUT files.
-    The file structure is as follows:
-      [1] Number of predictor variables (ctx.num_predictors)
-      [2] Number of regression models used (ctx.num_months)
-      [3] Maximum number of days in a year (ctx.year_length)
-      [4] Start date of calibration (formatted from ctx.start_date)
-      [5] Number of days simulated (ctx.no_of_days)
-      [6] Conditional flag (#TRUE# or #FALSE# from ctx.conditional_check)
-      [7] Number of ensemble members (ctx.ensemble_size)
-      [8] Variance inflation parameter (ctx.variance_factor_percent)
-      [9] Transformation code for conditional variables:
-          - If not conditional: 1 (none)
-          - If conditional and abs(ctx.lamda - 0.25) < 0.1 then 2 (fourth root)
-          - If conditional and abs(ctx.lamda) < 0.01 then 3 (natural log)
-          - Otherwise, default to 1.
-      [10] Bias correction parameter (ctx.bias_correction)
-      [11] Predictand file name (ctx.in_file)
-      [12+] Predictor file names (base names from ctx.predictor_files)
-    """
-    # Line 1
     line1 = str(ctx.num_predictors)
-    # Line 2
     line2 = str(ctx.num_months)
-    # Line 3
     line3 = str(ctx.year_length)
-    # Line 4
     line4 = ctx.start_date.strftime("%d/%m/%Y")
-    # Line 5
     line5 = str(ctx.no_of_days)
-    # Line 6
     line6 = "#TRUE#" if ctx.conditional_check else "#FALSE#"
-    # Line 7
     line7 = str(ctx.ensemble_size)
-    # Line 8: variance inflation parameter – already computed as ctx.variance_factor_percent
     line8 = str(ctx.variance_factor_percent)
-    # Line 9: transformation code
     if ctx.conditional_check:
-        # Check if lambda is approximately 0.25 (fourth root)
         if abs(ctx.lamda - 0.25) < 0.1:
             trans_code = "2"
-        # If lambda is essentially zero, use natural log
         elif abs(ctx.lamda) < 0.01:
             trans_code = "3"
         else:
@@ -208,16 +150,11 @@ def write_sim_file(ctx: SDSMContext):
     else:
         trans_code = "1"
     line9 = trans_code
-    # Line 10: Bias correction parameter
     line10 = str(ctx.bias_correction)
-    # Line 11: Predictand file name
     line11 = ctx.in_file
-    # Lines 12+: Predictor file names (base names)
     predictor_lines = [os.path.basename(p) for p in ctx.predictor_files]
-
     sim_lines = [line1, line2, line3, line4, line5, line6, line7, line8, line9, line10, line11]
     sim_lines.extend(predictor_lines)
-
     sim_file_path = os.path.splitext(ctx.out_root)[0] + ".SIM"
     try:
         with open(sim_file_path, "w") as f:
@@ -225,14 +162,12 @@ def write_sim_file(ctx: SDSMContext):
                 f.write(line + "\n")
     except Exception as e:
         QMessageBox.critical(None, "Error", f"Error writing SIM file:\n{e}")
-        
     print(f"SIM file written to {sim_file_path}")
 
 ###############################################################################
-# 3. Main Scenario Generation Functions (apply treatments, plotting, etc.)
+# 3. Core Scenario Generation Functions
 ###############################################################################
 def increase_date(date_obj):
-    """Increase the date by one day."""
     return date_obj + datetime.timedelta(days=1)
 
 def parse_value(str_val, ctx):
@@ -262,18 +197,15 @@ def check_settings(ctx: SDSMContext) -> bool:
 def modify_data(ctx: SDSMContext):
     if not check_settings(ctx):
         return
-
     try:
         with open(ctx.in_root, "r") as f:
             lines = f.readlines()
     except Exception as e:
         QMessageBox.critical(None, "Error", f"Error reading input file:\n{e}")
         return
-
     if not lines:
         QMessageBox.critical(None, "Error", "Input file is empty.")
         return
-
     multi_column = len(lines[0]) > 14
     ctx.data_array = [[] for _ in range(ctx.ensemble_size)]
     def process_line(line: str):
@@ -290,7 +222,6 @@ def modify_data(ctx: SDSMContext):
     for line in lines:
         process_line(line)
     ctx.no_of_days = len(ctx.data_array[0])
-
     if ctx.occurrence_check:
         apply_occurrence(ctx)
     if ctx.variance_check:
@@ -301,7 +232,6 @@ def modify_data(ctx: SDSMContext):
         apply_variance(ctx)
     if ctx.trend_check:
         apply_trend(ctx)
-
     try:
         with open(ctx.out_root, "w") as f:
             for i in range(ctx.no_of_days):
@@ -316,10 +246,7 @@ def modify_data(ctx: SDSMContext):
     except Exception as e:
         QMessageBox.critical(None, "Error", f"Error writing output file:\n{e}")
         return
-
-    # Write the dynamic .SIM file.
     write_sim_file(ctx)
-
     QMessageBox.information(None, "Success",
                             f"Scenario generated.\n{ctx.no_of_days} days processed.")
 
@@ -360,13 +287,13 @@ def apply_occurrence(ctx: SDSMContext):
                     DryCount[m] += 1
                     DryArray[m].append(i)
             current_date = increase_date(current_date)
-        for m in range(12):
-            OrigWetCount[m] = WetCount[m]
+        OrigWetCount = WetCount.copy()
         if TotalWetCount <= 0:
             QMessageBox.information(None, "Warning",
                                     f"Ensemble {j+1} has zero wet days; occurrence treatment skipped.")
             continue
         if ctx.occurrence_option == 0:
+            # Stochastic Occurrence Treatment
             if ctx.occurrence_factor_percent < 1:
                 DaysToDelete = int(TotalWetCount - (TotalWetCount * ctx.occurrence_factor_percent))
                 for _ in range(DaysToDelete):
@@ -398,8 +325,61 @@ def apply_occurrence(ctx: SDSMContext):
                         ctx.data_array[j][day] = ctx.data_array[j][wet_day]
                     DryArray[m].pop(idx)
                     DryCount[m] -= 1
+        elif ctx.occurrence_option == 1:
+            # Forced Occurrence Treatment
+            # For each month, adjust the wet days so that the new wet percentage equals
+            # the current percentage plus the frequency change (in percentage points).
+            for m in range(12):
+                if DayCount[m] > 0:
+                    current_percentage = (WetCount[m] / DayCount[m]) * 100
+                else:
+                    current_percentage = 0
+                target_percentage = current_percentage + ctx.occurrence_factor
+                target_percentage = max(0, min(100, target_percentage))
+                target_wet_count = int(round((target_percentage / 100) * DayCount[m]))
+                if WetCount[m] > target_wet_count:
+                    days_to_delete = WetCount[m] - target_wet_count
+                    for _ in range(days_to_delete):
+                        if WetCount[m] > 0:
+                            idx = random.randint(0, WetCount[m] - 1)
+                            day = WetArray[m][idx]
+                            ctx.data_array[j][day] = ctx.local_thresh
+                            WetArray[m].pop(idx)
+                            WetCount[m] -= 1
+                elif WetCount[m] < target_wet_count:
+                    days_to_add = target_wet_count - WetCount[m]
+                    for _ in range(days_to_add):
+                        if DryCount[m] > 0:
+                            idx = random.randint(0, DryCount[m] - 1)
+                            day = DryArray[m][idx]
+                            if OrigWetCount[m] == 0:
+                                possible_wet_months = [ix for ix in range(12) if WetCount[ix] > 0]
+                                if not possible_wet_months:
+                                    continue
+                                m2 = random.choice(possible_wet_months)
+                                wet_day = random.choice(WetArray[m2])
+                                ctx.data_array[j][day] = ctx.data_array[j][wet_day]
+                            else:
+                                wet_day = random.choice(WetArray[m])
+                                ctx.data_array[j][day] = ctx.data_array[j][wet_day]
+                            DryArray[m].pop(idx)
+                            DryCount[m] -= 1
+            # Preserve Totals: adjust rainfall to maintain the original total rainfall.
+            if ctx.preserve_totals_check:
+                NewTotalRainfall = 0.0
+                NewTotalWetCount = 0
+                for i in range(ctx.no_of_days):
+                    val = ctx.data_array[j][i]
+                    if val != ctx.global_missing_code and val > ctx.local_thresh:
+                        NewTotalRainfall += val
+                        NewTotalWetCount += 1
+                if NewTotalRainfall > 0:
+                    multiplier = TotalRainfall / NewTotalRainfall
+                    for i in range(ctx.no_of_days):
+                        if ctx.data_array[j][i] != ctx.global_missing_code and ctx.data_array[j][i] > ctx.local_thresh:
+                            ctx.data_array[j][i] *= multiplier
         else:
-            QMessageBox.information(None, "Info", "Forced occurrence treatment not implemented in this demo.")
+            QMessageBox.information(None, "Info", "Occurrence treatment option not recognized.")
 
 def calc_means(ctx: SDSMContext):
     ctx.mean_array = []
@@ -483,11 +463,9 @@ def apply_variance(ctx: SDSMContext):
             for i in range(ctx.no_of_days):
                 if ctx.data_array[j][i] != ctx.global_missing_code:
                     mean_j = ctx.mean_array[j][0]
-                    ctx.data_array[j][i] = (
-                        (ctx.data_array[j][i] - mean_j) *
-                        math.sqrt(ctx.variance_factor_percent) +
-                        mean_j
-                    )
+                    ctx.data_array[j][i] = ((ctx.data_array[j][i] - mean_j) *
+                                            math.sqrt(ctx.variance_factor_percent) +
+                                            mean_j)
         else:
             lamda = find_min_lambda(ctx, j, -2, 2, 0.25)
             lamda = find_min_lambda(ctx, j, lamda - 0.25, lamda + 0.25, 0.1)
@@ -524,7 +502,7 @@ def apply_variance(ctx: SDSMContext):
             for i in range(ctx.no_of_days):
                 if trans_array[i] != ctx.global_missing_code:
                     trans_array[i] = ((trans_array[i] - mean_trans) * middle) + mean_trans
-                    ctx.data_array[j][i] = unbox_cox(trans_array[i], lamda, ctx)
+                    ctx.data_array[j][i] = unbox_cox(trans_array[i], ctx.lamda, ctx)
 
 def apply_trend(ctx: SDSMContext):
     for j in range(ctx.ensemble_size):
@@ -578,7 +556,7 @@ class ScenarioGeneratorWidget(QWidget):
         mainLayout.setSpacing(20)
         self.setLayout(mainLayout)
 
-        # --- File Selection Section ---
+        # File Selection Section
         fileSelectionGroup = QGroupBox("File Selection")
         fileSelectionLayout = QHBoxLayout()
         self.inputFileButton = QPushButton("📂 Select Input (.PAR or Data) File")
@@ -595,7 +573,7 @@ class ScenarioGeneratorWidget(QWidget):
         fileSelectionGroup.setLayout(fileSelectionLayout)
         mainLayout.addWidget(fileSelectionGroup)
 
-        # --- General Parameters Section ---
+        # General Parameters Section
         generalParamsGroup = QGroupBox("General Parameters")
         generalParamsLayout = QGridLayout()
         self.startDateInput = QLineEdit()
@@ -615,13 +593,13 @@ class ScenarioGeneratorWidget(QWidget):
         generalParamsGroup.setLayout(generalParamsLayout)
         mainLayout.addWidget(generalParamsGroup)
 
-        # --- Treatment Parameters Section ---
+        # Treatment Parameters Section
         treatmentsGroup = QGroupBox("Treatment Parameters")
         treatmentsLayout = QGridLayout()
         # Occurrence
         self.occurrenceCheck = QCheckBox("⚡ Occurrence")
         self.frequencyChangeInput = QLineEdit()
-        self.frequencyChangeInput.setPlaceholderText("e.g. 5 for +5% or -5 for -5%")
+        self.frequencyChangeInput.setPlaceholderText("e.g. 5 for +5 or -5 for -5")
         self.stochasticRadio = QRadioButton("Stochastic")
         self.forcedRadio = QRadioButton("Forced")
         self.preserveTotalCheck = QCheckBox("Preserve Total?")
@@ -670,7 +648,7 @@ class ScenarioGeneratorWidget(QWidget):
         treatmentsGroup.setLayout(treatmentsLayout)
         mainLayout.addWidget(treatmentsGroup)
 
-        # --- Buttons ---
+        # Buttons
         buttonLayout = QHBoxLayout()
         self.generateButton = QPushButton("🚀 Generate")
         self.generateButton.setStyleSheet("background-color: #4CAF50; color: white; font-weight: bold;")
@@ -785,7 +763,6 @@ class ScenarioGeneratorWidget(QWidget):
         except Exception:
             self.ctx.logistic_trend = 0.0
             self.ctx.trend_option[2] = False
-
         modify_data(self.ctx)
 
     def resetFields(self):

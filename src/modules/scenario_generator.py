@@ -760,21 +760,29 @@ class ScenarioGeneratorWidget(QWidget):
     def selectInputFile(self):
         file_name, _ = QFileDialog.getOpenFileName(self, "Select Input (.PAR or Data) File")
         if file_name:
-            self.inputFileLabel.setText(file_name)
+            # Show only the *short* file name (no directories) in the label:
+            short_name = os.path.basename(file_name)
+            self.inputFileLabel.setText(short_name)
+
             if file_name.lower().endswith(".par"):
                 parse_par_file(file_name, self.ctx)
             else:
-                self.ctx.in_file = os.path.basename(file_name)
-                self.ctx.in_root = file_name
+                self.ctx.in_file = short_name  # store short name
+                self.ctx.in_root = file_name   # but keep the full path internally
+
 
     def selectOutputFile(self):
         file_name, _ = QFileDialog.getSaveFileName(self, "Save To File", "", "OUT Files (*.OUT);;All Files (*.*)")
         if file_name:
             if not file_name.lower().endswith(".out"):
                 file_name += ".OUT"
-            self.outputFileLabel.setText(file_name)
-            self.ctx.out_file = os.path.basename(file_name)
+            # Show only the short file name in the label:
+            short_name = os.path.basename(file_name)
+            self.outputFileLabel.setText(short_name)
+
+            self.ctx.out_file = short_name
             self.ctx.out_root = file_name
+
 
     def generateScenario(self):
         # Read the user inputs from the GUI

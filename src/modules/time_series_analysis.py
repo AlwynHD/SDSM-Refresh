@@ -189,3 +189,27 @@ class ContentWidget(QWidget):
 
     def clearSaveFile(self):
         self.saveFileLabel.setText("File: *.CSV")
+
+
+
+            # Main functions
+
+    def PlotData():
+        pass
+
+    def RawData():
+        pass
+
+    def GenerateData():
+        pass   
+
+    def GenerateSPI():
+        pass
+
+    def GeneratePrecipAnnualMax():
+        pass
+
+    def LongTermStats():
+        pass
+    
+    #Support Functions

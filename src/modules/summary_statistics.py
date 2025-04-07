@@ -141,3 +141,29 @@ class ContentWidget(QWidget):
 
         # Auto-resizing setup
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
+    
+    # Main functions
+
+    def PlotData():
+        pass
+
+    def RawData():
+        pass
+
+    def GenerateData():
+        pass   
+
+    def GenerateSPI():
+        pass
+
+    def GeneratePrecipAnnualMax():
+        pass
+
+    def LongTermStats():
+        pass
+    
+    #Support Functions
+
+    
+     

@@ -213,3 +213,83 @@ class ContentWidget(QWidget):
         pass
     
     #Support Functions
+
+    def FindPrecipAbouveAnnPercentile():
+        pass
+
+    def FinsihedCurrentPeriod():
+        pass
+
+    def GetWaterYear():
+        pass
+
+    def PercentilePeriodArray():
+        pass
+
+    def FindNthLargest():
+        pass
+
+    def FindLargestNDayTotal():
+        pass
+
+    def FindMaxDrySpell():
+        pass
+
+    def FindMaxWetSpell():
+        pass
+
+    def FindMeanDrySpell():
+        pass
+
+    def FindMeanWetSpell():
+        pass
+
+    def FindMedianDrySpell():
+        pass
+
+    def FindMedianWetSpell():
+        pass
+
+    def FindSDDrySpell():
+        pass
+
+    def FindSDWetSpell():
+        pass
+
+    def FindDDPersistence():
+        pass   
+
+    def findWDPersistence():
+        pass
+
+    def FindSpellLengthCorrelation():
+        pass
+
+    #Utility Functions
+
+    def CreateDrySpellArray():
+        pass
+
+    def CreateWetSpellArray():
+        pass
+
+    def IncreaseDate():
+        pass
+
+    def ExitAnalysis():
+        pass
+
+    def SaveResults():
+        pass
+
+    def Help_Needed():
+        pass
+
+    def Mini_Reset():
+        pass
+
+    def Reset_All():
+        pass
+
+    def DumpForm():
+        pass

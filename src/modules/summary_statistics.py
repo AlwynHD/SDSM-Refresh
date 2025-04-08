@@ -589,12 +589,18 @@ class ContentWidget(QWidget):
             self.stats_params = dialog.get_updated_stats()
             # Update rain_yes based on selected stats
             self.rain_yes = False
-            for i in range(15, 24):
+            precip_indices_1 = range(14, 24) 
+            precip_indices_2 = range(26, 33)
+
+            for i in precip_indices_1:
                 if i < len(self.stats_params) and self.stats_params[i][1] == "Y":
                     self.rain_yes = True
-            for i in range(26, 33):
+                    break
+
+            for i in precip_indices_2:
                 if i < len(self.stats_params) and self.stats_params[i][1] == "Y":
                     self.rain_yes = True
+                    break
     
     def analyze_data(self):
         """
@@ -762,7 +768,7 @@ class ContentWidget(QWidget):
         
         # Set RainYes based on selected stats
         self.rain_yes = False
-        for i in range(15, 24):
+        for i in range(14, 24):
             if i < len(self.stats_params) and self.stats_params[i][1] == "Y":
                 self.rain_yes = True
         for i in range(26, 33):
@@ -2428,6 +2434,7 @@ class StatsSelectDialog(QDialog):
             enabled = "Y" if self.stat_checkboxes[i].isChecked() else "N"
             updated_stats.append((name, enabled, desc))
         
+        print(updated_stats)
         return updated_stats
 
 

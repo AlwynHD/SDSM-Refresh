@@ -427,11 +427,11 @@ class ContentWidget(QWidget):
     
     def checkFile(self):
         #https://www.youtube.com/watch?v=QY4KKG4TBFo im keeping this in the comments
-        from src.lib.QualityControl import qualityCheck as qualityCheckNew
+        from src.lib.QualityControl import qualityCheck
         print("https://www.youtube.com/watch?v=QY4KKG4TBFo") #Are easter eggs allowed?
         try:
             print(self.selectedFile)
-            min, max,  mean,totalCount, missing,count, maxDiff,maxDiff1, maxDiff2,threshCount, pettitt, pettitMaxPos, globalMissingCount, thresh = qualityCheckNew([self.selectedFile],self.thresholdCheckBox.isChecked())
+            min, max,  mean,totalCount, missing,count, maxDiff,maxDiff1, maxDiff2,threshCount, pettitt, pettitMaxPos, globalMissingCount, thresh = qualityCheck([self.selectedFile],self.thresholdCheckBox.isChecked(),int(self.pettittInput.text()))
             self.minimumFrame.contentLabel.setText(str(min))
             self.maximumFrame.contentLabel.setText(str(max))
             self.meanFrame.contentLabel.setText(str(mean))
@@ -476,7 +476,7 @@ class ContentWidget(QWidget):
         self.outliersButton.setText("Calculating")
         from src.lib.QualityControl import getOutliers as getOutliersNew
         try:
-            message= getOutliersNew([self.selectedFile],[self.selectedOutlier],int(self.standardDeviationInput.text()) , self.thresholdCheckBox.isChecked())
+            message= getOutliersNew([self.selectedFile],self.selectedOutlier,int(self.standardDeviationInput.text()) , self.thresholdCheckBox.isChecked())
             self.outliersButton.setText("Outliers")
             print("message in checkOutliers=",message)
             #proc = threading.Thread(target=displayBox, args=("Outliers Identified", message, "Outlier Results"))

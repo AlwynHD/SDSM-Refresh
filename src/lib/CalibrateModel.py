@@ -353,8 +353,6 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
             seasonCode = 1
 
         nDaysR = (globalEndDate - globalStartDate).days + 1
-        print(type(feDate))
-        print(type(fsDate))
         noOfDays2Fit = (feDate - fsDate).days + 1
         
         #------------------------

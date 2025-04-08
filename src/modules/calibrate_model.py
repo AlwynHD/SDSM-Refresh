@@ -273,7 +273,7 @@ class ContentWidget(QWidget):
 
         #Layout for selectPredictors frame
         autoregressionLayout = QHBoxLayout()
-        autoregressionLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
+        autoregressionLayout.setContentsMargins(25,25,25,25) #Pad 25 pixels each way
         autoregressionLayout.setSpacing(0)  # No spacing between elements
         autoregressionFrame.setLayout(autoregressionLayout)
         
@@ -557,7 +557,7 @@ class ContentWidget(QWidget):
         fileList = [] #Copy predictors to a new list so when calibrateModel messes with it it doesnt break absolutely everything
         for predictor in self.predictorsSelected:
             fileList.append(predictor)
-        data = calibrateModel(self.predictandSelected,fileList,self.outputSelected,fitStartDate,fitEndDate,
+        data = calibrateModel([self.predictandSelected],fileList,fitStartDate,fitEndDate,
                               modelType,parmOpt,self.autoregressionCheck.isChecked(), self.chowCheck.isChecked(),deTrend, self.crossValCalcCheck.isChecked())
         print(data)
 

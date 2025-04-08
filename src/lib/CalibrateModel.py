@@ -353,6 +353,8 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
             seasonCode = 1
 
         nDaysR = (globalEndDate - globalStartDate).days + 1
+        print(type(feDate))
+        print(type(fsDate))
         noOfDays2Fit = (feDate - fsDate).days + 1
         
         #------------------------
@@ -1163,31 +1165,35 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
             #    output[months[i]]["Chow"] = None ##Coming soon!
             u = "Unconditional"
             c = "Conditional"
+            months = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+]
             output[u] = {}
             for i in range(12):
-                output[u][i] = {} # Initialize month associative array / dict
-                output[u][i]["RSquared"] = statsSummary[i,0]
-                output[u][i]["SE"] = statsSummary[i,1]
-                output[u][i]["FRatio"] = statsSummary[i,4]
+                output[u][months[i]] = {} # Initialize month associative array / dict
+                output[u][months[i]]["RSquared"] = statsSummary[i,0]
+                output[u][months[i]]["SE"] = statsSummary[i,1]
+                output[u][months[i]]["FRatio"] = statsSummary[i,4]
             if includeChow:
                 for i in range(12):
-                    output[u][i]["Chow"] = statsSummary[i, 3]
+                    output[u][months[i]]["Chow"] = statsSummary[i, 3]
             if not parmOpt:
                 for i in range(12):
-                    output[u][i]["D-Watson"] = statsSummary[i,2]
+                    output[u][months[i]]["D-Watson"] = statsSummary[i,2]
             else:
                 for i in range(12):
-                    output[u][i]["PropCorrect"] = statsSummary[i,2]
+                    output[u][months[i]]["PropCorrect"] = statsSummary[i,2]
                 for i in range(12):
                     output[c] = {}
                 for i in range(12):
-                    output[c][i] = {} # Initialize month associative array / dict
-                    output[c][i]["RSquared"] = statsSummary[i + 12,0]
-                    output[c][i]["SE"] = statsSummary[i + 12,1]
-                    output[c][i]["FRatio"] = statsSummary[i + 12,4]
+                    output[c][months[i]] = {} # Initialize month associative array / dict
+                    output[c][months[i]]["RSquared"] = statsSummary[i + 12,0]
+                    output[c][months[i]]["SE"] = statsSummary[i + 12,1]
+                    output[c][months[i]]["FRatio"] = statsSummary[i + 12,4]
                 if includeChow:
                     for i in range(12):
-                        output[c][i]["Chow"] = statsSummary[i + 12, 3]
+                        output[c][months[i]]["Chow"] = statsSummary[i + 12, 3]
             if doCrossValidation:
                 output[u]["xValidation"] = xValidationOutput[u]
                 if parmOpt:

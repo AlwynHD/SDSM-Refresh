@@ -2434,7 +2434,6 @@ class StatsSelectDialog(QDialog):
             enabled = "Y" if self.stat_checkboxes[i].isChecked() else "N"
             updated_stats.append((name, enabled, desc))
         
-        print(updated_stats)
         return updated_stats
 
 

@@ -1,21 +1,27 @@
 import numpy as np
 import datetime as dt
 import scipy as sci
+import csv
 try:
     from src.lib.utils import loadFilesIntoMemory, selectFile, getSettings
 except ModuleNotFoundError:
     from utils import loadFilesIntoMemory, selectFile, getSettings
 
 def loadData(file):
+    #Load data in a 2d numpy array, even if data only has one column
     data = loadFilesIntoMemory(file)[0]
 
+    #If data a single value, put this single value into an array
     if np.ndim(data) == 0:
         data = [data]
     
+    #If data is a single colum, put this single column in a 2D array
     if np.ndim(data) == 1:
         newData = np.empty((len(data), 1))
         newData[:, 0] = data
         data = newData
+
+    #longdouble chosen to support larger numbers
     data.astype(np.longdouble)
     return data
 
@@ -68,7 +74,6 @@ def returnSelf(n): return n
 def backwardsChange(data, applyThresh, missingCode, thresh):
     """Returns the difference between each value in a column and the previous value in that column"""
 
-
     returnData = np.empty_like(data)
     success = 0
     failure = 0
@@ -95,7 +100,6 @@ def lag(data, n, wrap, missingCode):
     """ Rewrite data so it begins at position n.
         If wrap selected, values before n are written at the bottom of the file.
         Else, values before n are replaced with the global missing code."""
-    
 
     returnData = np.empty_like(data)
     processed = 0
@@ -157,6 +161,8 @@ def removeOutliers(data, sdFilterValue, applyThresh, missingCode, thresh):
     for c in range(len(data.T)):
         column = data[:, c]
         threshCol = [entry for entry in column if valueIsValid(entry, applyThresh, missingCode, thresh)]
+
+        #Calculation standard deviation of the column
         if len(threshCol) > 0:
             mean = sum(threshCol) / len(threshCol)
             sd = 0
@@ -166,6 +172,7 @@ def removeOutliers(data, sdFilterValue, applyThresh, missingCode, thresh):
             sd = np.sqrt(sd / len(threshCol))
             sdFilter = sd * sdFilterValue
         
+        #Create an empty column. Write all non-outliers to this column.
         filteredCol = np.empty_like(column)
         for r in range(len(column)):
             if valueIsValid(column[r], applyThresh, missingCode, thresh) and (column[r] > (mean + sdFilter) or column[r] < (mean - sdFilter)):
@@ -225,13 +232,17 @@ def unBoxCox(data, lamda, leftShift, applyThresh, missingCode, thresh):
 
     for c in range(len(data.T)):
         unBoxCoxData = [entry for entry in data[:, c] if valueIsValid(entry, applyThresh, missingCode, thresh)]
+
+        #Left shift data
         for i in range(len(unBoxCoxData)):
             unBoxCoxData[i] += leftShift
 
+        #Reverse boxcox
         unBoxCoxData = sci.special.inv_boxcox(unBoxCoxData, lamda)
         for i in range(len(unBoxCoxData)):
             unBoxCoxData[i] -= leftShift
 
+        #Write back to column
         invalidCount = 0
         for r in range(len(data[:, c])):
             if valueIsValid(data[r][c], applyThresh, missingCode, thresh):
@@ -246,6 +257,35 @@ def unBoxCox(data, lamda, leftShift, applyThresh, missingCode, thresh):
         infoString += str(invalidCount) + " value(s) excluded from transformation (missing or below threshold).\n"
 
     return returnData, infoString
+
+def createOut(filepath):
+    if filepath.lower().endswith(".csv"):
+        #Read from .csv
+        file = csv.reader(open(filepath))
+        data = [row for row in file]
+        data = np.asarray(data)
+        
+        #Get .out filepath
+        outPath = filepath[:-4]
+        outPath += ".out"
+
+        #Get longest lengths to format columns
+        longestLengths = []
+        for column in data.T:
+            longestLengths.append(len(max(column, key=len)))
+
+        #Write to .out
+        file = open(outPath, "w")
+        for r in range(len(data)):
+            for c in range(len(data[r])):
+                extraWhitespace = longestLengths[c] - len(data[r][c])
+                file.write(data[r][c] + " " * (5 + extraWhitespace))
+            file.write("\n")
+        file.close()
+
+        return "Converted .csv to .out, saved as " + outPath
+    else:
+        return "Please provide a .csv file"
 
 if __name__ == "__main__":
     """Variables that are gotten from the screen."""
@@ -271,29 +311,30 @@ if __name__ == "__main__":
     globalEDate = settings["globaledate"]
 
 
-    genericTransform(data, ln, applyThresh, missingCode, thresh)
-    genericTransform(data, log, applyThresh, missingCode, thresh)
-    genericTransform(data, square, applyThresh, missingCode, thresh)
-    genericTransform(data, cube, applyThresh, missingCode, thresh)
-    genericTransform(data, powFour, applyThresh, missingCode, thresh)
-    genericTransform(data, powMinusOne, applyThresh, missingCode, thresh)
+    #genericTransform(data, ln, applyThresh, missingCode, thresh)
+    #genericTransform(data, log, applyThresh, missingCode, thresh)
+    #genericTransform(data, square, applyThresh, missingCode, thresh)
+    #genericTransform(data, cube, applyThresh, missingCode, thresh)
+    #genericTransform(data, powFour, applyThresh, missingCode, thresh)
+    #genericTransform(data, powMinusOne, applyThresh, missingCode, thresh)
 
-    genericTransform(data, eToTheN, applyThresh, missingCode, thresh)
-    genericTransform(data, tenToTheN, applyThresh, missingCode, thresh)
-    genericTransform(data, powHalf, applyThresh, missingCode, thresh)
-    genericTransform(data, powThird, applyThresh, missingCode, thresh)
-    genericTransform(data, powQuarter, applyThresh, missingCode, thresh)
-    genericTransform(data, returnSelf, applyThresh, missingCode, thresh)
+    #genericTransform(data, eToTheN, applyThresh, missingCode, thresh)
+    #genericTransform(data, tenToTheN, applyThresh, missingCode, thresh)
+    #genericTransform(data, powHalf, applyThresh, missingCode, thresh)
+    #genericTransform(data, powThird, applyThresh, missingCode, thresh)
+    #genericTransform(data, powQuarter, applyThresh, missingCode, thresh)
+    #genericTransform(data, returnSelf, applyThresh, missingCode, thresh)
 
-    backwardsChange(data, applyThresh, missingCode, thresh)
-    lag(data, lagValue, wrap)
-    binomial(data, binomialValue, applyThresh, missingCode, thresh)
+    #backwardsChange(data, applyThresh, missingCode, thresh)
+    #lag(data, lagValue, wrap)
+    #binomial(data, binomialValue, applyThresh, missingCode, thresh)
 
-    extractEnsemble(data, ensembleCol, missingCode, thresh)
+    #extractEnsemble(data, ensembleCol, missingCode, thresh)
 
-    padData(data, dataSDate, dataEDate, globalSDate, globalEDate, missingCode)
+    #padData(data, dataSDate, dataEDate, globalSDate, globalEDate, missingCode)
 
-    removeOutliers(data, sdFilter, applyThresh, missingCode, thresh)
+    #removeOutliers(data, sdFilter, applyThresh, missingCode, thresh)
 
-    print(boxCox(data, applyThresh, missingCode, thresh))
-    unBoxCox(data, lamda, leftShift, applyThresh, missingCode, thresh)
+    #boxCox(data, applyThresh, missingCode, thresh))
+    #unBoxCox(data, lamda, leftShift, applyThresh, missingCode, thresh)
+    #createOut(r"C:\Users\ajs25\Downloads\csvTest.csv")

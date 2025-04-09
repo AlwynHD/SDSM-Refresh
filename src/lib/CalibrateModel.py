@@ -3,6 +3,8 @@ from datetime import date as realdate
 from src.lib.utils import loadFilesIntoMemory, increaseDate, thirtyDate
 from copy import deepcopy
 import src.core.data_settings
+from PyQt5.QtWidgets import QApplication, QMainWindow, QTextEdit, QTabWidget, QWidget
+from PyQt5.QtGui import QFont
 #from scipy.stats import spearmanr
 
 ## NOTE TO READERS: THIS FILE **DOES** WORK
@@ -1152,6 +1154,8 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
             #from calendar import month_name as months
 
             output = {"Predictand": fileList[0]}
+
+            output['Predictors'] = fileList[1:]
             for subloop in range(1, NPredictors + 1):
                 output[f"Predictor#{subloop}"] = fileList[subloop]
             #for i in range(1, 13):
@@ -1213,7 +1217,13 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
 
             ##This section is dedicated to the absolutely horrendous layout of the OG SDSM-DC application
             ##Can safely ignore (i think) -> more useful to output the results to the parent GUI object and handle it there, better, from scratch...
-
+            analysisPeriod = ['Monthly', 'Seasonal', 'Annual']
+            output['analysisPeriod'] = {
+            'startDate': fsDate,
+            'endDate': feDate,
+            'periodName': analysisPeriod[modelType],
+            'periodIndex': modelType
+        }
             return output
 
 def do_nothing():
@@ -2289,4 +2299,154 @@ def getSeason(month):
         return 1
     else: #Months 12,1,2 (Winter)
         return 0
+    
+
+
+
+def formatCalibrateResults(results):
+    """
+    Format Calibrate analysis results for display in a PyQt5 application.
+    
+    Parameters:
+    results (dict): Dictionary containing Calibrate analysis results
+    
+    Returns:
+    str: Formatted string representation of the Calibrate results
+    """
+    # Extract necessary data from results dictionary
+    startDate = results['analysisPeriod']['startDate']
+    endDate = results['analysisPeriod']['endDate']
+    periodName = results['analysisPeriod']['periodName']
+    
+    # Statistics
+
+    #conditional = results['settings_used']['conditionalAnalysis']
+    
+    # Data
+    predictand = results['Predictand'].split('/')[-1]
+    #fileNames = results['names']
+    #crossCorr = results['crossCorrelation']
+    #partialCorrelations = results['partialCorrelations'] if 'partialCorrelations' in results else None
+    
+    # Format output as a string
+    output = []
+    
+    # Header section
+    output.append("Predictand: " + predictand)
+    output.append("")
+    output.append("Predictors: ")
+    for i in range(0, len(results['Predictors'])):
+        x = results['Predictors'][i].split("/")[-1]
+        output.append(f"{x}")
+    output.append("")
+    output.append(f"Analysis Period: {startDate} - {endDate} ({periodName})")
+    output.append("")
+
+    maxWidth = 12
+
+    output.append("Unconditional Statistics")
+    #Get all the keys in the first dictionary within unconditional results
+    unconditionalResultsList = list(results['Unconditional'].keys())
+    firstUnconditionalEntryKey = unconditionalResultsList[0]
+    unconditionalKeyList = list(results['Unconditional'][firstUnconditionalEntryKey].keys())
+    
+     # Calculate the maximum length of keys for formatting
+    
+    output.append("")
+    # Cross-correlation matrix header
+    headerRow = ""
+    headerRow+= f"{'Month':{maxWidth}}"
+    for j in range(len(unconditionalKeyList)):
+        headerRow += f"{unconditionalKeyList[j]:{maxWidth}}"
+    output.append(headerRow)
+    for i in unconditionalResultsList:
+        result = ""
+        result += f"{i:{maxWidth}}"
+        resultsList = list(results['Unconditional'][i].keys())
+        for j in resultsList:
+            result += f"{str(round(float(results['Unconditional'][i][j]),5)):{maxWidth}}"
+        output.append(result)
+    '''
+    # Cross-correlation matrix rows
+    for j in range(nVariables):
+        row = f"{j+1} {fileNames[j]:{maxLength}}"
+        
+        for k in range(nVariables):
+            corrValue = crossCorr[j][k]
+            if k == j:
+                tempY = "1"
+            else:
+                tempY = f"{corrValue:.3f}"
+            row += f"{tempY:{maxLength + 2}}"
+        
+        output.append(row)
+    
+    output.append("")
+    
+    # Partial correlations section
+    if nVariables < 3:
+        output.append("NO PARTIAL CORRELATIONS TO CALCULATE")
+    else:
+        output.append(f"PARTIAL CORRELATIONS WITH {fileNames[0]}")
+        output.append("")
+        output.append(" " * 24 + f"{'Partial r':12}{'P value':12}")
+        output.append("")
+        
+        # Add partial correlation results if available
+        if partialCorrelations:
+            for i in range(1, nVariables):
+                if i-1 < len(partialCorrelations):
+                    partialR = partialCorrelations[i-1]['correlation']
+                    pValue = partialCorrelations[i-1]['p_value']
+                    output.append(f"{fileNames[i]:24}{partialR:<12.3f}{pValue:<12.3f}")
+    
+    # Join all lines with newlines '''
+
+    return "\n".join(output)
+
+
+def displayCorrelationResultsQt(results, textWidget):
+    """
+    Display correlation results in a PyQt5 text widget.
+    
+    Parameters:
+    results (dict): Dictionary containing correlation analysis results
+    textWidget (QTextEdit/QPlainTextEdit): PyQt5 text widget to display the results
+    """
+    # Format the results
+    formattedText = formatCalibrateResults(results)
+    
+    # Set the font to a monospaced font for proper alignment
+    font = QFont("Courier New", 10)
+    textWidget.setFont(font)
+    
+    # Display the formatted text
+    textWidget.setPlainText(formattedText)
+
+class CalibrateAnalysisApp(QMainWindow):
+        def __init__(self):
+            super().__init__()
+            self.setWindowTitle("Correlation Analysis")
+            self.resize(800, 600)
+            
+            # Create a tab widget for different views
+            self.tabWidget = QTabWidget()
+            
+            # Text view tab
+            self.textWidget = QTextEdit()
+            self.textWidget.setReadOnly(True)
+            self.tabWidget.addTab(self.textWidget, "Text View")
+            
+            # Set the central widget
+            self.setCentralWidget(self.tabWidget)
+        
+        def loadResults(self, results):
+            # Display text format
+            displayCorrelationResultsQt(results, self.textWidget)
+            print()
+            # Create and add table view
+            #tableWidget = createCorrelationTableWidget(results)
+            #self.tabWidget.addTab(tableWidget, "Table View")
+
+        
 ##

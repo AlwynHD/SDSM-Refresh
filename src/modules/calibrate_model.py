@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import (QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, 
                              QFrame, QLabel, QFileDialog, QScrollArea, QDateEdit, QCheckBox,
-                             QButtonGroup, QRadioButton, QLineEdit, QGroupBox)
+                             QButtonGroup, QRadioButton, QLineEdit, QGroupBox, QTabWidget, QTextEdit)
 from PyQt5.QtCore import Qt, QDate
 from PyQt5.QtGui import QPalette, QColor, QIcon
 from os import listdir
@@ -547,19 +547,22 @@ class ContentWidget(QWidget):
         buttonLayout.addWidget(resetButton)
 
     def doCalibration(self):
-        from src.lib.CalibrateModel import calibrateModel
+        from src.lib.CalibrateModel import calibrateModel, CalibrateAnalysisApp 
         print(self.predictandSelected)
         fitStartDate = self.QDateEditToDateTime(self.fitStartDateChooser)
         fitEndDate = self.QDateEditToDateTime(self.fitEndDateChooser)
         modelType = int(self.modelRadioButtonGroup.checkedButton().objectName())
         parmOpt = bool(int(self.processRadioButtonGroup.checkedButton().objectName()))
         deTrend = int(self.deTrendRadioButtonGroup.checkedButton().objectName())
-        fileList = [] #Copy predictors to a new list so when calibrateModel messes with it it doesnt break absolutely everything
+        fileList = [self.predictandSelected] #Copy predictors to a new list so when calibrateModel messes with it it doesnt break absolutely everything
         for predictor in self.predictorsSelected:
             fileList.append(predictor)
-        data = calibrateModel([self.predictandSelected],fileList,fitStartDate,fitEndDate,
+        data = calibrateModel(fileList,self.outputSelected,fitStartDate,fitEndDate,
                               modelType,parmOpt,self.autoregressionCheck.isChecked(), self.chowCheck.isChecked(),deTrend, self.crossValCalcCheck.isChecked())
         print(data)
+        self.newWindow = CalibrateAnalysisApp()
+        self.newWindow.loadResults(data)
+        self.newWindow.show()
 
     def resetAll(self):
         #Reset file and path variables and labels
@@ -661,8 +664,6 @@ class ContentWidget(QWidget):
             self.predictorsSelected.remove(self.predictorPath+"/"+predictor)
             button.setStyleSheet("color: black; background-color: #F0F0F0")
 
-
-        
     
     def handleMenuButtonClicks(self):
         button = self.sender().text()
@@ -670,3 +671,4 @@ class ContentWidget(QWidget):
             print("nope, that aint right")
         else:
             print("work in progress, pardon our dust")
+    

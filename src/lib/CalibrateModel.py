@@ -1224,6 +1224,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
             'periodName': analysisPeriod[modelType],
             'periodIndex': modelType
         }
+            output['autoregression'] = autoRegression
             return output
 
 def do_nothing():
@@ -2338,6 +2339,8 @@ def formatCalibrateResults(results):
     for i in range(0, len(results['Predictors'])):
         x = results['Predictors'][i].split("/")[-1]
         output.append(f"{x}")
+    if results['autoregression'] == True:
+        output.append(f"Autoregression")
     output.append("")
     output.append(f"Analysis Period: {startDate} - {endDate} ({periodName})")
     output.append("")
@@ -2366,6 +2369,28 @@ def formatCalibrateResults(results):
         for j in resultsList:
             result += f"{str(round(float(results['Unconditional'][i][j]),5)):{maxWidth}}"
         output.append(result)
+    output.append("")
+    if "Conditional" in results:
+        #Get all the keys in the first dictionary within unconditional results
+        conditionalResultsList = list(results['Conditional'].keys())
+        firstConditionalEntryKey = conditionalResultsList[0]
+        conditionalKeyList = list(results['Conditional'][firstConditionalEntryKey].keys())
+        output.append("Conditional Statistics")
+        output.append("")
+        # Conditional statistics header
+        headerRow = ""
+        headerRow += f"{'Month':{maxWidth}}"
+        for j in range(len(conditionalKeyList)):
+            headerRow += f"{conditionalKeyList[j]:{maxWidth}}"
+        output.append(headerRow)
+        for i in conditionalResultsList:
+            result = ""
+            result += f"{i:{maxWidth}}"
+            resultsList = list(results['Conditional'][i].keys())
+            for j in resultsList:
+                result += f"{str(round(float(results['Conditional'][i][j]),5)):{maxWidth}}"
+            output.append(result)
+
     '''
     # Cross-correlation matrix rows
     for j in range(nVariables):

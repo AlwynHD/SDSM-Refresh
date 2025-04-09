@@ -10,6 +10,11 @@ from PyQt5.QtGui import QFont
 ## NOTE TO READERS: THIS FILE **DOES** WORK
 ## The debugRun test function should give an example configuration
 
+months = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"]
+            
+
 ##DEBUGGING FUNCTIONS:
 debug = False
 def debugMsg(msg):
@@ -635,7 +640,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                     #xValUnConditional()
                     xValResults = xValidation(xMatrix, yMatrix, crossValFolds, parmOpt)
                     for i in range(12):
-                        xValidationOutput["Unconditional"][i] = xValResults
+                        xValidationOutput["Unconditional"][months[i]] = xValResults
 
 
                 conditionalPart = False ##Needed for CalcParameters
@@ -710,7 +715,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                         #xValConditional()
                         xValResults = xValidation(xMatrix, yMatrix, crossValFolds, parmOpt, True)
                         for i in range(12):
-                            xValidationOutput["Conditional"][i] = xValResults
+                            xValidationOutput["Conditional"][months[i]] = xValResults
 
                     #call TransformData
                     transformData(xMatrix, yMatrix, yMatrixAboveThreshPos, modelTrans)
@@ -849,7 +854,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                             for i in range(3):
                                 xValidationOutput["Unconditional"][seasonMonths[periodWorkingOn][i]] = xValResults
                         else: #Assume monthly
-                            xValidationOutput["Unconditional"][periodWorkingOn] = xValResults
+                            xValidationOutput["Unconditional"][months[periodWorkingOn]] = xValResults
 
                     ###until now, #6.2.1 is near identical to #6.1.1,
                     ###but is notably missing the ApplyStepwise condition for CalcualteParameters
@@ -936,7 +941,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                                 for i in range(3):
                                     xValidationOutput["Conditional"][seasonMonths[periodWorkingOn][i]] = xValResults
                             else: #Assume monthly
-                                xValidationOutput["Conditional"][periodWorkingOn] = xValResults
+                                xValidationOutput["Conditional"][months[periodWorkingOn]] = xValResults
                         
                         #call TransformData
                         transformData(xMatrix, yMatrix, yMatrixAboveThreshPos, modelTrans)
@@ -1167,10 +1172,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
             #    output[months[i]]["Chow"] = None ##Coming soon!
             u = "Unconditional"
             c = "Conditional"
-            months = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
-]
+
             output[u] = {}
             for i in range(12):
                 output[u][months[i]] = {} # Initialize month associative array / dict
@@ -1225,6 +1227,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
             'periodIndex': modelType
         }
             output['autoregression'] = autoRegression
+            output['ifXVal'] = doCrossValidation
             return output
 
 def do_nothing():
@@ -2354,20 +2357,47 @@ def formatCalibrateResults(results):
     unconditionalKeyList = list(results['Unconditional'][firstUnconditionalEntryKey].keys())
     
      # Calculate the maximum length of keys for formatting
-    
-    output.append("")
+    if results['ifXVal']:
+        line = ""
+        line += (f"{'':{maxWidth*(len(unconditionalKeyList)+1)}}")
+        line += ("Cross Validation Results")
+        output.append(line)
+
+    else:
+        output.append("")
     # Cross-correlation matrix header
     headerRow = ""
     headerRow+= f"{'Month':{maxWidth}}"
     for j in range(len(unconditionalKeyList)):
         headerRow += f"{unconditionalKeyList[j]:{maxWidth}}"
+    
+
+    if "xValidation" in results['Unconditional']:
+        xValidationDict = results['Unconditional']["xValidation"]
+        xValidationKeys = list(xValidationDict.keys()) #Months
+        xValidationResultsKeys = list(xValidationDict[xValidationKeys[0]].keys()) #Results within the month
+        for key in xValidationResultsKeys:
+            headerRow += f"{key:{maxWidth}}"
     output.append(headerRow)
+
+        
+
     for i in unconditionalResultsList:
         result = ""
-        result += f"{i:{maxWidth}}"
+        if i != "xValidation":
+            result += f"{i:{maxWidth}}"
         resultsList = list(results['Unconditional'][i].keys())
         for j in resultsList:
-            result += f"{str(round(float(results['Unconditional'][i][j]),5)):{maxWidth}}"
+            if i != "xValidation":
+                result += f"{str(round(float(results['Unconditional'][i][j]),5)):{maxWidth}}"
+        if results['ifXVal']:
+            #xValidation is a dictionary, so go into the months, then get the results from that
+            print("\n\n\n\n\n\n")
+            for k in xValidationResultsKeys:
+                if i != "xValidation":
+                    xValidation = xValidationDict[i][k]
+                    result += f"{str(round(float(xValidation),5)):{maxWidth}}"
+        
         output.append(result)
     output.append("")
     if "Conditional" in results:
@@ -2376,20 +2406,41 @@ def formatCalibrateResults(results):
         firstConditionalEntryKey = conditionalResultsList[0]
         conditionalKeyList = list(results['Conditional'][firstConditionalEntryKey].keys())
         output.append("Conditional Statistics")
-        output.append("")
+        if results['ifXVal']:
+            line = ""
+            line += (f"{'':{maxWidth*(len(conditionalKeyList)+1)}}")
+            line += ("Cross Validation Results")
+            output.append(line)
+
+        else:
+            output.append("")
         # Conditional statistics header
         headerRow = ""
         headerRow += f"{'Month':{maxWidth}}"
         for j in range(len(conditionalKeyList)):
             headerRow += f"{conditionalKeyList[j]:{maxWidth}}"
+        if "xValidation" in results['Conditional']:
+            xValidationDict = results['Conditional']["xValidation"]
+            xValidationKeys = list(xValidationDict.keys()) #Months
+            xValidationResultsKeys = list(xValidationDict[xValidationKeys[0]].keys()) #Results within the month
+            for key in xValidationResultsKeys:
+                headerRow += f"{key:{maxWidth}}"
         output.append(headerRow)
         for i in conditionalResultsList:
             result = ""
-            result += f"{i:{maxWidth}}"
-            resultsList = list(results['Conditional'][i].keys())
-            for j in resultsList:
-                result += f"{str(round(float(results['Conditional'][i][j]),5)):{maxWidth}}"
-            output.append(result)
+            if i != "xValidation":
+                result += f"{i:{maxWidth}}"
+                resultsList = list(results['Conditional'][i].keys())
+                for j in resultsList:
+                    result += f"{str(round(float(results['Conditional'][i][j]),5)):{maxWidth}}"
+
+                if results['ifXVal']:
+                #xValidation is a dictionary, so go into the months, then get the results from that
+                    for k in xValidationResultsKeys:
+                        if i != "xValidation":
+                            xValidation = xValidationDict[i][k]
+                            result += f"{str(round(float(xValidation),5)):{maxWidth}}"
+                output.append(result)
 
     '''
     # Cross-correlation matrix rows

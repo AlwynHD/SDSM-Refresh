@@ -558,7 +558,7 @@ class ContentWidget(QWidget):
         for predictor in self.predictorsSelected:
             fileList.append(predictor)
         data = calibrateModel(fileList,self.outputSelected,fitStartDate,fitEndDate,
-                              modelType,parmOpt,self.autoregressionCheck.isChecked(), self.chowCheck.isChecked(),deTrend, self.crossValCalcCheck.isChecked())
+                              modelType,parmOpt,self.autoregressionCheck.isChecked(), self.chowCheck.isChecked(),deTrend, self.crossValCalcCheck.isChecked(),int(self.crossValInput.text()))
         print(data)
         self.newWindow = CalibrateAnalysisApp()
         self.newWindow.loadResults(data)

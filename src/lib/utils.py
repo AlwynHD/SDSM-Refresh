@@ -4,6 +4,7 @@ import os
 import re
 import calendar
 import numpy as np
+import configparser
 
 class thirtyDate:
     """
@@ -19,7 +20,7 @@ class thirtyDate:
         self.day = day
 
     def __sub__(self, other):
-        return (
+        return datetime.timedelta(days=
             ((self.year - other.year) * 30 * 12) +
             ((self.month - other.month) * 30) +
             (self.day - other.day)
@@ -151,19 +152,19 @@ def loadFilesIntoMemory(filesToLoad):
         loadedFiles.append(np.loadtxt(fileLocation))
     return loadedFiles
 
-def increaseDate(startDate, noDays): #todo check if the leap year thing was important
-    """increases datatime object by noDays"""
+def increaseDate(startDate, noDays, leapYear): #todo check if the leap year thing was important
+    """increases datatime object by noDays, can t leapYears if leapYear is false"""
     # this might have to change back to orginal vb code as not sure why it was done the way it was
     finalDate = startDate + datetime.timedelta(days=noDays)
-
-    if calendar.isleap(startDate.year):
-        feb = datetime.datetime(startDate.year, 2, 29)
-        if startDate <= feb <= finalDate:
-            finalDate += datetime.timedelta(days=1)
-    elif calendar.isleap(finalDate.year):
-        feb = datetime.datetime(finalDate.year, 2, 29)
-        if startDate <= feb <= finalDate:
-            finalDate += datetime.timedelta(days=1)
+    if not leapYear:
+        if calendar.isleap(startDate.year):
+            feb = datetime.date(startDate.year, 2, 29)
+            if startDate <= feb <= finalDate:
+                finalDate += datetime.timedelta(days=1)
+        elif calendar.isleap(finalDate.year):
+            feb = datetime.date(finalDate.year, 2, 29)
+            if startDate <= feb <= finalDate:
+                finalDate += datetime.timedelta(days=1)
 
     return finalDate
 
@@ -171,7 +172,7 @@ def sigLevelOK(sigLevelInput):
     """checks if sigLevel is good returns default diglevel if not"""
     correctSigValue = False
     sigLevel = 0.05
-    if sigLevelInput == "" or not type(sigLevelInput) is int:              #SigLevelText is the input from the user
+    if sigLevelInput == "" or not type(sigLevelInput) is float:              #SigLevelText is the input from the user
         #todo error message to user orgianl: MsgBox "Significance level must be a value.", 0 + vbCritical, "Error Message" 
         print("Significance level must be a value.")
     else:
@@ -186,11 +187,11 @@ def sigLevelOK(sigLevelInput):
                 correctSigValue = True
     return correctSigValue, sigLevel
 
-def fsDateOK(fSDate, feDate, globalSDate):
+def fSDateOK(fSDate, feDate, globalSDate):
     """if date is okay return true if not return false"""
 
     output = False
-    if not isinstance(fSDate, datetime.datetime):
+    if not (isinstance(fSDate, datetime.date) or isinstance(fSDate, thirtyDate)):
         #todo error message to user about correct date orginal MsgBox "Start date is invalid - it must be in the format dd/mm/yyyy.", 0 + vbCritical, "Error Message"
         fSDate = globalSDate
         print("Start date is invalid - it must be in the format dd/mm/yyyy")
@@ -207,11 +208,11 @@ def fsDateOK(fSDate, feDate, globalSDate):
         output = True 
     return output
 
-def feDateOK(fsDate, feDate, globalEDate):
+def fEDateOK(fsDate, feDate, globalEDate):
     """if date is okay return true if not return false"""
 
     output = False
-    if not isinstance(feDate, datetime.datetime):
+    if not (isinstance(feDate, datetime.date) or isinstance(feDate, thirtyDate)):
         #todo error message to user about correct date orginal MsgBox "End date is invalid - it must be in the format dd/mm/yyyy.", 0 + vbCritical, "Error Message"
         fsDate = globalEDate 
         print("End date is invalid - it must be in the format dd/mm/yyyy.")
@@ -274,16 +275,91 @@ def checkIfFileFormatted(file):
     f.close()
     return
 
+def getSettings():
+    """
+    goes to the dfualt settings location and fetches the settings, returning a dictionary of 
+    {'thirtyDay': False, 
+    'leapYear': True, 
+    'globalsdate': datetime.date(1999, 1, 1), 
+    'globaledate': datetime.date(2001, 12, 31), 
+    'allowneg': False, 
+    'randomseed': True, 
+    'thresh': 5.0, 
+    'globalmissingcode': -999, 
+    'defaultdir': ['', 'Users', 'madhuchakravarthy'], 
+    'varianceinflation': 12, 
+    'biascorrection': 1, 
+    'fixedthreshold': 0.5, 
+    'modeltransformation': 'Natural log', 
+    'optimizationalgorithm': 'Dual Simplex', 
+    'criteriatype': 'AIC Criteria', 
+    'stepwiseregression': True, 
+    'conditionalselection': 'Fixed Threshold', 
+    'months': ['0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0']}
+    """
+
+    defaultIniFile = os.path.join("src", "lib", "settings.ini")
+    file = open(defaultIniFile, "r")
+    settings = file.readlines()
+    file.close()
+    settingsDictionary = {}
+    for line in settings:
+        # Strip unnecessary whitespaces and newline characters
+        line = line.strip()
+        
+        # Skip lines that don't contain an '=' (e.g., [Settings], empty lines)
+        if '=' not in line:
+            continue
+        
+        # Split each line into key and value
+        key, value = line.split('=', 1)
+        
+        # Strip leading and trailing whitespaces from key and value
+        key = key.strip()
+        value = value.strip()
+        
+        # Handle cases where the value is a boolean, integer, or float
+        if key == "yearindicator":
+            if value == str(366):
+                settingsDictionary["thirtyDay"] = False
+                key = "leapYear"
+                value = "true"
+            elif value == str(365):
+                settingsDictionary["thirtyDay"] = False
+                key = "leapYear"
+                value = "false"
+            elif value == str(360):
+                settingsDictionary["thirtyDay"] = True
+                key = "leapYear"
+                value = "false"
+        if value.lower() == 'true':
+            value = True
+        elif value.lower() == 'false':
+            value = False
+        elif value.isdigit() or (value[0] == '-' and value[1:].isdigit()):
+            value = int(value)
+        elif value.replace('.', '', 1).isdigit():
+            value = float(value)
+        elif ',' in value:
+            value = [x.strip() for x in value.split(',')]
+        elif '/' in value:
+            value = [x.strip() for x in value.split('/')]
+            if (value[0].isdigit() and value[1].isdigit() and value[2].isdigit()):
+                if settingsDictionary["thirtyDay"] == True:
+                    value = thirtyDate(int(int(value[2])), int(value[1]), int(value[0]))
+                else:
+                    value = datetime.date(int(value[2]), int(value[1]), int(value[0]))
+
+            #A usual annual year (with leap years as appropriate)
+            #A non-leap version – so all years are 365 days.
+            #And a 360 day year – where each month has 30 days.
+        
+        # Add the key-value pair to the dictionary
+        settingsDictionary[key] = value
+        
+    return settingsDictionary
+
 
 if __name__ == '__main__':
     #Module tests go here
-    date1 = thirtyDate(2025, 4, 1)  # March 30, 2025 (in this system, all months have 30 days)
-    print(date1)
-    date2 = thirtyDate(2025, 5, 1)
-    print(date2)
-    date3 = datetime.date(2025, 4, 1)  # March 30, 2025 (in this system, all months have 30 days)
-    print(date3)
-    date4 = datetime.date(2025, 5, 1)
-    print(date4)
-    print(date1 - date2)
-    print((date3 - date4).days)
+    getSettings()

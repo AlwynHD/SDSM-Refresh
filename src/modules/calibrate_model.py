@@ -279,7 +279,7 @@ class ContentWidget(QWidget):
         
         autoregressionResidualLayout.addWidget(autoregressionFrame)
 
-        residualFrame = borderedQGroupBox("Residual")
+        residualFrame = borderedQGroupBox("Residual Analysis")
         residualFrame.setBaseSize(200,100)
 
         #Layout for selectPredictors frame

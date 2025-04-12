@@ -224,8 +224,6 @@ class ContentWidget(QWidget):
     def clearSaveFile(self):
         self.saveFileLabel.setText("File: *.CSV")
 
-
-
     # Main functions
 
     def PlotData():
@@ -248,14 +246,39 @@ class ContentWidget(QWidget):
     
     #Support Functions
 
-    def FindPrecipAbouveAnnPercentile():
+    def FindPrecipAboveAnnPercentile():
         pass
 
-    def FinsihedCurrentPeriod():
-        pass
+    def FinishedCurrentPeriod(self):
+        result = False
+    
+        if self.StatOptions[4]:  # SPI chosen so need months
+            if self.ThisMonth != self.CurrentMonth:
+                result = True
+        elif self.StatOptions[6]:  # Winter/summer ratio selected
+            if self.ThisSeason != self.CurrentSeason:
+                result = True
+        elif self.DatesCombo.currentIndex() >= 1 and self.DatesCombo.currentIndex() <= 12:  # Month selected
+            if self.ThisMonth != self.CurrentMonth:
+                result = True        
+        elif self.DatesCombo.currentIndex() >= 13 and self.DatesCombo.currentIndex() <= 16:  # Season selected
+            if self.ThisSeason != self.CurrentSeason:
+                result = True
+        elif self.DatesCombo.currentIndex() == 17:  # Annual period selected
+            if self.ThisYear != self.CurrentYear:
+                result = True
+        else:  # Water year selected
+            if self.ThisWaterYear != self.CurrentWaterYear:
+                result = True
+        
+        return result
 
-    def GetWaterYear():
-        pass
+
+    def GetWaterYear(self,month, year):
+        if month >= 10:  # October, November, December
+            return year
+        else:  # January through September
+            return year - 1
 
     def PercentilePeriodArray():
         pass
@@ -266,11 +289,134 @@ class ContentWidget(QWidget):
     def FindLargestNDayTotal():
         pass
 
-    def FindMaxDrySpell():
-        pass
+    def FindMaxDrySpell(self, file_no, size_of):
+        try:
+        # Create dry spell array first
+            self.CreateDrySpellArray(file_no, size_of)
+            
+            max_dry_count = 0
+            
+            # Find the longest dry spell
+            if self.TotalDrySpells[file_no] > 0:
+                for i in range(self.TotalDrySpells[file_no]):
+                    if self.DrySpellArray[file_no][i] > max_dry_count:
+                        max_dry_count = self.DrySpellArray[file_no][i]
+            
+            return max_dry_count
+    
+        except Exception as e:
+            print(f"Error in FindMaxDrySpell: {str(e)}")
+            self.Mini_Reset()
+            return 0
 
-    def FindMaxWetSpell():
-        pass
+
+    def FindMaxWetSpell(self, file_no, size_of):
+        try:
+            # Create wet spell array first
+            self.CreateWetSpellArray(file_no, size_of)
+            
+            max_wet_count = 0
+            
+            # Find the longest wet spell
+            if self.TotalWetSpells[file_no] > 0:
+                for i in range(self.TotalWetSpells[file_no]):
+                    if self.WetSpellArray[file_no][i] > max_wet_count:
+                        max_wet_count = self.WetSpellArray[file_no][i]
+            
+            return max_wet_count
+    
+        except Exception as e:
+            print(f"Error in FindMaxWetSpell: {str(e)}")
+            self.Mini_Reset()
+            return 0
+    
+    def CreateWetSpellArray(self, file_no, size_of):
+        try:
+            # Initialize counters
+            wet_count = 0                         # Counter for consecutive wet days
+            self.TotalWetSpells[file_no] = 0      # Reset count of wet spells for this file
+            
+            # Determine initial state
+            if (self.periodArray[file_no][0] == self.global_missing_code or 
+                self.periodArray[file_no][0] <= self.thresh):
+                is_wet = False                    # Start in dry state
+            else:
+                is_wet = True                     # Start in wet state
+                wet_count = 1
+            
+            # Process each day
+            for i in range(1, size_of):
+                # Case 1: Continuing wet spell
+                if (is_wet and self.periodArray[file_no][i] > self.thresh):
+                    wet_count += 1
+                    
+                # Case 2: End of wet spell (wet to dry or missing)
+                elif (is_wet and (self.periodArray[file_no][i] <= self.thresh or 
+                                self.periodArray[file_no][i] == self.global_missing_code)):
+                    is_wet = False
+                    self.TotalWetSpells[file_no] += 1
+                    self.WetSpellArray[file_no][self.TotalWetSpells[file_no] - 1] = wet_count
+                    wet_count = 0
+                    
+                # Case 3: Start of wet spell (dry to wet)
+                elif (not is_wet and self.periodArray[file_no][i] > self.thresh):
+                    is_wet = True
+                    wet_count = 1
+                
+                # Case 4: Continuing dry spell (do nothing)
+            
+            # Check if we're still in a wet spell at the end of the period
+            if wet_count > 0:
+                self.TotalWetSpells[file_no] += 1
+                self.WetSpellArray[file_no][self.TotalWetSpells[file_no] - 1] = wet_count
+        
+        except Exception as e:
+            print(f"Error in CreateWetSpellArray: {str(e)}")
+            self.Mini_Reset()
+
+    def CreateDrySpellArray(self, file_no, size_of):
+        try:
+            # Initialize counters
+            dry_count = 0                         # Counter for consecutive dry days
+            self.TotalDrySpells[file_no] = 0      # Reset count of dry spells for this file
+            
+            # Determine initial state
+            if (self.periodArray[file_no][0] == self.global_missing_code or 
+                self.periodArray[file_no][0] > self.thresh):
+                is_dry = False                    # Start in wet state
+            else:
+                is_dry = True                     # Start in dry state
+                dry_count = 1
+            
+            # Process each day
+            for i in range(1, size_of):
+                # Case 1: Continuing dry spell
+                if (is_dry and self.periodArray[file_no][i] <= self.thresh):
+                    dry_count += 1
+                    
+                # Case 2: End of dry spell (dry to wet or missing)
+                elif (is_dry and (self.periodArray[file_no][i] > self.thresh or 
+                                self.periodArray[file_no][i] == self.global_missing_code)):
+                    is_dry = False
+                    self.TotalDrySpells[file_no] += 1
+                    self.DrySpellArray[file_no][self.TotalDrySpells[file_no] - 1] = dry_count
+                    dry_count = 0
+                    
+                # Case 3: Start of dry spell (wet to dry)
+                elif (not is_dry and self.periodArray[file_no][i] <= self.thresh):
+                    is_dry = True
+                    dry_count = 1
+                
+                # Case 4: Continuing wet spell (do nothing)
+            
+            # Check if we're still in a dry spell at the end of the period
+            if dry_count > 0:
+                self.TotalDrySpells[file_no] += 1
+                self.DrySpellArray[file_no][self.TotalDrySpells[file_no] - 1] = dry_count
+        
+        except Exception as e:
+            print(f"Error in CreateDrySpellArray: {str(e)}")
+            self.Mini_Reset()
 
     def FindMeanDrySpell():
         pass
@@ -307,8 +453,55 @@ class ContentWidget(QWidget):
     def CreateWetSpellArray():
         pass
 
-    def IncreaseDate():
-        pass
+    def IncreaseDate(self):
+        days_in_month = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    
+        # Increment the day
+        self.CurrentDay += 1
+        
+        # Check for leap year
+        leap = 0
+        if self.CurrentMonth == 2:  # February
+            if self.IsLeap(self.CurrentYear):
+                # Only add a leap day if the application settings allow it
+                if self.YearLength == 1:
+                    leap = self.Leapvalue  # Either 0 or 1 depending on settings
+        
+        # Check if we need to move to the next month
+        if self.CurrentDay > (days_in_month[self.CurrentMonth] + leap):
+            self.CurrentMonth += 1
+            self.CurrentDay = 1
+        
+        # Check if we need to move to the next year
+        if self.CurrentMonth > 12:
+            self.CurrentMonth = 1
+            self.CurrentYear += 1
+        
+        # Update season and water year
+        self.CurrentSeason = self.GetSeason(self.CurrentMonth)
+        self.CurrentWaterYear = self.GetWaterYear(self.CurrentMonth, self.CurrentYear)
+    
+    def IsLeap(self, year):
+        #checks for leap year
+        if year % 400 == 0:
+            return True
+        elif year % 100 == 0:
+            return False
+        elif year % 4 == 0:
+            return True
+        else:
+            return False
+    
+    def GetSeason(self, month):
+        if month in [12, 1, 2]:
+            return 1  # Winter
+        elif month in [3, 4, 5]:
+            return 2  # Spring
+        elif month in [6, 7, 8]:
+            return 3  # Summer
+        else:  # months 9, 10, 11
+            return 4  # Autumn
+
 
     def ExitAnalysis(self):
         try:
@@ -327,6 +520,7 @@ class ContentWidget(QWidget):
             return False
 
     def SaveResults(self):
+        pass
         
 
     def Help_Needed(self, help_context):
@@ -368,109 +562,119 @@ class ContentWidget(QWidget):
             )
 
     def Mini_Reset(self):
-        """
-        Performs a minimal reset of UI elements and closes any open files.
-        """
-    try:
-        # In Python, we'd close any open file handles
-        # This is different from VB where files are referenced by numbers
-        if hasattr(self, 'open_files') and self.open_files:
-            for file in self.open_files:
-                if not file.closed:
-                    file.close()
-            self.open_files = []
+        try:
+            # In Python, we'd close any open file handles
+            # This is different from VB where files are referenced by numbers
+            if hasattr(self, 'open_files') and self.open_files:
+                for file in self.open_files:
+                    if not file.closed:
+                        file.close()
+                self.open_files = []
+            
+            # Reset mouse cursor (equivalent to MousePointer = 0 in VB)
+            self.setCursor(Qt.ArrowCursor)
+            
+            # Hide progress bar if it exists
+            if hasattr(self, 'progress_bar') and self.progress_bar:
+                self.progress_bar.setVisible(False)
+            
+            # Set escape key handling (equivalent to KeyPreview = False)
+            # In PyQt, we'd typically use event handlers for this
+            
+            # Reset the global cancel flag
+            self.global_kopout = False
         
-        # Reset mouse cursor (equivalent to MousePointer = 0 in VB)
-        self.setCursor(Qt.ArrowCursor)
-        
-        # Hide progress bar if it exists
-        if hasattr(self, 'progress_bar') and self.progress_bar:
-            self.progress_bar.setVisible(False)
-        
-        # Set escape key handling (equivalent to KeyPreview = False)
-        # In PyQt, we'd typically use event handlers for this
-        
-        # Reset the global cancel flag
-        self.global_kopout = False
-        
-    except Exception as e:
-        print(f"Error in Mini_Reset: {str(e)}")
+        except Exception as e:
+            print(f"Error in Mini_Reset: {str(e)}")
 
     def Reset_All(self):
-         """
-        Resets all UI elements and variables to their default values.
-        Called when form loads and when reset is triggered.
-        """
-    try:
-        # Call Mini_Reset to close files and reset UI elements
-        self.Mini_Reset()
-        
-        # Reset total statistics available
-        self.total_stats_available = 23
-        
-        # Clear file selections in left and right list widgets
-        file_lists = [
-            self.fileSelectionLeft.findChild(QListWidget),
-            self.fileSelectionRight.findChild(QListWidget)
-        ]
-        for file_list in file_lists:
-            file_list.clearSelection()
-        
-        # Reset file counts
-        self.left_files_count = 0
-        self.right_files_count = 0
-        self.total_time_series_files = 0
-        
-        # Clear save file information
-        self.save_file = ""
-        self.save_root = ""
-        self.saveFileLabel.setText("File: *.CSV")
-        
-        # Reset date fields to global defaults
-        self.startDateInput.setText(self.global_start_date)
-        self.endDateInput.setText(self.global_end_date)
-        
-        # Set days between dates
-        # Actual days calculation would require datetime conversion
-        
-        # Reset dropdowns
-        self.timePeriodDropdown.setCurrentIndex(0)
-        
-        # Reset percentile and statistics values
-        self.percentile = 90
-        self.percentileInput.setText("90")
-        
-        self.spi_value = 3
-        
-        # Reset threshold values
-        self.local_thresh = self.thresh  # For Partial Duration Series
-        self.pot_value = self.thresh  # For Peaks Over Threshold
-        
-        # Reset N values
-        self.nth_largest = 1
-        
-        self.largest_n_day = 1
-        
-        # Reset statistics options - select Sum as default
-        for checkbox in self.statCheckboxes:
-            checkbox.setChecked(checkbox.text() == "Sum")
-        
-        # Reset annual percentile
-        self.annual_percentile = 90
-        self.percentileInput.setText("90")
-        
-        # Reset STARDEX statistics percentiles
-        self.pfl90_percentile = 90
-        self.precipLongTermInput.setText("90")
-        self.pnl90_percentile = 90
-        self.numEventsInput.setText("90")
-        
-        # Reset directory paths would go here
-        # These would interact with the file browsers
-        
-    except Exception as e:
-        # Handle errors
-        print(f"Error in Reset_All: {str(e)}")
+        try:
+            # Call Mini_Reset to close files and reset UI elements
+            self.Mini_Reset()
+            
+            # Reset total statistics available
+            self.total_stats_available = 23
+            
+            # Clear file selections in left and right list widgets
+            file_lists = [
+                self.fileSelectionLeft.findChild(QListWidget),
+                self.fileSelectionRight.findChild(QListWidget)
+            ]
+            for file_list in file_lists:
+                file_list.clearSelection()
+            
+            # Reset file counts
+            self.left_files_count = 0
+            self.right_files_count = 0
+            self.total_time_series_files = 0
+            
+            # Clear save file information
+            self.save_file = ""
+            self.save_root = ""
+            self.saveFileLabel.setText("File: *.CSV")
+            
+            # Reset date fields to global defaults
+            self.startDateInput.setText(self.global_start_date)
+            self.endDateInput.setText(self.global_end_date)
+            
+            # Set days between dates
+            # Actual days calculation would require datetime conversion
+            
+            # Reset dropdowns
+            self.timePeriodDropdown.setCurrentIndex(0)
+            
+            # Reset percentile and statistics values
+            self.percentile = 90
+            self.percentileInput.setText("90")
+            
+            self.spi_value = 3
+            
+            # Reset threshold values
+            self.local_thresh = self.thresh  # For Partial Duration Series
+            self.pot_value = self.thresh  # For Peaks Over Threshold
+            
+            # Reset N values
+            self.nth_largest = 1
+            
+            self.largest_n_day = 1
+            
+            # Reset statistics options - select Sum as default
+            for checkbox in self.statCheckboxes:
+                checkbox.setChecked(checkbox.text() == "Sum")
+            
+            # Reset annual percentile
+            self.annual_percentile = 90
+            self.percentileInput.setText("90")
+            
+            # Reset STARDEX statistics percentiles
+            self.pfl90_percentile = 90
+            self.precipLongTermInput.setText("90")
+            self.pnl90_percentile = 90
+            self.numEventsInput.setText("90")
+            
+            # Reset directory paths would go here
+            # These would interact with the file browsers
+            
+        except Exception as e:
+            # Handle errors
+            print(f"Error in Reset_All: {str(e)}")
 
-    def DumpForm():
-        pass
+    def DumpForm(self):
+        try:
+            # Hide the window first
+            self.hide()
+            
+            # Disconnect any signals that might be connected to this widget
+            # This is a general approach - you may need to disconnect specific signals
+            self.disconnect()
+            
+            # Close any open resources
+            self.Mini_Reset()
+            
+            # Schedule the widget for deletion when control returns to the event loop
+            self.deleteLater()
+            
+            print("Form successfully unloaded")
+        
+        except Exception as e:
+            print(f"Error in DumpForm: {str(e)}")

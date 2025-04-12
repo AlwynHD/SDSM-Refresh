@@ -2,9 +2,14 @@ import math
 import datetime
 import numpy as np
 from collections import defaultdict
+from scipy.stats import genextreme, gumbel_r, weibull_min  # needed for parametric fits
 
+# Global parameters – adjust to match VB defaults:
+# VB default uses dates 01/01/1948 to 31/12/2015.
+globalStartDate = datetime.date(1948, 1, 1)
 missingValue = -999
-globalStartDate = datetime.date(1950, 1, 1)
+
+### BACKEND FUNCTIONS ###
 
 def isLeapYear(year):
     return (year % 400 == 0) or (year % 4 == 0 and year % 100 != 0)
@@ -21,7 +26,8 @@ def getSeason(month):
 
 def doWeWantThisDatum(currentDate, dataPeriodChoice):
     """
-    Filters data by month/season or “All Data” (annual).
+    Returns True if the current date should be used for the analysis.
+    DataPeriodChoice can be "All Data", a specific month name, or a season name.
     """
     if dataPeriodChoice.lower() in ["all data", "annual"]:
         return True
@@ -32,14 +38,9 @@ def doWeWantThisDatum(currentDate, dataPeriodChoice):
     }
     if dataPeriodChoice.lower() in monthsMap:
         return currentDate.month == monthsMap[dataPeriodChoice.lower()]
-    if dataPeriodChoice.lower() == "winter":
-        return getSeason(currentDate.month) == 1
-    elif dataPeriodChoice.lower() == "spring":
-        return getSeason(currentDate.month) == 2
-    elif dataPeriodChoice.lower() == "summer":
-        return getSeason(currentDate.month) == 3
-    elif dataPeriodChoice.lower() == "autumn":
-        return getSeason(currentDate.month) == 4
+    if dataPeriodChoice.lower() in ["winter", "spring", "summer", "autumn"]:
+        season = {"winter": 1, "spring": 2, "summer": 3, "autumn": 4}[dataPeriodChoice.lower()]
+        return getSeason(currentDate.month) == season
     return True
 
 def readDailyDataDayByDay(filePath, fsDate, feDate, dataPeriodChoice,
@@ -48,7 +49,9 @@ def readDailyDataDayByDay(filePath, fsDate, feDate, dataPeriodChoice,
                           isModelled=False, ensembleIndex=0):
     """
     Reads daily data from filePath.
-    Skips missing/invalid lines, dates outside the analysis range, or values under threshold.
+    Assumes that each line in the file corresponds to one day starting at globalStartDate.
+    Skips values equal to missingValue or those below thresholdValue if applyThreshold is True.
+    Also filters based on dataPeriodChoice.
     """
     try:
         with open(filePath, 'r') as f:
@@ -66,7 +69,7 @@ def readDailyDataDayByDay(filePath, fsDate, feDate, dataPeriodChoice,
         if currentDate > feDate:
             break
         
-        # For modelled data, support fixed-width extraction if needed.
+        # For modelled data: support fixed-width extraction (each ensemble occupies 14 characters)
         if isModelled and len(line) >= (ensembleIndex + 1) * 14:
             raw = line[ensembleIndex * 14:(ensembleIndex * 14) + 14]
         else:
@@ -75,7 +78,7 @@ def readDailyDataDayByDay(filePath, fsDate, feDate, dataPeriodChoice,
         try:
             val = float(raw.strip())
         except:
-            continue  # Skip non-numeric lines.
+            continue  # skip non-numeric lines
         
         if val == missingValue or (applyThreshold and val < thresholdValue):
             continue
@@ -85,143 +88,197 @@ def readDailyDataDayByDay(filePath, fsDate, feDate, dataPeriodChoice,
     
     return dailyValues
 
-def duration_to_int(d):
+def vb_percentile(sorted_data, p):
     """
-    Map the return period label (a float) to a number of days (an integer).
-    VB logic (as suggested by sample output):
-      - If d < 1.5, use 1 day.
-      - If d <= 2.5, use 2 days.
-      - If d <= 3.5, use 3 days.
-      - Otherwise, use floor(d).
+    Computes the p-th percentile in a VB-style 1-indexed linear interpolation.
+    Position = 1 + (p*(n-1))/100, lower index = int(Position)-1.
     """
-    if d < 1.5:
-        return 1
-    elif d <= 2.5:
-        return 2
-    elif d <= 3.5:
-        return 3
-    else:
-        return int(math.floor(d))
+    n = len(sorted_data)
+    if n == 0:
+        return None
+    if p <= 0:
+        return sorted_data[0]
+    if p >= 100:
+        return sorted_data[-1]
+    pos = 1 + (p * (n - 1)) / 100.0  # VB-style: 1-indexed position
+    lower_index = int(pos) - 1  # convert to Python 0-indexed
+    upper_index = lower_index + 1
+    if upper_index >= n:
+        return sorted_data[lower_index]
+    fraction = pos - int(pos)
+    return sorted_data[lower_index] + fraction * (sorted_data[upper_index] - sorted_data[lower_index])
 
 def computeAnnualMaxSeries(dailyValues, duration):
     """
-    Groups daily data by year and computes the maximum moving sum over N consecutive days.
-    The number N is determined by duration_to_int.
-    Returns a list of annual maxima.
+    Groups daily data by year and calculates the Annual Maximum Series (AMS)
+    using a moving sum over N consecutive days.
+    Discrete mapping for window length:
+      - If duration < 1.5, use a 1-day sum.
+      - If 1.5 <= duration <= 2.5, use a 2-day sum.
+      - Otherwise (duration >= 3.0), use a 3-day sum.
     """
-    d = duration_to_int(duration)
-    
+    if duration < 1.5:
+        N = 1
+    elif duration <= 2.5:
+        N = 2
+    else:
+        N = 3
+
     yearMap = defaultdict(list)
     for dt, val in dailyValues:
         yearMap[dt.year].append(val)
         
     ams = []
-    for year, values in yearMap.items():
-        if len(values) < d:
+    for year in sorted(yearMap.keys()):
+        values = yearMap[year]
+        if len(values) < N:
             continue
-        # Compute moving sum over d days.
-        movingSums = [sum(values[i:i+d]) for i in range(len(values) - d + 1)]
+        # Compute the moving sum over N days.
+        movingSums = [sum(values[i:i+N]) for i in range(len(values) - N + 1)]
         ams.append(max(movingSums))
     return ams
 
 def computeFATableFromFiles(observedFilePath, modelledFilePath, fsDate, feDate,
                             dataPeriodChoice="All Data",
                             applyThreshold=False,
-                            thresholdValue=0.0,
+                            thresholdValue=10.0,  # using VB default threshold of 10
                             durations=[1.0, 1.1, 1.2, 1.3, 1.5, 2.0, 2.5, 3.0, 3.5],
-                            ensembleIndex=0):
+                            ensembleIndex=0,
+                            freqModel="empirical"):
     """
-    For each duration (return period label):
-      - Reads observed and modelled daily data.
-      - Computes the annual maximum series (AMS) using a moving sum over N days,
-        where N is determined from the duration label.
-      - Computes the central value (mean), lower (2.5% percentile), and upper (97.5% percentile)
-        of the AMS across years using linear interpolation.
-    Returns a dictionary with keys "observed" and "modelled", each a list of tuples (lower, central, upper).
+    For each duration, this function:
+      1. Reads observed and modelled daily data.
+      2. Computes the Annual Maximum Series (AMS) using a moving sum of length determined 
+         by the duration (using a discrete mapping).
+      3. Based on freqModel, computes:
+           - "empirical": the mean and VB-style percentiles (2.5th and 97.5th).
+           - "gev": fits a GEV distribution to the AMS and computes the predicted quantile.
+           - "gumbel": fits a Gumbel distribution similarly.
+           - "stretched": fits a stretched exponential distribution via weibull_min.
+    Returns a dictionary with keys "observed" and "modelled",
+    each a list of tuples (lower, central, upper).
     """
+    # Process observed data:
     dailyObs = readDailyDataDayByDay(observedFilePath, fsDate, feDate,
                                       dataPeriodChoice, applyThreshold, thresholdValue,
                                       isModelled=False)
     tableObs = []
     for dur in durations:
         amsObs = computeAnnualMaxSeries(dailyObs, dur)
-        if amsObs:
+        if not amsObs:
+            tableObs.append((0.0, 0.0, 0.0))
+            continue
+
+        if freqModel == "empirical":
             central = np.mean(amsObs)
-            # Specify linear interpolation (adjust parameter name if using NumPy >= 1.22)
-            lower = np.percentile(amsObs, 2.5, interpolation='linear')
-            upper = np.percentile(amsObs, 97.5, interpolation='linear')
+            sorted_ams = sorted(amsObs)
+            lower = vb_percentile(sorted_ams, 2.5)
+            upper = vb_percentile(sorted_ams, 97.5)
+        elif freqModel == "gev":
+            try:
+                c, loc, scale = genextreme.fit(amsObs)
+                central = genextreme.ppf(1 - 1/dur, c, loc=loc, scale=scale)
+                delta = 0.1
+                lower = genextreme.ppf(1 - 1/(dur + delta), c, loc=loc, scale=scale)
+                upper = genextreme.ppf(1 - 1/(dur - delta if dur - delta > 1 else dur), c, loc=loc, scale=scale)
+            except Exception as e:
+                central = lower = upper = 0.0
+        elif freqModel == "gumbel":
+            try:
+                loc, scale = gumbel_r.fit(amsObs)
+                central = gumbel_r.ppf(1 - 1/dur, loc=loc, scale=scale)
+                delta = 0.1
+                lower = gumbel_r.ppf(1 - 1/(dur + delta), loc=loc, scale=scale)
+                upper = gumbel_r.ppf(1 - 1/(dur - delta if dur - delta > 1 else dur), loc=loc, scale=scale)
+            except Exception as e:
+                central = lower = upper = 0.0
+        elif freqModel == "stretched":
+            try:
+                # Using weibull_min to model a stretched exponential:
+                # We force loc=0 if it makes sense for the data.
+                c, loc, scale = weibull_min.fit(amsObs, floc=0)
+                central = weibull_min.ppf(1 - 1/dur, c, loc=loc, scale=scale)
+                delta = 0.1
+                lower = weibull_min.ppf(1 - 1/(dur + delta), c, loc=loc, scale=scale)
+                upper = weibull_min.ppf(1 - 1/(dur - delta if dur - delta > 1 else dur), c, loc=loc, scale=scale)
+            except Exception as e:
+                central = lower = upper = 0.0
         else:
-            central = lower = upper = 0.0
+            # Default to empirical if unknown option.
+            central = np.mean(amsObs)
+            sorted_ams = sorted(amsObs)
+            lower = vb_percentile(sorted_ams, 2.5)
+            upper = vb_percentile(sorted_ams, 97.5)
+
         tableObs.append((lower, central, upper))
     
+    # Process modelled data (similar approach)
     dailyMod = readDailyDataDayByDay(modelledFilePath, fsDate, feDate,
                                       dataPeriodChoice, applyThreshold, thresholdValue,
                                       isModelled=True, ensembleIndex=ensembleIndex)
     tableMod = []
     for dur in durations:
         amsMod = computeAnnualMaxSeries(dailyMod, dur)
-        if amsMod:
+        if not amsMod:
+            tableMod.append((0.0, 0.0, 0.0))
+            continue
+
+        if freqModel == "empirical":
             central = np.mean(amsMod)
-            lower = np.percentile(amsMod, 2.5, interpolation='linear')
-            upper = np.percentile(amsMod, 97.5, interpolation='linear')
+            sorted_ams = sorted(amsMod)
+            lower = vb_percentile(sorted_ams, 2.5)
+            upper = vb_percentile(sorted_ams, 97.5)
+        elif freqModel == "gev":
+            try:
+                c, loc, scale = genextreme.fit(amsMod)
+                central = genextreme.ppf(1 - 1/dur, c, loc=loc, scale=scale)
+                delta = 0.1
+                lower = genextreme.ppf(1 - 1/(dur + delta), c, loc=loc, scale=scale)
+                upper = genextreme.ppf(1 - 1/(dur - delta if dur - delta > 1 else dur), c, loc=loc, scale=scale)
+            except Exception as e:
+                central = lower = upper = 0.0
+        elif freqModel == "gumbel":
+            try:
+                loc, scale = gumbel_r.fit(amsMod)
+                central = gumbel_r.ppf(1 - 1/dur, loc=loc, scale=scale)
+                delta = 0.1
+                lower = gumbel_r.ppf(1 - 1/(dur + delta), loc=loc, scale=scale)
+                upper = gumbel_r.ppf(1 - 1/(dur - delta if dur - delta > 1 else dur), loc=loc, scale=scale)
+            except Exception as e:
+                central = lower = upper = 0.0
+        elif freqModel == "stretched":
+            try:
+                c, loc, scale = weibull_min.fit(amsMod, floc=0)
+                central = weibull_min.ppf(1 - 1/dur, c, loc=loc, scale=scale)
+                delta = 0.1
+                lower = weibull_min.ppf(1 - 1/(dur + delta), c, loc=loc, scale=scale)
+                upper = weibull_min.ppf(1 - 1/(dur - delta if dur - delta > 1 else dur), c, loc=loc, scale=scale)
+            except Exception as e:
+                central = lower = upper = 0.0
         else:
-            central = lower = upper = 0.0
+            central = np.mean(amsMod)
+            sorted_ams = sorted(amsMod)
+            lower = vb_percentile(sorted_ams, 2.5)
+            upper = vb_percentile(sorted_ams, 97.5)
         tableMod.append((lower, central, upper))
     
     return {"observed": tableObs, "modelled": tableMod}
 
 def printFATabularOutput(tableDict, durations, obsFileName, modFileName,
-                         lowerP=2.5, upperP=97.5, seasonText="Annual", fitType="Empirical"):
+                         seasonText="Annual", fitType="Empirical"):
     """
-    Prints the FA tabular output in the same style as the original VB app.
-    Header includes Season, Fit, and file names.
-    Then prints a table with columns:
-       Return Period, Obs, Mod, 2.5 %ile, 97.5 %ile.
+    Prints the FA tabular output, including a header with season and fit type,
+    and a table with columns: Return Period, Obs, Mod, 2.5 %ile, 97.5 %ile.
     """
     print(f"Season: {seasonText}")
     print(f"Fit: {fitType}")
     print(f"Observed data: {obsFileName}")
-    print(f"Modelled data: {modFileName}")
-    print()
+    print(f"Modelled data: {modFileName}\n")
     
     print("Return Period      Obs          Mod          2.5 %ile      97.5 %ile")
     print("-----------------------------------------------------------------------")
-    
     for dur, obsTuple, modTuple in zip(durations, tableDict.get("observed", []), tableDict.get("modelled", [])):
         obsLower, obsCentral, obsUpper = obsTuple
         modLower, modCentral, modUpper = modTuple
         print(f"{dur:13.1f} {obsCentral:12.3f} {modCentral:12.3f} {obsLower:12.3f} {obsUpper:12.3f}")
-    
-    print("-----------------------------------------------------------------------")
-    print()
-
-if __name__ == "__main__":
-    # Standalone testing with sample values matching your VB output sample.
-    exampleObsTable = [
-        (21.400, 41.000, 84.730),
-        (21.400, 41.000, 84.730),
-        (21.400, 41.000, 84.730),
-        (21.400, 41.000, 84.730),
-        (24.380, 51.604, 104.560),
-        (24.380, 51.604, 104.560),
-        (24.380, 51.604, 104.560),
-        (29.840, 56.189, 104.560),
-        (30.910, 60.258, 105.190)
-    ]
-    exampleModTable = [
-        (21.400, 41.152, 84.730),
-        (21.400, 41.152, 84.730),
-        (21.400, 41.152, 84.730),
-        (21.400, 41.152, 84.730),
-        (24.380, 49.327, 104.560),
-        (24.380, 49.327, 104.560),
-        (24.380, 49.327, 104.560),
-        (29.840, 54.645, 104.560),
-        (30.910, 59.176, 105.190)
-    ]
-    tableDict = {"observed": exampleObsTable, "modelled": exampleModTable}
-    durations = [1.0, 1.1, 1.2, 1.3, 1.5, 2.0, 2.5, 3.0, 3.5]
-    obsFileName = "ObsFile.DAT"
-    modFileName = "ModFile.OUT"
-
-    printFATabularOutput(tableDict, durations, obsFileName, modFileName)
+    print("-----------------------------------------------------------------------\n")

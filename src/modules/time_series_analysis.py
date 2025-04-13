@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QFrame, QComboBox, 
     QLineEdit, QListWidget, QFileDialog, QCheckBox, QRadioButton, QButtonGroup, 
-    QGridLayout, QGroupBox, QSizePolicy
+    QGridLayout, QGroupBox, QSizePolicy, QMessageBox, QProgressBar
 )
 from PyQt5.QtCore import QUrl
 from PyQt5.QtGui import QDesktopServices
@@ -10,6 +10,7 @@ from PyQt5.QtGui import QFont
 import os
 import csv
 from datetime import datetime
+
 class ContentWidget(QWidget):
     """
     A well-optimized UI layout based on the user's feedback.
@@ -51,7 +52,7 @@ class ContentWidget(QWidget):
         self.CurrentDay = 1
         self.CurrentMonth = 1
         self.CurrentYear = 1948
-        self.CurrentSeason = 1  # 1=winter, 2=Spring, 3=Summer, 4=Autumn
+        self.CurrentSeason = 1  #1=winter, 2=Spring, 3=Summer, 4=Autumn
         self.CurrentWaterYear = 1948
         
         # For checking period changes
@@ -131,6 +132,10 @@ class ContentWidget(QWidget):
         mainLayout.setSpacing(12)  # Adjusted spacing for better layout flow
         self.setLayout(mainLayout)
 
+        #-- top section --
+        topLayout = QHBoxLayout()
+
+
         # --- Time Period Selection (Smaller) ---
         timePeriodGroup = QGroupBox("Time Period")
         timePeriodLayout = QHBoxLayout()
@@ -148,15 +153,19 @@ class ContentWidget(QWidget):
         timePeriodGroup.setLayout(timePeriodLayout)
         mainLayout.addWidget(timePeriodGroup, alignment=Qt.AlignCenter)
 
+        # spacer to push buttons to right
+        topLayout.addStretch(1)
+        
+
         # --- File Selection Section (Side-by-Side) ---
         fileSelectionLayout = QHBoxLayout()
 
         # Left File Selection (Reduced height)
-        self.fileSelectionLeft = self.createFileSelectionGroup("File Selection")
+        self.fileSelectionLeft = self.CreateFileSelectionGroup("File Selection")
         fileSelectionLayout.addWidget(self.fileSelectionLeft)
 
         # Right File Selection
-        self.fileSelectionRight = self.createFileSelectionGroup("File Selection")
+        self.fileSelectionRight = self.CreateFileSelectionGroup("File Selection")
         fileSelectionLayout.addWidget(self.fileSelectionRight)
 
         mainLayout.addLayout(fileSelectionLayout)
@@ -195,7 +204,7 @@ class ContentWidget(QWidget):
         self.selectSaveButton.setFixedHeight(30)
 
         self.clearSaveButton = QPushButton("❌ Clear")
-        self.clearSaveButton.clicked.connect(self.clearSaveFile)
+        self.clearSaveButton.clicked.connect(self.ClearSaveFile)
         self.clearSaveButton.setFixedHeight(30)
 
         saveButtonsLayout.addWidget(self.selectSaveButton)
@@ -230,9 +239,15 @@ class ContentWidget(QWidget):
         
         for i, stat in enumerate(self.statsOptions):
             checkbox = QCheckBox(stat)
+
+            font = QFont()
+            font.setPointSize(14)  # Set font size to 10 for better readability
+            checkbox.setFont(font)
+
             if i == 0:  # Set Sum as default checked
                 checkbox.setChecked(True)
                 self.StatOptions[i] = True
+
             checkbox.stateChanged.connect(lambda state, idx=i: self.onStatOptionChanged(state, idx))
             self.statCheckboxes.append(checkbox)
             statsLayout.addWidget(checkbox, i // 2, i % 2)  # Two columns
@@ -249,11 +264,16 @@ class ContentWidget(QWidget):
 
         for option in self.spellOptions:
             radio = QRadioButton(option)
+
+            font = QFont()
+            font.setPointSize(14)  # Set font size to 10 for better readability
+            radio.setFont(font)
+
             self.spellGroup.addButton(radio)
             spellLayout.addWidget(radio)
 
         spellGroup.setLayout(spellLayout)
-        spellGroup.setFixedHeight(150)  # Reduced height to fit better
+        spellGroup.setFixedHeight(300)  # Reduced height to fit better
         statsLayout.addWidget(spellGroup, 0, 2, len(self.spellOptions) // 2, 1)
 
         # --- Threshold Inputs (Now Fits Properly) ---
@@ -274,6 +294,8 @@ class ContentWidget(QWidget):
         self.numEventsInput.setText("90")
         self.numEventsInput.setFixedHeight(25)
 
+        self.setupInputValidation()
+
         thresholdLayout.addWidget(QLabel("%Prec > annual %ile:"), 0, 0)
         thresholdLayout.addWidget(self.percentileInput, 0, 1)
 
@@ -288,22 +310,29 @@ class ContentWidget(QWidget):
         mainLayout.addWidget(statsGroup)
 
         # --- Action Buttons (Smaller & Aligned) ---
-        buttonLayout = QHBoxLayout()
+        #buttonLayout = QHBoxLayout()
+        BottomButtonLayout = QHBoxLayout()
+
         self.generateButton = QPushButton("🚀 Generate")
         self.generateButton.setStyleSheet("background-color: #4CAF50; color: white; font-size: 14px; padding: 8px;")
         self.generateButton.clicked.connect(self.PlotData)  # Connect to PlotData method
+        self.generateButton.setFixedHeight(30)
+        BottomButtonLayout.addWidget(self.generateButton)
 
         self.resetButton = QPushButton("🔄 Reset")
         self.resetButton.setStyleSheet("background-color: #F44336; color: white; font-size: 14px; padding: 8px;")
         self.resetButton.clicked.connect(self.Reset_All)  # Connect to Reset_All method
+        self.resetButton.setFixedHeight(30)
+        BottomButtonLayout.addWidget(self.resetButton)
 
-        buttonLayout.addWidget(self.generateButton)
-        buttonLayout.addWidget(self.resetButton)
-        mainLayout.addLayout(buttonLayout)
+        self.helpButton = QPushButton("Help")
+        self.helpButton.setStyleSheet("background-color: #0000FF; color: white; font-size: 14px; padding: 8px;")
+        self.helpButton.clicked.connect(lambda: self.Help_Needed(1))
+        self.helpButton.setFixedHeight(30)
+        BottomButtonLayout.addWidget(self.helpButton)
 
-        helpButton = QPushButton("Help")
-        helpButton.clicked.connect(lambda: self.Help_Needed(1))
-        mainLayout.addWidget(helpButton)
+        mainLayout.addLayout(BottomButtonLayout)
+
 
         # Add progress bar
         self.progress_bar = QProgressBar()
@@ -332,23 +361,1951 @@ class ContentWidget(QWidget):
 
     # Main functions
 
-    def PlotData():
-        pass
+    def onStatOptionChanged(self, state, idx):
+        """Handler for when a statistic checkbox is changed"""
+        self.StatOptions[idx] = (state == Qt.Checked)
+        
+        # Special handling for Winter/Summer ratio
+        if idx == 6 and state == Qt.Checked:  # Winter/summer ratio selected
+            self.DatesCombo.setCurrentIndex(17)
 
-    def RawData():
-        pass
+    def setupInputValidation(self):
+        """Connect validation handlers to input fields"""
+        # Percentile input
+        self.percentileInput.textChanged.connect(self.onPercentileChanged)
+        self.percentileInput.editingFinished.connect(self.onPercentileEditFinished)
+        
+        # Long-term precipitation percentile input
+        self.precipLongTermInput.textChanged.connect(self.onPrecipLongTermChanged)
+        self.precipLongTermInput.editingFinished.connect(self.onPrecipLongTermEditFinished)
+        
+        # Number of events percentile input
+        self.numEventsInput.textChanged.connect(self.onNumEventsChanged)
+        self.numEventsInput.editingFinished.connect(self.onNumEventsEditFinished)
+        
+        # Date inputs
+        self.startDateInput.textChanged.connect(self.onStartDateChanged)
+        self.startDateInput.editingFinished.connect(self.onStartDateEditFinished)
+        
+        self.endDateInput.textChanged.connect(self.onEndDateChanged)
+        self.endDateInput.editingFinished.connect(self.onEndDateEditFinished)
 
-    def GenerateData():
-        pass   
 
-    def GenerateSPI():
-        pass
+    def onPercentileChanged(self):
+        """Handler for when percentile input text changes"""
+        text = self.percentileInput.text()
+        
+        if not text or not self.isNumeric(text):
+            return  # Wait for editingFinished to show error
+        
+        value = float(text)
+        if value < 1 or value > 100:
+            return  # Wait for editingFinished to show error
+        
+        self.percentile = int(value)
 
-    def GeneratePrecipAnnualMax():
-        pass
+    def onPercentileEditFinished(self):
+        """Validation when percentile input loses focus"""
+        text = self.percentileInput.text()
+        
+        if not text or not self.isNumeric(text):
+            QMessageBox.critical(self, "Error Message", "Percentile must be a value.")
+            self.percentileInput.setText(str(self.percentile))
+            return
+        
+        value = float(text)
+        if value < 1 or value > 100:
+            QMessageBox.critical(self, "Error Message", "Percentile must be between 1 and 100.")
+            self.percentileInput.setText(str(self.percentile))
+            return
+        
+        self.percentile = int(value)
+        self.percentileInput.setText(str(self.percentile))
 
-    def LongTermStats():
-        pass
+    def onPrecipLongTermChanged(self):
+        """Handler for when pfl90 percentile input text changes"""
+        text = self.precipLongTermInput.text()
+        
+        if not text or not self.isNumeric(text):
+            return  # Wait for editingFinished to show error
+        
+        value = float(text)
+        if value < 10 or value > 99:
+            return  # Wait for editingFinished to show error
+        
+        self.pfl90_percentile = value
+
+    def onPrecipLongTermEditFinished(self):
+        """Validation when pfl90 percentile input loses focus"""
+        text = self.precipLongTermInput.text()
+        
+        if not text or not self.isNumeric(text):
+            QMessageBox.critical(self, "Error Message", "Entry must be a number.")
+            self.precipLongTermInput.setText(str(self.pfl90_percentile))
+            return
+        
+        value = float(text)
+        if value < 10 or value > 99:
+            QMessageBox.critical(self, "Error Message", "Value must be a number between 10 and 99.")
+            self.precipLongTermInput.setText(str(self.pfl90_percentile))
+            return
+        
+        self.pfl90_percentile = value
+
+    def onNumEventsChanged(self):
+        """Handler for when pnl90 percentile input text changes"""
+        text = self.numEventsInput.text()
+        
+        if not text or not self.isNumeric(text):
+            return  # Wait for editingFinished to show error
+        
+        value = float(text)
+        if value < 10 or value > 99:
+            return  # Wait for editingFinished to show error
+        
+        self.pnl90_percentile = value
+
+    def onNumEventsEditFinished(self):
+        """Validation when pnl90 percentile input loses focus"""
+        text = self.numEventsInput.text()
+        
+        if not text or not self.isNumeric(text):
+            QMessageBox.critical(self, "Error Message", "Entry must be a number.")
+            self.numEventsInput.setText(str(self.pnl90_percentile))
+            return
+        
+        value = float(text)
+        if value < 10 or value > 99:
+            QMessageBox.critical(self, "Error Message", "Value must be a number between 10 and 99.")
+            self.numEventsInput.setText(str(self.pnl90_percentile))
+            return
+        
+        self.pnl90_percentile = value
+
+    def onStartDateChanged(self):
+        """Handler for when start date input text changes"""
+        # Just store the value, validation happens on focus loss
+        self.FSDate = self.startDateInput.text()
+
+    def onStartDateEditFinished(self):
+        """Validation when start date input loses focus"""
+        try:
+            if not self.is_valid_date(self.FSDate):
+                QMessageBox.critical(self, "Error Message", 
+                                "Start date is invalid - it must be in the format dd/mm/yyyy.")
+                self.startDateInput.setText(self.global_start_date)
+                self.FSDate = self.global_start_date
+                return
+            
+            start_date = datetime.strptime(self.FSDate, "%d/%m/%Y")
+            end_date = datetime.strptime(self.FEdate, "%d/%m/%Y")
+            global_start = datetime.strptime(self.global_start_date, "%d/%m/%Y")
+            
+            if start_date >= end_date:
+                QMessageBox.critical(self, "Error Message", 
+                                "End date must be later than start date.")
+                self.startDateInput.setText(self.global_start_date)
+                self.FSDate = self.global_start_date
+                return
+                
+            if global_start > start_date:
+                QMessageBox.critical(self, "Error Message", 
+                                "Fit start date must be later than record start date.")
+                self.startDateInput.setText(self.global_start_date)
+                self.FSDate = self.global_start_date
+                return
+            
+            # Update number of days
+            days = (end_date - start_date).days + 1
+            # If you have a days display field, update it here
+            
+        except Exception as e:
+            print(f"Error validating start date: {str(e)}")
+            self.Mini_Reset()
+            self.startDateInput.setText(self.global_start_date)
+            self.FSDate = self.global_start_date
+
+    def onEndDateChanged(self):
+        """Handler for when end date input text changes"""
+        # Just store the value, validation happens on focus loss
+        self.FEdate = self.endDateInput.text()
+
+    def onEndDateEditFinished(self):
+        """Validation when end date input loses focus"""
+        try:
+            if not self.is_valid_date(self.FEdate):
+                QMessageBox.critical(self, "Error Message", 
+                                "End date is invalid - it must be in the format dd/mm/yyyy.")
+                self.endDateInput.setText(self.global_end_date)
+                self.FEdate = self.global_end_date
+                return
+            
+            start_date = datetime.strptime(self.FSDate, "%d/%m/%Y")
+            end_date = datetime.strptime(self.FEdate, "%d/%m/%Y")
+            global_end = datetime.strptime(self.global_end_date, "%d/%m/%Y")
+            
+            if start_date >= end_date:
+                QMessageBox.critical(self, "Error Message", 
+                                "End date must be later than start date.")
+                self.endDateInput.setText(self.global_end_date)
+                self.FEdate = self.global_end_date
+                return
+                
+            if global_end < end_date:
+                QMessageBox.critical(self, "Error Message", 
+                                "Fit end date must be earlier than record end date.")
+                self.endDateInput.setText(self.global_end_date)
+                self.FEdate = self.global_end_date
+                return
+            
+            # Update number of days
+            days = (end_date - start_date).days + 1
+            # If you have a days display field, update it here
+            
+        except Exception as e:
+            print(f"Error validating end date: {str(e)}")
+            self.Mini_Reset()
+            self.endDateInput.setText(self.global_end_date)
+            self.FEdate = self.global_end_date
+
+    def isNumeric(self, text):
+        """Check if a string can be converted to a number"""
+        try:
+            float(text)
+            return True
+        except ValueError:
+            return False
+
+    def PlotData(self):
+        try:
+            # Initialize variables
+            ok_to_plot = False
+            ensemble_present = False
+            
+            # Set focus to save button to ensure all values are updated
+            self.selectSaveButton.setFocus()
+            
+            # Check if user has made correct selections
+            if self.total_time_series_files < 1:
+                QMessageBox.critical(self, "Error Message", "You must select at least one file.")
+                return
+            elif self.total_time_series_files > 5:
+                QMessageBox.critical(self, "Error Message", "You can only select up to a maximum of five files.")
+                return
+            elif not self.validate_start_date():
+                # Start date not valid, error message already displayed
+                return
+            elif not self.validate_end_date():
+                # End date not valid, error message already displayed
+                return
+            elif (datetime.strptime(self.global_end_date, "%d/%m/%Y") < 
+                datetime.strptime(self.FEdate, "%d/%m/%Y")):
+                QMessageBox.critical(self, "Error Message", 
+                                "Fit end date must be earlier than record end date. Check program settings.")
+                self.endDateInput.setText(self.global_end_date)
+                return
+            elif (self.statCheckboxes[6].isChecked() and self.DatesCombo.currentIndex() != 17):
+                QMessageBox.critical(self, "Error Message", 
+                                "You can only calculate Winter/Summer ratios with annual data. Please try again.")
+                return
+            elif ((datetime.strptime(self.FEdate, "%d/%m/%Y").year - 
+                datetime.strptime(self.FSDate, "%d/%m/%Y").year > 10) and 
+                (self.DatesCombo.currentIndex() == 0) and 
+                (not self.statCheckboxes[4].isChecked())):
+                QMessageBox.critical(self, "Error Message", 
+                                "Maximum number of years you can plot as raw data is 10. Please try again.")
+                return
+            elif (datetime.strptime(self.FEdate, "%d/%m/%Y").year - 
+                datetime.strptime(self.FSDate, "%d/%m/%Y").year > 150):
+                QMessageBox.critical(self, "Error Message", 
+                                "Maximum number of years you can work with is 150. Please try again.")
+                return
+            elif ((self.statCheckboxes[14].isChecked()) and (self.DatesCombo.currentIndex() > 16)):
+                QMessageBox.critical(self, "Error Message", 
+                                "You can only calculate Percentage Precipitation>Annual Percentile for monthly or seasonal data. Please try again.")
+                return
+            else:
+                # All checks passed, proceed with plotting
+                self.setCursor(Qt.WaitCursor)  # Set hourglass cursor
+                
+                # Close any open files
+                # (In a real implementation, close file handles here)
+                
+                # Reset ensemble file flags
+                for i in range(5):
+                    self.EnsembleFile[i] = False
+                
+                # Show progress bar
+                self.progress_bar.setVisible(True)
+                self.progress_bar.setValue(0)
+                self.progress_bar.setMaximum(100)
+                self.progress_bar.setFormat("Creating Plot")
+                
+                # Allow processing of escape key
+                # (In PyQt implementation, connect to keyPressEvent)
+                
+                # Clear the list of selected files
+                self.AllFilesList = []
+                
+                # Open files and check if they're ensemble files
+                file_no = 2  # File number 1 reserved for save file
+                
+                # Check left file list
+                for i in range(self.fileSelectionLeft.findChild(QListWidget).count()):
+                    item = self.fileSelectionLeft.findChild(QListWidget).item(i)
+                    if item.isSelected():
+                        self.AllFilesList.append(item.text())
+                        
+                        file_path = os.path.join(self.fileSelectionLeft.findChild(QListWidget).path, item.text())
+                        try:
+                            # Check if this is an ensemble file by reading first line
+                            with open(file_path, 'r') as f:
+                                dummy_string = f.readline()
+                                if len(dummy_string) > 15:
+                                    self.EnsembleFile[file_no - 2] = True
+                                    ensemble_present = True
+                            
+                            # Reopen file for processing
+                            # (In actual implementation, store file handles for later use)
+                            file_no += 1
+                        except Exception as e:
+                            print(f"Error opening file {file_path}: {str(e)}")
+                            self.Mini_Reset()
+                            return
+                
+                # Check right file list
+                for i in range(self.fileSelectionRight.findChild(QListWidget).count()):
+                    item = self.fileSelectionRight.findChild(QListWidget).item(i)
+                    if item.isSelected():
+                        self.AllFilesList.append(item.text())
+                        
+                        file_path = os.path.join(self.fileSelectionRight.findChild(QListWidget).path, item.text())
+                        try:
+                            # Check if this is an ensemble file by reading first line
+                            with open(file_path, 'r') as f:
+                                dummy_string = f.readline()
+                                if len(dummy_string) > 15:
+                                    self.EnsembleFile[file_no - 2] = True
+                                    ensemble_present = True
+                            
+                            # Reopen file for processing
+                            # (In actual implementation, store file handles for later use)
+                            file_no += 1
+                        except Exception as e:
+                            print(f"Error opening file {file_path}: {str(e)}")
+                            self.Mini_Reset()
+                            return
+                
+                # Warn user if ensemble files detected
+                if ensemble_present:
+                    QMessageBox.warning(self, "Warning Message", 
+                                    "Warning - the data appear to contain multiple columns (ensembles). " +
+                                    "Only the first column will be plotted.\n\n" +
+                                    "Note - you can extract individual members using the Transform Screen.")
+                
+                # Process data based on selected statistics
+                if self.statCheckboxes[4].isChecked():
+                    # SPI option chosen - ignores DatesCombo
+                    ok_to_plot = self.GenerateSPI()
+                elif self.DatesCombo.currentIndex() == 0:
+                    # Raw data selected
+                    ok_to_plot = self.RawData()
+                elif self.statCheckboxes[14].isChecked():
+                    # % precipitation > annual maximum
+                    ok_to_plot = self.GeneratePrecipAnnualMax()
+                elif self.statCheckboxes[22].isChecked() or self.statCheckboxes[23].isChecked():
+                    # pfl90 or pnl90 statistics
+                    ok_to_plot = self.LongTermStats()
+                else:
+                    # Other statistics
+                    ok_to_plot = self.GenerateData()
+                
+                if ok_to_plot:
+                    # Save first value in time series array
+                    series_data_first_value = self.TimeSeriesData[0][0]
+                    
+                    # Create and show the chart
+                    # (In actual implementation, create a chart window)
+                    print("Creating chart...")
+                    
+                    # Set legends to filenames
+                    for i in range(self.total_time_series_files):
+                        print(f"Legend {i+1}: {self.AllFilesList[i]}")
+                    
+                    # Set chart title based on selected statistic
+                    chart_title = "Time Series Plot"
+                    y_label = ""
+                    
+                    if self.statCheckboxes[4].isChecked():
+                        chart_source = "SPI"
+                    elif self.DatesCombo.currentIndex() == 0:
+                        chart_source = "raw"
+                    elif self.statCheckboxes[14].isChecked() or self.statCheckboxes[22].isChecked():
+                        chart_source = "percentage"
+                    else:
+                        chart_source = "analysed"
+                    
+                    # Set Y-axis label based on selected statistic
+                    if self.statCheckboxes[0].isChecked():
+                        y_label = "Sum"
+                    elif self.statCheckboxes[1].isChecked():
+                        y_label = "Mean"
+                    elif self.statCheckboxes[2].isChecked():
+                        y_label = "Maximum"
+                    elif self.statCheckboxes[3].isChecked():
+                        y_label = "Percentile"
+                    elif self.statCheckboxes[4].isChecked():
+                        y_label = "SPI"
+                    elif self.statCheckboxes[5].isChecked():
+                        y_label = "PDS"
+                    elif self.statCheckboxes[6].isChecked():
+                        y_label = "Winter/Summer Ratio"
+                    elif self.statCheckboxes[7].isChecked():
+                        y_label = "Peaks Over Threshold"
+                    elif self.statCheckboxes[8].isChecked():
+                        y_label = f"{self.nth_largest} largest"
+                    elif self.statCheckboxes[9].isChecked():
+                        y_label = f"Largest {self.largest_n_day} Total"
+                    elif self.statCheckboxes[10].isChecked():
+                        y_label = "Maximum Dry Spell"
+                    elif self.statCheckboxes[11].isChecked():
+                        y_label = "Maximum Wet Spell"
+                    elif self.statCheckboxes[12].isChecked():
+                        y_label = "Mean Dry Spell"
+                    elif self.statCheckboxes[13].isChecked():
+                        y_label = "Mean Wet Spell"
+                    elif self.statCheckboxes[14].isChecked():
+                        y_label = "Percentage"
+                    elif self.statCheckboxes[15].isChecked():
+                        y_label = "Median Dry Spell"
+                    elif self.statCheckboxes[16].isChecked():
+                        y_label = "Median Wet Spell"
+                    elif self.statCheckboxes[17].isChecked():
+                        y_label = "SD Dry Spell"
+                    elif self.statCheckboxes[18].isChecked():
+                        y_label = "SD Wet Spell"
+                    elif self.statCheckboxes[19].isChecked():
+                        y_label = "Dry Day Persistence"
+                    elif self.statCheckboxes[20].isChecked():
+                        y_label = "Wet Day Persistence"
+                    elif self.statCheckboxes[21].isChecked():
+                        y_label = "Spell Length Correlation"
+                    elif self.statCheckboxes[22].isChecked():
+                        y_label = "Percentage"
+                    elif self.statCheckboxes[23].isChecked():
+                        y_label = "Percentage Precip>Long Term Percentile"
+                    
+                    print(f"Chart title: {chart_title}")
+                    print(f"Y-axis label: {y_label}")
+                    print(f"Chart source: {chart_source}")
+                    
+                    # Display the chart
+                    # (In actual implementation, show chart window)
+                    
+                    # Save results if requested
+                    if (self.save_root and 
+                        (self.statCheckboxes[4].isChecked() or self.DatesCombo.currentIndex() != 0)):
+                        self.SaveResults()
+                else:
+                    # Error occurred during data processing
+                    if not self.global_kopout:
+                        QMessageBox.critical(self, "Error Message", 
+                                        "Sorry - have been unable to read in data correctly - please check settings.")
+                    else:
+                        # Reset flag so error can be shown next time
+                        self.global_kopout = False
+                
+                # Close all open files
+                # (In actual implementation, close file handles)
+                
+                # Reset cursor and hide progress bar
+                self.setCursor(Qt.ArrowCursor)
+                self.progress_bar.setVisible(False)
+        
+        except Exception as e:
+            print(f"Error in PlotData: {str(e)}")
+            self.Mini_Reset()
+    
+    def validate_start_date(self):
+        """Helper function to validate start date"""
+        try:
+            if not self.is_valid_date(self.FSDate):
+                QMessageBox.critical(self, "Error Message", 
+                                   "Start date is invalid - it must be in the format dd/mm/yyyy.")
+                self.startDateInput.setText(self.global_start_date)
+                return False
+            elif (datetime.strptime(self.FSDate, "%d/%m/%Y") >= 
+                 datetime.strptime(self.FEdate, "%d/%m/%Y")):
+                QMessageBox.critical(self, "Error Message", 
+                                   "End date must be later than start date.")
+                self.startDateInput.setText(self.global_start_date)
+                return False
+            elif (datetime.strptime(self.global_start_date, "%d/%m/%Y") > 
+                 datetime.strptime(self.FSDate, "%d/%m/%Y")):
+                QMessageBox.critical(self, "Error Message", 
+                                   "Fit start date must be later than record start date.")
+                self.startDateInput.setText(self.global_start_date)
+                return False
+            
+            # Update days between dates
+            days = (datetime.strptime(self.FEdate, "%d/%m/%Y") - 
+                   datetime.strptime(self.FSDate, "%d/%m/%Y")).days + 1
+            # (In actual implementation, update days display)
+            
+            return True
+        except Exception as e:
+            print(f"Error validating start date: {str(e)}")
+            self.Mini_Reset()
+            return False
+    
+    def validate_end_date(self):
+        """Helper function to validate end date"""
+        try:
+            if not self.is_valid_date(self.FEdate):
+                QMessageBox.critical(self, "Error Message", 
+                                   "End date is invalid - it must be in the format dd/mm/yyyy.")
+                self.endDateInput.setText(self.global_end_date)
+                return False
+            elif (datetime.strptime(self.FSDate, "%d/%m/%Y") >= 
+                 datetime.strptime(self.FEdate, "%d/%m/%Y")):
+                QMessageBox.critical(self, "Error Message", 
+                                   "End date must be later than start date.")
+                self.endDateInput.setText(self.global_end_date)
+                return False
+            elif (datetime.strptime(self.global_end_date, "%d/%m/%Y") < 
+                 datetime.strptime(self.FEdate, "%d/%m/%Y")):
+                QMessageBox.critical(self, "Error Message", 
+                                   "Fit end date must be earlier than record end date.")
+                self.endDateInput.setText(self.global_end_date)
+                return False
+            
+            # Update days between dates
+            days = (datetime.strptime(self.FEdate, "%d/%m/%Y") - 
+                   datetime.strptime(self.FSDate, "%d/%m/%Y")).days + 1
+            # (In actual implementation, update days display)
+            
+            return True
+        except Exception as e:
+            print(f"Error validating end date: {str(e)}")
+            self.Mini_Reset()
+            return False
+    
+    def is_valid_date(self, date_str):
+        """Helper function to check if a string is a valid date"""
+        try:
+            datetime.strptime(date_str, "%d/%m/%Y")
+            return True
+        except ValueError:
+            return False
+
+    def RawData(self):
+        try:
+            # Calculate days to skip at the beginning
+            total_to_read_in = (datetime.strptime(self.FSDate, "%d/%m/%Y") - 
+                            datetime.strptime(self.global_start_date, "%d/%m/%Y")).days
+            
+            if total_to_read_in > 0:
+                # Show progress bar
+                self.progress_bar.setVisible(True)
+                self.progress_bar.setValue(0)
+                self.progress_bar.setMaximum(100)
+            
+            # Initialize variables 
+            any_missing = False  # Track if any data points are missing
+            
+            # Set current date to global start date
+            current_day = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").day)
+            current_month = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").month)
+            current_year = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").year)
+            total_numbers = 0
+            
+            # Skip unwanted data at the start of the file
+            date_start = datetime(current_year, current_month, current_day)
+            date_target = datetime.strptime(self.FSDate, "%d/%m/%Y")
+            
+            # Loop until we reach the start date for analysis
+            while date_start <= date_target:
+                # Check if user wants to exit
+                if self.ExitAnalysis():
+                    self.Mini_Reset()
+                    return False
+                
+                # Skip data from all files
+                for i in range(2, self.total_time_series_files + 2):
+                    # In actual implementation, read and discard a line from each file
+                    pass
+                
+                total_numbers += 1
+                self.IncreaseDate()
+                date_start = datetime(current_year, current_month, current_day)
+                
+                # Update progress bar
+                progress_value = int((total_numbers / total_to_read_in) * 100)
+                self.progress_bar.setValue(progress_value)
+                
+            # Now read in the data we want to analyze
+            total_numbers = 0
+            total_to_read_in = (datetime.strptime(self.FEdate, "%d/%m/%Y") - 
+                            datetime.strptime(self.FSDate, "%d/%m/%Y")).days + 1
+            
+            self.progress_bar.setVisible(True)
+            self.progress_bar.setValue(0)
+            self.progress_bar.setMaximum(100)
+            
+            # Set current date to start date for analysis
+            current_day = int(datetime.strptime(self.FSDate, "%d/%m/%Y").day)
+            current_month = int(datetime.strptime(self.FSDate, "%d/%m/%Y").month)
+            current_year = int(datetime.strptime(self.FSDate, "%d/%m/%Y").year)
+            
+            # Create a temporary array for the time series data
+            time_series_data2 = [[None for _ in range(self.total_time_series_files + 1)] 
+                            for _ in range(total_to_read_in + 1)]
+            
+            # Read in the data
+            date_current = datetime(current_year, current_month, current_day)
+            date_end = datetime.strptime(self.FEdate, "%d/%m/%Y")
+            
+            while date_current <= date_end:
+                # Check if user wants to exit
+                if self.ExitAnalysis():
+                    self.Mini_Reset()
+                    return False
+                
+                total_numbers += 1
+                
+                # Read data for the current day from each file
+                for i in range(2, self.total_time_series_files + 2):
+                    # In actual implementation, read data from file
+                    # Here using placeholder value
+                    if self.EnsembleFile[i-2]:
+                        # Handle multi-column file
+                        temp_double = 0  # Placeholder - would read first value from line
+                    else:
+                        # Handle single-column file
+                        temp_double = 0  # Placeholder - would read value from file
+                    
+                    if temp_double == self.global_missing_code:
+                        any_missing = True
+                        time_series_data2[total_numbers-1][i-1] = None  # Empty value for missing data
+                    else:
+                        time_series_data2[total_numbers-1][i-1] = temp_double
+                
+                # Set category label
+                time_series_data2[total_numbers-1][0] = str(total_numbers)
+                
+                # Increase date for next iteration
+                self.IncreaseDate()
+                date_current = datetime(current_year, current_month, current_day)
+                
+                # Update progress bar
+                progress_value = int((total_numbers / total_to_read_in) * 100)
+                self.progress_bar.setValue(progress_value)
+            
+            # Set time series length
+            self.TimeSeriesLength = total_numbers
+            
+            # Transfer data to TimeSeriesData array
+            self.TimeSeriesData = [[None for _ in range(self.total_time_series_files + 1)] 
+                                for _ in range(total_numbers)]
+            
+            for i in range(total_numbers):
+                for j in range(self.total_time_series_files + 1):
+                    self.TimeSeriesData[i][j] = time_series_data2[i][j]
+            
+            # Make sure no "1" appears on x-axis to begin with
+            self.TimeSeriesData[0][0] = " "
+            
+            if any_missing:
+                print("Warning - some of the data were missing and will not be plotted.")
+            
+            return True
+            
+        except Exception as e:
+            print(f"Error in RawData: {str(e)}")
+            self.Mini_Reset()
+            return False
+
+    def GenerateData(self):
+        try:
+            # Calculate days to skip at the beginning
+            total_to_read_in = (datetime.strptime(self.FSDate, "%d/%m/%Y") - 
+                            datetime.strptime(self.global_start_date, "%d/%m/%Y")).days
+            
+            if total_to_read_in > 0:
+                # Show progress bar
+                self.progress_bar.setVisible(True)
+                self.progress_bar.setValue(0)
+                self.progress_bar.setMaximum(100)
+                self.progress_bar.setFormat("Skipping Unnecessary Data")
+            
+            # Set current date to global start date
+            current_day = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").day)
+            current_month = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").month)
+            current_year = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").year)
+            total_numbers = 0
+            
+            # Skip unwanted data at the start of the file
+            date_start = datetime(current_year, current_month, current_day)
+            date_target = datetime.strptime(self.FSDate, "%d/%m/%Y")
+            
+            # Loop until we reach the start date for analysis
+            while date_start <= date_target:
+                # Check if user wants to exit
+                if self.ExitAnalysis():
+                    self.Mini_Reset()
+                    return False
+                
+                # Skip data from all files
+                for i in range(2, self.total_time_series_files + 2):
+                    # In actual implementation, read and discard a line from each file
+                    pass
+                
+                total_numbers += 1
+                self.IncreaseDate()
+                date_start = datetime(current_year, current_month, current_day)
+                
+                # Update progress bar
+                progress_value = int((total_numbers / total_to_read_in) * 100)
+                self.progress_bar.setValue(progress_value)
+            
+            # Now read in the data we want to analyze
+            total_numbers = 0
+            total_to_read_in = (datetime.strptime(self.FEdate, "%d/%m/%Y") - 
+                            datetime.strptime(self.FSDate, "%d/%m/%Y")).days + 1
+            
+            self.progress_bar.setVisible(True)
+            self.progress_bar.setValue(0)
+            self.progress_bar.setMaximum(100)
+            self.progress_bar.setFormat("Reading in data for plot")
+            
+            # Set current date to start date for analysis
+            current_day = int(datetime.strptime(self.FSDate, "%d/%m/%Y").day)
+            current_month = int(datetime.strptime(self.FSDate, "%d/%m/%Y").month)
+            current_year = int(datetime.strptime(self.FSDate, "%d/%m/%Y").year)
+            current_season = self.GetSeason(current_month)
+            current_water_year = self.GetWaterYear(current_month, current_year)
+            
+            # Initialize arrays for statistics
+            sum_vals = [0] * (self.total_time_series_files + 1)
+            max_value = [-10000] * (self.total_time_series_files + 1)
+            total_missing = [0] * (self.total_time_series_files + 1)
+            pds = [0] * (self.total_time_series_files + 1)
+            pot_count = [0] * (self.total_time_series_files + 1)
+            count = 0
+            
+            # Set up period tracking variables
+            this_month = current_month
+            this_year = current_year
+            this_season = current_season
+            this_water_year = current_water_year
+            
+            year_index = 1
+            
+            # Read in data and process by period
+            date_current = datetime(current_year, current_month, current_day)
+            date_end = datetime.strptime(self.FEdate, "%d/%m/%Y")
+            
+            while date_current <= date_end:
+                # Check if user wants to exit
+                if self.ExitAnalysis():
+                    self.Mini_Reset()
+                    return False
+                
+                # Check if we've reached the end of the current period
+                if self.FinishedCurrentPeriod():
+                    year_index = this_year - int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + 1
+                    
+                    # For each file, update summary array with period's statistics
+                    for i in range(1, self.total_time_series_files + 1):
+                        # Determine array position based on period type
+                        if self.DatesCombo.currentIndex() >= 1 and self.DatesCombo.currentIndex() <= 12:
+                            array_position = this_month
+                        elif self.DatesCombo.currentIndex() >= 13 and self.DatesCombo.currentIndex() <= 16:
+                            array_position = this_season + 12
+                        elif self.DatesCombo.currentIndex() == 17:
+                            array_position = 17  # Annual
+                        elif self.statCheckboxes[6].isChecked():
+                            array_position = this_season + 12  # Winter/summer ratio
+                        else:
+                            array_position = 18  # Water year
+                        
+                        # Check if all data are missing for this period
+                        if total_missing[i] == count:
+                            # Set all statistics to missing code
+                            for j in range(1, self.total_stats_available + 1):
+                                self.summaryArray[i][year_index][array_position][j] = self.global_missing_code
+                        else:
+                            # Calculate and store statistics
+                            self.summaryArray[i][year_index][array_position][1] = sum_vals[i]
+                            self.summaryArray[i][year_index][array_position][2] = max_value[i]
+                            self.summaryArray[i][year_index][array_position][3] = count - total_missing[i]
+                            self.summaryArray[i][year_index][array_position][4] = self.PercentilePeriodArray(i, count, self.percentile)
+                            self.summaryArray[i][year_index][array_position][5] = sum_vals[i] / (count - total_missing[i])
+                            self.summaryArray[i][year_index][array_position][6] = pds[i]
+                            self.summaryArray[i][year_index][array_position][7] = pot_count[i]
+                            self.summaryArray[i][year_index][array_position][8] = self.FindNthLargest(i, count)
+                            self.summaryArray[i][year_index][array_position][9] = self.FindLargestNDayTotal(i, count)
+                            self.summaryArray[i][year_index][array_position][10] = self.FindMaxDrySpell(i, count)
+                            self.summaryArray[i][year_index][array_position][11] = self.FindMaxWetSpell(i, count)
+                            self.summaryArray[i][year_index][array_position][12] = self.FindMeanDrySpell(i, count)
+                            self.summaryArray[i][year_index][array_position][13] = self.FindMeanWetSpell(i, count)
+                            self.summaryArray[i][year_index][array_position][15] = self.FindMedianDrySpell(i, count)
+                            self.summaryArray[i][year_index][array_position][16] = self.FindMedianWetSpell(i, count)
+                            self.summaryArray[i][year_index][array_position][17] = self.FindSDDrySpell(i, count)
+                            self.summaryArray[i][year_index][array_position][18] = self.FindSDWetSpell(i, count)
+                            self.summaryArray[i][year_index][array_position][19] = self.FindDDPersistence(i, count)
+                            self.summaryArray[i][year_index][array_position][20] = self.FindWDPersistence(i, count)
+                            self.summaryArray[i][year_index][array_position][21] = self.FindSpellLengthCorrelation(i, count)
+                    
+                    # Reset statistics for next period
+                    for i in range(1, self.total_time_series_files + 1):
+                        sum_vals[i] = 0
+                        max_value[i] = -10000
+                        total_missing[i] = 0
+                        pds[i] = 0
+                        pot_count[i] = 0
+                    count = 0
+                
+                # Read data for the current day
+                count += 1
+                total_numbers += 1
+                
+                for i in range(2, self.total_time_series_files + 2):
+                    # In actual implementation, read data from file
+                    # Here using placeholder
+                    value = 0  # Placeholder - would be actual data
+                    
+                    if self.EnsembleFile[i-2]:
+                        # Handle multi-column file
+                        value = 0  # Placeholder - would read first value from line
+                    else:
+                        # Handle single-column file
+                        value = 0  # Placeholder - would read value from file
+                    
+                    # Store value in period array
+                    self.periodArray[i-1][count] = value
+                    
+                    # Update statistics
+                    if value == self.global_missing_code:
+                        total_missing[i-1] += 1
+                    else:
+                        sum_vals[i-1] += value
+                        if max_value[i-1] < value:
+                            max_value[i-1] = value
+                        # For Partial Duration Series
+                        pds[i-1] += (value - self.local_thresh)
+                        # For Peaks Over Threshold
+                        if value > self.pot_value:
+                            pot_count[i-1] += 1
+                
+                # Save current period values
+                this_month = current_month
+                this_year = current_year
+                this_season = current_season
+                this_water_year = current_water_year
+                
+                # Increase date for next iteration
+                self.IncreaseDate()
+                date_current = datetime(current_year, current_month, current_day)
+                
+                # Update progress bar
+                progress_value = int((total_numbers / total_to_read_in) * 100)
+                self.progress_bar.setValue(progress_value)
+                self.progress_bar.setFormat("Generating Time Series Plot")
+            
+            # Process the last period's data
+            year_index = this_year - int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + 1
+            
+            # Determine array position for last period
+            if self.statCheckboxes[6].isChecked():  # Winter/summer ratio
+                array_position = this_season + 12
+                if this_season == 1 and int(datetime.strptime(self.FEdate, "%d/%m/%Y").month) == 12:
+                    year_index += 1  # Adjust for winter spanning year boundary
+            elif self.DatesCombo.currentIndex() >= 1 and self.DatesCombo.currentIndex() <= 12:
+                array_position = this_month
+            elif self.DatesCombo.currentIndex() >= 13 and self.DatesCombo.currentIndex() <= 16:
+                array_position = this_season + 12
+                if this_season == 1 and int(datetime.strptime(self.FEdate, "%d/%m/%Y").month) == 12:
+                    year_index += 1  # Adjust for winter spanning year boundary
+            elif self.DatesCombo.currentIndex() == 17:
+                array_position = 17  # Annual
+            else:
+                array_position = 18  # Water year
+                if this_month >= 10:
+                    year_index += 1  # Adjust for water year boundary
+            
+            # Update summary array with the last period's statistics
+            for i in range(1, self.total_time_series_files + 1):
+                # Check if all data are missing for this period
+                if total_missing[i] == count:
+                    # Set all statistics to missing code
+                    for j in range(1, self.total_stats_available + 1):
+                        self.summaryArray[i][year_index][array_position][j] = self.global_missing_code
+                else:
+                    # Calculate and store statistics
+                    self.summaryArray[i][year_index][array_position][1] = sum_vals[i]
+                    self.summaryArray[i][year_index][array_position][2] = max_value[i]
+                    self.summaryArray[i][year_index][array_position][3] = count - total_missing[i]
+                    self.summaryArray[i][year_index][array_position][4] = self.PercentilePeriodArray(i, count, self.percentile)
+                    self.summaryArray[i][year_index][array_position][5] = sum_vals[i] / (count - total_missing[i])
+                    self.summaryArray[i][year_index][array_position][6] = pds[i]
+                    self.summaryArray[i][year_index][array_position][7] = pot_count[i]
+                    self.summaryArray[i][year_index][array_position][8] = self.FindNthLargest(i, count)
+                    self.summaryArray[i][year_index][array_position][9] = self.FindLargestNDayTotal(i, count)
+                    self.summaryArray[i][year_index][array_position][10] = self.FindMaxDrySpell(i, count)
+                    self.summaryArray[i][year_index][array_position][11] = self.FindMaxWetSpell(i, count)
+                    self.summaryArray[i][year_index][array_position][12] = self.FindMeanDrySpell(i, count)
+                    self.summaryArray[i][year_index][array_position][13] = self.FindMeanWetSpell(i, count)
+                    self.summaryArray[i][year_index][array_position][15] = self.FindMedianDrySpell(i, count)
+                    self.summaryArray[i][year_index][array_position][16] = self.FindMedianWetSpell(i, count)
+                    self.summaryArray[i][year_index][array_position][17] = self.FindSDDrySpell(i, count)
+                    self.summaryArray[i][year_index][array_position][18] = self.FindSDWetSpell(i, count)
+                    self.summaryArray[i][year_index][array_position][19] = self.FindDDPersistence(i, count)
+                    self.summaryArray[i][year_index][array_position][20] = self.FindWDPersistence(i, count)
+                    self.summaryArray[i][year_index][array_position][21] = self.FindSpellLengthCorrelation(i, count)
+            
+            # Determine start and end years for output
+            start_year = 1
+            end_year = year_index
+            
+            # Adjust start and end years based on selected period and available data
+            if self.statCheckboxes[6].isChecked():  # Winter/summer ratio
+                if int(datetime.strptime(self.FEdate, "%d/%m/%Y").month) == 12:
+                    end_year -= 1  # Don't have following year's ratio
+                if int(datetime.strptime(self.FEdate, "%d/%m/%Y").month) < 6:
+                    end_year -= 1  # Don't have a summer to divide by
+                if int(datetime.strptime(self.FSDate, "%d/%m/%Y").month) > 2:
+                    start_year = 2  # Don't have a start winter in first year
+            elif self.DatesCombo.currentIndex() >= 1 and self.DatesCombo.currentIndex() <= 12:  # Month
+                if self.DatesCombo.currentIndex() < int(datetime.strptime(self.FSDate, "%d/%m/%Y").month):
+                    start_year = 2  # This month is before fit start date
+                if self.DatesCombo.currentIndex() > int(datetime.strptime(self.FEdate, "%d/%m/%Y").month):
+                    end_year -= 1  # This month is after fit end date
+            elif self.DatesCombo.currentIndex() >= 13 and self.DatesCombo.currentIndex() <= 16:  # Season
+                selected_season = self.DatesCombo.currentIndex() - 12
+                if selected_season < self.GetSeason(int(datetime.strptime(self.FSDate, "%d/%m/%Y").month)):
+                    start_year = 2  # Season comes before fit start date
+                if (int(datetime.strptime(self.FEdate, "%d/%m/%Y").month) != 12 and 
+                    selected_season > self.GetSeason(int(datetime.strptime(self.FEdate, "%d/%m/%Y").month))):
+                    end_year -= 1  # Season comes after fit end date
+                if (int(datetime.strptime(self.FEdate, "%d/%m/%Y").month) == 12 and 
+                    self.DatesCombo.currentIndex() != 13):  # Not winter
+                    end_year -= 1
+            elif self.DatesCombo.currentIndex() == 18:  # Water year
+                if int(datetime.strptime(self.FSDate, "%d/%m/%Y").month) >= 10:
+                    start_year = 2  # Start date is in water year
+            
+            # Prepare data for plotting
+            self.TimeSeriesLength = end_year - start_year + 1
+            # Create and initialize the TimeSeriesData array
+            self.TimeSeriesData = [[None for _ in range(self.total_time_series_files + 1)] 
+                            for _ in range(self.TimeSeriesLength)]
+            
+            any_missing = False
+            
+            # Fill TimeSeriesData array based on selected statistic
+            for i in range(1, self.total_time_series_files + 1):
+                for j in range(1, self.TimeSeriesLength + 1):
+                    idx = j + start_year - 1  # Adjusted index into summary array
+                    
+                    # Determine value based on selected statistic
+                    if self.statCheckboxes[0].isChecked():  # Sum
+                        if self.summaryArray[i][idx][self.DatesCombo.currentIndex()][1] == self.global_missing_code:
+                            self.TimeSeriesData[j-1][i] = None
+                            any_missing = True
+                        else:
+                            self.TimeSeriesData[j-1][i] = self.summaryArray[i][idx][self.DatesCombo.currentIndex()][1]
+                    
+                    elif self.statCheckboxes[1].isChecked():  # Mean
+                        if self.summaryArray[i][idx][self.DatesCombo.currentIndex()][5] == self.global_missing_code:
+                            self.TimeSeriesData[j-1][i] = None
+                            any_missing = True
+                        else:
+                            self.TimeSeriesData[j-1][i] = self.summaryArray[i][idx][self.DatesCombo.currentIndex()][5]
+                    
+                    elif self.statCheckboxes[2].isChecked():  # Maximum
+                        if self.summaryArray[i][idx][self.DatesCombo.currentIndex()][2] == self.global_missing_code:
+                            self.TimeSeriesData[j-1][i] = None
+                            any_missing = True
+                        else:
+                            self.TimeSeriesData[j-1][i] = self.summaryArray[i][idx][self.DatesCombo.currentIndex()][2]
+                    
+                    elif self.statCheckboxes[3].isChecked():  # Percentile
+                        if self.summaryArray[i][idx][self.DatesCombo.currentIndex()][4] == self.global_missing_code:
+                            self.TimeSeriesData[j-1][i] = None
+                            any_missing = True
+                        else:
+                            self.TimeSeriesData[j-1][i] = self.summaryArray[i][idx][self.DatesCombo.currentIndex()][4]
+                    
+                    elif self.statCheckboxes[5].isChecked():  # Partial Duration Series
+                        if self.summaryArray[i][idx][self.DatesCombo.currentIndex()][6] == self.global_missing_code:
+                            self.TimeSeriesData[j-1][i] = None
+                            any_missing = True
+                        else:
+                            self.TimeSeriesData[j-1][i] = self.summaryArray[i][idx][self.DatesCombo.currentIndex()][6]
+                    
+                    elif self.statCheckboxes[6].isChecked():  # Winter/Summer ratio
+                        if (self.summaryArray[i][idx][13][1] == self.global_missing_code or 
+                            self.summaryArray[i][idx][15][1] == self.global_missing_code or 
+                            self.summaryArray[i][idx][15][1] == 0):
+                            self.TimeSeriesData[j-1][i] = None
+                            any_missing = True
+                        else:
+                            self.TimeSeriesData[j-1][i] = self.summaryArray[i][idx][13][1] / self.summaryArray[i][idx][15][1]
+                    
+                    elif self.statCheckboxes[7].isChecked():  # Peaks Over Threshold
+                        if self.summaryArray[i][idx][self.DatesCombo.currentIndex()][7] == self.global_missing_code:
+                            self.TimeSeriesData[j-1][i] = None
+                            any_missing = True
+                        else:
+                            self.TimeSeriesData[j-1][i] = self.summaryArray[i][idx][self.DatesCombo.currentIndex()][7]
+                    
+                    elif self.statCheckboxes[8].isChecked():  # Nth Largest
+                        if self.summaryArray[i][idx][self.DatesCombo.currentIndex()][8] == self.global_missing_code:
+                            self.TimeSeriesData[j-1][i] = None
+                            any_missing = True
+                        else:
+                            self.TimeSeriesData[j-1][i] = self.summaryArray[i][idx][self.DatesCombo.currentIndex()][8]
+                    
+                    elif self.statCheckboxes[9].isChecked():  # Largest N day total
+                        if self.summaryArray[i][idx][self.DatesCombo.currentIndex()][9] == self.global_missing_code:
+                            self.TimeSeriesData[j-1][i] = None
+                            any_missing = True
+                        else:
+                            self.TimeSeriesData[j-1][i] = self.summaryArray[i][idx][self.DatesCombo.currentIndex()][9]
+                    
+                    elif self.statCheckboxes[10].isChecked():  # Max dry spell
+                        if self.summaryArray[i][idx][self.DatesCombo.currentIndex()][10] == self.global_missing_code:
+                            self.TimeSeriesData[j-1][i] = None
+                            any_missing = True
+                        else:
+                            self.TimeSeriesData[j-1][i] = self.summaryArray[i][idx][self.DatesCombo.currentIndex()][10]
+                    
+                    elif self.statCheckboxes[11].isChecked():  # Max wet spell
+                        if self.summaryArray[i][idx][self.DatesCombo.currentIndex()][11] == self.global_missing_code:
+                            self.TimeSeriesData[j-1][i] = None
+                            any_missing = True
+                        else:
+                            self.TimeSeriesData[j-1][i] = self.summaryArray[i][idx][self.DatesCombo.currentIndex()][11]
+                    
+                    elif self.statCheckboxes[12].isChecked():  # Mean dry spell
+                        if self.summaryArray[i][idx][self.DatesCombo.currentIndex()][12] == self.global_missing_code:
+                            self.TimeSeriesData[j-1][i] = None
+                            any_missing = True
+                        else:
+                            self.TimeSeriesData[j-1][i] = self.summaryArray[i][idx][self.DatesCombo.currentIndex()][12]
+                    
+                    elif self.statCheckboxes[13].isChecked():  # Mean wet spell
+                        if self.summaryArray[i][idx][self.DatesCombo.currentIndex()][13] == self.global_missing_code:
+                            self.TimeSeriesData[j-1][i] = None
+                            any_missing = True
+                        else:
+                            self.TimeSeriesData[j-1][i] = self.summaryArray[i][idx][self.DatesCombo.currentIndex()][13]
+                    
+                    elif self.statCheckboxes[15].isChecked():  # Median dry spell
+                        if self.summaryArray[i][idx][self.DatesCombo.currentIndex()][15] == self.global_missing_code:
+                            self.TimeSeriesData[j-1][i] = None
+                            any_missing = True
+                        else:
+                            self.TimeSeriesData[j-1][i] = self.summaryArray[i][idx][self.DatesCombo.currentIndex()][15]
+                    
+                    elif self.statCheckboxes[16].isChecked():  # Median wet spell
+                        if self.summaryArray[i][idx][self.DatesCombo.currentIndex()][16] == self.global_missing_code:
+                            self.TimeSeriesData[j-1][i] = None
+                            any_missing = True
+                        else:
+                            self.TimeSeriesData[j-1][i] = self.summaryArray[i][idx][self.DatesCombo.currentIndex()][16]
+                    
+                    elif self.statCheckboxes[17].isChecked():  # SD dry spell
+                        if self.summaryArray[i][idx][self.DatesCombo.currentIndex()][17] == self.global_missing_code:
+                            self.TimeSeriesData[j-1][i] = None
+                            any_missing = True
+                        else:
+                            self.TimeSeriesData[j-1][i] = self.summaryArray[i][idx][self.DatesCombo.currentIndex()][17]
+                    
+                    elif self.statCheckboxes[18].isChecked():  # SD wet spell
+                        if self.summaryArray[i][idx][self.DatesCombo.currentIndex()][18] == self.global_missing_code:
+                            self.TimeSeriesData[j-1][i] = None
+                            any_missing = True
+                        else:
+                            self.TimeSeriesData[j-1][i] = self.summaryArray[i][idx][self.DatesCombo.currentIndex()][18]
+                    
+                    elif self.statCheckboxes[19].isChecked():  # Dry day persistence
+                        if self.summaryArray[i][idx][self.DatesCombo.currentIndex()][19] == self.global_missing_code:
+                            self.TimeSeriesData[j-1][i] = None
+                            any_missing = True
+                        else:
+                            self.TimeSeriesData[j-1][i] = self.summaryArray[i][idx][self.DatesCombo.currentIndex()][19]
+                    
+                    elif self.statCheckboxes[20].isChecked():  # Wet day persistence
+                        if self.summaryArray[i][idx][self.DatesCombo.currentIndex()][20] == self.global_missing_code:
+                            self.TimeSeriesData[j-1][i] = None
+                            any_missing = True
+                        else:
+                            self.TimeSeriesData[j-1][i] = self.summaryArray[i][idx][self.DatesCombo.currentIndex()][20]
+                    
+                    elif self.statCheckboxes[21].isChecked():  # Spell length correlation
+                        if self.summaryArray[i][idx][self.DatesCombo.currentIndex()][21] == self.global_missing_code:
+                            self.TimeSeriesData[j-1][i] = None
+                            any_missing = True
+                        else:
+                            self.TimeSeriesData[j-1][i] = self.summaryArray[i][idx][self.DatesCombo.currentIndex()][21]
+                    
+                    # Set year label for x-axis
+                    if self.DatesCombo.currentIndex() == 18:  # Water year
+                        self.TimeSeriesData[j-1][0] = str(int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + j + start_year - 3)
+                    else:
+                        self.TimeSeriesData[j-1][0] = str(int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + start_year + j - 2)
+            
+            if any_missing:
+                print("Warning - some of the data were missing and will not be plotted.")
+            
+            return True
+            
+        except Exception as e:
+            print(f"Error in GenerateData: {str(e)}")
+            self.Mini_Reset()
+            return False   
+
+    def GenerateSPI(self):
+        try:
+            # Initialize variables for reading in data
+            total_to_read_in = (datetime.strptime(self.global_start_date, "%d/%m/%Y") - 
+                            datetime.strptime(self.FSDate, "%d/%m/%Y")).days
+            
+            if total_to_read_in > 0:
+                # Show progress bar
+                self.progress_bar.setVisible(True)
+                self.progress_bar.setValue(0)
+                self.progress_bar.setMaximum(100)
+                
+            # Set current date to the global start date
+            current_day = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").day)
+            current_month = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").month)
+            current_year = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").year)
+            total_numbers = 0
+            self.TotalMonths = 0  # Reset total months counter
+            
+            # Skip unwanted data at the start of the file
+            date_start = datetime(current_year, current_month, current_day)
+            date_target = datetime.strptime(self.FSDate, "%d/%m/%Y")
+            
+            # Loop until we reach the start date for analysis
+            while date_start <= date_target:
+                # Check if user wants to exit
+                if self.ExitAnalysis():
+                    self.Mini_Reset()
+                    return False
+                
+                # Skip data from all files
+                for i in range(2, self.total_time_series_files + 2):
+                    # Skip a line from each file
+                    # (Actual file reading would be implemented here)
+                    pass
+                
+                total_numbers += 1
+                self.IncreaseDate()
+                date_start = datetime(current_year, current_month, current_day)
+                
+                # Update progress bar
+                progress_value = int((total_numbers / total_to_read_in) * 100)
+                self.progress_bar.setValue(progress_value)
+            
+            # Now read in the data we want to analyze
+            total_numbers = 0
+            total_to_read_in = (datetime.strptime(self.FEdate, "%d/%m/%Y") - 
+                            datetime.strptime(self.FSDate, "%d/%m/%Y")).days + 1
+            
+            self.progress_bar.setVisible(True)
+            self.progress_bar.setValue(0)
+            self.progress_bar.setMaximum(100)
+            
+            # Set current date to start date for analysis
+            current_day = int(datetime.strptime(self.FSDate, "%d/%m/%Y").day)
+            current_month = int(datetime.strptime(self.FSDate, "%d/%m/%Y").month)
+            current_year = int(datetime.strptime(self.FSDate, "%d/%m/%Y").year)
+            
+            # Initialize arrays for calculations
+            sum_vals = [0] * (self.total_time_series_files + 1)
+            total_missing = [0] * (self.total_time_series_files + 1)
+            count = 0
+            
+            this_month = current_month
+            this_year = current_year
+            year_index = this_year - int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + 1
+            
+            # Read in data and calculate monthly sums
+            date_current = datetime(current_year, current_month, current_day)
+            date_end = datetime.strptime(self.FEdate, "%d/%m/%Y")
+            
+            while date_current <= date_end:
+                # Check if user wants to exit
+                if self.ExitAnalysis():
+                    self.Mini_Reset()
+                    return False
+                
+                # Check if we've reached the end of a month
+                if self.FinishedCurrentPeriod():
+                    year_index = this_year - int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + 1
+                    
+                    # Save monthly sums to summaryArray
+                    for i in range(1, self.total_time_series_files + 1):
+                        if total_missing[i] == count:  # All values were missing
+                            self.summaryArray[i][year_index][this_month][1] = self.global_missing_code
+                        else:
+                            self.summaryArray[i][year_index][this_month][1] = sum_vals[i]
+                    
+                    self.TotalMonths += 1  # Increment total months counter
+                    
+                    # Reset counters for next month
+                    for i in range(1, self.total_time_series_files + 1):
+                        sum_vals[i] = 0
+                        total_missing[i] = 0
+                    count = 0
+                
+                # Read data for the current day
+                total_numbers += 1
+                count += 1
+                
+                for i in range(2, self.total_time_series_files + 2):
+                    # Read a value from each file
+                    # In a real implementation, you'd read from actual files
+                    value_in = 0  # Placeholder - would be actual file data
+                    
+                    if value_in != self.global_missing_code:
+                        if value_in > self.thresh:
+                            sum_vals[i-1] += value_in
+                    else:
+                        total_missing[i-1] += 1
+                
+                # Update this_month and this_year
+                this_month = current_month
+                this_year = current_year
+                
+                # Increase date for next iteration
+                self.IncreaseDate()
+                date_current = datetime(current_year, current_month, current_day)
+                
+                # Update progress bar
+                progress_value = int((total_numbers / total_to_read_in) * 100)
+                self.progress_bar.setValue(progress_value)
+            
+            # Process the last month's data
+            year_index = this_year - int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + 1
+            
+            for i in range(1, self.total_time_series_files + 1):
+                if total_missing[i] == count:  # All values were missing
+                    self.summaryArray[i][year_index][this_month][1] = self.global_missing_code
+                else:
+                    self.summaryArray[i][year_index][this_month][1] = sum_vals[i]
+            
+            self.TotalMonths += 1
+            
+            # Check if SPI period is valid
+            if self.spi_value >= self.TotalMonths:
+                print("The SPI index is longer than the fit period.")
+                return False
+            
+            # Populate the RunningMonths array
+            for i in range(1, self.total_time_series_files + 1):
+                array_index = 1
+                for j in range(1, year_index + 1):  # For each year
+                    if j == 1:
+                        start = int(datetime.strptime(self.FSDate, "%d/%m/%Y").month)
+                    else:
+                        start = 1
+                    
+                    if j == year_index:
+                        finish = int(datetime.strptime(self.FEdate, "%d/%m/%Y").month)
+                    else:
+                        finish = 12
+                    
+                    for k in range(start, finish + 1):
+                        self.RunningMonths[i-1][array_index-1][0] = self.summaryArray[i][j][k][1]  # Sum
+                        self.RunningMonths[i-1][array_index-1][1] = j  # Year code
+                        self.RunningMonths[i-1][array_index-1][2] = k  # Month code
+                        array_index += 1
+            
+            # Calculate moving averages
+            for i in range(1, self.total_time_series_files + 1):
+                for j in range(1, self.TotalMonths - self.spi_value + 2):
+                    month_sum = 0
+                    month_missing = 0
+                    
+                    for k in range(1, self.spi_value + 1):
+                        if self.RunningMonths[i-1][j+k-2][0] != self.global_missing_code:
+                            month_sum += self.RunningMonths[i-1][j+k-2][0]
+                        else:
+                            month_missing += 1
+                    
+                    if month_missing == self.spi_value:  # All months missing
+                        self.RunningMonths[i-1][j+k-2][3] = self.global_missing_code
+                    else:
+                        self.RunningMonths[i-1][j+k-2][3] = month_sum / (self.spi_value - month_missing)
+            
+            # Normalize the data (convert to SPI values)
+            standard_deviation = [0] * (self.total_time_series_files + 1)
+            mean_values = [0] * (self.total_time_series_files + 1)
+            
+            for i in range(1, self.total_time_series_files + 1):
+                total_of_all = 0
+                missing = 0
+                available_months = self.TotalMonths - self.spi_value + 1
+                
+                # Calculate mean
+                for j in range(self.spi_value, self.TotalMonths + 1):
+                    if self.RunningMonths[i-1][j-1][3] == self.global_missing_code:
+                        missing += 1
+                    else:
+                        total_of_all += self.RunningMonths[i-1][j-1][3]
+                
+                if missing == available_months:
+                    print("Sorry - too many missing values to compute a solution.")
+                    return False
+                else:
+                    mean_values[i] = total_of_all / (available_months - missing)
+                
+                # Calculate standard deviation
+                missing = 0
+                total_sqr_error = 0
+                
+                for j in range(self.spi_value, self.TotalMonths + 1):
+                    if self.RunningMonths[i-1][j-1][3] == self.global_missing_code:
+                        missing += 1
+                    else:
+                        total_sqr_error += ((self.RunningMonths[i-1][j-1][3] - mean_values[i]) ** 2)
+                
+                standard_deviation[i] = math.sqrt(total_sqr_error / (available_months - missing))
+                
+                # Normalize the data (SPI values)
+                for j in range(self.spi_value, self.TotalMonths + 1):
+                    if self.RunningMonths[i-1][j-1][3] == self.global_missing_code:
+                        self.RunningMonths[i-1][j-1][4] = self.global_missing_code
+                    else:
+                        self.RunningMonths[i-1][j-1][4] = ((self.RunningMonths[i-1][j-1][3] - mean_values[i]) / 
+                                                        standard_deviation[i])
+            
+            # Update summaryArray with SPI values
+            for i in range(1, self.total_time_series_files + 1):
+                for j in range(1, self.TotalMonths + 1):
+                    self.summaryArray[i][int(self.RunningMonths[i-1][j-1][1])][int(self.RunningMonths[i-1][j-1][2])][5] = self.RunningMonths[i-1][j-1][4]
+            
+            # Prepare data for plotting
+            self.TimeSeriesLength = self.TotalMonths - self.spi_value + 1
+            # Create and initialize the TimeSeriesData array
+            self.TimeSeriesData = [[0 for _ in range(self.total_time_series_files + 1)] 
+                                for _ in range(self.TimeSeriesLength)]
+            
+            any_missing = False
+            
+            for i in range(1, self.total_time_series_files + 1):
+                array_index = 1
+                for j in range(1, year_index + 1):  # For each year
+                    if j == 1:
+                        start = int(datetime.strptime(self.FSDate, "%d/%m/%Y").month) + self.spi_value - 1
+                        if start > 12:
+                            start = start - 12
+                            j = 2  # First data point must be in year 2
+                    else:
+                        start = 1
+                    
+                    if j == year_index:
+                        finish = int(datetime.strptime(self.FEdate, "%d/%m/%Y").month)
+                    else:
+                        finish = 12
+                    
+                    for k in range(start, finish + 1):
+                        if self.summaryArray[i][j][k][5] == self.global_missing_code:
+                            self.TimeSeriesData[array_index-1][i] = None  # Empty value
+                            any_missing = True
+                        else:
+                            self.TimeSeriesData[array_index-1][i] = self.summaryArray[i][j][k][5]
+                        
+                        self.TimeSeriesData[array_index-1][0] = " "  # Blank x-axis label
+                        array_index += 1
+                    
+                    # Add year to x-axis label
+                    self.TimeSeriesData[array_index-k+start-1][0] = str(int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + j - 1)
+            
+            if any_missing:
+                print("Warning - some of the data were missing and will not be plotted.")
+            
+            return True
+    
+        except Exception as e:
+            print(f"Error in GenerateSPI: {str(e)}")
+            self.Mini_Reset()
+            return False
+
+    def GeneratePrecipAnnualMax(self):
+        try:
+            # Initialize variables
+            total_to_read_in = (datetime.strptime(self.FSDate, "%d/%m/%Y") - 
+                            datetime.strptime(self.global_start_date, "%d/%m/%Y")).days
+            
+            if total_to_read_in > 0:
+                # Show progress bar
+                self.progress_bar.setVisible(True)
+                self.progress_bar.setValue(0)
+                self.progress_bar.setMaximum(100)
+            
+            # Initialize year percentile array to store annual percentiles for each file and year
+            year_percentile = [[self.global_missing_code for _ in range(200)] for _ in range(6)]  # [1-5][1-200]
+            
+            # Set current date to the global start date
+            current_day = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").day)
+            current_month = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").month)
+            current_year = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").year)
+            total_numbers = 0
+            
+            # Skip unwanted data at the start of the file
+            date_start = datetime(current_year, current_month, current_day)
+            date_target = datetime.strptime(self.FSDate, "%d/%m/%Y")
+            
+            # Loop until we reach the start date for analysis
+            while date_start <= date_target:
+                # Check if user wants to exit
+                if self.ExitAnalysis():
+                    self.Mini_Reset()
+                    return False
+                
+                # Skip data from all files
+                for i in range(2, self.total_time_series_files + 2):
+                    # Skip a line from each file
+                    # (Actual file reading would be implemented here)
+                    pass
+                
+                total_numbers += 1
+                self.IncreaseDate()
+                date_start = datetime(current_year, current_month, current_day)
+                
+                # Update progress bar
+                progress_value = int((total_numbers / total_to_read_in) * 100)
+                self.progress_bar.setValue(progress_value)
+            
+            # Now read in the data for annual percentile calculations
+            total_numbers = 0
+            total_to_read_in = (datetime.strptime(self.FEdate, "%d/%m/%Y") - 
+                            datetime.strptime(self.FSDate, "%d/%m/%Y")).days + 1
+            
+            self.progress_bar.setVisible(True)
+            self.progress_bar.setValue(0)
+            self.progress_bar.setMaximum(100)
+            
+            # Reset current date to start date for analysis
+            current_day = int(datetime.strptime(self.FSDate, "%d/%m/%Y").day)
+            current_month = int(datetime.strptime(self.FSDate, "%d/%m/%Y").month)
+            current_year = int(datetime.strptime(self.FSDate, "%d/%m/%Y").year)
+            
+            # Initialize count array - tracks valid data for each file
+            count = [0] * 6
+            
+            this_year = current_year
+            year_index = 1
+            
+            # Read annual data to calculate annual percentiles
+            date_current = datetime(current_year, current_month, current_day)
+            date_end = datetime.strptime(self.FEdate, "%d/%m/%Y")
+            
+            while date_current <= date_end:
+                # Check if user wants to exit
+                if self.ExitAnalysis():
+                    self.Mini_Reset()
+                    return False
+                
+                # Check if we've reached the end of a year
+                if this_year != current_year:
+                    year_index = this_year - int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + 1
+                    
+                    # Calculate percentiles for each file for this year
+                    for i in range(1, self.total_time_series_files + 1):
+                        if count[i] == 0:  # No valid data
+                            year_percentile[i][year_index] = self.global_missing_code
+                        else:
+                            year_percentile[i][year_index] = self.PercentilePeriodArray(i, count[i], self.annual_percentile)
+                    
+                    # Reset counters
+                    count = [0] * 6
+                
+                # Read data for the current day
+                total_numbers += 1
+                
+                for i in range(2, self.total_time_series_files + 2):
+                    # Read value from file
+                    value_in = 0  # Placeholder - would be actual file data
+                    
+                    if value_in != self.global_missing_code and value_in >= self.thresh:
+                        count[i-1] += 1
+                        self.periodArray[i-1][count[i-1]] = value_in
+                
+                this_year = current_year
+                
+                # Increase date for next iteration
+                self.IncreaseDate()
+                date_current = datetime(current_year, current_month, current_day)
+                
+                # Update progress bar
+                progress_value = int((total_numbers / total_to_read_in) * 100)
+                self.progress_bar.setValue(progress_value)
+            
+            # Process the last year's data
+            year_index = this_year - int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + 1
+            
+            for i in range(1, self.total_time_series_files + 1):
+                if count[i] == 0:  # No valid data
+                    year_percentile[i][year_index] = self.global_missing_code
+                else:
+                    year_percentile[i][year_index] = self.PercentilePeriodArray(i, count[i], self.annual_percentile)
+            
+            # Close and reopen files to process monthly/seasonal data
+            # In practice, this might be handled differently in Python
+            
+            # Skip unwanted data at the start of the file again for second pass
+            current_day = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").day)
+            current_month = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").month)
+            current_year = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").year)
+            total_numbers = 0
+            
+            date_start = datetime(current_year, current_month, current_day)
+            date_target = datetime.strptime(self.FSDate, "%d/%m/%Y")
+            
+            # Loop until we reach the start date for analysis (second pass)
+            while date_start <= date_target:
+                # Skip data
+                total_numbers += 1
+                self.IncreaseDate()
+                date_start = datetime(current_year, current_month, current_day)
+            
+            # Now read in data for period calculations
+            total_numbers = 0
+            total_to_read_in = (datetime.strptime(self.FEdate, "%d/%m/%Y") - 
+                            datetime.strptime(self.FSDate, "%d/%m/%Y")).days + 1
+            
+            self.progress_bar.setVisible(True)
+            self.progress_bar.setValue(0)
+            self.progress_bar.setMaximum(100)
+            
+            # Reset current date to start date for second pass
+            current_day = int(datetime.strptime(self.FSDate, "%d/%m/%Y").day)
+            current_month = int(datetime.strptime(self.FSDate, "%d/%m/%Y").month)
+            current_year = int(datetime.strptime(self.FSDate, "%d/%m/%Y").year)
+            current_season = self.GetSeason(current_month)
+            current_water_year = self.GetWaterYear(current_month, current_year)
+            
+            # Initialize count array again
+            count = [0] * 6
+            
+            this_month = current_month
+            this_year = current_year
+            this_season = current_season
+            this_water_year = current_water_year
+            
+            year_index = 1
+            
+            # Read data for period calculations (month/season)
+            date_current = datetime(current_year, current_month, current_day)
+            date_end = datetime.strptime(self.FEdate, "%d/%m/%Y")
+            
+            while date_current <= date_end:
+                # Check if user wants to exit
+                if self.ExitAnalysis():
+                    self.Mini_Reset()
+                    return False
+                
+                # Check if we've reached the end of the selected period
+                if self.FinishedCurrentPeriod():
+                    year_index = this_year - int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + 1
+                    
+                    # Only calculate if this period is the one selected by user
+                    if (this_month == self.DatesCombo.currentIndex() or 
+                        (this_season + 12) == self.DatesCombo.currentIndex()):
+                        
+                        for i in range(1, self.total_time_series_files + 1):
+                            if count[i] == 0:  # No valid data
+                                self.FractionResult[i-1][year_index] = self.global_missing_code
+                            else:
+                                # Calculate percentage above annual percentile
+                                self.FractionResult[i-1][year_index] = self.FindPrecipAboveAnnPercentile(
+                                    i, count[i], year_percentile[i][year_index])
+                    
+                    # Reset counters for next period
+                    count = [0] * 6
+                
+                # Read data for the current day
+                total_numbers += 1
+                
+                for i in range(2, self.total_time_series_files + 2):
+                    # Read value from file
+                    value_in = 0  # Placeholder - would be actual file data
+                    
+                    if value_in != self.global_missing_code and value_in >= self.thresh:
+                        count[i-1] += 1
+                        self.periodArray[i-1][count[i-1]] = value_in
+                
+                # Save current period values
+                this_month = current_month
+                this_year = current_year
+                this_season = current_season
+                this_water_year = current_water_year
+                
+                # Increase date for next iteration
+                self.IncreaseDate()
+                date_current = datetime(current_year, current_month, current_day)
+                
+                # Update progress bar
+                progress_value = int((total_numbers / total_to_read_in) * 100)
+                self.progress_bar.setValue(progress_value)
+            
+            # Process the last period's data
+            year_index = this_year - int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + 1
+            
+            if (this_month == self.DatesCombo.currentIndex() or 
+                (this_season + 12) == self.DatesCombo.currentIndex()):
+                
+                for i in range(1, self.total_time_series_files + 1):
+                    if count[i] == 0:  # No valid data
+                        self.FractionResult[i-1][year_index] = self.global_missing_code
+                    else:
+                        # Calculate percentage above annual percentile
+                        self.FractionResult[i-1][year_index] = self.FindPrecipAboveAnnPercentile(
+                            i, count[i], year_percentile[i][year_index])
+            
+            # Determine start and end years for output
+            start_year = 1
+            end_year = year_index
+            
+            # Adjust start and end years based on selected period
+            if self.DatesCombo.currentIndex() >= 1 and self.DatesCombo.currentIndex() <= 12:  # Month
+                if self.DatesCombo.currentIndex() < int(datetime.strptime(self.FSDate, "%d/%m/%Y").month):
+                    start_year = 2
+                if self.DatesCombo.currentIndex() > int(datetime.strptime(self.FEdate, "%d/%m/%Y").month):
+                    end_year -= 1
+            elif self.DatesCombo.currentIndex() >= 13 and self.DatesCombo.currentIndex() <= 16:  # Season
+                selected_season = self.DatesCombo.currentIndex() - 12
+                if selected_season < self.GetSeason(int(datetime.strptime(self.FSDate, "%d/%m/%Y").month)):
+                    start_year = 2
+                if (int(datetime.strptime(self.FEdate, "%d/%m/%Y").month) != 12 and 
+                    selected_season > self.GetSeason(int(datetime.strptime(self.FEdate, "%d/%m/%Y").month))):
+                    end_year -= 1
+            
+            # Prepare data for plotting
+            self.TimeSeriesLength = end_year - start_year + 1
+            # Create and initialize the TimeSeriesData array
+            self.TimeSeriesData = [[0 for _ in range(self.total_time_series_files + 1)] 
+                                for _ in range(self.TimeSeriesLength)]
+            
+            any_missing = False
+            
+            for i in range(1, self.total_time_series_files + 1):
+                for j in range(1, self.TimeSeriesLength + 1):
+                    if self.FractionResult[i-1][j+start_year-1] == self.global_missing_code:
+                        self.TimeSeriesData[j-1][i] = None  # Empty value
+                        any_missing = True
+                    else:
+                        self.TimeSeriesData[j-1][i] = self.FractionResult[i-1][j+start_year-1]
+                    
+                    if self.DatesCombo.currentIndex() == 18:  # Water year
+                        self.TimeSeriesData[j-1][0] = str(int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + j + start_year - 3)
+                    else:
+                        self.TimeSeriesData[j-1][0] = str(int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + start_year + j - 2)
+            
+            if any_missing:
+                print("Warning - some of the data were missing and will not be plotted.")
+            
+            return True
+    
+        except Exception as e:
+            print(f"Error in GeneratePrecipAnnualMax: {str(e)}")
+            self.Mini_Reset()
+            return False
+
+    def LongTermStats(self):
+        try:
+            # Initialize variables
+            total_to_read_in = (datetime.strptime(self.FSDate, "%d/%m/%Y") - 
+                            datetime.strptime(self.global_start_date, "%d/%m/%Y")).days
+            
+            if total_to_read_in > 0:
+                # Show progress bar
+                self.progress_bar.setVisible(True)
+                self.progress_bar.setValue(0)
+                self.progress_bar.setMaximum(100)
+            
+            # Initialize long term percentile array to store percentiles for each file
+            long_term_percentile = [self.global_missing_code] * 6  # [1-5]
+            
+            # Set current date to the global start date
+            current_day = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").day)
+            current_month = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").month)
+            current_year = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").year)
+            total_numbers = 0
+            
+            # Set cursor to hourglass
+            self.setCursor(Qt.WaitCursor)
+            
+            # Skip unwanted data at the start of the file
+            date_start = datetime(current_year, current_month, current_day)
+            date_target = datetime.strptime(self.FSDate, "%d/%m/%Y")
+            
+            # Loop until we reach the start date for analysis
+            while date_start <= date_target:
+                # Check if user wants to exit
+                if self.ExitAnalysis():
+                    self.Mini_Reset()
+                    return False
+                
+                # Skip data from all files
+                for i in range(2, self.total_time_series_files + 2):
+                    # Skip a line from each file
+                    # (Actual file reading would be implemented here)
+                    pass
+                
+                total_numbers += 1
+                self.IncreaseDate()
+                date_start = datetime(current_year, current_month, current_day)
+                
+                # Update progress bar
+                progress_value = int((total_numbers / total_to_read_in) * 100)
+                self.progress_bar.setValue(progress_value)
+            
+            # Now read in all data to calculate long-term percentiles
+            total_numbers = 0
+            total_to_read_in = (datetime.strptime(self.FEdate, "%d/%m/%Y") - 
+                            datetime.strptime(self.FSDate, "%d/%m/%Y")).days + 1
+            
+            self.progress_bar.setVisible(True)
+            self.progress_bar.setValue(0)
+            self.progress_bar.setMaximum(100)
+            
+            # Reset current date to start date for analysis
+            current_day = int(datetime.strptime(self.FSDate, "%d/%m/%Y").day)
+            current_month = int(datetime.strptime(self.FSDate, "%d/%m/%Y").month)
+            current_year = int(datetime.strptime(self.FSDate, "%d/%m/%Y").year)
+            
+            # Initialize count array - tracks valid data for each file
+            count = [0] * 6
+            
+            # Read all data to calculate long-term percentile
+            date_current = datetime(current_year, current_month, current_day)
+            date_end = datetime.strptime(self.FEdate, "%d/%m/%Y")
+            
+            while date_current <= date_end:
+                # Check if user wants to exit
+                if self.ExitAnalysis():
+                    self.Mini_Reset()
+                    return False
+                
+                # Read data for the current day
+                total_numbers += 1
+                
+                for i in range(2, self.total_time_series_files + 2):
+                    # Read value from file
+                    value_in = 0  # Placeholder - would be actual file data
+                    
+                    if value_in != self.global_missing_code and value_in >= self.thresh:
+                        count[i-1] += 1
+                        self.periodArray[i-1][count[i-1]] = value_in
+                
+                # Increase date for next iteration
+                self.IncreaseDate()
+                date_current = datetime(current_year, current_month, current_day)
+                
+                # Update progress bar
+                progress_value = int((total_numbers / total_to_read_in) * 100)
+                self.progress_bar.setValue(progress_value)
+            
+            # Get the correct percentile value based on selected statistic
+            if self.statCheckboxes[22].isChecked():  # pfl90 selected
+                ptile = self.pfl90_percentile
+            else:  # pnl90 selected
+                ptile = self.pnl90_percentile
+            
+            # Calculate long-term percentiles for each file
+            for i in range(1, self.total_time_series_files + 1):
+                long_term_percentile[i] = self.PercentilePeriodArray(i, count[i], ptile)
+            
+            # Close and reopen files to process monthly/seasonal data
+            # In practice, this might be handled differently in Python
+            
+            # Skip unwanted data at the start of the file again for second pass
+            current_day = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").day)
+            current_month = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").month)
+            current_year = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").year)
+            total_numbers = 0
+            
+            date_start = datetime(current_year, current_month, current_day)
+            date_target = datetime.strptime(self.FSDate, "%d/%m/%Y")
+            
+            # Loop until we reach the start date for analysis (second pass)
+            while date_start <= date_target:
+                # Skip data
+                total_numbers += 1
+                self.IncreaseDate()
+                date_start = datetime(current_year, current_month, current_day)
+            
+            # Now read in data for period calculations
+            total_numbers = 0
+            total_to_read_in = (datetime.strptime(self.FEdate, "%d/%m/%Y") - 
+                            datetime.strptime(self.FSDate, "%d/%m/%Y")).days + 1
+            
+            self.progress_bar.setVisible(True)
+            self.progress_bar.setValue(0)
+            self.progress_bar.setMaximum(100)
+            
+            # Reset current date to start date for second pass
+            current_day = int(datetime.strptime(self.FSDate, "%d/%m/%Y").day)
+            current_month = int(datetime.strptime(self.FSDate, "%d/%m/%Y").month)
+            current_year = int(datetime.strptime(self.FSDate, "%d/%m/%Y").year)
+            current_season = self.GetSeason(current_month)
+            current_water_year = self.GetWaterYear(current_month, current_year)
+            
+            # Arrays for tracking statistics
+            rainfall_above_percentile = [0] * 6
+            total_rainfall_in_period = [0] * 6
+            count_of_events_above_percentile = [0] * 6
+            count = [0] * 6
+            
+            this_month = current_month
+            this_year = current_year
+            this_season = current_season
+            this_water_year = current_water_year
+            
+            year_index = 1
+            
+            # Read data for period calculations (month/season)
+            date_current = datetime(current_year, current_month, current_day)
+            date_end = datetime.strptime(self.FEdate, "%d/%m/%Y")
+            
+            while date_current <= date_end:
+                # Check if user wants to exit
+                if self.ExitAnalysis():
+                    self.Mini_Reset()
+                    return False
+                
+                # Check if we've reached the end of the selected period
+                if self.FinishedCurrentPeriod():
+                    year_index = this_year - int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + 1
+                    
+                    # Only calculate if this period is the one selected by user
+                    if (this_month == self.DatesCombo.currentIndex() or 
+                        (this_season + 12) == self.DatesCombo.currentIndex()):
+                        
+                        for i in range(1, self.total_time_series_files + 1):
+                            if count[i] == 0:  # No valid data
+                                self.LongTermResults[i-1][year_index] = self.global_missing_code
+                            else:
+                                if self.statCheckboxes[22].isChecked():  # pfl90 selected
+                                    # Calculate percentage of rainfall from events above long-term percentile
+                                    self.LongTermResults[i-1][year_index] = (rainfall_above_percentile[i] / 
+                                                                        total_rainfall_in_period[i]) * 100
+                                else:  # pnl90 selected
+                                    # Count of events above long-term percentile
+                                    self.LongTermResults[i-1][year_index] = count_of_events_above_percentile[i]
+                    
+                    # Reset counters for next period
+                    rainfall_above_percentile = [0] * 6
+                    total_rainfall_in_period = [0] * 6
+                    count_of_events_above_percentile = [0] * 6
+                    count = [0] * 6
+                
+                # Read data for the current day
+                total_numbers += 1
+                
+                for i in range(2, self.total_time_series_files + 2):
+                    # Read value from file
+                    value_in = 0  # Placeholder - would be actual file data
+                    
+                    if value_in != self.global_missing_code and value_in >= self.thresh:
+                        count[i-1] += 1
+                        total_rainfall_in_period[i-1] += value_in
+                        
+                        if value_in > long_term_percentile[i-1]:
+                            count_of_events_above_percentile[i-1] += 1
+                            rainfall_above_percentile[i-1] += value_in
+                
+                # Save current period values
+                this_month = current_month
+                this_year = current_year
+                this_season = current_season
+                this_water_year = current_water_year
+                
+                # Increase date for next iteration
+                self.IncreaseDate()
+                date_current = datetime(current_year, current_month, current_day)
+                
+                # Update progress bar
+                progress_value = int((total_numbers / total_to_read_in) * 100)
+                self.progress_bar.setValue(progress_value)
+            
+            # Process the last period's data
+            year_index = this_year - int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + 1
+            
+            if (this_month == self.DatesCombo.currentIndex() or 
+                (this_season + 12) == self.DatesCombo.currentIndex()):
+                
+                for i in range(1, self.total_time_series_files + 1):
+                    if count[i] == 0:  # No valid data
+                        self.LongTermResults[i-1][year_index] = self.global_missing_code
+                    else:
+                        if self.statCheckboxes[22].isChecked():  # pfl90 selected
+                            # Calculate percentage of rainfall from events above long-term percentile
+                            self.LongTermResults[i-1][year_index] = (rainfall_above_percentile[i] / 
+                                                                    total_rainfall_in_period[i]) * 100
+                        else:  # pnl90 selected
+                            # Count of events above long-term percentile
+                            self.LongTermResults[i-1][year_index] = count_of_events_above_percentile[i]
+            
+            # Determine start and end years for output
+            start_year = 1
+            end_year = year_index
+            
+            # Adjust start and end years based on selected period
+            if self.DatesCombo.currentIndex() >= 1 and self.DatesCombo.currentIndex() <= 12:  # Month
+                if self.DatesCombo.currentIndex() < int(datetime.strptime(self.FSDate, "%d/%m/%Y").month):
+                    start_year = 2
+                if self.DatesCombo.currentIndex() > int(datetime.strptime(self.FEdate, "%d/%m/%Y").month):
+                    end_year -= 1
+            elif self.DatesCombo.currentIndex() >= 13 and self.DatesCombo.currentIndex() <= 16:  # Season
+                selected_season = self.DatesCombo.currentIndex() - 12
+                if selected_season < self.GetSeason(int(datetime.strptime(self.FSDate, "%d/%m/%Y").month)):
+                    start_year = 2
+                if (int(datetime.strptime(self.FEdate, "%d/%m/%Y").month) != 12 and 
+                    selected_season > self.GetSeason(int(datetime.strptime(self.FEdate, "%d/%m/%Y").month))):
+                    end_year -= 1
+            
+            # Prepare data for plotting
+            self.TimeSeriesLength = end_year - start_year + 1
+            # Create and initialize the TimeSeriesData array
+            self.TimeSeriesData = [[0 for _ in range(self.total_time_series_files + 1)] 
+                                for _ in range(self.TimeSeriesLength)]
+            
+            any_missing = False
+            
+            for i in range(1, self.total_time_series_files + 1):
+                for j in range(1, self.TimeSeriesLength + 1):
+                    if self.LongTermResults[i-1][j+start_year-1] == self.global_missing_code:
+                        self.TimeSeriesData[j-1][i] = None  # Empty value
+                        any_missing = True
+                    else:
+                        self.TimeSeriesData[j-1][i] = self.LongTermResults[i-1][j+start_year-1]
+                    
+                    if self.DatesCombo.currentIndex() == 18:  # Water year
+                        self.TimeSeriesData[j-1][0] = str(int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + j + start_year - 3)
+                    else:
+                        self.TimeSeriesData[j-1][0] = str(int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + start_year + j - 2)
+            
+            if any_missing:
+                print("Warning - some of the data were missing and will not be plotted.")
+            
+            # Reset cursor
+            self.setCursor(Qt.ArrowCursor)
+            
+            return True
+    
+        except Exception as e:
+            print(f"Error in LongTermStats: {str(e)}")
+            self.Mini_Reset()
+            return False
     
     #Support Functions
 
@@ -934,7 +2891,6 @@ class ContentWidget(QWidget):
 
     def SaveResults(self, file_no):
         try:
-            
             if not self.save_root:
                 print("No save file selected")
                 return
@@ -943,17 +2899,62 @@ class ContentWidget(QWidget):
                 writer = csv.writer(csv_file)
                 
                 # Handle different saving modes based on selected options
-                if self.statCheckboxes[10].isChecked():  # SPI chosen
+                if self.statCheckboxes[4].isChecked():  # SPI chosen
                     # Write header row with file names
                     header = [self.AllFilesList[i] for i in range(self.total_time_series_files)]
                     writer.writerow(header)
                     
                     # Write data for each month
                     for j in range(self.TotalMonths):
-                        row = [self.RunningMonths[i][j][5] for i in range(1, self.total_time_series_files + 1)]
+                        row = [self.RunningMonths[i][j][4] for i in range(1, self.total_time_series_files + 1)]
                         writer.writerow(row)
                         
-                elif self.statCheckboxes[3].isChecked():  # Winter/summer ratio
+                elif self.statCheckboxes[14].isChecked():  # % precip > annual percentile
+                    # Write header row
+                    header = []
+                    for i in range(self.total_time_series_files):
+                        header.extend([self.AllFilesList[i], "%Precip>Annual Percentile"])
+                    writer.writerow(header)
+                    
+                    # Write data for each year
+                    for j in range(self.StartYear, self.EndYear + 1):
+                        row = []
+                        for i in range(1, self.total_time_series_files + 1):
+                            row.extend([int(datetime.strptime(self.global_start_date, "%d/%m/%Y").year) + j - 1, 
+                                    self.FractionResult[i-1][j-1]])
+                        writer.writerow(row)
+                
+                elif self.statCheckboxes[22].isChecked():  # pfl90 statistic
+                    # Write header row
+                    header = []
+                    for i in range(self.total_time_series_files):
+                        header.extend([self.AllFilesList[i], "%Total Precip from events>long-term percentile"])
+                    writer.writerow(header)
+                    
+                    # Write data for each year
+                    for j in range(self.StartYear, self.EndYear + 1):
+                        row = []
+                        for i in range(1, self.total_time_series_files + 1):
+                            row.extend([int(datetime.strptime(self.global_start_date, "%d/%m/%Y").year) + j - 1, 
+                                    self.LongTermResults[i-1][j-1]])
+                        writer.writerow(row)
+                
+                elif self.statCheckboxes[23].isChecked():  # pnl90 statistic
+                    # Write header row
+                    header = []
+                    for i in range(self.total_time_series_files):
+                        header.extend([self.AllFilesList[i], "No events>long-term percentile"])
+                    writer.writerow(header)
+                    
+                    # Write data for each year
+                    for j in range(self.StartYear, self.EndYear + 1):
+                        row = []
+                        for i in range(1, self.total_time_series_files + 1):
+                            row.extend([int(datetime.strptime(self.global_start_date, "%d/%m/%Y").year) + j - 1, 
+                                    self.LongTermResults[i-1][j-1]])
+                        writer.writerow(row)
+                
+                elif self.statCheckboxes[6].isChecked():  # Winter/summer ratio
                     # Write header row
                     header = []
                     for i in range(self.total_time_series_files):
@@ -975,10 +2976,69 @@ class ContentWidget(QWidget):
                                 row.extend([start_year + j - 1, ratio])
                         writer.writerow(row)
                 
-                # More conditional blocks for other statistics would go here
-                
+                else:  # Handle other statistics
+                    # Define season names
+                    season_names = ["", "Winter", "Spring", "Summer", "Autumn"]
+                    
+                    # Write header row
+                    header = []
+                    for i in range(self.total_time_series_files):
+                        if not self.statCheckboxes[6].isChecked():  # Not winter/summer ratio
+                            header.extend([self.AllFilesList[i], "Month/Season/Year", "Sum", "Max", "Percentile", 
+                                        "Mean", "PDS", "POT", "Nth Largest", "Largest N day total", 
+                                        "Max dry spell", "Max wet spell", "Mean dry spell", "Mean wet spell", 
+                                        "Median dry spell", "Median wet spell", "SD dry spell", "SD wet spell", 
+                                        "Mean dry day persistence", "Mean wet day persistence", "Spell length correlation"])
+                    writer.writerow(header)
+                    
+                    # Write data based on selected period
+                    start_year = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").year)
+                    for j in range(self.StartYear, self.EndYear + 1):
+                        if self.DatesCombo.currentIndex() >= 1 and self.DatesCombo.currentIndex() <= 12:  # Month selected
+                            k = self.DatesCombo.currentIndex()
+                            row = []
+                            for i in range(1, self.total_time_series_files + 1):
+                                stats = [start_year + j - 1, k]
+                                # Add all statistics in order
+                                for stat_idx in range(1, 22):  # 21 different statistics
+                                    stats.append(self.summaryArray[i-1][j-1][k-1][stat_idx-1])
+                                row.extend(stats)
+                            writer.writerow(row)
+                        
+                        elif self.DatesCombo.currentIndex() >= 13 and self.DatesCombo.currentIndex() <= 16:  # Season selected
+                            k = self.DatesCombo.currentIndex()
+                            row = []
+                            for i in range(1, self.total_time_series_files + 1):
+                                stats = [start_year + j - 1, season_names[k-12]]
+                                # Add all statistics in order
+                                for stat_idx in range(1, 22):  # 21 different statistics
+                                    stats.append(self.summaryArray[i-1][j-1][k-1][stat_idx-1])
+                                row.extend(stats)
+                            writer.writerow(row)
+                        
+                        elif self.DatesCombo.currentIndex() == 17:  # Annual selected
+                            row = []
+                            for i in range(1, self.total_time_series_files + 1):
+                                stats = [start_year + j - 1, "Annual"]
+                                # Add all statistics in order
+                                for stat_idx in range(1, 22):  # 21 different statistics
+                                    stats.append(self.summaryArray[i-1][j-1][16][stat_idx-1])  # 17th index is Annual
+                                row.extend(stats)
+                            writer.writerow(row)
+                        
+                        elif self.DatesCombo.currentIndex() == 18:  # Water year selected
+                            skip = 2 if j == 1 and int(datetime.strptime(self.global_start_date, "%d/%m/%Y").month) < 10 else 1
+                            row = []
+                            for i in range(1, self.total_time_series_files + 1):
+                                stats = [start_year + j - skip, "Water Year"]
+                                # Add all statistics in order
+                                for stat_idx in range(1, 22):  # 21 different statistics
+                                    stats.append(self.summaryArray[i-1][j-1][17][stat_idx-1])  # 18th index is Water Year
+                                row.extend(stats)
+                            writer.writerow(row)
+                    
                 print(f"Results saved to {self.save_root}")
-    
+        
         except Exception as e:
             print(f"Error in SaveResults: {str(e)}")
             self.Mini_Reset()

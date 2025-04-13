@@ -47,93 +47,79 @@ def readDailyDataDayByDay(filePath, fsDate, feDate, dataPeriodChoice,
                           applyThreshold, thresholdValue,
                           globalStartDate=globalStartDate,
                           isModelled=False, ensembleIndex=0):
-    """
-    Reads daily data from filePath.
-    Assumes that each line in the file corresponds to one day starting at globalStartDate.
-    Skips values equal to missingValue or those below thresholdValue if applyThreshold is True.
-    Also filters based on dataPeriodChoice.
-    """
+
+    dailyValues = []
+
     try:
         with open(filePath, 'r') as f:
             lines = f.readlines()
     except Exception as e:
         print(f"Error reading {filePath}: {e}")
-        return []
-    
-    dailyValues = []
-    for i, line in enumerate(lines):
-        line = line.rstrip("\n")
-        currentDate = globalStartDate + datetime.timedelta(days=i)
+        return dailyValues
+
+    currentDate = globalStartDate
+
+    for line in lines:
         if currentDate < fsDate:
+            currentDate += datetime.timedelta(days=1)
             continue
         if currentDate > feDate:
             break
-        
-        # For modelled data: support fixed-width extraction (each ensemble occupies 14 characters)
-        if isModelled and len(line) >= (ensembleIndex + 1) * 14:
-            raw = line[ensembleIndex * 14:(ensembleIndex * 14) + 14]
+
+        if isModelled:
+            start_pos = ensembleIndex * 14
+            end_pos = start_pos + 14
+            if len(line) >= end_pos:
+                raw = line[start_pos:end_pos]
+            else:
+                currentDate += datetime.timedelta(days=1)
+                continue  # VB skips short lines entirely for modelled data
         else:
-            raw = line
-        
+            raw = line.strip()
+
         try:
-            val = float(raw.strip())
+            val = float(raw)
         except:
-            continue  # skip non-numeric lines
-        
+            currentDate += datetime.timedelta(days=1)
+            continue  # VB skips lines that don't parse as numbers
+
         if val == missingValue or (applyThreshold and val < thresholdValue):
+            currentDate += datetime.timedelta(days=1)
             continue
-        
+
         if doWeWantThisDatum(currentDate, dataPeriodChoice):
             dailyValues.append((currentDate, val))
-    
+
+        currentDate += datetime.timedelta(days=1)
+
     return dailyValues
 
 def vb_percentile(sorted_data, p):
-    """
-    Computes the p-th percentile in a VB-style 1-indexed linear interpolation.
-    Position = 1 + (p*(n-1))/100, lower index = int(Position)-1.
-    """
     n = len(sorted_data)
     if n == 0:
         return None
-    if p <= 0:
-        return sorted_data[0]
-    if p >= 100:
-        return sorted_data[-1]
-    pos = 1 + (p * (n - 1)) / 100.0  # VB-style: 1-indexed position
-    lower_index = int(pos) - 1  # convert to Python 0-indexed
+    pos = 1 + (p * (n - 1)) / 100.0
+    lower_index = int(pos) - 1
     upper_index = lower_index + 1
+    fraction = pos - int(pos)
     if upper_index >= n:
         return sorted_data[lower_index]
-    fraction = pos - int(pos)
     return sorted_data[lower_index] + fraction * (sorted_data[upper_index] - sorted_data[lower_index])
 
 def computeAnnualMaxSeries(dailyValues, duration):
-    """
-    Groups daily data by year and calculates the Annual Maximum Series (AMS)
-    using a moving sum over N consecutive days.
-    Discrete mapping for window length:
-      - If duration < 1.5, use a 1-day sum.
-      - If 1.5 <= duration <= 2.5, use a 2-day sum.
-      - Otherwise (duration >= 3.0), use a 3-day sum.
-    """
     if duration < 1.5:
         N = 1
     elif duration <= 2.5:
         N = 2
     else:
         N = 3
-
     yearMap = defaultdict(list)
     for dt, val in dailyValues:
         yearMap[dt.year].append(val)
-        
     ams = []
-    for year in sorted(yearMap.keys()):
-        values = yearMap[year]
+    for year, values in yearMap.items():
         if len(values) < N:
             continue
-        # Compute the moving sum over N days.
         movingSums = [sum(values[i:i+N]) for i in range(len(values) - N + 1)]
         ams.append(max(movingSums))
     return ams
@@ -169,12 +155,12 @@ def computeFATableFromFiles(observedFilePath, modelledFilePath, fsDate, feDate,
             tableObs.append((0.0, 0.0, 0.0))
             continue
 
-        if freqModel == "empirical":
+        if freqModel == "Empirical":
             central = np.mean(amsObs)
             sorted_ams = sorted(amsObs)
             lower = vb_percentile(sorted_ams, 2.5)
             upper = vb_percentile(sorted_ams, 97.5)
-        elif freqModel == "gev":
+        elif freqModel == "GEV":
             try:
                 c, loc, scale = genextreme.fit(amsObs)
                 central = genextreme.ppf(1 - 1/dur, c, loc=loc, scale=scale)
@@ -183,7 +169,7 @@ def computeFATableFromFiles(observedFilePath, modelledFilePath, fsDate, feDate,
                 upper = genextreme.ppf(1 - 1/(dur - delta if dur - delta > 1 else dur), c, loc=loc, scale=scale)
             except Exception as e:
                 central = lower = upper = 0.0
-        elif freqModel == "gumbel":
+        elif freqModel == "Gumbel":
             try:
                 loc, scale = gumbel_r.fit(amsObs)
                 central = gumbel_r.ppf(1 - 1/dur, loc=loc, scale=scale)
@@ -192,7 +178,7 @@ def computeFATableFromFiles(observedFilePath, modelledFilePath, fsDate, feDate,
                 upper = gumbel_r.ppf(1 - 1/(dur - delta if dur - delta > 1 else dur), loc=loc, scale=scale)
             except Exception as e:
                 central = lower = upper = 0.0
-        elif freqModel == "stretched":
+        elif freqModel == "Stretched Exponential":
             try:
                 # Using weibull_min to model a stretched exponential:
                 # We force loc=0 if it makes sense for the data.

@@ -225,6 +225,9 @@ class ContentWidget(QWidget):
         statsGroup = QGroupBox("Select Statistics")
         statsLayout = QGridLayout()
 
+        statsLayout.setSpacing(1)
+        statsLayout.setContentsMargins(2, 2, 2, 2)
+
         self.statsOptions = [
             "Sum", "Mean", "Maximum", "Winter/Summer ratio",
             "Maximum dry spell", "Maximum wet spell",
@@ -244,15 +247,28 @@ class ContentWidget(QWidget):
             font.setPointSize(14)  # Set font size to 10 for better readability
             checkbox.setFont(font)
 
+            checkbox.setStyleSheet("""
+            QCheckBox {
+                spacing: 1px;
+                margin-top: 1px;
+                margin-bottom: 1px;
+                }
+            """)
+
+
             if i == 0:  # Set Sum as default checked
                 checkbox.setChecked(True)
                 self.StatOptions[i] = True
 
             checkbox.stateChanged.connect(lambda state, idx=i: self.onStatOptionChanged(state, idx))
             self.statCheckboxes.append(checkbox)
-            statsLayout.addWidget(checkbox, i // 2, i % 2)  # Two columns
+            statsLayout.addWidget(checkbox, i // 3, i % 3)  # Three columns
 
-        # --- Spell Duration Selection (Smaller to Fit) ---
+
+
+
+
+        # --- Spell Duration Selection ---
         spellGroup = QGroupBox("Spell Duration Selection")
         spellLayout = QVBoxLayout()
         self.spellOptions = [
@@ -274,7 +290,11 @@ class ContentWidget(QWidget):
 
         spellGroup.setLayout(spellLayout)
         spellGroup.setFixedHeight(300)  # Reduced height to fit better
-        statsLayout.addWidget(spellGroup, 0, 2, len(self.spellOptions) // 2, 1)
+        stat_rows = (len(self.statsOptions) + 2)/3
+        statsLayout.addWidget(spellGroup, stat_rows, 0, len(self.spellOptions), 3)
+
+
+
 
         # --- Threshold Inputs (Now Fits Properly) ---
         thresholdLayout = QGridLayout()

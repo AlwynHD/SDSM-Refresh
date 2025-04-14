@@ -3,7 +3,57 @@ from PyQt5.QtWidgets import (QApplication, QCheckBox, QPushButton, QComboBox, QF
                              QRadioButton, QGroupBox, QSpinBox, QLineEdit, QDateEdit, QFileDialog)
 from PyQt5.QtCore import Qt
 import sys
+from src.lib.FrequencyAnalysis import IDFTabular
 from src.lib.FrequencyAnalysis.FATabular import *
+import configparser
+from PyQt5.QtCore import QDate
+from datetime import datetime
+
+def convert_value(key, value):
+    """
+    Convert the raw string value from the config into an appropriate Python type.
+    """
+    # Parse dates using their known format
+    if key in ['globalsdate', 'globaledate']:
+        return datetime.strptime(value, "%d/%m/%Y").date()
+    # Convert numeric values
+    elif key == 'yearindicator':
+        return int(value)
+    elif key in ['globalmissingcode']:
+        # You might want these as int or float. Adjust if needed.
+        try:
+            return int(value)
+        except ValueError:
+            return float(value)
+    elif key in ['thresh', 'fixedthreshold']:
+        return float(value)
+    elif key in ['varianceinflation', 'biascorrection']:
+        # Assuming these values should be integers
+        return int(value)
+    # Convert booleans (case insensitive)
+    elif key in ['allowneg', 'randomseed']:
+        return value.lower() in ['true', '1', 'yes']
+    # Convert comma-separated lists. Here we only expect this for 'months'
+    elif key == "months":
+        return [int(x.strip()) for x in value.split(',') if x.strip()]
+    else:
+        # If none of the above applies, return the raw string
+        return value
+
+# Read the settings file
+config = configparser.ConfigParser()
+config.read("src/lib/settings.ini")  # Adjust the path as needed
+
+# Fetch and convert all settings from the 'Settings' section
+settings = {}
+for key, value in config["Settings"].items():
+    settings[key] = convert_value(key, value)
+
+    # Optionally, wrap all values in arrays (lists) if they aren't already
+settingsAsArrays = {
+    key: (val if isinstance(val, list) else [val])
+    for key, val in settings.items()
+}
 
 moduleName = "Frequency Analysis"
 
@@ -64,6 +114,20 @@ class ContentWidget(QWidget):
         self.endDate = QDateEdit()
         analysisLayoutBox.addWidget(self.startDateLabel)
         analysisLayoutBox.addWidget(self.startDate)
+
+        # Extract the first (and only) element from the array for both start and end dates
+        py_start_date = settingsAsArrays["globalsdate"][0]
+        py_end_date = settingsAsArrays["globaledate"][0]
+
+        # Convert Python date objects to QDate objects
+        q_start_date = QDate(py_start_date.year, py_start_date.month, py_start_date.day)
+        q_end_date = QDate(py_end_date.year, py_end_date.month, py_end_date.day)
+
+        # Set the QDate values into your QDate widgets
+        self.startDate.setDate(q_start_date)
+        self.endDate.setDate(q_end_date)
+
+
         analysisLayoutBox.addWidget(self.endDateLabel)
         analysisLayoutBox.addWidget(self.endDate)
         analysisGroupBox.setLayout(analysisLayoutBox)
@@ -213,6 +277,7 @@ class ContentWidget(QWidget):
         self.idfPlotButton = QPushButton("IDF Plot")
         self.idfPlotButton.setStyleSheet("background-color: #dd7973; color: white; font-weight: bold")
         self.idfTabButton = QPushButton("IDF Tabular")
+        self.idfTabButton.clicked.connect(self.idfTabButtonClicked)
         self.idfTabButton.setStyleSheet("background-color: #4681f4; color: white; font-weight: bold")
         self.resetButton = QPushButton(" 🔄 Reset Values")
         self.resetButton.setStyleSheet("background-color: #ED0800; color: white; font-weight: bold;")
@@ -226,21 +291,28 @@ class ContentWidget(QWidget):
         self.setLayout(layout)
     
     def saveResults(self):
-        fileName, _ = QFileDialog.getSaveFileName(self, "Save Results File")
+        # Use the default directory from your configuration (assuming it's in settingsAsArrays)
+        default_dir = settingsAsArrays["defaultdir"][0]
+        fileName, _ = QFileDialog.getSaveFileName(self, "Save Results File", default_dir)
         if fileName:
             self.saveLabel.setText(f"File: {fileName}")
 
     def selectObservedData(self):
-        fileName, _ = QFileDialog.getOpenFileName(self, "Select Observed Data File")
+        # Use the default directory for open dialogs as well
+        default_dir = settingsAsArrays["defaultdir"][0]
+        fileName, _ = QFileDialog.getOpenFileName(self, "Select Observed Data File", default_dir)
         if fileName:
             self.obsDataFile = fileName
             self.obsDataLabel.setText(f"File: {fileName}")
-    
+
     def selectModelledData(self):
-        fileName, _ = QFileDialog.getOpenFileName(self, "Select Modelled Data File")
+        # Same default starting directory is used here
+        default_dir = settingsAsArrays["defaultdir"][0]
+        fileName, _ = QFileDialog.getOpenFileName(self, "Select Modelled Data File", default_dir)
         if fileName:
             self.modDataFile = fileName
             self.modDataLabel.setText(f"File: {fileName}")
+
     
     def faTabButtonClicked(self):
         if not hasattr(self, "obsDataFile") or not hasattr(self, "modDataFile"):
@@ -282,6 +354,71 @@ class ContentWidget(QWidget):
             fitType="Empirical"
         )
         # Optionally, load results into a QTableWidget for GUI display.
+
+    def idfTabButtonClicked(self):
+        # --- Fetch UI inputs ---
+        # Analysis start and end dates.
+        startDateValue = self.startDate.date().toPyDate()
+        endDateValue = self.endDate.date().toPyDate()
+        numDays = (endDateValue - startDateValue).days + 1
+
+        # Threshold from the UI.
+        thresholdUI = self.thresholdInput.value()
+        
+        # Running Sum Length (in days) from the UI.
+        runningSumLength = self.runningSumInput.value()
+        
+        # Determine the parameter estimation method.
+        if self.methodMomentsRadio.isChecked():
+            paramMethod = "Method of Moments"
+        elif self.parameterPowerRadio.isChecked():
+            paramMethod = "Parameter Power Scaling"
+        elif self.parameterLinearRadio.isChecked():
+            paramMethod = "Parameter Linear Scaling"
+        else:
+            paramMethod = "Method of Moments"
+        
+        # Determine the ensemble option.
+        if self.allMembersRadio.isChecked():
+            ensembleOption = "All Members"
+        elif self.ensembleMeanRadio.isChecked():
+            ensembleOption = "Ensemble Mean"
+        elif self.ensembleMemberRadio.isChecked():
+            ensembleOption = f"Ensemble Member: {self.ensembleMemberSpinBox.value()}"
+        elif self.allMeanEnsembleRadio.isChecked():
+            ensembleOption = "All + Mean Ensemble"
+        else:
+            ensembleOption = "Not selected"
+        
+        # Additional settings.
+        dataPeriod = self.dataPeriodCombo.currentText()
+        pdfCategories = self.pdfSpinBox.value()
+        confidence = self.confidenceInput.value()
+        
+        # File information (the UI labels show the file name).
+        observedFileUI = self.obsDataLabel.text()
+        modelledFileUI = self.modDataLabel.text()
+        
+        # --- Print all UI inputs ---
+        print("====== UI Inputs ======")
+        print("Analysis Start Date       :", startDateValue)
+        print("Analysis End Date         :", endDateValue)
+        print("Number of Days in Period  :", numDays)
+        print("Threshold (UI)            :", thresholdUI)
+        print("Running Sum Length (Days) :", runningSumLength)
+        print("Parameter Estimation Method:", paramMethod)
+        print("Ensemble Option           :", ensembleOption)
+        print("Data Period               :", dataPeriod)
+        print("PDF Categories            :", pdfCategories)
+        print("Confidence (%)            :", confidence)
+        print("Observed Data File (UI)   :", observedFileUI)
+        print("Modelled Data File (UI)   :", modelledFileUI)
+        
+        for key, value in settingsAsArrays.items():
+            print(f"{key} ({type(value[0]).__name__}): {value}")
+
+
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

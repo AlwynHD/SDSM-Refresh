@@ -325,9 +325,17 @@ class ContentWidget(QWidget):
         threshValue = self.thresholdInput.value()
         dataPeriodChoice = self.dataPeriodCombo.currentText()
 
-        if not self.empiricalRadio.isChecked():
-            print("Please select the 'Empirical' option for this analysis.")
-            return
+        # Determine the frequency model based on the selected radio button in faLayout
+        if self.empiricalRadio.isChecked():
+            freqModel = "Empirical"
+        elif self.gevRadio.isChecked():
+            freqModel = "GEV"
+        elif self.gumbelRadio.isChecked():
+            freqModel = "Gumbel"
+        elif self.stretchedExpRadio.isChecked():
+            freqModel = "Stretched Exponential"
+        else:
+            freqModel = "Empirical"  # Fallback default
 
         # Use the durations as given in the VB example
         durations = [1.0, 1.1, 1.2, 1.3, 1.5, 2.0, 2.5, 3.0, 3.5]
@@ -341,7 +349,8 @@ class ContentWidget(QWidget):
             applyThreshold=applyThresh,
             thresholdValue=threshValue,
             durations=durations,
-            ensembleIndex=0
+            ensembleIndex=0,
+            freqModel=freqModel
         )
 
         print("FA Tabular Results with 2.5%ile and 97.5%ile intervals:")
@@ -351,7 +360,7 @@ class ContentWidget(QWidget):
             obsFileName=self.obsDataFile,
             modFileName=self.modDataFile,
             seasonText=dataPeriodChoice,
-            fitType="Empirical"
+            fitType=freqModel
         )
         # Optionally, load results into a QTableWidget for GUI display.
 

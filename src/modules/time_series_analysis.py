@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QFrame, QComboBox, 
     QLineEdit, QListWidget, QFileDialog, QCheckBox, QRadioButton, QButtonGroup, 
-    QGridLayout, QGroupBox, QSizePolicy, QMessageBox, QProgressBar
+    QGridLayout, QGroupBox, QSizePolicy, QMessageBox, QProgressBar, QSpacerItem
 )
 from PyQt5.QtCore import QUrl
 from PyQt5.QtGui import QDesktopServices
@@ -128,19 +128,39 @@ class ContentWidget(QWidget):
         
         # --- Main Layout ---
         mainLayout = QVBoxLayout()
-        mainLayout.setContentsMargins(15, 15, 15, 15)  # Reduced margins to save space
-        mainLayout.setSpacing(12)  # Adjusted spacing for better layout flow
+        mainLayout.setContentsMargins(15, 15, 15, 15)
+        mainLayout.setSpacing(12)
         self.setLayout(mainLayout)
 
-        #-- top section --
-        topLayout = QHBoxLayout()
+        # --- Create a horizontal layout for the main content ---
+        mainContentLayout = QHBoxLayout()
+        mainLayout.addLayout(mainContentLayout)
 
+        # --- Left Side: File Selection Section ---
+        leftSideLayout = QVBoxLayout()
+        leftSideLayout.setSpacing(10)
 
-        # --- Time Period Selection (Smaller) ---
+        # North File Selection
+        self.fileSelectionLeft = self.CreateFileSelectionGroup("North File Selection")
+        leftSideLayout.addWidget(self.fileSelectionLeft)
+
+        # South File Selection
+        self.fileSelectionRight = self.CreateFileSelectionGroup("South File Selection")
+        leftSideLayout.addWidget(self.fileSelectionRight)
+
+        # Add left side to main content layout
+        mainContentLayout.addLayout(leftSideLayout)
+
+        # --- Right Side: Time Period, Data Range, Save Results ---
+        rightSideLayout = QVBoxLayout()
+        rightSideLayout.setSpacing(30)
+
+        # Time Period Selection
         timePeriodGroup = QGroupBox("Time Period")
         timePeriodLayout = QHBoxLayout()
-        
-        # Date selection dropdown - corresponds to DatesCombo in VB
+
+        timePeriodLayout.setContentsMargins(10,15, 10, 15)
+
         self.DatesCombo = QComboBox()
         self.DatesCombo.addItems([
             "Raw Data", 
@@ -148,64 +168,70 @@ class ContentWidget(QWidget):
             "July", "August", "September", "October", "November", "December",
             "Winter", "Spring", "Summer", "Autumn", "Annual", "Water Year"
         ])
-        self.DatesCombo.setFixedHeight(25)
+
+        self.DatesCombo.setFixedHeight(30)
+
         timePeriodLayout.addWidget(self.DatesCombo, alignment=Qt.AlignCenter)
         timePeriodGroup.setLayout(timePeriodLayout)
-        mainLayout.addWidget(timePeriodGroup, alignment=Qt.AlignCenter)
+        rightSideLayout.addWidget(timePeriodGroup)
 
-        # spacer to push buttons to right
-        topLayout.addStretch(1)
-        
+        rightSideLayout.addSpacing(15)
 
-        # --- File Selection Section (Side-by-Side) ---
-        fileSelectionLayout = QHBoxLayout()
-
-        # Left File Selection (Reduced height)
-        self.fileSelectionLeft = self.CreateFileSelectionGroup("File Selection")
-        fileSelectionLayout.addWidget(self.fileSelectionLeft)
-
-        # Right File Selection
-        self.fileSelectionRight = self.CreateFileSelectionGroup("File Selection")
-        fileSelectionLayout.addWidget(self.fileSelectionRight)
-
-        mainLayout.addLayout(fileSelectionLayout)
-
-        # --- Bottom Section (Data Range + Save Results) ---
-        bottomLayout = QHBoxLayout()
-
-        # Data Range Box (Smaller Height)
-        dataGroup = QGroupBox("Data")
+        # Date Range Box
+        dataGroup = QGroupBox("Date")
         dataLayout = QGridLayout()
+
+        dataLayout.setSpacing(12)
+        dataLayout.setContentsMargins(10, 15, 10, 15)
+
+        startLabel = QLabel("Start:")
+        startLabel.setFont(QFont("Arial", 12))
+        startLabel.setFixedWidth(50)
+        startLabel.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+
+        endLabel = QLabel("End:")
+        endLabel.setFont(QFont("Arial", 12)) 
+        startLabel.setFixedWidth(50)
+        startLabel.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
         self.startDateInput = QLineEdit()
         self.startDateInput.setPlaceholderText("01/01/1948")
-        self.startDateInput.setFixedHeight(25)
+        self.startDateInput.setFixedHeight(30)
 
         self.endDateInput = QLineEdit()
         self.endDateInput.setPlaceholderText("31/12/2017")
-        self.endDateInput.setFixedHeight(25)
+        self.endDateInput.setFixedHeight(30)
 
-        dataLayout.addWidget(QLabel("Start:"), 0, 0)
+        dataLayout.addWidget(startLabel, 0, 0, Qt.AlignRight)
         dataLayout.addWidget(self.startDateInput, 0, 1)
-        dataLayout.addWidget(QLabel("End:"), 1, 0)
-        dataLayout.addWidget(self.endDateInput, 1, 1)
+
+        vSpacer = QSpacerItem(20, 10, QSizePolicy.Minimum, QSizePolicy.Fixed)
+        dataLayout.addItem(vSpacer, 1, 0, 1, 2)
+
+        dataLayout.addWidget(endLabel, 2, 0, Qt.AlignRight)
+        dataLayout.addWidget(self.endDateInput, 2, 1)
 
         dataGroup.setLayout(dataLayout)
-        dataGroup.setFixedHeight(80)  # Reduced height to fit better
-        bottomLayout.addWidget(dataGroup)
+        dataGroup.setFixedHeight(140)
+        rightSideLayout.addWidget(dataGroup)
 
-        # Save Results Box (Aligned with Data Section)
+        # Save Results Box
         saveGroup = QGroupBox("Save Results To")
         saveLayout = QVBoxLayout()
+        saveLayout.setContentsMargins(5, 5, 5, 5)
+        saveLayout.setSpacing(5)
 
         saveButtonsLayout = QHBoxLayout()
+
         self.selectSaveButton = QPushButton("📂 Select")
+        self.selectSaveButton.font = QFont("Arial", 12)
         self.selectSaveButton.clicked.connect(self.SelectSaveFile)
-        self.selectSaveButton.setFixedHeight(30)
+        self.selectSaveButton.setFixedHeight(32)
 
         self.clearSaveButton = QPushButton("❌ Clear")
+        self.clearSaveButton.font = QFont("Arial", 12)
         self.clearSaveButton.clicked.connect(self.ClearSaveFile)
-        self.clearSaveButton.setFixedHeight(30)
+        self.clearSaveButton.setFixedHeight(32)
 
         saveButtonsLayout.addWidget(self.selectSaveButton)
         saveButtonsLayout.addWidget(self.clearSaveButton)
@@ -215,13 +241,20 @@ class ContentWidget(QWidget):
 
         saveLayout.addLayout(saveButtonsLayout)
         saveLayout.addWidget(self.saveFileLabel)
-
         saveGroup.setLayout(saveLayout)
-        bottomLayout.addWidget(saveGroup)
+        rightSideLayout.addWidget(saveGroup)
 
-        mainLayout.addLayout(bottomLayout)
+        # Add a stretch to push everything up
+        rightSideLayout.addStretch(1)
 
-        # --- Statistics Selection (Better Organized) ---
+        # Add right side to main content layout
+        mainContentLayout.addLayout(rightSideLayout)
+
+        # Set stretch factors to make left side take 3/4 of the width
+        mainContentLayout.setStretchFactor(leftSideLayout, 3)
+        mainContentLayout.setStretchFactor(rightSideLayout, 1)
+
+        # --- Statistics Selection ---
         statsGroup = QGroupBox("Select Statistics")
         statsLayout = QGridLayout()
 
@@ -255,7 +288,6 @@ class ContentWidget(QWidget):
                 }
             """)
 
-
             if i == 0:  # Set Sum as default checked
                 checkbox.setChecked(True)
                 self.StatOptions[i] = True
@@ -264,13 +296,10 @@ class ContentWidget(QWidget):
             self.statCheckboxes.append(checkbox)
             statsLayout.addWidget(checkbox, i // 3, i % 3)  # Three columns
 
-
-
-
-
         # --- Spell Duration Selection ---
         spellGroup = QGroupBox("Spell Duration Selection")
         spellLayout = QVBoxLayout()
+
         self.spellOptions = [
             "Mean dry spell", "Mean wet spell",
             "Median dry spell", "Median wet spell",
@@ -282,21 +311,19 @@ class ContentWidget(QWidget):
             radio = QRadioButton(option)
 
             font = QFont()
-            font.setPointSize(14)  # Set font size to 10 for better readability
+            font.setPointSize(14)  
             radio.setFont(font)
 
             self.spellGroup.addButton(radio)
             spellLayout.addWidget(radio)
 
         spellGroup.setLayout(spellLayout)
-        spellGroup.setFixedHeight(300)  # Reduced height to fit better
+        spellGroup.setFixedHeight(300) 
+
         stat_rows = (len(self.statsOptions) + 2)/3
-        statsLayout.addWidget(spellGroup, stat_rows, 0, len(self.spellOptions), 3)
+        statsLayout.addWidget(spellGroup, 0, 3, stat_rows, 1)
 
-
-
-
-        # --- Threshold Inputs (Now Fits Properly) ---
+        # --- Threshold Inputs ---
         thresholdLayout = QGridLayout()
 
         self.percentileInput = QLineEdit()
@@ -325,11 +352,12 @@ class ContentWidget(QWidget):
         thresholdLayout.addWidget(QLabel("No. of events > long-term %ile:"), 2, 0)
         thresholdLayout.addWidget(self.numEventsInput, 2, 1)
 
-        statsLayout.addLayout(thresholdLayout, 6, 0, 1, 2)
+        statsLayout.addLayout(thresholdLayout, stat_rows, 0, 3, 3)
+
         statsGroup.setLayout(statsLayout)
         mainLayout.addWidget(statsGroup)
 
-        # --- Action Buttons (Smaller & Aligned) ---
+        # --- Action Buttons ---
         #buttonLayout = QHBoxLayout()
         BottomButtonLayout = QHBoxLayout()
 

@@ -11,16 +11,51 @@ from datetime import datetime
 
 def convert_value(key, value):
     """
-    Convert the raw string value from the config into an appropriate Python type.
+    Convert a raw string value from the configuration file into an appropriate Python type.
+
+    The conversion is determined by the key:
+      - globalsdate, globaledate: Parse the date string (expected format "DD/MM/YYYY")
+                                  and return a date object.
+      - yearindicator: Converts the value to an integer.
+      - globalmissingcode: Converts to int (or to float if int conversion fails).
+      - thresh, fixedthreshold: Converts the value to a float.
+      - varianceinflation, biascorrection: Converts the value to an int.
+      - allowneg, randomseed: Converts the value to a boolean (interprets the value
+                              as True if it case-insensitively matches 'true', '1', or 'yes').
+      - months: Converts a comma-separated string into a list of integers.
+      - All other keys: Returns the value as the raw string.
+
+    Example expected keys and default values:
+      - yearindicator (int):         [366]
+      - globalsdate (date):          [datetime.date(1948, 1, 1)]
+      - globaledate (date):          [datetime.date(2015, 12, 31)]
+      - allowneg (bool):             [False]
+      - randomseed (bool):           [True]
+      - thresh (float):              [5.0]
+      - globalmissingcode (int):     [-999]
+      - defaultdir (str):            ['src/lib/data']
+      - varianceinflation (int):     [12]
+      - biascorrection (int):        [1]
+      - fixedthreshold (float):      [0.5]
+      - modeltransformation (str):   ['Natural log']
+      - optimizationalgorithm (str): ['Dual Simplex']
+      - criteriatype (str):          ['AIC Criteria']
+      - stepwiseregression (str):    ['True']
+      - conditionalselection (str):  ['Fixed Threshold']
+      - months (list[int]):          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+    Args:
+        key (str): The configuration key.
+        value (str): The raw string value from the configuration file.
+
+    Returns:
+        The converted value in the appropriate Python type.
     """
-    # Parse dates using their known format
     if key in ['globalsdate', 'globaledate']:
         return datetime.strptime(value, "%d/%m/%Y").date()
-    # Convert numeric values
     elif key == 'yearindicator':
         return int(value)
     elif key in ['globalmissingcode']:
-        # You might want these as int or float. Adjust if needed.
         try:
             return int(value)
         except ValueError:
@@ -28,32 +63,49 @@ def convert_value(key, value):
     elif key in ['thresh', 'fixedthreshold']:
         return float(value)
     elif key in ['varianceinflation', 'biascorrection']:
-        # Assuming these values should be integers
         return int(value)
-    # Convert booleans (case insensitive)
     elif key in ['allowneg', 'randomseed']:
         return value.lower() in ['true', '1', 'yes']
-    # Convert comma-separated lists. Here we only expect this for 'months'
     elif key == "months":
         return [int(x.strip()) for x in value.split(',') if x.strip()]
     else:
-        # If none of the above applies, return the raw string
         return value
 
-# Read the settings file
-config = configparser.ConfigParser()
-config.read("src/lib/settings.ini")  # Adjust the path as needed
+def load_settings(config_path="src/lib/settings.ini"):
+    """
+    Load and convert settings from the configuration file.
 
-# Fetch and convert all settings from the 'Settings' section
-settings = {}
-for key, value in config["Settings"].items():
-    settings[key] = convert_value(key, value)
+    This function reads the 'Settings' section from the specified .ini file,
+    converts each value using the `convert_value` function, and then ensures that
+    each setting's value is wrapped in a list (if it is not already one) to maintain
+    a uniform data structure for further processing.
 
-    # Optionally, wrap all values in arrays (lists) if they aren't already
-settingsAsArrays = {
-    key: (val if isinstance(val, list) else [val])
-    for key, val in settings.items()
-}
+    Args:
+        config_path (str): The file path to the configuration file.
+
+    Returns:
+        tuple: A tuple containing two dictionaries:
+            - settings: A dictionary with the settings converted to their appropriate types.
+            - settingsAsArrays: A dictionary with each setting's value ensured to be a list.
+    """
+    config = configparser.ConfigParser()
+    config.read(config_path)
+
+    # Fetch and convert all settings from the 'Settings' section.
+    settings = {}
+    for key, value in config["Settings"].items():
+        settings[key] = convert_value(key, value)
+
+    # Wrap all values in arrays (lists) if they aren't already.
+    settingsAsArrays = {
+        key: (val if isinstance(val, list) else [val])
+        for key, val in settings.items()
+    }
+
+    return settings, settingsAsArrays
+
+# Integrate the settings into your existing code without changing variable names.
+settings, settingsAsArrays = load_settings()
 
 moduleName = "Frequency Analysis"
 

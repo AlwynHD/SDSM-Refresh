@@ -2257,39 +2257,54 @@ class ContentWidget(QWidget):
                 self.progress_bar.setVisible(True)
                 self.progress_bar.setValue(0)
                 self.progress_bar.setMaximum(100)
+                self.progress_bar.setFormat("Skipping Unnecessary Annual Data")
             
             # Initialize year percentile array to store annual percentiles for each file and year
             year_percentile = [[self.global_missing_code for _ in range(200)] for _ in range(6)]  # [1-5][1-200]
             
             # Set current date to the global start date
-            current_day = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").day)
-            current_month = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").month)
-            current_year = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").year)
+            self.CurrentDay = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").day)
+            self.CurrentMonth = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").month)
+            self.CurrentYear = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").year)
+            self.CurrentSeason = self.GetSeason(self.CurrentMonth)
+            self.CurrentWaterYear = self.GetWaterYear(self.CurrentMonth, self.CurrentYear)
             total_numbers = 0
             
             # Skip unwanted data at the start of the file
-            date_start = datetime(current_year, current_month, current_day)
+            date_start = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
             date_target = datetime.strptime(self.FSDate, "%d/%m/%Y")
             
             # Loop until we reach the start date for analysis
-            while date_start <= date_target:
+            while date_start < date_target:
                 # Check if user wants to exit
                 if self.ExitAnalysis():
                     self.Mini_Reset()
                     return False
                 
                 # Skip data from all files
-                for i in range(2, self.total_time_series_files + 2):
-                    # Skip a line from each file
-                    # (Actual file reading would be implemented here)
-                    pass
+                for i, file in enumerate(self.open_files):
+                    try:
+                        if self.EnsembleFile[i]:
+                            # Handle multi-column file (ensemble)
+                            line = file.readline()
+                            if not line:  # EOF
+                                break
+                        else:
+                            # Handle single-column file
+                            line = file.readline()
+                            if not line:  # EOF
+                                break
+                    except Exception as e:
+                        print(f"Error reading file {i}: {str(e)}")
+                        self.Mini_Reset()
+                        return False
                 
                 total_numbers += 1
                 self.IncreaseDate()
-                date_start = datetime(current_year, current_month, current_day)
+                date_start = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
                 
                 # Update progress bar
-                progress_value = int((total_numbers / total_to_read_in) * 100)
+                progress_value = int((total_numbers / total_to_read_in) * 100) if total_to_read_in > 0 else 100
                 self.progress_bar.setValue(progress_value)
             
             # Now read in the data for annual percentile calculations
@@ -2300,20 +2315,27 @@ class ContentWidget(QWidget):
             self.progress_bar.setVisible(True)
             self.progress_bar.setValue(0)
             self.progress_bar.setMaximum(100)
+            self.progress_bar.setFormat("Reading Annual Data")
             
             # Reset current date to start date for analysis
-            current_day = int(datetime.strptime(self.FSDate, "%d/%m/%Y").day)
-            current_month = int(datetime.strptime(self.FSDate, "%d/%m/%Y").month)
-            current_year = int(datetime.strptime(self.FSDate, "%d/%m/%Y").year)
+            self.CurrentDay = int(datetime.strptime(self.FSDate, "%d/%m/%Y").day)
+            self.CurrentMonth = int(datetime.strptime(self.FSDate, "%d/%m/%Y").month)
+            self.CurrentYear = int(datetime.strptime(self.FSDate, "%d/%m/%Y").year)
+            self.CurrentSeason = self.GetSeason(self.CurrentMonth)
+            self.CurrentWaterYear = self.GetWaterYear(self.CurrentMonth, self.CurrentYear)
             
             # Initialize count array - tracks valid data for each file
             count = [0] * 6
             
-            this_year = current_year
+            this_month = self.CurrentMonth
+            this_year = self.CurrentYear
+            this_season = self.CurrentSeason
+            this_water_year = self.CurrentWaterYear
+            
             year_index = 1
             
             # Read annual data to calculate annual percentiles
-            date_current = datetime(current_year, current_month, current_day)
+            date_current = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
             date_end = datetime.strptime(self.FEdate, "%d/%m/%Y")
             
             while date_current <= date_end:
@@ -2323,7 +2345,7 @@ class ContentWidget(QWidget):
                     return False
                 
                 # Check if we've reached the end of a year
-                if this_year != current_year:
+                if this_year != self.CurrentYear:
                     year_index = this_year - int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + 1
                     
                     # Calculate percentiles for each file for this year
@@ -2331,27 +2353,57 @@ class ContentWidget(QWidget):
                         if count[i] == 0:  # No valid data
                             year_percentile[i][year_index] = self.global_missing_code
                         else:
+                            # Use the PercentilePeriodArray function to calculate the annual percentile
                             year_percentile[i][year_index] = self.PercentilePeriodArray(i, count[i], self.annual_percentile)
                     
                     # Reset counters
-                    count = [0] * 6
+                    for i in range(1, self.total_time_series_files + 1):
+                        count[i] = 0
                 
                 # Read data for the current day
                 total_numbers += 1
                 
-                for i in range(2, self.total_time_series_files + 2):
-                    # Read value from file
-                    value_in = 0  # Placeholder - would be actual file data
+                for i, file in enumerate(self.open_files):
+                    try:
+                        file_idx = i + 1  # Adjust for 1-based indexing in arrays
+                        
+                        if self.EnsembleFile[i]:
+                            # Handle multi-column file (ensemble)
+                            line = file.readline()
+                            if not line:  # EOF
+                                value_in = self.global_missing_code
+                            else:
+                                # Extract first value from line
+                                parts = line.strip().split()
+                                if len(parts) > 0:
+                                    if ',' in parts[0]:
+                                        values = parts[0].split(',')
+                                        value_in = float(values[0]) if values[0].strip() else self.global_missing_code
+                                    else:
+                                        value_in = float(parts[0]) if parts[0].strip() else self.global_missing_code
+                                else:
+                                    value_in = self.global_missing_code
+                        else:
+                            # Handle single-column file
+                            line = file.readline()
+                            if not line:  # EOF
+                                value_in = self.global_missing_code
+                            else:
+                                line = line.strip()
+                                value_in = float(line) if line else self.global_missing_code
+                        
+                        if value_in != self.global_missing_code and value_in >= self.thresh:
+                            count[file_idx] += 1
+                            self.periodArray[file_idx][count[file_idx]] = value_in
                     
-                    if value_in != self.global_missing_code and value_in >= self.thresh:
-                        count[i-1] += 1
-                        self.periodArray[i-1][count[i-1]] = value_in
+                    except Exception as e:
+                        print(f"Error processing file {i} on day {total_numbers}: {str(e)}")
                 
-                this_year = current_year
+                this_year = self.CurrentYear
                 
                 # Increase date for next iteration
                 self.IncreaseDate()
-                date_current = datetime(current_year, current_month, current_day)
+                date_current = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
                 
                 # Update progress bar
                 progress_value = int((total_numbers / total_to_read_in) * 100)
@@ -2367,23 +2419,51 @@ class ContentWidget(QWidget):
                     year_percentile[i][year_index] = self.PercentilePeriodArray(i, count[i], self.annual_percentile)
             
             # Close and reopen files to process monthly/seasonal data
-            # In practice, this might be handled differently in Python
+            self.close_open_files()
+            
+            # Reopen the files
+            file_no = 2
+            for i, file_path in enumerate(self.AllFilesList):
+                try:
+                    # Find the full path based on whether the file is in left or right list
+                    if i < self.left_files_count:
+                        full_path = os.path.join(self.fileSelectionLeft.findChild(QListWidget).path, file_path)
+                    else:
+                        full_path = os.path.join(self.fileSelectionRight.findChild(QListWidget).path, file_path)
+                    
+                    # Check if this is an ensemble file
+                    with open(full_path, 'r') as f:
+                        line = f.readline()
+                        if len(line) > 15:
+                            self.EnsembleFile[i] = True
+                    
+                    # Open the file for reading
+                    input_file = open(full_path, 'r')
+                    self.open_files.append(input_file)
+                except Exception as e:
+                    print(f"Error reopening file {file_path}: {str(e)}")
+                    self.Mini_Reset()
+                    return False
             
             # Skip unwanted data at the start of the file again for second pass
-            current_day = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").day)
-            current_month = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").month)
-            current_year = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").year)
+            self.CurrentDay = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").day)
+            self.CurrentMonth = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").month)
+            self.CurrentYear = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").year)
+            self.CurrentSeason = self.GetSeason(self.CurrentMonth)
+            self.CurrentWaterYear = self.GetWaterYear(self.CurrentMonth, self.CurrentYear)
             total_numbers = 0
             
-            date_start = datetime(current_year, current_month, current_day)
+            date_start = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
             date_target = datetime.strptime(self.FSDate, "%d/%m/%Y")
             
             # Loop until we reach the start date for analysis (second pass)
-            while date_start <= date_target:
-                # Skip data
+            while date_start < date_target:
+                for i, file in enumerate(self.open_files):
+                    line = file.readline()  # Skip a line
+                
                 total_numbers += 1
                 self.IncreaseDate()
-                date_start = datetime(current_year, current_month, current_day)
+                date_start = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
             
             # Now read in data for period calculations
             total_numbers = 0
@@ -2393,26 +2473,27 @@ class ContentWidget(QWidget):
             self.progress_bar.setVisible(True)
             self.progress_bar.setValue(0)
             self.progress_bar.setMaximum(100)
+            self.progress_bar.setFormat("Calculating Percentiles")
             
             # Reset current date to start date for second pass
-            current_day = int(datetime.strptime(self.FSDate, "%d/%m/%Y").day)
-            current_month = int(datetime.strptime(self.FSDate, "%d/%m/%Y").month)
-            current_year = int(datetime.strptime(self.FSDate, "%d/%m/%Y").year)
-            current_season = self.GetSeason(current_month)
-            current_water_year = self.GetWaterYear(current_month, current_year)
+            self.CurrentDay = int(datetime.strptime(self.FSDate, "%d/%m/%Y").day)
+            self.CurrentMonth = int(datetime.strptime(self.FSDate, "%d/%m/%Y").month)
+            self.CurrentYear = int(datetime.strptime(self.FSDate, "%d/%m/%Y").year)
+            self.CurrentSeason = self.GetSeason(self.CurrentMonth)
+            self.CurrentWaterYear = self.GetWaterYear(self.CurrentMonth, self.CurrentYear)
             
             # Initialize count array again
             count = [0] * 6
             
-            this_month = current_month
-            this_year = current_year
-            this_season = current_season
-            this_water_year = current_water_year
+            this_month = self.CurrentMonth
+            this_year = self.CurrentYear
+            this_season = self.CurrentSeason
+            this_water_year = self.CurrentWaterYear
             
             year_index = 1
             
             # Read data for period calculations (month/season)
-            date_current = datetime(current_year, current_month, current_day)
+            date_current = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
             date_end = datetime.strptime(self.FEdate, "%d/%m/%Y")
             
             while date_current <= date_end:
@@ -2438,32 +2519,62 @@ class ContentWidget(QWidget):
                                     i, count[i], year_percentile[i][year_index])
                     
                     # Reset counters for next period
-                    count = [0] * 6
+                    for i in range(1, 6):
+                        count[i] = 0
                 
                 # Read data for the current day
                 total_numbers += 1
                 
-                for i in range(2, self.total_time_series_files + 2):
-                    # Read value from file
-                    value_in = 0  # Placeholder - would be actual file data
+                for i, file in enumerate(self.open_files):
+                    try:
+                        file_idx = i + 1  # Adjust for 1-based indexing in arrays
+                        
+                        if self.EnsembleFile[i]:
+                            # Handle multi-column file (ensemble)
+                            line = file.readline()
+                            if not line:  # EOF
+                                value_in = self.global_missing_code
+                            else:
+                                # Extract first value from line
+                                parts = line.strip().split()
+                                if len(parts) > 0:
+                                    if ',' in parts[0]:
+                                        values = parts[0].split(',')
+                                        value_in = float(values[0]) if values[0].strip() else self.global_missing_code
+                                    else:
+                                        value_in = float(parts[0]) if parts[0].strip() else self.global_missing_code
+                                else:
+                                    value_in = self.global_missing_code
+                        else:
+                            # Handle single-column file
+                            line = file.readline()
+                            if not line:  # EOF
+                                value_in = self.global_missing_code
+                            else:
+                                line = line.strip()
+                                value_in = float(line) if line else self.global_missing_code
+                        
+                        if value_in != self.global_missing_code and value_in >= self.thresh:
+                            count[file_idx] += 1
+                            self.periodArray[file_idx][count[file_idx]] = value_in
                     
-                    if value_in != self.global_missing_code and value_in >= self.thresh:
-                        count[i-1] += 1
-                        self.periodArray[i-1][count[i-1]] = value_in
+                    except Exception as e:
+                        print(f"Error processing file {i} on day {total_numbers}: {str(e)}")
                 
                 # Save current period values
-                this_month = current_month
-                this_year = current_year
-                this_season = current_season
-                this_water_year = current_water_year
+                this_month = self.CurrentMonth
+                this_year = self.CurrentYear
+                this_season = self.CurrentSeason
+                this_water_year = self.CurrentWaterYear
                 
                 # Increase date for next iteration
                 self.IncreaseDate()
-                date_current = datetime(current_year, current_month, current_day)
+                date_current = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
                 
                 # Update progress bar
                 progress_value = int((total_numbers / total_to_read_in) * 100)
                 self.progress_bar.setValue(progress_value)
+                self.progress_bar.setFormat("Calculating Percentiles")
             
             # Process the last period's data
             year_index = this_year - int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + 1
@@ -2500,7 +2611,7 @@ class ContentWidget(QWidget):
             # Prepare data for plotting
             self.TimeSeriesLength = end_year - start_year + 1
             # Create and initialize the TimeSeriesData array
-            self.TimeSeriesData = [[0 for _ in range(self.total_time_series_files + 1)] 
+            self.TimeSeriesData = [[None for _ in range(self.total_time_series_files + 1)] 
                                 for _ in range(self.TimeSeriesLength)]
             
             any_missing = False
@@ -2521,10 +2632,15 @@ class ContentWidget(QWidget):
             if any_missing:
                 print("Warning - some of the data were missing and will not be plotted.")
             
+            # Update progress bar
+            self.progress_bar.setValue(100)
+            self.progress_bar.setFormat("Percentile Calculation Complete")
+            
             return True
-    
+        
         except Exception as e:
             print(f"Error in GeneratePrecipAnnualMax: {str(e)}")
+            traceback.print_exc()  # Print the full traceback for debugging
             self.Mini_Reset()
             return False
 
@@ -2539,42 +2655,57 @@ class ContentWidget(QWidget):
                 self.progress_bar.setVisible(True)
                 self.progress_bar.setValue(0)
                 self.progress_bar.setMaximum(100)
+                self.progress_bar.setFormat("Skipping Unnecessary Data")
             
             # Initialize long term percentile array to store percentiles for each file
             long_term_percentile = [self.global_missing_code] * 6  # [1-5]
             
             # Set current date to the global start date
-            current_day = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").day)
-            current_month = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").month)
-            current_year = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").year)
+            self.CurrentDay = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").day)
+            self.CurrentMonth = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").month)
+            self.CurrentYear = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").year)
+            self.CurrentSeason = self.GetSeason(self.CurrentMonth)
+            self.CurrentWaterYear = self.GetWaterYear(self.CurrentMonth, self.CurrentYear)
             total_numbers = 0
             
             # Set cursor to hourglass
             self.setCursor(Qt.WaitCursor)
             
             # Skip unwanted data at the start of the file
-            date_start = datetime(current_year, current_month, current_day)
+            date_start = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
             date_target = datetime.strptime(self.FSDate, "%d/%m/%Y")
             
             # Loop until we reach the start date for analysis
-            while date_start <= date_target:
+            while date_start < date_target:
                 # Check if user wants to exit
                 if self.ExitAnalysis():
                     self.Mini_Reset()
                     return False
                 
                 # Skip data from all files
-                for i in range(2, self.total_time_series_files + 2):
-                    # Skip a line from each file
-                    # (Actual file reading would be implemented here)
-                    pass
+                for i, file in enumerate(self.open_files):
+                    try:
+                        if self.EnsembleFile[i]:
+                            # Handle multi-column file (ensemble)
+                            line = file.readline()
+                            if not line:  # EOF
+                                break
+                        else:
+                            # Handle single-column file
+                            line = file.readline()
+                            if not line:  # EOF
+                                break
+                    except Exception as e:
+                        print(f"Error reading file {i}: {str(e)}")
+                        self.Mini_Reset()
+                        return False
                 
                 total_numbers += 1
                 self.IncreaseDate()
-                date_start = datetime(current_year, current_month, current_day)
+                date_start = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
                 
                 # Update progress bar
-                progress_value = int((total_numbers / total_to_read_in) * 100)
+                progress_value = int((total_numbers / total_to_read_in) * 100) if total_to_read_in > 0 else 100
                 self.progress_bar.setValue(progress_value)
             
             # Now read in all data to calculate long-term percentiles
@@ -2585,17 +2716,20 @@ class ContentWidget(QWidget):
             self.progress_bar.setVisible(True)
             self.progress_bar.setValue(0)
             self.progress_bar.setMaximum(100)
+            self.progress_bar.setFormat("Reading All Data")
             
             # Reset current date to start date for analysis
-            current_day = int(datetime.strptime(self.FSDate, "%d/%m/%Y").day)
-            current_month = int(datetime.strptime(self.FSDate, "%d/%m/%Y").month)
-            current_year = int(datetime.strptime(self.FSDate, "%d/%m/%Y").year)
+            self.CurrentDay = int(datetime.strptime(self.FSDate, "%d/%m/%Y").day)
+            self.CurrentMonth = int(datetime.strptime(self.FSDate, "%d/%m/%Y").month)
+            self.CurrentYear = int(datetime.strptime(self.FSDate, "%d/%m/%Y").year)
+            self.CurrentSeason = self.GetSeason(self.CurrentMonth)
+            self.CurrentWaterYear = self.GetWaterYear(self.CurrentMonth, self.CurrentYear)
             
             # Initialize count array - tracks valid data for each file
             count = [0] * 6
             
             # Read all data to calculate long-term percentile
-            date_current = datetime(current_year, current_month, current_day)
+            date_current = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
             date_end = datetime.strptime(self.FEdate, "%d/%m/%Y")
             
             while date_current <= date_end:
@@ -2607,21 +2741,50 @@ class ContentWidget(QWidget):
                 # Read data for the current day
                 total_numbers += 1
                 
-                for i in range(2, self.total_time_series_files + 2):
-                    # Read value from file
-                    value_in = 0  # Placeholder - would be actual file data
+                for i, file in enumerate(self.open_files):
+                    try:
+                        file_idx = i + 1  # Adjust for 1-based indexing in arrays
+                        
+                        if self.EnsembleFile[i]:
+                            # Handle multi-column file (ensemble)
+                            line = file.readline()
+                            if not line:  # EOF
+                                value_in = self.global_missing_code
+                            else:
+                                # Extract first value from line
+                                parts = line.strip().split()
+                                if len(parts) > 0:
+                                    if ',' in parts[0]:
+                                        values = parts[0].split(',')
+                                        value_in = float(values[0]) if values[0].strip() else self.global_missing_code
+                                    else:
+                                        value_in = float(parts[0]) if parts[0].strip() else self.global_missing_code
+                                else:
+                                    value_in = self.global_missing_code
+                        else:
+                            # Handle single-column file
+                            line = file.readline()
+                            if not line:  # EOF
+                                value_in = self.global_missing_code
+                            else:
+                                line = line.strip()
+                                value_in = float(line) if line else self.global_missing_code
+                        
+                        if value_in != self.global_missing_code and value_in >= self.thresh:
+                            count[file_idx] += 1
+                            self.periodArray[file_idx][count[file_idx]] = value_in
                     
-                    if value_in != self.global_missing_code and value_in >= self.thresh:
-                        count[i-1] += 1
-                        self.periodArray[i-1][count[i-1]] = value_in
+                    except Exception as e:
+                        print(f"Error processing file {i} on day {total_numbers}: {str(e)}")
                 
                 # Increase date for next iteration
                 self.IncreaseDate()
-                date_current = datetime(current_year, current_month, current_day)
+                date_current = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
                 
                 # Update progress bar
                 progress_value = int((total_numbers / total_to_read_in) * 100)
                 self.progress_bar.setValue(progress_value)
+                self.progress_bar.setFormat("Reading All Data")
             
             # Get the correct percentile value based on selected statistic
             if self.statCheckboxes[22].isChecked():  # pfl90 selected
@@ -2631,26 +2794,57 @@ class ContentWidget(QWidget):
             
             # Calculate long-term percentiles for each file
             for i in range(1, self.total_time_series_files + 1):
-                long_term_percentile[i] = self.PercentilePeriodArray(i, count[i], ptile)
+                if count[i] > 0:
+                    long_term_percentile[i] = self.PercentilePeriodArray(i, count[i], ptile)
+                else:
+                    long_term_percentile[i] = self.global_missing_code
             
             # Close and reopen files to process monthly/seasonal data
-            # In practice, this might be handled differently in Python
+            self.close_open_files()
+            
+            # Reopen the files
+            file_no = 2
+            for i, file_path in enumerate(self.AllFilesList):
+                try:
+                    # Find the full path based on whether the file is in left or right list
+                    if i < self.left_files_count:
+                        full_path = os.path.join(self.fileSelectionLeft.findChild(QListWidget).path, file_path)
+                    else:
+                        full_path = os.path.join(self.fileSelectionRight.findChild(QListWidget).path, file_path)
+                    
+                    # Check if this is an ensemble file
+                    with open(full_path, 'r') as f:
+                        line = f.readline()
+                        if len(line) > 15:
+                            self.EnsembleFile[i] = True
+                    
+                    # Open the file for reading
+                    input_file = open(full_path, 'r')
+                    self.open_files.append(input_file)
+                except Exception as e:
+                    print(f"Error reopening file {file_path}: {str(e)}")
+                    self.Mini_Reset()
+                    return False
             
             # Skip unwanted data at the start of the file again for second pass
-            current_day = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").day)
-            current_month = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").month)
-            current_year = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").year)
+            self.CurrentDay = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").day)
+            self.CurrentMonth = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").month)
+            self.CurrentYear = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").year)
+            self.CurrentSeason = self.GetSeason(self.CurrentMonth)
+            self.CurrentWaterYear = self.GetWaterYear(self.CurrentMonth, self.CurrentYear)
             total_numbers = 0
             
-            date_start = datetime(current_year, current_month, current_day)
+            date_start = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
             date_target = datetime.strptime(self.FSDate, "%d/%m/%Y")
             
             # Loop until we reach the start date for analysis (second pass)
-            while date_start <= date_target:
-                # Skip data
+            while date_start < date_target:
+                for i, file in enumerate(self.open_files):
+                    line = file.readline()  # Skip a line
+                
                 total_numbers += 1
                 self.IncreaseDate()
-                date_start = datetime(current_year, current_month, current_day)
+                date_start = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
             
             # Now read in data for period calculations
             total_numbers = 0
@@ -2660,13 +2854,14 @@ class ContentWidget(QWidget):
             self.progress_bar.setVisible(True)
             self.progress_bar.setValue(0)
             self.progress_bar.setMaximum(100)
+            self.progress_bar.setFormat("Calculating Long-Term Statistics")
             
             # Reset current date to start date for second pass
-            current_day = int(datetime.strptime(self.FSDate, "%d/%m/%Y").day)
-            current_month = int(datetime.strptime(self.FSDate, "%d/%m/%Y").month)
-            current_year = int(datetime.strptime(self.FSDate, "%d/%m/%Y").year)
-            current_season = self.GetSeason(current_month)
-            current_water_year = self.GetWaterYear(current_month, current_year)
+            self.CurrentDay = int(datetime.strptime(self.FSDate, "%d/%m/%Y").day)
+            self.CurrentMonth = int(datetime.strptime(self.FSDate, "%d/%m/%Y").month)
+            self.CurrentYear = int(datetime.strptime(self.FSDate, "%d/%m/%Y").year)
+            self.CurrentSeason = self.GetSeason(self.CurrentMonth)
+            self.CurrentWaterYear = self.GetWaterYear(self.CurrentMonth, self.CurrentYear)
             
             # Arrays for tracking statistics
             rainfall_above_percentile = [0] * 6
@@ -2674,15 +2869,15 @@ class ContentWidget(QWidget):
             count_of_events_above_percentile = [0] * 6
             count = [0] * 6
             
-            this_month = current_month
-            this_year = current_year
-            this_season = current_season
-            this_water_year = current_water_year
+            this_month = self.CurrentMonth
+            this_year = self.CurrentYear
+            this_season = self.CurrentSeason
+            this_water_year = self.CurrentWaterYear
             
             year_index = 1
             
             # Read data for period calculations (month/season)
-            date_current = datetime(current_year, current_month, current_day)
+            date_current = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
             date_end = datetime.strptime(self.FEdate, "%d/%m/%Y")
             
             while date_current <= date_end:
@@ -2705,46 +2900,80 @@ class ContentWidget(QWidget):
                             else:
                                 if self.statCheckboxes[22].isChecked():  # pfl90 selected
                                     # Calculate percentage of rainfall from events above long-term percentile
-                                    self.LongTermResults[i-1][year_index] = (rainfall_above_percentile[i] / 
+                                    if total_rainfall_in_period[i] > 0:
+                                        self.LongTermResults[i-1][year_index] = (rainfall_above_percentile[i] / 
                                                                         total_rainfall_in_period[i]) * 100
+                                    else:
+                                        self.LongTermResults[i-1][year_index] = self.global_missing_code
                                 else:  # pnl90 selected
                                     # Count of events above long-term percentile
                                     self.LongTermResults[i-1][year_index] = count_of_events_above_percentile[i]
                     
                     # Reset counters for next period
-                    rainfall_above_percentile = [0] * 6
-                    total_rainfall_in_period = [0] * 6
-                    count_of_events_above_percentile = [0] * 6
-                    count = [0] * 6
+                    for i in range(1, 6):
+                        rainfall_above_percentile[i] = 0
+                        total_rainfall_in_period[i] = 0
+                        count_of_events_above_percentile[i] = 0
+                        count[i] = 0
                 
                 # Read data for the current day
                 total_numbers += 1
                 
-                for i in range(2, self.total_time_series_files + 2):
-                    # Read value from file
-                    value_in = 0  # Placeholder - would be actual file data
-                    
-                    if value_in != self.global_missing_code and value_in >= self.thresh:
-                        count[i-1] += 1
-                        total_rainfall_in_period[i-1] += value_in
+                for i, file in enumerate(self.open_files):
+                    try:
+                        file_idx = i + 1  # Adjust for 1-based indexing in arrays
                         
-                        if value_in > long_term_percentile[i-1]:
-                            count_of_events_above_percentile[i-1] += 1
-                            rainfall_above_percentile[i-1] += value_in
+                        if self.EnsembleFile[i]:
+                            # Handle multi-column file (ensemble)
+                            line = file.readline()
+                            if not line:  # EOF
+                                value_in = self.global_missing_code
+                            else:
+                                # Extract first value from line
+                                parts = line.strip().split()
+                                if len(parts) > 0:
+                                    if ',' in parts[0]:
+                                        values = parts[0].split(',')
+                                        value_in = float(values[0]) if values[0].strip() else self.global_missing_code
+                                    else:
+                                        value_in = float(parts[0]) if parts[0].strip() else self.global_missing_code
+                                else:
+                                    value_in = self.global_missing_code
+                        else:
+                            # Handle single-column file
+                            line = file.readline()
+                            if not line:  # EOF
+                                value_in = self.global_missing_code
+                            else:
+                                line = line.strip()
+                                value_in = float(line) if line else self.global_missing_code
+                        
+                        if value_in != self.global_missing_code and value_in >= self.thresh:
+                            count[file_idx] += 1
+                            total_rainfall_in_period[file_idx] += value_in
+                            
+                            # Check if this value is above the long-term percentile
+                            if long_term_percentile[file_idx] != self.global_missing_code and value_in > long_term_percentile[file_idx]:
+                                count_of_events_above_percentile[file_idx] += 1
+                                rainfall_above_percentile[file_idx] += value_in
+                    
+                    except Exception as e:
+                        print(f"Error processing file {i} on day {total_numbers}: {str(e)}")
                 
                 # Save current period values
-                this_month = current_month
-                this_year = current_year
-                this_season = current_season
-                this_water_year = current_water_year
+                this_month = self.CurrentMonth
+                this_year = self.CurrentYear
+                this_season = self.CurrentSeason
+                this_water_year = self.CurrentWaterYear
                 
                 # Increase date for next iteration
                 self.IncreaseDate()
-                date_current = datetime(current_year, current_month, current_day)
+                date_current = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
                 
                 # Update progress bar
                 progress_value = int((total_numbers / total_to_read_in) * 100)
                 self.progress_bar.setValue(progress_value)
+                self.progress_bar.setFormat("Calculating Long-Term Statistics")
             
             # Process the last period's data
             year_index = this_year - int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + 1
@@ -2758,8 +2987,11 @@ class ContentWidget(QWidget):
                     else:
                         if self.statCheckboxes[22].isChecked():  # pfl90 selected
                             # Calculate percentage of rainfall from events above long-term percentile
-                            self.LongTermResults[i-1][year_index] = (rainfall_above_percentile[i] / 
-                                                                    total_rainfall_in_period[i]) * 100
+                            if total_rainfall_in_period[i] > 0:
+                                self.LongTermResults[i-1][year_index] = (rainfall_above_percentile[i] / 
+                                                                total_rainfall_in_period[i]) * 100
+                            else:
+                                self.LongTermResults[i-1][year_index] = self.global_missing_code
                         else:  # pnl90 selected
                             # Count of events above long-term percentile
                             self.LongTermResults[i-1][year_index] = count_of_events_above_percentile[i]
@@ -2783,25 +3015,35 @@ class ContentWidget(QWidget):
                     end_year -= 1
             
             # Prepare data for plotting
-            self.TimeSeriesLength = end_year - start_year + 1
+            self.TimeSeriesLength = max(1, end_year - start_year + 1)  # Ensure at least one point
+            
             # Create and initialize the TimeSeriesData array
-            self.TimeSeriesData = [[0 for _ in range(self.total_time_series_files + 1)] 
+            self.TimeSeriesData = [[None for _ in range(self.total_time_series_files + 1)] 
                                 for _ in range(self.TimeSeriesLength)]
             
             any_missing = False
             
             for i in range(1, self.total_time_series_files + 1):
                 for j in range(1, self.TimeSeriesLength + 1):
-                    if self.LongTermResults[i-1][j+start_year-1] == self.global_missing_code:
+                    year_idx = j + start_year - 1
+                    
+                    if year_idx <= len(self.LongTermResults[i-1]) and self.LongTermResults[i-1][year_idx] == self.global_missing_code:
                         self.TimeSeriesData[j-1][i] = None  # Empty value
                         any_missing = True
+                    elif year_idx <= len(self.LongTermResults[i-1]):
+                        self.TimeSeriesData[j-1][i] = self.LongTermResults[i-1][year_idx]
                     else:
-                        self.TimeSeriesData[j-1][i] = self.LongTermResults[i-1][j+start_year-1]
+                        self.TimeSeriesData[j-1][i] = None
+                        any_missing = True
                     
                     if self.DatesCombo.currentIndex() == 18:  # Water year
                         self.TimeSeriesData[j-1][0] = str(int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + j + start_year - 3)
                     else:
                         self.TimeSeriesData[j-1][0] = str(int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + start_year + j - 2)
+            
+            # Update progress bar
+            self.progress_bar.setValue(100)
+            self.progress_bar.setFormat("Long-Term Statistics Complete")
             
             if any_missing:
                 print("Warning - some of the data were missing and will not be plotted.")
@@ -2810,9 +3052,10 @@ class ContentWidget(QWidget):
             self.setCursor(Qt.ArrowCursor)
             
             return True
-    
+        
         except Exception as e:
             print(f"Error in LongTermStats: {str(e)}")
+            traceback.print_exc()  # Print the full traceback for debugging
             self.Mini_Reset()
             return False
     
@@ -3410,79 +3653,125 @@ class ContentWidget(QWidget):
                 # Handle different saving modes based on selected options
                 if self.statCheckboxes[4].isChecked():  # SPI chosen
                     # Write header row with file names
-                    header = [self.AllFilesList[i] for i in range(self.total_time_series_files)]
+                    header = ["Date"]
+                    for i in range(self.total_time_series_files):
+                        header.append(self.AllFilesList[i])
                     writer.writerow(header)
                     
                     # Write data for each month
-                    for j in range(self.TotalMonths):
-                        row = [self.RunningMonths[i][j][4] for i in range(1, self.total_time_series_files + 1)]
+                    for j in range(self.spi_value, self.TotalMonths + 1):
+                        row = []
+                        # Add date label (month and year)
+                        year_code = int(self.RunningMonths[0][j-1][1])
+                        month_code = int(self.RunningMonths[0][j-1][2])
+                        month_name = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                                    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][month_code]
+                        year_val = year_code + int(datetime.strptime(self.FSDate, '%d/%m/%Y').year) - 1
+                        row.append(f"{month_name} {year_val}")
+                        
+                        # Add SPI values for each file
+                        for i in range(self.total_time_series_files):
+                            if i < len(self.RunningMonths) and j-1 < len(self.RunningMonths[i]) and self.RunningMonths[i][j-1][4] != self.global_missing_code:
+                                row.append(f"{self.RunningMonths[i][j-1][4]:.3f}")
+                            else:
+                                row.append("")
                         writer.writerow(row)
                         
                 elif self.statCheckboxes[14].isChecked():  # % precip > annual percentile
                     # Write header row
-                    header = []
+                    header = ["Year"]
                     for i in range(self.total_time_series_files):
-                        header.extend([self.AllFilesList[i], "%Precip>Annual Percentile"])
+                        header.append(self.AllFilesList[i])
+                        header.append("%Precip>Annual Percentile")
                     writer.writerow(header)
                     
                     # Write data for each year
-                    for j in range(self.StartYear, self.EndYear + 1):
-                        row = []
+                    start_year = int(datetime.strptime(self.FSDate, "%d/%m/%Y").year)
+                    for j in range(1, self.TimeSeriesLength + 1):
+                        row = [str(start_year + j - 1)]  # Year
                         for i in range(1, self.total_time_series_files + 1):
-                            row.extend([int(datetime.strptime(self.global_start_date, "%d/%m/%Y").year) + j - 1, 
-                                    self.FractionResult[i-1][j-1]])
+                            file_idx = i - 1
+                            year_idx = j
+                            if file_idx < len(self.FractionResult) and year_idx < len(self.FractionResult[file_idx]) and self.FractionResult[file_idx][year_idx] != self.global_missing_code:
+                                row.append(self.AllFilesList[file_idx])
+                                row.append(f"{self.FractionResult[file_idx][year_idx]:.2f}")
+                            else:
+                                row.append(self.AllFilesList[file_idx])
+                                row.append("")
                         writer.writerow(row)
                 
                 elif self.statCheckboxes[22].isChecked():  # pfl90 statistic
                     # Write header row
-                    header = []
+                    header = ["Year"]
                     for i in range(self.total_time_series_files):
-                        header.extend([self.AllFilesList[i], "%Total Precip from events>long-term percentile"])
+                        header.append(self.AllFilesList[i])
+                        header.append("%Total Precip from events>long-term percentile")
                     writer.writerow(header)
                     
                     # Write data for each year
-                    for j in range(self.StartYear, self.EndYear + 1):
-                        row = []
+                    start_year = int(datetime.strptime(self.FSDate, "%d/%m/%Y").year)
+                    for j in range(1, self.TimeSeriesLength + 1):
+                        row = [str(start_year + j - 1)]  # Year
                         for i in range(1, self.total_time_series_files + 1):
-                            row.extend([int(datetime.strptime(self.global_start_date, "%d/%m/%Y").year) + j - 1, 
-                                    self.LongTermResults[i-1][j-1]])
+                            file_idx = i - 1
+                            year_idx = j
+                            if file_idx < len(self.LongTermResults) and year_idx < len(self.LongTermResults[file_idx]) and self.LongTermResults[file_idx][year_idx] != self.global_missing_code:
+                                row.append(self.AllFilesList[file_idx])
+                                row.append(f"{self.LongTermResults[file_idx][year_idx]:.2f}")
+                            else:
+                                row.append(self.AllFilesList[file_idx])
+                                row.append("")
                         writer.writerow(row)
                 
                 elif self.statCheckboxes[23].isChecked():  # pnl90 statistic
                     # Write header row
-                    header = []
+                    header = ["Year"]
                     for i in range(self.total_time_series_files):
-                        header.extend([self.AllFilesList[i], "No events>long-term percentile"])
+                        header.append(self.AllFilesList[i])
+                        header.append("No events>long-term percentile")
                     writer.writerow(header)
                     
                     # Write data for each year
-                    for j in range(self.StartYear, self.EndYear + 1):
-                        row = []
+                    start_year = int(datetime.strptime(self.FSDate, "%d/%m/%Y").year)
+                    for j in range(1, self.TimeSeriesLength + 1):
+                        row = [str(start_year + j - 1)]  # Year
                         for i in range(1, self.total_time_series_files + 1):
-                            row.extend([int(datetime.strptime(self.global_start_date, "%d/%m/%Y").year) + j - 1, 
-                                    self.LongTermResults[i-1][j-1]])
+                            file_idx = i - 1
+                            year_idx = j
+                            if file_idx < len(self.LongTermResults) and year_idx < len(self.LongTermResults[file_idx]) and self.LongTermResults[file_idx][year_idx] != self.global_missing_code:
+                                row.append(self.AllFilesList[file_idx])
+                                row.append(f"{int(self.LongTermResults[file_idx][year_idx])}")
+                            else:
+                                row.append(self.AllFilesList[file_idx])
+                                row.append("")
                         writer.writerow(row)
                 
                 elif self.statCheckboxes[6].isChecked():  # Winter/summer ratio
                     # Write header row
-                    header = []
+                    header = ["Year"]
                     for i in range(self.total_time_series_files):
-                        header.extend([self.AllFilesList[i], "Winter/Summer Ratio"])
+                        header.append(self.AllFilesList[i])
+                        header.append("Winter/Summer Ratio")
                     writer.writerow(header)
                     
                     # Write data for each year
-                    start_year = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").year)
-                    for j in range(self.StartYear, self.EndYear + 1):
-                        row = []
+                    start_year = int(datetime.strptime(self.FSDate, "%d/%m/%Y").year)
+                    for j in range(1, self.TimeSeriesLength + 1):
+                        row = [str(start_year + j - 1)]  # Year
                         for i in range(1, self.total_time_series_files + 1):
                             # Check for division by zero or missing values
-                            if (self.summaryArray[i][j][15][1] == 0 or 
-                                self.summaryArray[i][j][15][1] == self.global_missing_code or 
-                                self.summaryArray[i][j][13][1] == self.global_missing_code):
-                                row.extend([start_year + j - 1, self.global_missing_code])
+                            winter_val = self.summaryArray[i][j][13][1]  # Winter value (season 1 + 12 = 13)
+                            summer_val = self.summaryArray[i][j][15][1]  # Summer value (season 3 + 12 = 15)
+                            
+                            if (summer_val == 0 or 
+                                summer_val == self.global_missing_code or 
+                                winter_val == self.global_missing_code):
+                                row.append(self.AllFilesList[i-1])
+                                row.append("")
                             else:
-                                ratio = self.summaryArray[i][j][13][1] / self.summaryArray[i][j][15][1]
-                                row.extend([start_year + j - 1, ratio])
+                                ratio = winter_val / summer_val
+                                row.append(self.AllFilesList[i-1])
+                                row.append(f"{ratio:.3f}")
                         writer.writerow(row)
                 
                 else:  # Handle other statistics
@@ -3490,66 +3779,107 @@ class ContentWidget(QWidget):
                     season_names = ["", "Winter", "Spring", "Summer", "Autumn"]
                     
                     # Write header row
-                    header = []
+                    header = ["Year", "Period"]
+                    
+                    # Create headers for all statistics
+                    stat_headers = ["Sum", "Max", "Count", "Percentile", "Mean", "PDS", "POT", 
+                                "Nth Largest", "Largest N day total", "Max dry spell", 
+                                "Max wet spell", "Mean dry spell", "Mean wet spell", 
+                                "Median dry spell", "Median wet spell", "SD dry spell", 
+                                "SD wet spell", "Dry day persistence", "Wet day persistence", 
+                                "Spell length correlation"]
+                    
+                    # Add file names and stat headers
                     for i in range(self.total_time_series_files):
-                        if not self.statCheckboxes[6].isChecked():  # Not winter/summer ratio
-                            header.extend([self.AllFilesList[i], "Month/Season/Year", "Sum", "Max", "Percentile", 
-                                        "Mean", "PDS", "POT", "Nth Largest", "Largest N day total", 
-                                        "Max dry spell", "Max wet spell", "Mean dry spell", "Mean wet spell", 
-                                        "Median dry spell", "Median wet spell", "SD dry spell", "SD wet spell", 
-                                        "Mean dry day persistence", "Mean wet day persistence", "Spell length correlation"])
+                        for stat in stat_headers:
+                            header.append(f"{self.AllFilesList[i]} {stat}")
+                    
                     writer.writerow(header)
                     
                     # Write data based on selected period
-                    start_year = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").year)
-                    for j in range(self.StartYear, self.EndYear + 1):
+                    start_year = int(datetime.strptime(self.FSDate, "%d/%m/%Y").year)
+                    
+                    for j in range(1, self.TimeSeriesLength + 1):
+                        year_val = start_year + j - 1
+                        
                         if self.DatesCombo.currentIndex() >= 1 and self.DatesCombo.currentIndex() <= 12:  # Month selected
-                            k = self.DatesCombo.currentIndex()
-                            row = []
+                            month_idx = self.DatesCombo.currentIndex()
+                            month_name = ['', 'January', 'February', 'March', 'April', 'May', 'June',
+                                        'July', 'August', 'September', 'October', 'November', 'December'][month_idx]
+                            row = [str(year_val), month_name]
+                            
+                            # Add all statistics for each file
                             for i in range(1, self.total_time_series_files + 1):
-                                stats = [start_year + j - 1, k]
-                                # Add all statistics in order
-                                for stat_idx in range(1, 22):  # 21 different statistics
-                                    stats.append(self.summaryArray[i-1][j-1][k-1][stat_idx-1])
-                                row.extend(stats)
+                                for stat_idx in range(1, 21):  # 20 different statistics
+                                    if stat_idx == 14:  # Skip index 14 (not used in summary array)
+                                        continue
+                                    
+                                    value = self.summaryArray[i][j][month_idx][stat_idx]
+                                    if value != self.global_missing_code:
+                                        row.append(f"{value:.3f}")
+                                    else:
+                                        row.append("")
+                            
                             writer.writerow(row)
                         
                         elif self.DatesCombo.currentIndex() >= 13 and self.DatesCombo.currentIndex() <= 16:  # Season selected
-                            k = self.DatesCombo.currentIndex()
-                            row = []
+                            season_idx = self.DatesCombo.currentIndex() - 12
+                            season_name = season_names[season_idx]
+                            row = [str(year_val), season_name]
+                            
+                            # Add all statistics for each file
                             for i in range(1, self.total_time_series_files + 1):
-                                stats = [start_year + j - 1, season_names[k-12]]
-                                # Add all statistics in order
-                                for stat_idx in range(1, 22):  # 21 different statistics
-                                    stats.append(self.summaryArray[i-1][j-1][k-1][stat_idx-1])
-                                row.extend(stats)
+                                for stat_idx in range(1, 21):  # 20 different statistics
+                                    if stat_idx == 14:  # Skip index 14 (not used in summary array)
+                                        continue
+                                    
+                                    value = self.summaryArray[i][j][season_idx+12][stat_idx]
+                                    if value != self.global_missing_code:
+                                        row.append(f"{value:.3f}")
+                                    else:
+                                        row.append("")
+                            
                             writer.writerow(row)
                         
                         elif self.DatesCombo.currentIndex() == 17:  # Annual selected
-                            row = []
+                            row = [str(year_val), "Annual"]
+                            
+                            # Add all statistics for each file
                             for i in range(1, self.total_time_series_files + 1):
-                                stats = [start_year + j - 1, "Annual"]
-                                # Add all statistics in order
-                                for stat_idx in range(1, 22):  # 21 different statistics
-                                    stats.append(self.summaryArray[i-1][j-1][16][stat_idx-1])  # 17th index is Annual
-                                row.extend(stats)
+                                for stat_idx in range(1, 21):  # 20 different statistics
+                                    if stat_idx == 14:  # Skip index 14 (not used in summary array)
+                                        continue
+                                    
+                                    value = self.summaryArray[i][j][17][stat_idx]  # 17th index is Annual
+                                    if value != self.global_missing_code:
+                                        row.append(f"{value:.3f}")
+                                    else:
+                                        row.append("")
+                            
                             writer.writerow(row)
                         
                         elif self.DatesCombo.currentIndex() == 18:  # Water year selected
-                            skip = 2 if j == 1 and int(datetime.strptime(self.global_start_date, "%d/%m/%Y").month) < 10 else 1
-                            row = []
+                            row = [str(year_val), "Water Year"]
+                            
+                            # Add all statistics for each file
                             for i in range(1, self.total_time_series_files + 1):
-                                stats = [start_year + j - skip, "Water Year"]
-                                # Add all statistics in order
-                                for stat_idx in range(1, 22):  # 21 different statistics
-                                    stats.append(self.summaryArray[i-1][j-1][17][stat_idx-1])  # 18th index is Water Year
-                                row.extend(stats)
+                                for stat_idx in range(1, 21):  # 20 different statistics
+                                    if stat_idx == 14:  # Skip index 14 (not used in summary array)
+                                        continue
+                                    
+                                    value = self.summaryArray[i][j][18][stat_idx]  # 18th index is Water Year
+                                    if value != self.global_missing_code:
+                                        row.append(f"{value:.3f}")
+                                    else:
+                                        row.append("")
+                            
                             writer.writerow(row)
-                    
+                
                 print(f"Results saved to {self.save_root}")
         
         except Exception as e:
             print(f"Error in SaveResults: {str(e)}")
+            traceback.print_exc()  # Print full traceback for debugging
             self.Mini_Reset()
         
 

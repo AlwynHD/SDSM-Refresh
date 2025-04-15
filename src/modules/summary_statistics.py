@@ -585,8 +585,65 @@ class ContentWidget(QWidget):
         Open dialog to select statistics
         """
         dialog = StatsSelectDialog(self.stats_params, parent=self)
-        if dialog.exec_():
+        
+        # Set current values in the dialog
+        dialog.thresh_value.setText(str(self.threshold))
+        dialog.pot_value.setText(str(self.pot))
+        dialog.pbt_value.setText(str(self.pbt))
+        dialog.percentile_value.setText(str(self.percentile))
+        dialog.nday_value.setText(str(self.nday_total))
+        
+        while True:  # Loop until valid input or cancel
+            if not dialog.exec_():  # Dialog was canceled
+                return
+                
             self.stats_params = dialog.get_updated_stats()
+            
+            # Validate all input - collect errors
+            validation_errors = []
+            
+            try:
+                # Threshold
+                threshold_value = float(dialog.get_threshold_value())
+                if threshold_value < 0:
+                    validation_errors.append("Precipitation threshold cannot be negative.")
+                    
+                # POT
+                pot_value = float(dialog.get_pot_value())
+                if pot_value < 0 or pot_value > 100:
+                    validation_errors.append("Percentile Over Threshold must be between 0 and 100.")
+                    
+                # PBT
+                pbt_value = float(dialog.get_pbt_value())
+                if pbt_value < 0 or pbt_value > 100:
+                    validation_errors.append("Percentile Below Threshold must be between 0 and 100.")
+                    
+                # Percentile
+                percentile_value = float(dialog.get_percentile_value())
+                if percentile_value < 0 or percentile_value > 100:
+                    validation_errors.append("Percentile must be between 0 and 100.")
+                    
+                # N-day total
+                nday_value = int(dialog.get_nday_value())
+                if nday_value < 1:
+                    validation_errors.append("N-Day Total must be at least 1.")
+                    
+            except ValueError:
+                validation_errors.append("One or more values are not valid numbers.")
+            
+            # If there are validation errors, show them and continue the loop
+            if validation_errors:
+                error_msg = "\n".join(validation_errors)
+                QMessageBox.warning(dialog, "Invalid Input", error_msg + "\n\nPlease correct these values.")
+                continue  # Keep dialog open
+            
+            # If we get here, all values are valid - save them
+            self.threshold = threshold_value
+            self.pot = pot_value
+            self.pbt = pbt_value
+            self.percentile = percentile_value
+            self.nday_total = nday_value
+            
             # Update rain_yes based on selected stats
             self.rain_yes = False
             precip_indices_1 = range(14, 24) 
@@ -601,7 +658,10 @@ class ContentWidget(QWidget):
                 if i < len(self.stats_params) and self.stats_params[i][1] == "Y":
                     self.rain_yes = True
                     break
-    
+            
+            # All validations passed, break out of the loop
+            break
+
     def analyze_data(self):
         """
         Run the full analysis
@@ -2435,6 +2495,21 @@ class StatsSelectDialog(QDialog):
             updated_stats.append((name, enabled, desc))
         
         return updated_stats
+
+    def get_threshold_value(self):
+        return self.thresh_value.text()
+    
+    def get_pot_value(self):
+        return self.pot_value.text()
+        
+    def get_pbt_value(self):
+        return self.pbt_value.text()
+        
+    def get_percentile_value(self):
+        return self.percentile_value.text()
+        
+    def get_nday_value(self):
+        return self.nday_value.text()
 
 
 class DeltaPeriodsDialog(QDialog):

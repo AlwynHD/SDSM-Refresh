@@ -1,7 +1,8 @@
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QFrame, QComboBox, 
     QLineEdit, QListWidget, QFileDialog, QCheckBox, QRadioButton, QButtonGroup, 
-    QGridLayout, QGroupBox, QSizePolicy, QMessageBox, QProgressBar, QSpacerItem
+    QGridLayout, QGroupBox, QSizePolicy, QMessageBox, QProgressBar, QSpacerItem, 
+    QDialog
 )
 from PyQt5.QtCore import QUrl
 from PyQt5.QtGui import QDesktopServices
@@ -10,11 +11,24 @@ from PyQt5.QtGui import QFont
 import os
 import csv
 from datetime import datetime
+import math
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
+import matplotlib.pyplot as plt
+import numpy as np
+
+# Chapter 1 for me
+"""
+project management
+refactor what oes where
+gannt chart - team structure
+make up a kanban board 
+bottom of every chapter is the markscheme
+follow that
+"""
 
 class ContentWidget(QWidget):
-    """
-    A well-optimized UI layout based on the user's feedback.
-    """
     def __init__(self):
         super().__init__()
 
@@ -32,7 +46,7 @@ class ContentWidget(QWidget):
         self.global_end_date = "31/12/2017"
         self.global_n_days = "25567"
 
-        # Define missing value code (used throughout the code)
+        # Define missing value code
         self.global_missing_code = -999.0
 
         # ---Default threshold values---
@@ -52,7 +66,7 @@ class ContentWidget(QWidget):
         self.CurrentDay = 1
         self.CurrentMonth = 1
         self.CurrentYear = 1948
-        self.CurrentSeason = 1  #1=winter, 2=Spring, 3=Summer, 4=Autumn
+        self.CurrentSeason = 1
         self.CurrentWaterYear = 1948
         
         # For checking period changes
@@ -73,27 +87,23 @@ class ContentWidget(QWidget):
         max_stats = 25
         
         # Summary array to store statistics
-        # VB: summaryArray(1 To 5, 1 To 200, 1 To 20, 1 To 25)
         self.summaryArray = [[[[self.global_missing_code for _ in range(max_stats)] 
                             for _ in range(max_months)]
                             for _ in range(max_years)]
                             for _ in range(max_files)]
         
         # Period array to store temporary data
-        # VB: periodArray(1 To 5, 1 To 55000)
         max_days = 55000
         self.periodArray = [[self.global_missing_code for _ in range(max_days)] 
                             for _ in range(max_files)]
         
         # Arrays for SPI calculation
-        # VB: RunningMonths(1 To 5, 1 To 2000, 1 To 5)
         max_running_months = 2000
         self.RunningMonths = [[[self.global_missing_code for _ in range(5)]
                             for _ in range(max_running_months)]
                             for _ in range(max_files)]
         
         # Arrays for spell statistics
-        # VB: DrySpellArray(1 To 5, 1 To 366)
         max_spells = 366
         self.DrySpellArray = [[0 for _ in range(max_spells)] 
                             for _ in range(max_files)]
@@ -101,19 +111,16 @@ class ContentWidget(QWidget):
                             for _ in range(max_files)]
         
         # Count of spells
-        # VB: TotalDrySpells(1 To 5)
         self.TotalDrySpells = [0 for _ in range(max_files)]
         self.TotalWetSpells = [0 for _ in range(max_files)]
         
         # Arrays for results
-        # VB: FractionResult(1 To 5, 1 To 200)
         self.FractionResult = [[self.global_missing_code for _ in range(max_years)]
                             for _ in range(max_files)]
         self.LongTermResults = [[self.global_missing_code for _ in range(max_years)]
                             for _ in range(max_files)]
         
         # Ensemble file flags
-        # VB: EnsembleFile(1 To 5)
         self.EnsembleFile = [False for _ in range(max_files)]
         
         # Start and end years for analysis
@@ -677,7 +684,7 @@ class ContentWidget(QWidget):
                 self.setCursor(Qt.WaitCursor)  # Set hourglass cursor
                 
                 # Close any open files
-                # (In a real implementation, close file handles here)
+                self.close_open_files()
                 
                 # Reset ensemble file flags
                 for i in range(5):
@@ -690,21 +697,23 @@ class ContentWidget(QWidget):
                 self.progress_bar.setFormat("Creating Plot")
                 
                 # Allow processing of escape key
-                # (In PyQt implementation, connect to keyPressEvent)
+                self.setKeyPressed(True)
                 
                 # Clear the list of selected files
                 self.AllFilesList = []
+                self.open_files = []
                 
                 # Open files and check if they're ensemble files
                 file_no = 2  # File number 1 reserved for save file
                 
                 # Check left file list
-                for i in range(self.fileSelectionLeft.findChild(QListWidget).count()):
-                    item = self.fileSelectionLeft.findChild(QListWidget).item(i)
+                left_list_widget = self.fileSelectionLeft.findChild(QListWidget)
+                for i in range(left_list_widget.count()):
+                    item = left_list_widget.item(i)
                     if item.isSelected():
                         self.AllFilesList.append(item.text())
                         
-                        file_path = os.path.join(self.fileSelectionLeft.findChild(QListWidget).path, item.text())
+                        file_path = os.path.join(left_list_widget.path, item.text())
                         try:
                             # Check if this is an ensemble file by reading first line
                             with open(file_path, 'r') as f:
@@ -714,7 +723,8 @@ class ContentWidget(QWidget):
                                     ensemble_present = True
                             
                             # Reopen file for processing
-                            # (In actual implementation, store file handles for later use)
+                            input_file = open(file_path, 'r')
+                            self.open_files.append(input_file)
                             file_no += 1
                         except Exception as e:
                             print(f"Error opening file {file_path}: {str(e)}")
@@ -722,12 +732,13 @@ class ContentWidget(QWidget):
                             return
                 
                 # Check right file list
-                for i in range(self.fileSelectionRight.findChild(QListWidget).count()):
-                    item = self.fileSelectionRight.findChild(QListWidget).item(i)
+                right_list_widget = self.fileSelectionRight.findChild(QListWidget)
+                for i in range(right_list_widget.count()):
+                    item = right_list_widget.item(i)
                     if item.isSelected():
                         self.AllFilesList.append(item.text())
                         
-                        file_path = os.path.join(self.fileSelectionRight.findChild(QListWidget).path, item.text())
+                        file_path = os.path.join(right_list_widget.path, item.text())
                         try:
                             # Check if this is an ensemble file by reading first line
                             with open(file_path, 'r') as f:
@@ -737,7 +748,8 @@ class ContentWidget(QWidget):
                                     ensemble_present = True
                             
                             # Reopen file for processing
-                            # (In actual implementation, store file handles for later use)
+                            input_file = open(file_path, 'r')
+                            self.open_files.append(input_file)
                             file_no += 1
                         except Exception as e:
                             print(f"Error opening file {file_path}: {str(e)}")
@@ -773,87 +785,12 @@ class ContentWidget(QWidget):
                     series_data_first_value = self.TimeSeriesData[0][0]
                     
                     # Create and show the chart
-                    # (In actual implementation, create a chart window)
-                    print("Creating chart...")
-                    
-                    # Set legends to filenames
-                    for i in range(self.total_time_series_files):
-                        print(f"Legend {i+1}: {self.AllFilesList[i]}")
-                    
-                    # Set chart title based on selected statistic
-                    chart_title = "Time Series Plot"
-                    y_label = ""
-                    
-                    if self.statCheckboxes[4].isChecked():
-                        chart_source = "SPI"
-                    elif self.DatesCombo.currentIndex() == 0:
-                        chart_source = "raw"
-                    elif self.statCheckboxes[14].isChecked() or self.statCheckboxes[22].isChecked():
-                        chart_source = "percentage"
-                    else:
-                        chart_source = "analysed"
-                    
-                    # Set Y-axis label based on selected statistic
-                    if self.statCheckboxes[0].isChecked():
-                        y_label = "Sum"
-                    elif self.statCheckboxes[1].isChecked():
-                        y_label = "Mean"
-                    elif self.statCheckboxes[2].isChecked():
-                        y_label = "Maximum"
-                    elif self.statCheckboxes[3].isChecked():
-                        y_label = "Percentile"
-                    elif self.statCheckboxes[4].isChecked():
-                        y_label = "SPI"
-                    elif self.statCheckboxes[5].isChecked():
-                        y_label = "PDS"
-                    elif self.statCheckboxes[6].isChecked():
-                        y_label = "Winter/Summer Ratio"
-                    elif self.statCheckboxes[7].isChecked():
-                        y_label = "Peaks Over Threshold"
-                    elif self.statCheckboxes[8].isChecked():
-                        y_label = f"{self.nth_largest} largest"
-                    elif self.statCheckboxes[9].isChecked():
-                        y_label = f"Largest {self.largest_n_day} Total"
-                    elif self.statCheckboxes[10].isChecked():
-                        y_label = "Maximum Dry Spell"
-                    elif self.statCheckboxes[11].isChecked():
-                        y_label = "Maximum Wet Spell"
-                    elif self.statCheckboxes[12].isChecked():
-                        y_label = "Mean Dry Spell"
-                    elif self.statCheckboxes[13].isChecked():
-                        y_label = "Mean Wet Spell"
-                    elif self.statCheckboxes[14].isChecked():
-                        y_label = "Percentage"
-                    elif self.statCheckboxes[15].isChecked():
-                        y_label = "Median Dry Spell"
-                    elif self.statCheckboxes[16].isChecked():
-                        y_label = "Median Wet Spell"
-                    elif self.statCheckboxes[17].isChecked():
-                        y_label = "SD Dry Spell"
-                    elif self.statCheckboxes[18].isChecked():
-                        y_label = "SD Wet Spell"
-                    elif self.statCheckboxes[19].isChecked():
-                        y_label = "Dry Day Persistence"
-                    elif self.statCheckboxes[20].isChecked():
-                        y_label = "Wet Day Persistence"
-                    elif self.statCheckboxes[21].isChecked():
-                        y_label = "Spell Length Correlation"
-                    elif self.statCheckboxes[22].isChecked():
-                        y_label = "Percentage"
-                    elif self.statCheckboxes[23].isChecked():
-                        y_label = "Percentage Precip>Long Term Percentile"
-                    
-                    print(f"Chart title: {chart_title}")
-                    print(f"Y-axis label: {y_label}")
-                    print(f"Chart source: {chart_source}")
-                    
-                    # Display the chart
-                    # (In actual implementation, show chart window)
+                    self.create_and_show_chart()
                     
                     # Save results if requested
                     if (self.save_root and 
                         (self.statCheckboxes[4].isChecked() or self.DatesCombo.currentIndex() != 0)):
-                        self.SaveResults()
+                        self.SaveResults(series_data_first_value)
                 else:
                     # Error occurred during data processing
                     if not self.global_kopout:
@@ -864,15 +801,387 @@ class ContentWidget(QWidget):
                         self.global_kopout = False
                 
                 # Close all open files
-                # (In actual implementation, close file handles)
+                self.close_open_files()
                 
                 # Reset cursor and hide progress bar
                 self.setCursor(Qt.ArrowCursor)
                 self.progress_bar.setVisible(False)
+                
+                # Disable key press event processing
+                self.setKeyPressed(False)
         
         except Exception as e:
             print(f"Error in PlotData: {str(e)}")
             self.Mini_Reset()
+
+    def close_open_files(self):
+        """Close any open file handles"""
+        if hasattr(self, 'open_files') and self.open_files:
+            for file in self.open_files:
+                if not file.closed:
+                    file.close()
+            self.open_files = []
+
+    def setKeyPressed(self, enabled):
+        """Enable or disable key press event processing"""
+        if enabled:
+            self.installEventFilter(self)
+        else:
+            self.removeEventFilter(self)
+
+    def eventFilter(self, obj, event):
+        """Process key press events"""
+        if event.type() == QEvent.KeyPress:
+            if event.key() == Qt.Key_Escape:
+                response = QMessageBox.question(
+                    self, 
+                    "Cancel?", 
+                    "Do you really want to cancel processing?",
+                    QMessageBox.Yes | QMessageBox.No, 
+                    QMessageBox.No
+                )
+                if response == QMessageBox.Yes:
+                    self.global_kopout = True
+                return True
+        
+        return super().eventFilter(obj, event)
+
+    def create_and_show_chart(self):
+        """Creates and displays the time series chart using matplotlib"""
+        try:
+            
+            # Create chart window
+            self.chart_window = QDialog(self)
+            self.chart_window.setWindowTitle("Time Series Plot")
+            self.chart_window.resize(900, 600)
+            chart_layout = QVBoxLayout(self.chart_window)
+            
+            # Create matplotlib figure
+            figure = Figure(figsize=(10, 6), dpi=100)
+            canvas = FigureCanvas(figure)
+            chart_layout.addWidget(canvas)
+            
+            # Add a toolbar with navigation buttons
+            toolbar = NavigationToolbar(canvas, self.chart_window)
+            chart_layout.addWidget(toolbar)
+            
+            # Create plot
+            ax = figure.add_subplot(111)
+            
+            # Determine chart title based on selected data and statistic
+            title = "Time Series Plot"
+            y_label = ""
+            
+            # Set chart source type
+            if self.statCheckboxes[4].isChecked():
+                chart_source = "SPI"
+            elif self.DatesCombo.currentIndex() == 0:
+                chart_source = "raw"
+            elif self.statCheckboxes[14].isChecked() or self.statCheckboxes[22].isChecked():
+                chart_source = "percentage"
+            else:
+                chart_source = "analysed"
+            
+            # Set Y-axis label based on selected statistic
+            if self.statCheckboxes[0].isChecked():
+                y_label = "Sum"
+            elif self.statCheckboxes[1].isChecked():
+                y_label = "Mean"
+            elif self.statCheckboxes[2].isChecked():
+                y_label = "Maximum"
+            elif self.statCheckboxes[3].isChecked():
+                y_label = "Percentile"
+            elif self.statCheckboxes[4].isChecked():
+                y_label = "SPI"
+            elif self.statCheckboxes[5].isChecked():
+                y_label = "PDS"
+            elif self.statCheckboxes[6].isChecked():
+                y_label = "Winter/Summer Ratio"
+            elif self.statCheckboxes[7].isChecked():
+                y_label = "Peaks Over Threshold"
+            elif self.statCheckboxes[8].isChecked():
+                y_label = f"{self.nth_largest} largest"
+            elif self.statCheckboxes[9].isChecked():
+                y_label = f"Largest {self.largest_n_day} Total"
+            elif self.statCheckboxes[10].isChecked():
+                y_label = "Maximum Dry Spell"
+            elif self.statCheckboxes[11].isChecked():
+                y_label = "Maximum Wet Spell"
+            elif self.statCheckboxes[12].isChecked():
+                y_label = "Mean Dry Spell"
+            elif self.statCheckboxes[13].isChecked():
+                y_label = "Mean Wet Spell"
+            elif self.statCheckboxes[14].isChecked():
+                y_label = "Percentage"
+            elif self.statCheckboxes[15].isChecked():
+                y_label = "Median Dry Spell"
+            elif self.statCheckboxes[16].isChecked():
+                y_label = "Median Wet Spell"
+            elif self.statCheckboxes[17].isChecked():
+                y_label = "SD Dry Spell"
+            elif self.statCheckboxes[18].isChecked():
+                y_label = "SD Wet Spell"
+            elif self.statCheckboxes[19].isChecked():
+                y_label = "Dry Day Persistence"
+            elif self.statCheckboxes[20].isChecked():
+                y_label = "Wet Day Persistence"
+            elif self.statCheckboxes[21].isChecked():
+                y_label = "Spell Length Correlation"
+            elif self.statCheckboxes[22].isChecked():
+                y_label = "Percentage"
+            elif self.statCheckboxes[23].isChecked():
+                y_label = "Percentage Precip>Long Term Percentile"
+            
+            # Set chart title based on selected time period
+            if self.statCheckboxes[4].isChecked():
+                title = f"Standard Precipitation Index (SPI) - {self.spi_value} Month Period"
+            elif self.DatesCombo.currentIndex() == 0:
+                title = "Raw Data Time Series"
+            elif self.DatesCombo.currentIndex() >= 1 and self.DatesCombo.currentIndex() <= 12:
+                # Month names
+                month_names = ["January", "February", "March", "April", "May", "June",
+                            "July", "August", "September", "October", "November", "December"]
+                title = f"{month_names[self.DatesCombo.currentIndex()-1]} {y_label}"
+            elif self.DatesCombo.currentIndex() >= 13 and self.DatesCombo.currentIndex() <= 16:
+                # Season names
+                season_names = ["Winter", "Spring", "Summer", "Autumn"]
+                title = f"{season_names[self.DatesCombo.currentIndex()-13]} {y_label}"
+            elif self.DatesCombo.currentIndex() == 17:
+                title = f"Annual {y_label}"
+            elif self.DatesCombo.currentIndex() == 18:
+                title = f"Water Year {y_label}"
+            
+            # Set title and labels
+            ax.set_title(title, fontsize=12, fontweight='bold')
+            ax.set_ylabel(y_label, fontsize=10)
+            
+            # Set X-axis label based on data type
+            if self.statCheckboxes[4].isChecked():
+                ax.set_xlabel("Date", fontsize=10)
+            elif self.DatesCombo.currentIndex() == 0:
+                ax.set_xlabel("Day", fontsize=10)
+            else:
+                ax.set_xlabel("Year", fontsize=10)
+            
+            # List of colors and markers for different time series
+            colors = ['blue', 'red', 'green', 'purple', 'orange']
+            markers = ['o', 's', '^', 'D', 'x']
+            
+            # Plot each time series
+            for i in range(1, self.total_time_series_files + 1):
+                # Extract x and y values, filter out None/Empty values
+                x_values = []
+                y_values = []
+                
+                for j in range(self.TimeSeriesLength):
+                    if j < len(self.TimeSeriesData) and i < len(self.TimeSeriesData[j]):
+                        if self.TimeSeriesData[j][i] is not None:
+                            # Use actual x-axis values if available
+                            if self.TimeSeriesData[j][0] and self.TimeSeriesData[j][0].strip():
+                                try:
+                                    # Try to convert to numeric x-value if possible
+                                    x_val = float(self.TimeSeriesData[j][0])
+                                except (ValueError, TypeError):
+                                    # If not numeric, use the index
+                                    x_val = j
+                            else:
+                                x_val = j
+                                
+                            x_values.append(x_val)
+                            y_values.append(self.TimeSeriesData[j][i])
+                
+                if len(x_values) > 0:
+                    # Plot the time series with a different color and marker for each file
+                    color_idx = (i-1) % len(colors)
+                    marker_idx = (i-1) % len(markers)
+                    
+                    if self.DatesCombo.currentIndex() == 0:  # Raw data - use line plot
+                        line, = ax.plot(x_values, y_values, 
+                                    color=colors[color_idx],
+                                    marker=markers[marker_idx], 
+                                    markersize=4,
+                                    linestyle='-',
+                                    linewidth=1,
+                                    label=self.AllFilesList[i-1])
+                    else:  # Other data - connect points with lines
+                        line, = ax.plot(x_values, y_values, 
+                                    color=colors[color_idx],
+                                    marker=markers[marker_idx], 
+                                    markersize=6,
+                                    linestyle='-',
+                                    linewidth=1.5,
+                                    label=self.AllFilesList[i-1])
+            
+            # Customize x-axis based on data type
+            if self.DatesCombo.currentIndex() != 0:  # Not raw data
+                # Create custom tick marks for years
+                ticks = []
+                tick_labels = []
+                
+                for j in range(min(self.TimeSeriesLength, len(self.TimeSeriesData))):
+                    if self.TimeSeriesData[j][0] and str(self.TimeSeriesData[j][0]).strip():
+                        # Only add labels for even-numbered years to avoid crowding
+                        if j % 2 == 0 or self.TimeSeriesLength < 10:
+                            ticks.append(j)
+                            tick_labels.append(str(self.TimeSeriesData[j][0]).strip())
+                
+                if ticks:
+                    ax.set_xticks(ticks)
+                    ax.set_xticklabels(tick_labels, rotation=45, ha='right')
+            
+            # Add grid
+            ax.grid(True, linestyle='--', alpha=0.7)
+            
+            # Add legend if there's more than one time series
+            if self.total_time_series_files > 1:
+                ax.legend(loc='best', frameon=True, framealpha=0.8, fontsize='small')
+            
+            # Add data range information in the corner
+            if self.DatesCombo.currentIndex() != 0:  # Not raw data
+                date_text = f"Data period: {self.FSDate} to {self.FEdate}"
+                plt.figtext(0.01, 0.01, date_text, fontsize=8, ha='left')
+            
+            # Adjust layout
+            figure.tight_layout()
+            
+            # Add buttons below the plot
+            button_layout = QHBoxLayout()
+            
+            # Save button - saves chart as image
+            save_button = QPushButton("Save Chart")
+            save_button.clicked.connect(lambda: self.save_chart_image(figure))
+            button_layout.addWidget(save_button)
+            
+            # Print button
+            print_button = QPushButton("Print Chart")
+            print_button.clicked.connect(lambda: self.print_chart(figure))
+            button_layout.addWidget(print_button)
+            
+            # Export Data button
+            if not self.save_root:  # Only show if data hasn't been saved already
+                export_button = QPushButton("Export Data")
+                export_button.clicked.connect(self.export_chart_data)
+                button_layout.addWidget(export_button)
+            
+            # Close button
+            close_button = QPushButton("Close")
+            close_button.clicked.connect(self.chart_window.accept)
+            button_layout.addWidget(close_button)
+            
+            # Add buttons to the layout
+            chart_layout.addLayout(button_layout)
+            
+            # Update progress
+            self.progress_bar.setValue(100)
+            self.progress_bar.setFormat("Chart Created")
+            
+            # Display the chart window modally
+            self.chart_window.exec_()
+            
+        except Exception as e:
+            print(f"Error creating chart: {str(e)}")
+            QMessageBox.critical(self, "Chart Error", 
+                            f"An error occurred while creating the chart: {str(e)}")
+
+    def save_chart_image(self, figure):
+        """Saves the chart as an image file"""
+        try:
+            file_path, _ = QFileDialog.getSaveFileName(
+                self.chart_window,
+                "Save Chart",
+                "",
+                "PNG Files (*.png);;JPEG Files (*.jpg);;PDF Files (*.pdf);;SVG Files (*.svg)")
+            
+            if file_path:
+                figure.savefig(file_path, dpi=300, bbox_inches='tight')
+                QMessageBox.information(self.chart_window, "Save Successful", 
+                                    f"Chart successfully saved to:\n{file_path}")
+        except Exception as e:
+            QMessageBox.critical(self.chart_window, "Save Error", 
+                            f"Error saving chart: {str(e)}")
+
+    def print_chart(self, figure):
+        """Prints the chart"""
+        try:
+            from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+            from PyQt5.QtPrintSupport import QPrinter, QPrintDialog
+            from PyQt5.QtGui import QPainter, QPixmap, QImage
+            
+            printer = QPrinter(QPrinter.HighResolution)
+            dialog = QPrintDialog(printer, self.chart_window)
+            
+            if dialog.exec_() == QPrintDialog.Accepted:
+                # Create a QPainter to paint on the printer
+                painter = QPainter()
+                if painter.begin(printer):
+                    # Get the size of the printer page
+                    rect = painter.viewport()
+                    
+                    # Create a QPixmap from the figure
+                    canvas = FigureCanvas(figure)
+                    canvas.draw()
+                    pixmap = QPixmap.fromImage(QImage(canvas.buffer_rgba(), 
+                                                    canvas.width(), 
+                                                    canvas.height(), 
+                                                    QImage.Format_RGBA8888))
+                    
+                    # Scale the pixmap to fit the printer page
+                    scaled_pixmap = pixmap.scaled(rect.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                    
+                    # Center the pixmap on the page
+                    x = (rect.width() - scaled_pixmap.width()) / 2
+                    y = (rect.height() - scaled_pixmap.height()) / 2
+                    
+                    # Draw the pixmap on the printer
+                    painter.drawPixmap(x, y, scaled_pixmap)
+                    painter.end()
+                    
+                    QMessageBox.information(self.chart_window, "Print Successful", 
+                                        "Chart has been sent to the printer.")
+        except Exception as e:
+            QMessageBox.critical(self.chart_window, "Print Error", 
+                            f"Error printing chart: {str(e)}")
+
+    def export_chart_data(self):
+        """Exports the chart data to a CSV file"""
+        try:
+            file_path, _ = QFileDialog.getSaveFileName(
+                self.chart_window,
+                "Export Data",
+                "",
+                "CSV Files (*.csv)")
+            
+            if file_path:
+                with open(file_path, 'w', newline='') as csv_file:
+                    writer = csv.writer(csv_file)
+                    
+                    # Write header row
+                    header = ["TimeLabel"]
+                    for i in range(self.total_time_series_files):
+                        header.append(self.AllFilesList[i])
+                    writer.writerow(header)
+                    
+                    # Write data rows
+                    for j in range(self.TimeSeriesLength):
+                        row = []
+                        if j < len(self.TimeSeriesData):
+                            # Add time label
+                            row.append(self.TimeSeriesData[j][0])
+                            
+                            # Add data values
+                            for i in range(1, self.total_time_series_files + 1):
+                                if i < len(self.TimeSeriesData[j]):
+                                    row.append(self.TimeSeriesData[j][i])
+                                else:
+                                    row.append("")
+                            
+                            writer.writerow(row)
+                
+                QMessageBox.information(self.chart_window, "Export Successful", 
+                                    f"Data successfully exported to:\n{file_path}")
+        except Exception as e:
+            QMessageBox.critical(self.chart_window, "Export Error", 
+                            f"Error exporting data: {str(e)}")
     
     def validate_start_date(self):
         """Helper function to validate start date"""
@@ -965,32 +1274,46 @@ class ContentWidget(QWidget):
             current_day = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").day)
             current_month = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").month)
             current_year = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").year)
+            self.CurrentDay = current_day
+            self.CurrentMonth = current_month
+            self.CurrentYear = current_year
             total_numbers = 0
             
             # Skip unwanted data at the start of the file
-            date_start = datetime(current_year, current_month, current_day)
+            date_start = datetime(current_day=current_day, month=current_month, year=current_year)
             date_target = datetime.strptime(self.FSDate, "%d/%m/%Y")
             
             # Loop until we reach the start date for analysis
-            while date_start <= date_target:
+            while date_start < date_target:
                 # Check if user wants to exit
                 if self.ExitAnalysis():
                     self.Mini_Reset()
                     return False
                 
                 # Skip data from all files
-                for i in range(2, self.total_time_series_files + 2):
-                    # In actual implementation, read and discard a line from each file
-                    pass
+                for i in range(len(self.open_files)):
+                    file = self.open_files[i]
+                    
+                    if self.EnsembleFile[i]:
+                        # Handle multi-column file (ensemble)
+                        line = file.readline()
+                        if not line:  # EOF
+                            break
+                    else:
+                        # Handle single-column file
+                        line = file.readline()
+                        if not line:  # EOF
+                            break
                 
                 total_numbers += 1
                 self.IncreaseDate()
-                date_start = datetime(current_year, current_month, current_day)
+                date_start = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
                 
                 # Update progress bar
                 progress_value = int((total_numbers / total_to_read_in) * 100)
                 self.progress_bar.setValue(progress_value)
-                
+                self.progress_bar.setFormat("Skipping Unnecessary Data")
+            
             # Now read in the data we want to analyze
             total_numbers = 0
             total_to_read_in = (datetime.strptime(self.FEdate, "%d/%m/%Y") - 
@@ -999,18 +1322,19 @@ class ContentWidget(QWidget):
             self.progress_bar.setVisible(True)
             self.progress_bar.setValue(0)
             self.progress_bar.setMaximum(100)
+            self.progress_bar.setFormat("Reading Time Series Data")
             
             # Set current date to start date for analysis
-            current_day = int(datetime.strptime(self.FSDate, "%d/%m/%Y").day)
-            current_month = int(datetime.strptime(self.FSDate, "%d/%m/%Y").month)
-            current_year = int(datetime.strptime(self.FSDate, "%d/%m/%Y").year)
+            self.CurrentDay = int(datetime.strptime(self.FSDate, "%d/%m/%Y").day)
+            self.CurrentMonth = int(datetime.strptime(self.FSDate, "%d/%m/%Y").month)
+            self.CurrentYear = int(datetime.strptime(self.FSDate, "%d/%m/%Y").year)
             
             # Create a temporary array for the time series data
             time_series_data2 = [[None for _ in range(self.total_time_series_files + 1)] 
                             for _ in range(total_to_read_in + 1)]
             
             # Read in the data
-            date_current = datetime(current_year, current_month, current_day)
+            date_current = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
             date_end = datetime.strptime(self.FEdate, "%d/%m/%Y")
             
             while date_current <= date_end:
@@ -1022,32 +1346,56 @@ class ContentWidget(QWidget):
                 total_numbers += 1
                 
                 # Read data for the current day from each file
-                for i in range(2, self.total_time_series_files + 2):
-                    # In actual implementation, read data from file
-                    # Here using placeholder value
-                    if self.EnsembleFile[i-2]:
-                        # Handle multi-column file
-                        temp_double = 0  # Placeholder - would read first value from line
-                    else:
-                        # Handle single-column file
-                        temp_double = 0  # Placeholder - would read value from file
-                    
-                    if temp_double == self.global_missing_code:
+                for i, file in enumerate(self.open_files):
+                    try:
+                        if self.EnsembleFile[i]:
+                            # Handle multi-column file (ensemble)
+                            line = file.readline()
+                            if not line:  # EOF
+                                break
+                            # Extract first value from the line (comma or space separated)
+                            parts = line.strip().split()
+                            if len(parts) > 0:
+                                if ',' in parts[0]:
+                                    values = parts[0].split(',')
+                                    temp_double = float(values[0]) if values[0].strip() else self.global_missing_code
+                                else:
+                                    temp_double = float(parts[0]) if parts[0].strip() else self.global_missing_code
+                            else:
+                                temp_double = self.global_missing_code
+                        else:
+                            # Handle single-column file
+                            line = file.readline()
+                            if not line:  # EOF
+                                break
+                            line = line.strip()
+                            if line:
+                                temp_double = float(line)
+                            else:
+                                temp_double = self.global_missing_code
+                        
+                        # Store the value in the time series array
+                        if temp_double == self.global_missing_code:
+                            any_missing = True
+                            time_series_data2[total_numbers-1][i+1] = None  # Empty value for missing data
+                        else:
+                            time_series_data2[total_numbers-1][i+1] = temp_double
+                    except ValueError:
+                        # Handle conversion errors (e.g., non-numeric data)
                         any_missing = True
-                        time_series_data2[total_numbers-1][i-1] = None  # Empty value for missing data
-                    else:
-                        time_series_data2[total_numbers-1][i-1] = temp_double
+                        time_series_data2[total_numbers-1][i+1] = None
                 
-                # Set category label
+                # Set category label (day number for x-axis)
                 time_series_data2[total_numbers-1][0] = str(total_numbers)
                 
                 # Increase date for next iteration
                 self.IncreaseDate()
-                date_current = datetime(current_year, current_month, current_day)
+                date_current = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
                 
                 # Update progress bar
                 progress_value = int((total_numbers / total_to_read_in) * 100)
                 self.progress_bar.setValue(progress_value)
+                self.progress_bar.setFormat("Reading Time Series Data")
             
             # Set time series length
             self.TimeSeriesLength = total_numbers
@@ -1087,33 +1435,48 @@ class ContentWidget(QWidget):
                 self.progress_bar.setFormat("Skipping Unnecessary Data")
             
             # Set current date to global start date
-            current_day = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").day)
-            current_month = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").month)
-            current_year = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").year)
+            self.CurrentDay = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").day)
+            self.CurrentMonth = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").month)
+            self.CurrentYear = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").year)
+            self.CurrentSeason = self.GetSeason(self.CurrentMonth)
+            self.CurrentWaterYear = self.GetWaterYear(self.CurrentMonth, self.CurrentYear)
             total_numbers = 0
             
             # Skip unwanted data at the start of the file
-            date_start = datetime(current_year, current_month, current_day)
+            date_start = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
             date_target = datetime.strptime(self.FSDate, "%d/%m/%Y")
             
             # Loop until we reach the start date for analysis
-            while date_start <= date_target:
+            while date_start < date_target:
                 # Check if user wants to exit
                 if self.ExitAnalysis():
                     self.Mini_Reset()
                     return False
                 
                 # Skip data from all files
-                for i in range(2, self.total_time_series_files + 2):
-                    # In actual implementation, read and discard a line from each file
-                    pass
+                for i, file in enumerate(self.open_files):
+                    try:
+                        if self.EnsembleFile[i]:
+                            # Handle multi-column file (ensemble)
+                            line = file.readline()
+                            if not line:  # EOF
+                                break
+                        else:
+                            # Handle single-column file
+                            line = file.readline()
+                            if not line:  # EOF
+                                break
+                    except Exception as e:
+                        print(f"Error reading file {i}: {str(e)}")
+                        self.Mini_Reset()
+                        return False
                 
                 total_numbers += 1
                 self.IncreaseDate()
-                date_start = datetime(current_year, current_month, current_day)
+                date_start = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
                 
                 # Update progress bar
-                progress_value = int((total_numbers / total_to_read_in) * 100)
+                progress_value = int((total_numbers / total_to_read_in) * 100) if total_to_read_in > 0 else 100
                 self.progress_bar.setValue(progress_value)
             
             # Now read in the data we want to analyze
@@ -1126,12 +1489,12 @@ class ContentWidget(QWidget):
             self.progress_bar.setMaximum(100)
             self.progress_bar.setFormat("Reading in data for plot")
             
-            # Set current date to start date for analysis
-            current_day = int(datetime.strptime(self.FSDate, "%d/%m/%Y").day)
-            current_month = int(datetime.strptime(self.FSDate, "%d/%m/%Y").month)
-            current_year = int(datetime.strptime(self.FSDate, "%d/%m/%Y").year)
-            current_season = self.GetSeason(current_month)
-            current_water_year = self.GetWaterYear(current_month, current_year)
+            # Reset current date to start date for analysis
+            self.CurrentDay = int(datetime.strptime(self.FSDate, "%d/%m/%Y").day)
+            self.CurrentMonth = int(datetime.strptime(self.FSDate, "%d/%m/%Y").month)
+            self.CurrentYear = int(datetime.strptime(self.FSDate, "%d/%m/%Y").year)
+            self.CurrentSeason = self.GetSeason(self.CurrentMonth)
+            self.CurrentWaterYear = self.GetWaterYear(self.CurrentMonth, self.CurrentYear)
             
             # Initialize arrays for statistics
             sum_vals = [0] * (self.total_time_series_files + 1)
@@ -1142,15 +1505,15 @@ class ContentWidget(QWidget):
             count = 0
             
             # Set up period tracking variables
-            this_month = current_month
-            this_year = current_year
-            this_season = current_season
-            this_water_year = current_water_year
+            this_month = self.CurrentMonth
+            this_year = self.CurrentYear
+            this_season = self.CurrentSeason
+            this_water_year = self.CurrentWaterYear
             
             year_index = 1
             
             # Read in data and process by period
-            date_current = datetime(current_year, current_month, current_day)
+            date_current = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
             date_end = datetime.strptime(self.FEdate, "%d/%m/%Y")
             
             while date_current <= date_end:
@@ -1218,43 +1581,64 @@ class ContentWidget(QWidget):
                 count += 1
                 total_numbers += 1
                 
-                for i in range(2, self.total_time_series_files + 2):
-                    # In actual implementation, read data from file
-                    # Here using placeholder
-                    value = 0  # Placeholder - would be actual data
+                for i, file in enumerate(self.open_files):
+                    try:
+                        file_idx = i + 1  # Adjust for 1-based indexing in arrays
+                        if self.EnsembleFile[i]:
+                            # Handle multi-column file (ensemble)
+                            line = file.readline()
+                            if not line:  # EOF
+                                value = self.global_missing_code
+                            else:
+                                # Extract first value from line
+                                parts = line.strip().split()
+                                if len(parts) > 0:
+                                    if ',' in parts[0]:
+                                        values = parts[0].split(',')
+                                        value = float(values[0]) if values[0].strip() else self.global_missing_code
+                                    else:
+                                        value = float(parts[0]) if parts[0].strip() else self.global_missing_code
+                                else:
+                                    value = self.global_missing_code
+                        else:
+                            # Handle single-column file
+                            line = file.readline()
+                            if not line:  # EOF
+                                value = self.global_missing_code
+                            else:
+                                line = line.strip()
+                                value = float(line) if line else self.global_missing_code
+                        
+                        # Store value in period array
+                        self.periodArray[file_idx][count] = value
+                        
+                        # Update statistics
+                        if value == self.global_missing_code:
+                            total_missing[file_idx] += 1
+                        else:
+                            sum_vals[file_idx] += value
+                            if max_value[file_idx] < value:
+                                max_value[file_idx] = value
+                            # For Partial Duration Series
+                            pds[file_idx] += max(0, value - self.local_thresh)
+                            # For Peaks Over Threshold
+                            if value > self.pot_value:
+                                pot_count[file_idx] += 1
                     
-                    if self.EnsembleFile[i-2]:
-                        # Handle multi-column file
-                        value = 0  # Placeholder - would read first value from line
-                    else:
-                        # Handle single-column file
-                        value = 0  # Placeholder - would read value from file
-                    
-                    # Store value in period array
-                    self.periodArray[i-1][count] = value
-                    
-                    # Update statistics
-                    if value == self.global_missing_code:
-                        total_missing[i-1] += 1
-                    else:
-                        sum_vals[i-1] += value
-                        if max_value[i-1] < value:
-                            max_value[i-1] = value
-                        # For Partial Duration Series
-                        pds[i-1] += (value - self.local_thresh)
-                        # For Peaks Over Threshold
-                        if value > self.pot_value:
-                            pot_count[i-1] += 1
+                    except Exception as e:
+                        print(f"Error processing file {i} on day {count}: {str(e)}")
+                        self.periodArray[i+1][count] = self.global_missing_code
+                        total_missing[i+1] += 1
                 
                 # Save current period values
-                this_month = current_month
-                this_year = current_year
-                this_season = current_season
-                this_water_year = current_water_year
+                this_month = self.CurrentMonth
+                this_year = self.CurrentYear
+                this_season = self.CurrentSeason
+                this_water_year = self.CurrentWaterYear
                 
                 # Increase date for next iteration
                 self.IncreaseDate()
-                date_current = datetime(current_year, current_month, current_day)
+                date_current = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
                 
                 # Update progress bar
                 progress_value = int((total_numbers / total_to_read_in) * 100)
@@ -1509,17 +1893,17 @@ class ContentWidget(QWidget):
                 print("Warning - some of the data were missing and will not be plotted.")
             
             return True
-            
+        
         except Exception as e:
             print(f"Error in GenerateData: {str(e)}")
             self.Mini_Reset()
-            return False   
+            return False  
 
     def GenerateSPI(self):
         try:
             # Initialize variables for reading in data
-            total_to_read_in = (datetime.strptime(self.global_start_date, "%d/%m/%Y") - 
-                            datetime.strptime(self.FSDate, "%d/%m/%Y")).days
+            total_to_read_in = (datetime.strptime(self.FSDate, "%d/%m/%Y") - 
+                            datetime.strptime(self.global_start_date, "%d/%m/%Y")).days
             
             if total_to_read_in > 0:
                 # Show progress bar
@@ -1528,35 +1912,47 @@ class ContentWidget(QWidget):
                 self.progress_bar.setMaximum(100)
                 
             # Set current date to the global start date
-            current_day = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").day)
-            current_month = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").month)
-            current_year = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").year)
+            self.CurrentDay = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").day)
+            self.CurrentMonth = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").month)
+            self.CurrentYear = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").year)
             total_numbers = 0
             self.TotalMonths = 0  # Reset total months counter
             
             # Skip unwanted data at the start of the file
-            date_start = datetime(current_year, current_month, current_day)
+            date_start = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
             date_target = datetime.strptime(self.FSDate, "%d/%m/%Y")
             
             # Loop until we reach the start date for analysis
-            while date_start <= date_target:
+            while date_start < date_target:
                 # Check if user wants to exit
                 if self.ExitAnalysis():
                     self.Mini_Reset()
                     return False
                 
                 # Skip data from all files
-                for i in range(2, self.total_time_series_files + 2):
-                    # Skip a line from each file
-                    # (Actual file reading would be implemented here)
-                    pass
+                for i, file in enumerate(self.open_files):
+                    try:
+                        if self.EnsembleFile[i]:
+                            # Handle multi-column file (ensemble)
+                            line = file.readline()
+                            if not line:  # EOF
+                                break
+                        else:
+                            # Handle single-column file
+                            line = file.readline()
+                            if not line:  # EOF
+                                break
+                    except Exception as e:
+                        print(f"Error reading file {i}: {str(e)}")
+                        self.Mini_Reset()
+                        return False
                 
                 total_numbers += 1
                 self.IncreaseDate()
-                date_start = datetime(current_year, current_month, current_day)
+                date_start = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
                 
                 # Update progress bar
-                progress_value = int((total_numbers / total_to_read_in) * 100)
+                progress_value = int((total_numbers / total_to_read_in) * 100) if total_to_read_in > 0 else 100
                 self.progress_bar.setValue(progress_value)
             
             # Now read in the data we want to analyze
@@ -1567,23 +1963,24 @@ class ContentWidget(QWidget):
             self.progress_bar.setVisible(True)
             self.progress_bar.setValue(0)
             self.progress_bar.setMaximum(100)
+            self.progress_bar.setFormat("Calculating SPI")
             
             # Set current date to start date for analysis
-            current_day = int(datetime.strptime(self.FSDate, "%d/%m/%Y").day)
-            current_month = int(datetime.strptime(self.FSDate, "%d/%m/%Y").month)
-            current_year = int(datetime.strptime(self.FSDate, "%d/%m/%Y").year)
+            self.CurrentDay = int(datetime.strptime(self.FSDate, "%d/%m/%Y").day)
+            self.CurrentMonth = int(datetime.strptime(self.FSDate, "%d/%m/%Y").month)
+            self.CurrentYear = int(datetime.strptime(self.FSDate, "%d/%m/%Y").year)
             
             # Initialize arrays for calculations
             sum_vals = [0] * (self.total_time_series_files + 1)
             total_missing = [0] * (self.total_time_series_files + 1)
             count = 0
             
-            this_month = current_month
-            this_year = current_year
+            this_month = self.CurrentMonth
+            this_year = self.CurrentYear
             year_index = this_year - int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + 1
             
             # Read in data and calculate monthly sums
-            date_current = datetime(current_year, current_month, current_day)
+            date_current = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
             date_end = datetime.strptime(self.FEdate, "%d/%m/%Y")
             
             while date_current <= date_end:
@@ -1593,7 +1990,7 @@ class ContentWidget(QWidget):
                     return False
                 
                 # Check if we've reached the end of a month
-                if self.FinishedCurrentPeriod():
+                if this_month != self.CurrentMonth:
                     year_index = this_year - int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + 1
                     
                     # Save monthly sums to summaryArray
@@ -1615,28 +2012,57 @@ class ContentWidget(QWidget):
                 total_numbers += 1
                 count += 1
                 
-                for i in range(2, self.total_time_series_files + 2):
-                    # Read a value from each file
-                    # In a real implementation, you'd read from actual files
-                    value_in = 0  # Placeholder - would be actual file data
+                for i, file in enumerate(self.open_files):
+                    try:
+                        file_idx = i + 1  # Adjust for 1-based indexing in arrays
+                        
+                        if self.EnsembleFile[i]:
+                            # Handle multi-column file (ensemble)
+                            line = file.readline()
+                            if not line:  # EOF
+                                value_in = self.global_missing_code
+                            else:
+                                # Extract first value from line
+                                parts = line.strip().split()
+                                if len(parts) > 0:
+                                    if ',' in parts[0]:
+                                        values = parts[0].split(',')
+                                        value_in = float(values[0]) if values[0].strip() else self.global_missing_code
+                                    else:
+                                        value_in = float(parts[0]) if parts[0].strip() else self.global_missing_code
+                                else:
+                                    value_in = self.global_missing_code
+                        else:
+                            # Handle single-column file
+                            line = file.readline()
+                            if not line:  # EOF
+                                value_in = self.global_missing_code
+                            else:
+                                line = line.strip()
+                                value_in = float(line) if line else self.global_missing_code
+                        
+                        if value_in != self.global_missing_code:
+                            if value_in > self.thresh:
+                                sum_vals[file_idx] += value_in
+                        else:
+                            total_missing[file_idx] += 1
                     
-                    if value_in != self.global_missing_code:
-                        if value_in > self.thresh:
-                            sum_vals[i-1] += value_in
-                    else:
-                        total_missing[i-1] += 1
+                    except Exception as e:
+                        print(f"Error processing file {i} on day {count}: {str(e)}")
+                        total_missing[i+1] += 1
                 
                 # Update this_month and this_year
-                this_month = current_month
-                this_year = current_year
+                this_month = self.CurrentMonth
+                this_year = self.CurrentYear
                 
                 # Increase date for next iteration
                 self.IncreaseDate()
-                date_current = datetime(current_year, current_month, current_day)
+                date_current = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
                 
                 # Update progress bar
                 progress_value = int((total_numbers / total_to_read_in) * 100)
                 self.progress_bar.setValue(progress_value)
+                self.progress_bar.setFormat("Reading Data for SPI")
             
             # Process the last month's data
             year_index = this_year - int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + 1
@@ -1652,7 +2078,13 @@ class ContentWidget(QWidget):
             # Check if SPI period is valid
             if self.spi_value >= self.TotalMonths:
                 print("The SPI index is longer than the fit period.")
+                QMessageBox.critical(self, "Error Message", 
+                                "The SPI index is longer than the fit period. Please choose a shorter SPI period.")
                 return False
+            
+            # Update progress bar
+            self.progress_bar.setFormat("Calculating SPI Values")
+            self.progress_bar.setValue(50)  # Halfway through processing
             
             # Populate the RunningMonths array
             for i in range(1, self.total_time_series_files + 1):
@@ -1680,35 +2112,42 @@ class ContentWidget(QWidget):
                     month_sum = 0
                     month_missing = 0
                     
-                    for k in range(1, self.spi_value + 1):
-                        if self.RunningMonths[i-1][j+k-2][0] != self.global_missing_code:
-                            month_sum += self.RunningMonths[i-1][j+k-2][0]
+                    for k in range(self.spi_value):
+                        idx = j+k-1
+                        if idx < len(self.RunningMonths[i-1]) and self.RunningMonths[i-1][idx][0] != self.global_missing_code:
+                            month_sum += self.RunningMonths[i-1][idx][0]
                         else:
                             month_missing += 1
                     
                     if month_missing == self.spi_value:  # All months missing
-                        self.RunningMonths[i-1][j+k-2][3] = self.global_missing_code
+                        self.RunningMonths[i-1][j+self.spi_value-2][3] = self.global_missing_code
                     else:
-                        self.RunningMonths[i-1][j+k-2][3] = month_sum / (self.spi_value - month_missing)
+                        # Calculate the moving average - divide by number of non-missing months
+                        self.RunningMonths[i-1][j+self.spi_value-2][3] = month_sum / (self.spi_value - month_missing)
+            
+            # Update progress bar
+            self.progress_bar.setValue(75)  # 75% through processing
+            self.progress_bar.setFormat("Normalizing SPI Values")
             
             # Normalize the data (convert to SPI values)
             standard_deviation = [0] * (self.total_time_series_files + 1)
             mean_values = [0] * (self.total_time_series_files + 1)
             
             for i in range(1, self.total_time_series_files + 1):
+                # Calculate mean
                 total_of_all = 0
                 missing = 0
                 available_months = self.TotalMonths - self.spi_value + 1
                 
-                # Calculate mean
                 for j in range(self.spi_value, self.TotalMonths + 1):
-                    if self.RunningMonths[i-1][j-1][3] == self.global_missing_code:
-                        missing += 1
-                    else:
+                    if j <= len(self.RunningMonths[i-1]) and self.RunningMonths[i-1][j-1][3] != self.global_missing_code:
                         total_of_all += self.RunningMonths[i-1][j-1][3]
+                    else:
+                        missing += 1
                 
                 if missing == available_months:
-                    print("Sorry - too many missing values to compute a solution.")
+                    QMessageBox.critical(self, "Error Message", 
+                                    "Sorry - too many missing values to compute a solution.")
                     return False
                 else:
                     mean_values[i] = total_of_all / (available_months - missing)
@@ -1718,36 +2157,52 @@ class ContentWidget(QWidget):
                 total_sqr_error = 0
                 
                 for j in range(self.spi_value, self.TotalMonths + 1):
-                    if self.RunningMonths[i-1][j-1][3] == self.global_missing_code:
-                        missing += 1
+                    if j <= len(self.RunningMonths[i-1]) and self.RunningMonths[i-1][j-1][3] != self.global_missing_code:
+                        diff = self.RunningMonths[i-1][j-1][3] - mean_values[i]
+                        total_sqr_error += diff * diff
                     else:
-                        total_sqr_error += ((self.RunningMonths[i-1][j-1][3] - mean_values[i]) ** 2)
+                        missing += 1
                 
-                standard_deviation[i] = math.sqrt(total_sqr_error / (available_months - missing))
+                if available_months - missing > 0:
+                    standard_deviation[i] = math.sqrt(total_sqr_error / (available_months - missing))
+                else:
+                    standard_deviation[i] = 0  # Avoid division by zero
                 
                 # Normalize the data (SPI values)
                 for j in range(self.spi_value, self.TotalMonths + 1):
-                    if self.RunningMonths[i-1][j-1][3] == self.global_missing_code:
-                        self.RunningMonths[i-1][j-1][4] = self.global_missing_code
-                    else:
-                        self.RunningMonths[i-1][j-1][4] = ((self.RunningMonths[i-1][j-1][3] - mean_values[i]) / 
+                    if j <= len(self.RunningMonths[i-1]):
+                        if self.RunningMonths[i-1][j-1][3] == self.global_missing_code:
+                            self.RunningMonths[i-1][j-1][4] = self.global_missing_code
+                        elif standard_deviation[i] == 0:
+                            self.RunningMonths[i-1][j-1][4] = 0  # Avoid division by zero
+                        else:
+                            # Calculate standardized (normalized) values (Z-scores)
+                            self.RunningMonths[i-1][j-1][4] = ((self.RunningMonths[i-1][j-1][3] - mean_values[i]) / 
                                                         standard_deviation[i])
             
             # Update summaryArray with SPI values
             for i in range(1, self.total_time_series_files + 1):
                 for j in range(1, self.TotalMonths + 1):
-                    self.summaryArray[i][int(self.RunningMonths[i-1][j-1][1])][int(self.RunningMonths[i-1][j-1][2])][5] = self.RunningMonths[i-1][j-1][4]
+                    if j <= len(self.RunningMonths[i-1]):
+                        year = int(self.RunningMonths[i-1][j-1][1])
+                        month = int(self.RunningMonths[i-1][j-1][2])
+                        if year < len(self.summaryArray[i]) and month < len(self.summaryArray[i][year]):
+                            self.summaryArray[i][year][month][5] = self.RunningMonths[i-1][j-1][4]
+            
+            # Update progress bar
+            self.progress_bar.setValue(90)  # 90% through processing
+            self.progress_bar.setFormat("Preparing SPI Time Series")
             
             # Prepare data for plotting
             self.TimeSeriesLength = self.TotalMonths - self.spi_value + 1
             # Create and initialize the TimeSeriesData array
-            self.TimeSeriesData = [[0 for _ in range(self.total_time_series_files + 1)] 
+            self.TimeSeriesData = [[None for _ in range(self.total_time_series_files + 1)] 
                                 for _ in range(self.TimeSeriesLength)]
             
             any_missing = False
             
             for i in range(1, self.total_time_series_files + 1):
-                array_index = 1
+                array_index = 0
                 for j in range(1, year_index + 1):  # For each year
                     if j == 1:
                         start = int(datetime.strptime(self.FSDate, "%d/%m/%Y").month) + self.spi_value - 1
@@ -1763,23 +2218,29 @@ class ContentWidget(QWidget):
                         finish = 12
                     
                     for k in range(start, finish + 1):
-                        if self.summaryArray[i][j][k][5] == self.global_missing_code:
-                            self.TimeSeriesData[array_index-1][i] = None  # Empty value
-                            any_missing = True
-                        else:
-                            self.TimeSeriesData[array_index-1][i] = self.summaryArray[i][j][k][5]
-                        
-                        self.TimeSeriesData[array_index-1][0] = " "  # Blank x-axis label
-                        array_index += 1
-                    
-                    # Add year to x-axis label
-                    self.TimeSeriesData[array_index-k+start-1][0] = str(int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + j - 1)
+                        if array_index < self.TimeSeriesLength:
+                            if j < len(self.summaryArray[i]) and k < len(self.summaryArray[i][j]) and self.summaryArray[i][j][k][5] == self.global_missing_code:
+                                self.TimeSeriesData[array_index][i] = None  # Empty value
+                                any_missing = True
+                            elif j < len(self.summaryArray[i]) and k < len(self.summaryArray[i][j]):
+                                self.TimeSeriesData[array_index][i] = self.summaryArray[i][j][k][5]
+                            
+                            # Set month/year as X-axis label
+                            month_name = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                                        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][k]
+                            self.TimeSeriesData[array_index][0] = f"{month_name} {j+int(datetime.strptime(self.FSDate, '%d/%m/%Y').year)-1}"
+                            
+                            array_index += 1
+            
+            # Update progress bar
+            self.progress_bar.setValue(100)  # Processing complete
+            self.progress_bar.setFormat("SPI Calculation Complete")
             
             if any_missing:
                 print("Warning - some of the data were missing and will not be plotted.")
             
             return True
-    
+        
         except Exception as e:
             print(f"Error in GenerateSPI: {str(e)}")
             self.Mini_Reset()
@@ -3190,7 +3651,7 @@ class ContentWidget(QWidget):
             # Actual days calculation would require datetime conversion
             
             # Reset dropdowns
-            self.timePeriodDropdown.setCurrentIndex(0)
+            self.DatesCombo.setCurrentIndex(0)
             
             # Reset percentile and statistics values
             self.percentile = 90

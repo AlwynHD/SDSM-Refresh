@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import (QApplication, QCheckBox, QPushButton, QComboBox, QF
 from PyQt5.QtCore import Qt
 import sys
 from src.lib.FrequencyAnalysis import IDFTabular
-from src.lib.FrequencyAnalysis.FATabular import *
+from src.lib.FrequencyAnalysis.FATabular import frequency_analysis
 import configparser
 from PyQt5.QtCore import QDate
 from datetime import datetime
@@ -379,20 +379,21 @@ class ContentWidget(QWidget):
 
         # Determine the frequency model based on the selected radio button in faLayout
         if self.empiricalRadio.isChecked():
-            freqModel = "Empirical"
+            freqModel = 0
         elif self.gevRadio.isChecked():
-            freqModel = "GEV"
+            freqModel = 1
         elif self.gumbelRadio.isChecked():
-            freqModel = "Gumbel"
+            freqModel = 2
         elif self.stretchedExpRadio.isChecked():
-            freqModel = "Stretched Exponential"
+            freqModel = 3
         else:
             freqModel = "Empirical"  # Fallback default
 
         # Use the durations as given in the VB example
         durations = [1.0, 1.1, 1.2, 1.3, 1.5, 2.0, 2.5, 3.0, 3.5]
 
-        tableDict = computeFATableFromFiles(
+        frequency_analysis(
+            "Tabular",
             observedFilePath=self.obsDataFile,
             modelledFilePath=self.modDataFile,
             fsDate=fsDate,
@@ -405,15 +406,6 @@ class ContentWidget(QWidget):
             freqModel=freqModel
         )
 
-        print("FA Tabular Results with 2.5%ile and 97.5%ile intervals:")
-        printFATabularOutput(
-            tableDict=tableDict,
-            durations=durations,
-            obsFileName=self.obsDataFile,
-            modFileName=self.modDataFile,
-            seasonText=dataPeriodChoice,
-            fitType=freqModel
-        )
         # Optionally, load results into a QTableWidget for GUI display.
 
     def idfTabButtonClicked(self):

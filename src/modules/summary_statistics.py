@@ -1934,24 +1934,57 @@ class ContentWidget(QWidget):
             result_text += f"Ensemble Member(s): {self.ensemble_wanted}\n\n"
         else:
             result_text += "\n"
+
+        headerAbreviations = {
+            "Mean":"Mean",
+            "Maximum":"Maximum",
+            "Minimum":"Minimum",
+            "Median":"Median",
+            "Variance":"Variance",
+            "POT":"POT",
+            "PBT":"PBT",
+            "IQR":"IQR",
+            "Percentile":"%ile",
+            "Sum":"Sum",
+            "ACF":"ACF",
+            "Skewness":"Skewness",
+            "Count":"Count",
+            "WetDayPercent":"Wet-days",
+            "MaxNDayTotal":"Max_NTot",
+            "MeanDrySpell":"DrySpell",
+            "MeanWetSpell":"WetSpell",
+            "MaxDrySpell":"Max_dspel",
+            "MaxWetSpell":"Max_wspel",
+            "SDWetSpell":"SDWet",
+            "SDDrySpell":"SDDry",
+            "PrecPOT":"POP",
+            "PrecPOTPercent":"POP_Tot",
+            "ExtremeRange":"Max_Range",
+            "MinRange":"Min_Range",
+            "MeanWetDayPers":"Wet_Pers",
+            "MeanDryDayPers":"Dry_Pers",
+            "CorrSpellLength":"Pers_Corr", 
+            "MedianWetSpell":"Med_Wet",
+            "MedianDrySpell":"Med_Dry" 
+        }
         
         # Format column headers
-        header_row = "Month\t"
+        header_row = "Month\t\t"
         for i in range(len(self.stats_params)):
             if self.stats_params[i][1] == "Y":
-                header_row += f"{self.stats_params[i][0]}\t"
+                header_row += f"{headerAbreviations[self.stats_params[i][0]]}\t\t"
         result_text += header_row + "\n\n"
         
         # Format data rows
         for i in range(1, 18):
-            row = f"{self.labels[i-1]}\t"
+            row = f"{self.labels[i-1]}\t\t"
             for j in range(1, len(self.stats_params) + 1):
                 if j <= len(self.stats_params) and self.stats_params[j-1][1] == "Y":
                     if self.results_array[1, i, j] == self.global_missing_code:
-                        row += "---\t"
+                        row += "---\t\t"
                     else:
                         # Format with 3 decimal places for display only
-                        row += f"{self.results_array[1, i, j]:.3f}\t"
+                        row += f"{self.results_array[1, i, j]:.3f}\t\t"
             result_text += row + "\n"
         
         # Add standard deviations if ensemble mean used
@@ -1959,14 +1992,14 @@ class ContentWidget(QWidget):
             result_text += "\nStandard Deviations of Results\n\n"
             
             for i in range(1, 18):
-                row = f"{self.labels[i-1]}\t"
+                row = f"{self.labels[i-1]}\t\t"
                 for j in range(1, len(self.stats_params) + 1):
                     if j <= len(self.stats_params) and self.stats_params[j-1][1] == "Y":
                         if self.results_array[2, i, j] == self.global_missing_code:
-                            row += "---\t"
+                            row += "---\t\t"
                         else:
                             # Format with 3 decimal places for display only
-                            row += f"{self.results_array[2, i, j]:.3f}\t"
+                            row += f"{self.results_array[2, i, j]:.3f}\t\t"
                 result_text += row + "\n"
         
         results_dialog.set_results(result_text)
@@ -2199,22 +2232,22 @@ class ContentWidget(QWidget):
             result_text += " (absolute difference)\n\n"
         
         # Format column headers
-        header_row = "Month\t"
+        header_row = "Month\t\t"
         for i in range(len(self.stats_params)):
             if self.stats_params[i][1] == "Y":
-                header_row += f"{self.stats_params[i][0]}\t"
+                header_row += f"{self.stats_params[i][0]}\t\t"
         result_text += header_row + "\n\n"
         
         # Format data rows
         for i in range(1, 18):
-            row = f"{self.labels[i-1]}\t"
+            row = f"{self.labels[i-1]}\t\t"
             for j in range(1, len(self.stats_params) + 1):
                 if j < len(self.stats_params) and self.stats_params[j-1][1] == "Y":
                     if self.deltaresults[i, j] == self.global_missing_code:
-                        row += "---\t"
+                        row += "---\t\t"
                     else:
                         # Format with 3 decimal places for display only
-                        row += f"{self.deltaresults[i, j]:.3f}\t"
+                        row += f"{self.deltaresults[i, j]:.3f}\t\t"
             result_text += row + "\n"
         
         results_dialog.set_results(result_text)
@@ -2290,31 +2323,31 @@ class ContentWidget(QWidget):
         
         # Format text for dialog display
         result_text = "T Test Results\n\n"
-        result_text += "Period\tPeriod A\tPeriod B\tPeriod C\n\n"
+        result_text += "Period\t\tPeriod A\t\tPeriod B\t\tPeriod C\n\n"
         
         # Format T-test values, highlighting significant values
         for i in range(1, 18):
-            row = f"{self.labels[i-1]}\t"
+            row = f"{self.labels[i-1]}\t\t"
             
             # Period A
             if self.t_test_results_a[i, 1] == self.global_missing_code:
-                row += "---\t"
+                row += "---\t\t"
             else:
                 t_value = self.t_test_results_a[i, 1]
                 if t_value > 1.96:  # Critical value at 0.025 point of t distribution
-                    row += f"*{t_value:.3f}*\t"  # Format with 3 decimal places for display
+                    row += f"*{t_value:.3f}*\t\t"  # Format with 3 decimal places for display
                 else:
-                    row += f"{t_value:.3f}\t"  # Format with 3 decimal places for display
+                    row += f"{t_value:.3f}\t\t"  # Format with 3 decimal places for display
             
             # Period B
             if self.t_test_results_b[i, 1] == self.global_missing_code:
-                row += "---\t"
+                row += "---\t\t"
             else:
                 t_value = self.t_test_results_b[i, 1]
                 if t_value > 1.96:
-                    row += f"*{t_value:.3f}*\t"  # Format with 3 decimal places for display
+                    row += f"*{t_value:.3f}*\t\t"  # Format with 3 decimal places for display
                 else:
-                    row += f"{t_value:.3f}\t"  # Format with 3 decimal places for display
+                    row += f"{t_value:.3f}\t\t"  # Format with 3 decimal places for display
             
             # Period C
             if self.t_test_results_c[i, 1] == self.global_missing_code:
@@ -2329,21 +2362,21 @@ class ContentWidget(QWidget):
             result_text += row + "\n"
         
         result_text += "\nDegrees of Freedom for T Test\n\n"
-        result_text += "Period\tPeriod A\tPeriod B\tPeriod C\n\n"
+        result_text += "Period\t\tPeriod A\t\tPeriod B\t\tPeriod C\n\n"
         
         # Format degrees of freedom
         for i in range(1, 18):
-            row = f"{self.labels[i-1]}\t"
+            row = f"{self.labels[i-1]}\t\t"
             
             if self.t_test_results_a[i, 2] == self.global_missing_code:
-                row += "---\t"
+                row += "---\t\t"
             else:
-                row += f"{int(round(self.t_test_results_a[i, 2]))}\t"
+                row += f"{int(round(self.t_test_results_a[i, 2]))}\t\t"
             
             if self.t_test_results_b[i, 2] == self.global_missing_code:
-                row += "---\t"
+                row += "---\t\t"
             else:
-                row += f"{int(round(self.t_test_results_b[i, 2]))}\t"
+                row += f"{int(round(self.t_test_results_b[i, 2]))}\t\t"
             
             if self.t_test_results_c[i, 2] == self.global_missing_code:
                 row += "---"
@@ -2371,6 +2404,7 @@ class ResultsDialog(QDialog):
         
         self.results_text = QTextBrowser()
         self.results_text.setFont(QFont("Courier New", 10))
+        self.results_text.setLineWrapMode(QTextBrowser.NoWrap)
         layout.addWidget(self.results_text)
         
         close_button = QPushButton("Close")
@@ -2380,9 +2414,6 @@ class ResultsDialog(QDialog):
         self.setLayout(layout)
     
     def set_results(self, text):
-        """
-        Set the results text
-        """
         self.results_text.setPlainText(text)
 
 

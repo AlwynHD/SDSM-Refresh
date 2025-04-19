@@ -1866,7 +1866,7 @@ class ContentWidget(QWidget):
             for i in range(1, 18):
                 f.write(f"{self.labels[i-1]}")
                 for j in range(1, len(self.stats_params) + 1):
-                    if j < len(self.stats_params) and self.stats_params[j-1][1] == "Y":
+                    if j <= len(self.stats_params) and self.stats_params[j-1][1] == "Y":
                         if self.results_array[1, i, j] == self.global_missing_code:
                             f.write(",---")
                         else:
@@ -1881,7 +1881,7 @@ class ContentWidget(QWidget):
                 for i in range(1, 18):
                     f.write(f"{self.labels[i-1]}")
                     for j in range(1, len(self.stats_params) + 1):
-                        if j < len(self.stats_params) and self.stats_params[j-1][1] == "Y":
+                        if j <= len(self.stats_params) and self.stats_params[j-1][1] == "Y":
                             if self.results_array[2, i, j] == self.global_missing_code:
                                 f.write(",---")
                             else:
@@ -1912,7 +1912,7 @@ class ContentWidget(QWidget):
         for i in range(1, 18):
             row = f"{self.labels[i-1]}\t"
             for j in range(1, len(self.stats_params) + 1):
-                if j < len(self.stats_params) and self.stats_params[j-1][1] == "Y":
+                if j <= len(self.stats_params) and self.stats_params[j-1][1] == "Y":
                     if self.results_array[1, i, j] == self.global_missing_code:
                         row += "---\t"
                     else:
@@ -1927,7 +1927,7 @@ class ContentWidget(QWidget):
             for i in range(1, 18):
                 row = f"{self.labels[i-1]}\t"
                 for j in range(1, len(self.stats_params) + 1):
-                    if j < len(self.stats_params) and self.stats_params[j-1][1] == "Y":
+                    if j <= len(self.stats_params) and self.stats_params[j-1][1] == "Y":
                         if self.results_array[2, i, j] == self.global_missing_code:
                             row += "---\t"
                         else:

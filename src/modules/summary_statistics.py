@@ -9,6 +9,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt, QDate
 from PyQt5.QtGui import QFont
+import configparser
 
 class ContentWidget(QWidget):
     def __init__(self):
@@ -19,8 +20,39 @@ class ContentWidget(QWidget):
         
         # Set decimal precision
         getcontext().prec = 28  # Higher precision than IEEE-754 double (16 digits)
-        
+
+        # Constants
+        defaultValues = {
+            'yearIndicator': 366,
+            'globalSDate': datetime.datetime.now(),
+            'globalEDate': datetime.datetime.now(),
+            'globalMissingCode': -999
+        }
+
+        defaultIniFile = os.path.join("src", "lib", "settings.ini")
+
+        config = configparser.ConfigParser()
+        config.read(defaultIniFile)
+
+        local_year_indicator = self.safeGetInt(config, 'Settings', 'YearIndicator', defaultValues['yearIndicator'])
+        fs_date = config.get('Settings', 'GlobalSDate', fallback=defaultValues['globalSDate'])
+        fe_date = config.get('Settings', 'GlobalEDate', fallback=defaultValues['globalEDate'])
+        global_missing_code = self.safeGetInt(config, 'Settings', 'GlobalMissingCode', defaultValues['globalMissingCode'])
+
         # Initial variable setup
+
+        # --- ONES FROM CONFIG ---
+        self.local_year_indicator = local_year_indicator
+        self.fs_date = fs_date
+        self.fe_date = fe_date
+        self.global_missing_code = global_missing_code
+        # --- --- --- --- --- ---
+
+        print(f"Year Indicator: {self.local_year_indicator}")
+        print(f"Global Start Date: {self.fs_date}")
+        print(f"Global End Date: {self.fe_date}")
+        print(f"Global Missing Code: {self.global_missing_code}")
+
         self.input_filename = ""
         self.output_filename = ""
         self.input_file_root = ""
@@ -28,11 +60,8 @@ class ContentWidget(QWidget):
         self.sim_fname = ""
         self.save_filename = ""
         self.save_file_root = ""
-        self.global_missing_code = -999
         self.ndays_r = 0
         self.no_of_days = 0
-        self.fs_date = datetime.datetime.now()
-        self.fe_date = datetime.datetime.now()
         self.data_s_date = None
         self.data_e_date = None
         self.ensemble_wanted = 1
@@ -40,7 +69,6 @@ class ContentWidget(QWidget):
         self.ensemble_mean_checked = True
         self.rain_yes = False
         self.threshold = 0.1  # Default rain threshold
-        self.local_year_indicator = 366
         self.local_year_length = 1
         self.local_leap_value = 1
         self.deltaresults = np.zeros((18, 35), dtype=np.float64)
@@ -113,6 +141,12 @@ class ContentWidget(QWidget):
         
         # Initialize UI
         self.init_ui()
+
+    def safeGetInt(self, config, section, option, fallback):
+        try:
+            return config.getint(section, option, fallback=fallback)
+        except ValueError:
+            return fallback
         
     def init_ui(self):
         """
@@ -223,13 +257,13 @@ class ContentWidget(QWidget):
         period_layout.addWidget(QLabel("Start Date:"))
         self.fs_date_text = QLineEdit()
         current_date = datetime.datetime.now()
-        self.fs_date_text.setText(current_date.strftime("%d-%m-%Y"))
+        self.fs_date_text.setText(self.fs_date)
         self.fs_date_text.editingFinished.connect(self.fs_date_changed)
         period_layout.addWidget(self.fs_date_text)
         
         period_layout.addWidget(QLabel("End Date:"))
         self.fe_date_text = QLineEdit()
-        self.fe_date_text.setText(current_date.strftime("%d-%m-%Y"))
+        self.fe_date_text.setText(self.fe_date)
         self.fe_date_text.editingFinished.connect(self.fe_date_changed)
         period_layout.addWidget(self.fe_date_text)
         

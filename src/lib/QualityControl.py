@@ -27,7 +27,7 @@ def dailyMeans(filePath, applyThresh):
         if valueIsValid(value, applyThresh, missingCode, thresh):
             dailyStats[day][0] += value
             dailyStats[day][1] += 1
-            day = (day + 1) % 7
+        day = (day + 1) % 7
 
     for stat in dailyStats:
         stat[2] = stat[0] / stat[1] if stat[1] > 0 else missingCode
@@ -37,7 +37,7 @@ def dailyMeans(filePath, applyThresh):
     for value in data:
         if dailyStats[day][2] != missingCode and valueIsValid(value, applyThresh, missingCode, thresh):
             dailyStats[day][3] += (value - dailyStats[day][2]) ** 2
-            day = (day + 1) % 7
+        day = (day + 1) % 7
 
     for stat in dailyStats:
         stat[3] = math.sqrt(stat[3] / stat[1]) if stat[1] > 0 else missingCode
@@ -213,9 +213,9 @@ if __name__ == '__main__':
     applyThresh = False
     standardDeviations = 5
 
-    #print(dailyMeans(filePath, applyThresh))
+    print(dailyMeans(filePath, applyThresh))
     #print(getOutliers(filePath, r"C:\Users\ajs25\Downloads\outliers.dat", standardDeviations, applyThresh))
-    print(qualityCheck(filePath, applyThresh, 90))
+    #print(qualityCheck(filePath, applyThresh, 90))
 
     #data = [2, 3, 4, 5, 6, 7, 8, 9, 10, 100, 120, 145, 145, 555, 444, 333, 333, 333, 333, 333]
     #print(pettittCalc(data, 1948))

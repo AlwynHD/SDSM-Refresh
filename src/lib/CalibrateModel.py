@@ -154,47 +154,55 @@ def calibrateModelDefaultExperience():
         "October  ",
         "November ",
         "December ",
+        "MEAN VALS",
         ]
     u = "Unconditional"
+    c = "Conditional"
+    x = "xValidation"
+    cycle = range(13)
+    #cycle = {0,1,2,3,4,5,6,7,8,9,10,11,'Mean'}
+    ##Iterating through 0-12 is easier
+    for n in ({u, c} if parmOpt else {u}):
+        results[n][12] = results[n]['Mean']
+        if doCrossValidation:
+            results[n][x][12] = results[n][x]['Mean']
+        
     print(f"\nUnconditional Statistics:")
     print(f"\nMonth\t\tRSquared\tSE\t\tFRatio\t\t{'D-Watson' if not parmOpt else 'Prop Correct'}\t{'Chow' if includeChow else ''}")
     if not parmOpt:
-        for i in range(12):
+        for i in cycle:
             if includeChow:
                 print(f"{month_name[i]}\t{results[u][i]['RSquared']:.4f}\t\t{results[u][i]['SE']:.4f}\t\t{results[u][i]['FRatio']:.2f}\t\t{results[u][i]['D-Watson']:.4f}\t\t{results[u][i]['Chow']:.4f}")
             else:
                 print(f"{month_name[i]}\t{results[u][i]['RSquared']:.4f}\t\t{results[u][i]['SE']:.4f}\t\t{results[u][i]['FRatio']:.2f}\t\t{results[u][i]['D-Watson']:.4f}")
         if doCrossValidation:
-            x = "xValidation"
             print(f"\nCross Validation Results:")
             print(f"\nMonth\t\tRSquared\tSE\t\tD-Watson\tSpearman\tBias")
-            for i in range(12):
+            for i in cycle:
                 print(f"{month_name[i]}\t{results[u][x][i]['RSquared']:.4f}\t\t{results[u][x][i]['SE']:.4f}\t\t{results[u][x][i]['D-Watson']:.4f}\t\t{results[u][x][i]['SpearmanR']:.4f}\t\t{results[u][x][i]['Bias']:.4f}")
+
     else:
-        for i in range(12):
+        for i in cycle:
             if includeChow:
                 print(f"{month_name[i]}\t{results[u][i]['RSquared']:.4f}\t\t{results[u][i]['SE']:.4f}\t\t{results[u][i]['FRatio']:.4f}\t\t{results[u][i]['PropCorrect']:.4f}\t\t{results[u][i]['Chow']:.4f}")
             else:
                 print(f"{month_name[i]}\t{results[u][i]['RSquared']:.4f}\t\t{results[u][i]['SE']:.4f}\t\t{results[u][i]['FRatio']:.4f}\t\t{results[u][i]['PropCorrect']:.4f}")
         if doCrossValidation:
-            x = "xValidation"
             print(f"\nCross Validation Results:")
             print(f"\nMonth\t\tRSquared\tSE\t\tProp Correct")
-            for i in range(12):
+            for i in cycle:
                 print(f"{month_name[i]}\t{results[u][x][i]['RSquared']:.4f}\t\t{results[u][x][i]['SE']:.4f}\t\t{results[u][x][i]['PropCorrect']:.4f}")
-        c = "Conditional"
         print(f"\nConditional Statistics:")
         print(f"\nMonth\t\tRSquared\tSE\t\tFRatio\t\t{'Chow' if includeChow else ''}")
-        for i in range(12):
+        for i in cycle:
             if includeChow:
                 print(f"{month_name[i]}\t{results[c][i]['RSquared']:.4f}\t\t{results[c][i]['SE']:.4f}\t\t{results[c][i]['FRatio']:.4f}\t\t{results[c][i]['Chow']:.4f}")
             else:
                 print(f"{month_name[i]}\t{results[c][i]['RSquared']:.4f}\t\t{results[c][i]['SE']:.4f}\t\t{results[c][i]['FRatio']:.4f}")
         if doCrossValidation:
-            x = "xValidation"
             print(f"\nCross Validation (Conditional Part) Results:")
             print(f"\nMonth\t\tRSquared\tSE\t\tSpearman")
-            for i in range(12):
+            for i in cycle:
                 print(f"{month_name[i]}\t{results[c][x][i]['RSquared']:.4f}\t\t{results[c][x][i]['SE']:.4f}\t\t{results[c][x][i]['SpearmanR']:.4f}")
         
         
@@ -1239,7 +1247,24 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                 if parmOpt:
                     output[c]["xValidation"] = xValidationOutput[c]
             ##Done with "prelim data"
-            
+
+            ##Mean Summaries:
+            ##Loop saves cloning the summary code
+            for n in ({u, c} if parmOpt else {u}):
+                output[n]['Mean'] = {}
+                for key in output[n][0]:
+                    output[n]['Mean'][key] = 0
+                    for i in range(12):
+                        output[n]['Mean'][key] += output[n][i][key]
+                    output[n]['Mean'][key] /= 12
+                if doCrossValidation:
+                    output[n]["xValidation"]['Mean'] = {}
+                    for key in output[n]["xValidation"][0]:
+                        output[n]["xValidation"]['Mean'][key] = 0
+                        for i in range(12):
+                            output[n]["xValidation"]['Mean'][key] += output[n]["xValidation"][i][key]
+                        output[n]["xValidation"]['Mean'][key] /= 12
+
             #call PrintResults
             #print PTandRoot
             if detrendOption != 0:   ##Will need to double check and standardise this parameter

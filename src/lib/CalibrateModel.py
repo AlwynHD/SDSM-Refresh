@@ -3,10 +3,17 @@ from datetime import date as realdate
 from src.lib.utils import loadFilesIntoMemory, increaseDate, thirtyDate, getSettings
 from copy import deepcopy
 import src.core.data_settings
+from PyQt5.QtWidgets import QApplication, QMainWindow, QTextEdit, QTabWidget, QWidget
+from PyQt5.QtGui import QFont
 #from scipy.stats import spearmanr
 
 ## NOTE TO READERS: THIS FILE **DOES** WORK
 ## The debugRun test function should give an example configuration
+
+months = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"]
+            
 
 ##DEBUGGING FUNCTIONS:
 debug = False
@@ -687,7 +694,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                     #xValUnConditional()
                     xValResults = xValidation(xMatrix, yMatrix, crossValFolds, parmOpt)
                     for i in range(12):
-                        xValidationOutput["Unconditional"][i] = xValResults
+                        xValidationOutput["Unconditional"][months[i]] = xValResults
 
 
                 conditionalPart = False ##Needed for CalcParameters
@@ -762,7 +769,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                         #xValConditional()
                         xValResults = xValidation(xMatrix, yMatrix, crossValFolds, parmOpt, True)
                         for i in range(12):
-                            xValidationOutput["Conditional"][i] = xValResults
+                            xValidationOutput["Conditional"][months[i]] = xValResults
 
                     #call TransformData
                     transformData(xMatrix, yMatrix, yMatrixAboveThreshPos, modelTrans)
@@ -901,7 +908,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                             for i in range(3):
                                 xValidationOutput["Unconditional"][seasonMonths[periodWorkingOn][i]] = xValResults
                         else: #Assume monthly
-                            xValidationOutput["Unconditional"][periodWorkingOn] = xValResults
+                            xValidationOutput["Unconditional"][months[periodWorkingOn]] = xValResults
 
                     ###until now, #6.2.1 is near identical to #6.1.1,
                     ###but is notably missing the ApplyStepwise condition for CalcualteParameters
@@ -988,7 +995,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                                 for i in range(3):
                                     xValidationOutput["Conditional"][seasonMonths[periodWorkingOn][i]] = xValResults
                             else: #Assume monthly
-                                xValidationOutput["Conditional"][periodWorkingOn] = xValResults
+                                xValidationOutput["Conditional"][months[periodWorkingOn]] = xValResults
                         
                         #call TransformData
                         transformData(xMatrix, yMatrix, yMatrixAboveThreshPos, modelTrans)
@@ -1206,6 +1213,8 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
             #from calendar import month_name as months
 
             output = {"Predictand": fileList[0]}
+
+            output['Predictors'] = fileList[1:]
             for subloop in range(1, NPredictors + 1):
                 output[f"Predictor#{subloop}"] = fileList[subloop]
             #for i in range(1, 13):
@@ -1217,31 +1226,32 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
             #    output[months[i]]["Chow"] = None ##Coming soon!
             u = "Unconditional"
             c = "Conditional"
+
             output[u] = {}
             for i in range(12):
-                output[u][i] = {} # Initialize month associative array / dict
-                output[u][i]["RSquared"] = statsSummary[i,0]
-                output[u][i]["SE"] = statsSummary[i,1]
-                output[u][i]["FRatio"] = statsSummary[i,4]
+                output[u][months[i]] = {} # Initialize month associative array / dict
+                output[u][months[i]]["RSquared"] = statsSummary[i,0]
+                output[u][months[i]]["SE"] = statsSummary[i,1]
+                output[u][months[i]]["FRatio"] = statsSummary[i,4]
             if includeChow:
                 for i in range(12):
-                    output[u][i]["Chow"] = statsSummary[i, 3]
+                    output[u][months[i]]["Chow"] = statsSummary[i, 3]
             if not parmOpt:
                 for i in range(12):
-                    output[u][i]["D-Watson"] = statsSummary[i,2]
+                    output[u][months[i]]["D-Watson"] = statsSummary[i,2]
             else:
                 for i in range(12):
-                    output[u][i]["PropCorrect"] = statsSummary[i,2]
+                    output[u][months[i]]["PropCorrect"] = statsSummary[i,2]
                 for i in range(12):
                     output[c] = {}
                 for i in range(12):
-                    output[c][i] = {} # Initialize month associative array / dict
-                    output[c][i]["RSquared"] = statsSummary[i + 12,0]
-                    output[c][i]["SE"] = statsSummary[i + 12,1]
-                    output[c][i]["FRatio"] = statsSummary[i + 12,4]
+                    output[c][months[i]] = {} # Initialize month associative array / dict
+                    output[c][months[i]]["RSquared"] = statsSummary[i + 12,0]
+                    output[c][months[i]]["SE"] = statsSummary[i + 12,1]
+                    output[c][months[i]]["FRatio"] = statsSummary[i + 12,4]
                 if includeChow:
                     for i in range(12):
-                        output[c][i]["Chow"] = statsSummary[i + 12, 3]
+                        output[c][months[i]]["Chow"] = statsSummary[i + 12, 3]
             if doCrossValidation:
                 output[u]["xValidation"] = xValidationOutput[u]
                 if parmOpt:
@@ -1288,7 +1298,15 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
 
             ##This section is dedicated to the absolutely horrendous layout of the OG SDSM-DC application
             ##Can safely ignore (i think) -> more useful to output the results to the parent GUI object and handle it there, better, from scratch...
-
+            analysisPeriod = ['Monthly', 'Seasonal', 'Annual']
+            output['analysisPeriod'] = {
+            'startDate': fsDate,
+            'endDate': feDate,
+            'periodName': analysisPeriod[modelType],
+            'periodIndex': modelType
+        }
+            output['autoregression'] = autoRegression
+            output['ifXVal'] = doCrossValidation
             return output
 
 def do_nothing():
@@ -2362,4 +2380,226 @@ def getSeason(month):
         return 1
     else: #Months 12,1,2 (Winter)
         return 0
+    
+
+
+
+def formatCalibrateResults(results):
+    """
+    Format Calibrate analysis results for display in a PyQt5 application.
+    
+    Parameters:
+    results (dict): Dictionary containing Calibrate analysis results
+    
+    Returns:
+    str: Formatted string representation of the Calibrate results
+    """
+    # Extract necessary data from results dictionary
+    startDate = results['analysisPeriod']['startDate']
+    endDate = results['analysisPeriod']['endDate']
+    periodName = results['analysisPeriod']['periodName']
+    
+    # Statistics
+
+    #conditional = results['settings_used']['conditionalAnalysis']
+    
+    # Data
+    predictand = results['Predictand'].split('/')[-1]
+    #fileNames = results['names']
+    #crossCorr = results['crossCorrelation']
+    #partialCorrelations = results['partialCorrelations'] if 'partialCorrelations' in results else None
+    
+    # Format output as a string
+    output = []
+    
+    # Header section
+    output.append("Predictand: " + predictand)
+    output.append("")
+    output.append("Predictors: ")
+    for i in range(0, len(results['Predictors'])):
+        x = results['Predictors'][i].split("/")[-1]
+        output.append(f"{x}")
+    if results['autoregression'] == True:
+        output.append(f"Autoregression")
+    output.append("")
+    output.append(f"Analysis Period: {startDate} - {endDate} ({periodName})")
+    output.append("")
+
+    maxWidth = 12
+
+    output.append("Unconditional Statistics")
+    #Get all the keys in the first dictionary within unconditional results
+    unconditionalResultsList = list(results['Unconditional'].keys())
+    firstUnconditionalEntryKey = unconditionalResultsList[0]
+    unconditionalKeyList = list(results['Unconditional'][firstUnconditionalEntryKey].keys())
+    
+     # Calculate the maximum length of keys for formatting
+    if results['ifXVal']:
+        line = ""
+        line += (f"{'':{maxWidth*(len(unconditionalKeyList)+1)}}")
+        line += ("Cross Validation Results")
+        output.append(line)
+
+    else:
+        output.append("")
+    # Cross-correlation matrix header
+    headerRow = ""
+    headerRow+= f"{'Month':{maxWidth}}"
+    for j in range(len(unconditionalKeyList)):
+        headerRow += f"{unconditionalKeyList[j]:{maxWidth}}"
+    
+
+    if "xValidation" in results['Unconditional']:
+        xValidationDict = results['Unconditional']["xValidation"]
+        xValidationKeys = list(xValidationDict.keys()) #Months
+        xValidationResultsKeys = list(xValidationDict[xValidationKeys[0]].keys()) #Results within the month
+        for key in xValidationResultsKeys:
+            headerRow += f"{key:{maxWidth}}"
+    output.append(headerRow)
+
+        
+
+    for i in unconditionalResultsList:
+        result = ""
+        if i != "xValidation":
+            result += f"{i:{maxWidth}}"
+        resultsList = list(results['Unconditional'][i].keys())
+        for j in resultsList:
+            if i != "xValidation":
+                result += f"{str(round(float(results['Unconditional'][i][j]),5)):{maxWidth}}"
+        if results['ifXVal']:
+            #xValidation is a dictionary, so go into the months, then get the results from that
+            print("\n\n\n\n\n\n")
+            for k in xValidationResultsKeys:
+                if i != "xValidation":
+                    xValidation = xValidationDict[i][k]
+                    result += f"{str(round(float(xValidation),5)):{maxWidth}}"
+        
+        output.append(result)
+    output.append("")
+    if "Conditional" in results:
+        #Get all the keys in the first dictionary within unconditional results
+        conditionalResultsList = list(results['Conditional'].keys())
+        firstConditionalEntryKey = conditionalResultsList[0]
+        conditionalKeyList = list(results['Conditional'][firstConditionalEntryKey].keys())
+        output.append("Conditional Statistics")
+        if results['ifXVal']:
+            line = ""
+            line += (f"{'':{maxWidth*(len(conditionalKeyList)+1)}}")
+            line += ("Cross Validation Results")
+            output.append(line)
+
+        else:
+            output.append("")
+        # Conditional statistics header
+        headerRow = ""
+        headerRow += f"{'Month':{maxWidth}}"
+        for j in range(len(conditionalKeyList)):
+            headerRow += f"{conditionalKeyList[j]:{maxWidth}}"
+        if "xValidation" in results['Conditional']:
+            xValidationDict = results['Conditional']["xValidation"]
+            xValidationKeys = list(xValidationDict.keys()) #Months
+            xValidationResultsKeys = list(xValidationDict[xValidationKeys[0]].keys()) #Results within the month
+            for key in xValidationResultsKeys:
+                headerRow += f"{key:{maxWidth}}"
+        output.append(headerRow)
+        for i in conditionalResultsList:
+            result = ""
+            if i != "xValidation":
+                result += f"{i:{maxWidth}}"
+                resultsList = list(results['Conditional'][i].keys())
+                for j in resultsList:
+                    result += f"{str(round(float(results['Conditional'][i][j]),5)):{maxWidth}}"
+
+                if results['ifXVal']:
+                #xValidation is a dictionary, so go into the months, then get the results from that
+                    for k in xValidationResultsKeys:
+                        if i != "xValidation":
+                            xValidation = xValidationDict[i][k]
+                            result += f"{str(round(float(xValidation),5)):{maxWidth}}"
+                output.append(result)
+
+    '''
+    # Cross-correlation matrix rows
+    for j in range(nVariables):
+        row = f"{j+1} {fileNames[j]:{maxLength}}"
+        
+        for k in range(nVariables):
+            corrValue = crossCorr[j][k]
+            if k == j:
+                tempY = "1"
+            else:
+                tempY = f"{corrValue:.3f}"
+            row += f"{tempY:{maxLength + 2}}"
+        
+        output.append(row)
+    
+    output.append("")
+    
+    # Partial correlations section
+    if nVariables < 3:
+        output.append("NO PARTIAL CORRELATIONS TO CALCULATE")
+    else:
+        output.append(f"PARTIAL CORRELATIONS WITH {fileNames[0]}")
+        output.append("")
+        output.append(" " * 24 + f"{'Partial r':12}{'P value':12}")
+        output.append("")
+        
+        # Add partial correlation results if available
+        if partialCorrelations:
+            for i in range(1, nVariables):
+                if i-1 < len(partialCorrelations):
+                    partialR = partialCorrelations[i-1]['correlation']
+                    pValue = partialCorrelations[i-1]['p_value']
+                    output.append(f"{fileNames[i]:24}{partialR:<12.3f}{pValue:<12.3f}")
+    
+    # Join all lines with newlines '''
+
+    return "\n".join(output)
+
+
+def displayCorrelationResultsQt(results, textWidget):
+    """
+    Display correlation results in a PyQt5 text widget.
+    
+    Parameters:
+    results (dict): Dictionary containing correlation analysis results
+    textWidget (QTextEdit/QPlainTextEdit): PyQt5 text widget to display the results
+    """
+    # Format the results
+    formattedText = formatCalibrateResults(results)
+    
+    # Set the font to a monospaced font for proper alignment
+    font = QFont("Courier New", 10)
+    textWidget.setFont(font)
+    
+    # Display the formatted text
+    textWidget.setPlainText(formattedText)
+
+class CalibrateAnalysisApp(QMainWindow):
+        def __init__(self):
+            super().__init__()
+            self.setWindowTitle("Correlation Analysis")
+            self.resize(800, 600)
+            
+            # Create a tab widget for different views
+            self.tabWidget = QTabWidget()
+            
+            # Text view tab
+            self.textWidget = QTextEdit()
+            self.textWidget.setReadOnly(True)
+            self.tabWidget.addTab(self.textWidget, "Text View")
+            
+            # Set the central widget
+            self.setCentralWidget(self.tabWidget)
+        
+        def loadResults(self, results):
+            # Display text format
+            displayCorrelationResultsQt(results, self.textWidget)
+            print()
+            # Create and add table view
+            #tableWidget = createCorrelationTableWidget(results)
+            #self.tabWidget.addTab(tableWidget, "Table View")
+
+        
 ##

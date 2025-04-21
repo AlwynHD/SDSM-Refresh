@@ -2,14 +2,9 @@ import numpy as np
 import datetime as dt
 import matplotlib.pyplot as plt
 try:
-    from src.lib.utils import loadFilesIntoMemory, selectFile
+    from src.lib.utils import getSettings
 except ModuleNotFoundError:
-    from utils import loadFilesIntoMemory, selectFile
-
-globalSDate = dt.date(1948, 1, 1)
-globalEDate = dt.date(2015, 12, 31)
-globalMissingCode = -999
-thresh = 0
+    from utils import getSettings
 
 def readSumStatsFile(path):
     """ Reads in a file produced by the the summary statistics screen.
@@ -24,15 +19,20 @@ def readSumStatsFile(path):
     for line in file:
         line = line[:-1]
 
+        #Get headings (might include: mean, maximum, minimum, etc)
         if populateFields:
             fields = line.split(",")[1:]
             populateFields = False
 
+        #Get values for these headings
         if populateStats:
             newStatLine = line.split(",")[1:]
             newStatLine = [entry.strip() for entry in newStatLine]
             stats.append(newStatLine)
 
+        #Split character
+        #First encounter says we need to populate field
+        #Second encounter says we need to populate stats
         if line == "-":
             if len(fields) == 0:
                 populateFields = True
@@ -59,7 +59,6 @@ def plotMultiple(fieldGroup, statGroup, fieldIds, line):
         for month in range(12):
             data.append(float(stats[month][fieldId]))
 
-        #todo change labels to use the actual file name
         if line:
             plt.plot(data, label = "File " + str(i + 1) + ": " + fields[fieldId])
         else:

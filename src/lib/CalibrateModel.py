@@ -307,7 +307,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
     thresh = _globalSettings['thresh'] #Event thresh should be 0 by default...
     ## Import from "Advanced Settings"
     modelTrans = _globalSettings['modelTrans'] #Model transformation; 1=none, 2=4root, 3=ln, 4=Inv Normal, 5=box cox
-    applyStepwise = _globalSettings['stepwiseregression']
+    applyStepwise = False #_globalSettings['stepwiseregression']
     ## Location Unknown:
     countLeapYear = _globalSettings['leapYear']
     ## End of Settings Imports (Default Values for now)
@@ -1249,21 +1249,29 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
             ##Done with "prelim data"
 
             ##Mean Summaries:
+            iterator = []
+            if modelTrans == 0: #Monthly - All Values
+                iterator = range(12)
+            elif modelTrans == 1: #Seasonally = Only sum 4 values
+                iterator = [0,3,6,9]
+            else: #Annually - Skip summing (or be lazy and iterate once)
+                iterator = [0]
+
             ##Loop saves cloning the summary code
             for n in ({u, c} if parmOpt else {u}):
                 output[n]['Mean'] = {}
                 for key in output[n][0]:
                     output[n]['Mean'][key] = 0
-                    for i in range(12):
+                    for i in iterator:
                         output[n]['Mean'][key] += output[n][i][key]
-                    output[n]['Mean'][key] /= 12
+                    output[n]['Mean'][key] /= len(iterator)
                 if doCrossValidation:
                     output[n]["xValidation"]['Mean'] = {}
                     for key in output[n]["xValidation"][0]:
                         output[n]["xValidation"]['Mean'][key] = 0
-                        for i in range(12):
+                        for i in iterator:
                             output[n]["xValidation"]['Mean'][key] += output[n]["xValidation"][i][key]
-                        output[n]["xValidation"]['Mean'][key] /= 12
+                        output[n]["xValidation"]['Mean'][key] /= len(iterator)
 
             #call PrintResults
             #print PTandRoot

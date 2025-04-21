@@ -1,6 +1,6 @@
 import numpy as np
 from datetime import date as realdate
-from src.lib.utils import loadFilesIntoMemory, increaseDate, thirtyDate
+from src.lib.utils import loadFilesIntoMemory, increaseDate, thirtyDate, getSettings
 from copy import deepcopy
 import src.core.data_settings
 #from scipy.stats import spearmanr
@@ -14,25 +14,62 @@ def debugMsg(msg):
     if debug == True:
         print(msg)
 
-#GLOBALS:
-thirtydate = False
-if not thirtydate:
-    def date(y: int, m: int, d: int):
-        return realdate(y, m, d)
-else:
-    def date(y: int, m: int, d: int):
-        return thirtyDate(y, m, d)
-#else:
+_globalSettings = {}
 
 ## Bewrae of Matricies being incorrectly "orientated"
 
-def debugRun():
-    #xmat = np.zeros((5,5))
-    #for i in range(5):
-    #    xmat[i,i] = 1
-    #ymat = np.zeros((5))
+def date(y: int, m: int, d: int):
+    """
+    Dynamic Local Date Function
+    if thirtydate is enabled, uses the thirtydate date object
+    otherwise uses the normal date object that normal people use
+    """
 
-    #calculateParameters2(xmat, ymat, 0, 5)
+    thirtydate = _globalSettings['thirtyDay']
+    if not thirtydate:
+        return realdate(y, m, d)
+    else:
+        return thirtyDate(y, m, d)
+#else:
+
+def reloadGlobals():
+    """
+    Reloads global variables (read-only parameters from settings) for this module 
+    in the unlikely event that they changed between loading this module and running it
+    Also maps Model Transformation and Optimisation Algorithm choice to integers
+    """
+
+    global _globalSettings
+    _globalSettings = getSettings()
+
+    ##Map Model Transformation from String to Int
+    mT = _globalSettings['modeltransformation']
+    #Model transformation; 1=none, 2=4root, 3=ln, 4=Inv Normal, 5=box cox
+    if mT == 'None':
+        _globalSettings['modelTrans'] = 1
+    elif mT == '4th Root':
+        _globalSettings['modelTrans'] = 2
+    elif mT == 'Natural log':
+        _globalSettings['modelTrans'] = 3
+    elif mT == 'Inverse Normal':
+        _globalSettings['modelTrans'] = 4
+    elif mT == 'Box Cox':
+        _globalSettings['modelTrans'] = 5
+    else:
+        debugMsg("[Error]: Invalid Model Trans option. Using 'None' option")
+        _globalSettings['modelTrans'] = 1
+
+    ##Map Optimisation Algorithm from String to Int
+    oC = _globalSettings['optimizationalgorithm']
+    if oC == 'Ordinary Least Squares':
+        _globalSettings['optAlg'] = 0
+    elif oC == 'Dual Simplex':
+        _globalSettings['optAlg'] = 1
+    else:
+        debugMsg("[Error]: Invalid Optimisation choice. Using 'Ordinary Least Squares' option")
+        _globalSettings['optAlg'] = 0
+        
+def debugRun():
     calibrateModelDefaultExperience()
 
 def calibrateModelDefaultExperience():
@@ -40,7 +77,11 @@ def calibrateModelDefaultExperience():
     CALIBRATE MODEL TESTING FUNCTION
     Also gives an idea of what to expect using it
     """
-
+    #global _globalSettings
+    reloadGlobals()
+    #_globalSettings['globalsdate'] = date(1948, 1, 1) #date(2004, 8, 5)
+    #_globalSettings['globaledate'] = date(2017, 12, 31) #date(1961, 1, 10) #date(2017, 12, 31)#date(2025, 1, 7)
+    
     ## Parameters
     #fsDate = deepcopy(globalStartDate)
     fsDate = date(1948, 1, 1)
@@ -241,21 +282,26 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
     ## In v0.6.1
     ## Added crossValFolds parameter
 
+    ## In v0.7.0
+    ## Imported Globals from settings via getSettings
+
     #------------------------
     # FUNCTION DEFINITITIONS:
     #------------------------
 
+
+
     ## Globals: import from settings
-    GlobalMissingCode = -999
-    globalStartDate = date(1948, 1, 1) #date(2004, 8, 5)
-    globalEndDate = date(2017, 12, 31) #date(1961, 1, 10) #date(2017, 12, 31)#date(2025, 1, 7)
-    thresh = 0 ## ??? - Need to import from another file. Event thresh is 0 by default...
+    reloadGlobals()
+    globalMissingCode = _globalSettings['globalmissingcode']
+    globalStartDate = _globalSettings['globalsdate']
+    globalEndDate = _globalSettings['globaledate']
+    thresh = _globalSettings['thresh'] #Event thresh should be 0 by default...
     ## Import from "Advanced Settings"
-    modelTrans = 1 ## Model transformation; 1=none, 2=4root, 3=ln, 4=Inv Normal, 5=box cox
-    applyStepwise = False
-    optimisationChoice = 1 ## 0 caused errror -> double check
+    modelTrans = _globalSettings['modelTrans'] #Model transformation; 1=none, 2=4root, 3=ln, 4=Inv Normal, 5=box cox
+    applyStepwise = _globalSettings['stepwiseregression']
     ## Location Unknown:
-    countLeapYear = True
+    countLeapYear = _globalSettings['leapYear']
     ## End of Settings Imports (Default Values for now)
 
     NPredictors = len(fileList) - 1
@@ -302,7 +348,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
         #------ SECTION #2 ------ Unknown/Initialisation?
         #------------------------
         
-        #xValidationResults = np.ndarray((13, 7)).fill(GlobalMissingCode) ## Original array is XValidationResults(1 To 13, 1 To 7) As Double
+        #xValidationResults = np.ndarray((13, 7)).fill(globalMissingCode) ## Original array is XValidationResults(1 To 13, 1 To 7) As Double
         xValidationOutput = {"Unconditional": {}, "Conditional": {}}
         xValidMessageShown = False
 
@@ -434,8 +480,8 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
             startFound = True
             for i in range(NPredictors + 1):
                 #tempReadin[i] = loadedFiles[i]
-                #if tempReadin[i] == GlobalMissingCode: startFound = False
-                if loadedFiles[i][searchPos] == GlobalMissingCode: 
+                #if tempReadin[i] == globalMissingCode: startFound = False
+                if loadedFiles[i][searchPos] == globalMissingCode: 
                     startFound = False
                     #debugMsg(f"Missing Value detected at searchPos: {searchPos} in file {fileList[i]}")
                 #else:
@@ -489,8 +535,8 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
             anyMissing = False
             for i in range(NPredictors + 1):
                 #tempReadin[i] = loadedFiles[i] ## input #j, tempReadin(j)
-                #if tempReadin[j] == GlobalMissingCode: anyMissing = True
-                if loadedFiles[i][searchPos] == GlobalMissingCode:
+                #if tempReadin[j] == globalMissingCode: anyMissing = True
+                if loadedFiles[i][searchPos] == globalMissingCode:
                     anyMissing = True
                 #else:
             #next i
@@ -643,7 +689,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                     stepWiseRegression() ##very wise #betamatrix defined here
                 else:
                     ##call CalculateParameters(parmOpt)
-                    params = calculateParameters(xMatrix, yMatrix, optimisationChoice, NPredictors, includeChow, conditionalPart, parmOpt, not parmOpt, residualArray)   #betamatrix defined here
+                    params = calculateParameters(xMatrix, yMatrix, NPredictors, includeChow, conditionalPart, parmOpt, not parmOpt, residualArray)   #betamatrix defined here
                 ##endif
 
                 if processTerminated:
@@ -727,7 +773,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                     ##Can we move the following above, to make it an elif?
                     conditionalPart = True
                     #call CalculateParameters(true)
-                    params = calculateParameters(xMatrix, yMatrix, optimisationChoice, NPredictors, includeChow, conditionalPart, parmOpt, True, residualArray) #betaMatrix defined here
+                    params = calculateParameters(xMatrix, yMatrix, NPredictors, includeChow, conditionalPart, parmOpt, True, residualArray) #betaMatrix defined here
 
                     if processTerminated:
                         ##exit
@@ -853,7 +899,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                     ###but is notably missing the ApplyStepwise condition for CalcualteParameters
 
                     ##call CalculateParameters(parmOpt) ##Adjust to make sure its correct...?
-                    params = calculateParameters(xMatrix, yMatrix, optimisationChoice, NPredictors, includeChow, conditionalPart, parmOpt, not parmOpt, residualArray)     #betaMatrix Defined Here
+                    params = calculateParameters(xMatrix, yMatrix, NPredictors, includeChow, conditionalPart, parmOpt, not parmOpt, residualArray)     #betaMatrix Defined Here
 
                     if processTerminated:
                         ##call mini_reset
@@ -982,7 +1028,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                         ##endif
                         conditionalPart = True
                         ##call CalculateParameters(true)
-                        params = calculateParameters(xMatrix, yMatrix, optimisationChoice, NPredictors, includeChow, conditionalPart, parmOpt, True, residualArray) #BetaMatrix defined here
+                        params = calculateParameters(xMatrix, yMatrix, NPredictors, includeChow, conditionalPart, parmOpt, True, residualArray) #BetaMatrix defined here
                         if processTerminated:
                             ##exit
                             do_nothing()
@@ -1230,6 +1276,8 @@ def detrendData(yMatrix: np.array, yMatrixAboveThreshPos: np.array, detrendOptio
     Requires yMatrixAboveThreshPos to be set (generally configured in TransformData)
     """
 
+
+
     debugMsg(yMatrix)
     xValues = np.ndarray((len(yMatrix), 2))
     #betaValues = np.array((2))
@@ -1351,13 +1399,9 @@ def xValidation(xMatrix: np.ndarray, yMatrix: np.ndarray, noOfFolds, parmOpt, co
     """
 
     ### GOLBALS ###
-    #noOfFolds = 2
     xValidMessageShown = False
-    #xMatrix = np.ndarray()
-    #yMatrix = np.ndarray()
-    #modelledMatrix = np.ndarray() #"Vertical" Array / Matrix with only 1 column in use 
-    thresh = 0 #--> Import later...
-    GlobalMissingCode = -999
+    thresh = _globalSettings['thresh'] #--> Import later...
+    globalMissingCode = _globalSettings['globalmissingcode']
     ### ####### ###  
 
     #------------------------
@@ -1444,9 +1488,9 @@ def xValidation(xMatrix: np.ndarray, yMatrix: np.ndarray, noOfFolds, parmOpt, co
     ## "Cleanse" yMat and modMat arrays (filter out missing values, and values below the threshold for the conditional part)
     removeIndex = []
     if parmOpt and conditionalPart:
-        removeIndex = [i for i in range(len(modMatrix)) if (yMatrix[i] <= thresh or modMatrix[i] <= thresh or yMatrix[i] == GlobalMissingCode or modMatrix[i] == GlobalMissingCode)]
+        removeIndex = [i for i in range(len(modMatrix)) if (yMatrix[i] <= thresh or modMatrix[i] <= thresh or yMatrix[i] == globalMissingCode or modMatrix[i] == globalMissingCode)]
     else:
-        removeIndex = [i for i in range(len(modMatrix)) if (yMatrix[i] == GlobalMissingCode or modMatrix[i] == GlobalMissingCode)]
+        removeIndex = [i for i in range(len(modMatrix)) if (yMatrix[i] == globalMissingCode or modMatrix[i] == globalMissingCode)]
     #xMatrix = np.delete(xMatrix, rejectedIndex, 0)
     yMatrix = np.delete(yMatrix, removeIndex)
     modMatrix = np.delete(modMatrix, removeIndex)
@@ -1496,7 +1540,7 @@ def xValidation(xMatrix: np.ndarray, yMatrix: np.ndarray, noOfFolds, parmOpt, co
             if meanObserved != 0:
                 bias = (meanModelled - meanObserved) / meanObserved
             else:
-                bias = GlobalMissingCode
+                bias = globalMissingCode
             output["Bias"] = bias
 
         elif parmOpt and not conditionalPart: #If Unconditional part of Conditional process
@@ -1513,13 +1557,13 @@ def xValidation(xMatrix: np.ndarray, yMatrix: np.ndarray, noOfFolds, parmOpt, co
         #else #Conditional Part does not have any extra features
 
     elif not conditionalPart: ##Unconditional part is happy to provide missing values
-        output["SE"] = GlobalMissingCode
-        output["RSquared"] = GlobalMissingCode
+        output["SE"] = globalMissingCode
+        output["RSquared"] = globalMissingCode
         if parmOpt:
-            output["PropCorrect"] = GlobalMissingCode
+            output["PropCorrect"] = globalMissingCode
         else:
-            output["D-Watson"] = GlobalMissingCode
-            output["Bias"] = GlobalMissingCode
+            output["D-Watson"] = globalMissingCode
+            output["Bias"] = globalMissingCode
     else: #Lo Data, Crash now...
         print("Error: Not enough data for the conditional part of xValidation")
         exit()
@@ -1594,14 +1638,15 @@ def calcDW(residualMatrix: np.ndarray):
         return (numerator / denom)
     #Next i
     else:
-        return GlobalMissingCode
+        return globalMissingCode
     #Next i   
 
-def stepWiseRegression(xMatrix: np.ndarray, yMatrix: np.ndarray, optimisationChoice: int, NPredictors: int, includeChow: bool, conditionalPart: bool, parmOpt: bool, propResiduals:bool, residualArray:np.ndarray):
+def stepWiseRegression(xMatrix: np.ndarray, yMatrix: np.ndarray, NPredictors: int, includeChow: bool, conditionalPart: bool, parmOpt: bool, propResiduals:bool, residualArray:np.ndarray):
     """
     Stepwise Regression function
     -- Currently a placeholder
     """
+
     aicWanted = False
     jMatrix = np.ones((len(yMatrix, len(yMatrix))))
 
@@ -1708,13 +1753,13 @@ def generateIfromN(sizeToPermute, numbers, appendString, totalPerms, permArray):
 
 
 
-def calculateParameters(xMatrix: np.ndarray, yMatrix: np.ndarray, optimisationChoice: int, NPredictors: int, includeChow: bool, conditionalPart: bool, parmOpt: bool, propResiduals:bool, residualArray:np.ndarray):
+def calculateParameters(xMatrix: np.ndarray, yMatrix: np.ndarray, NPredictors: int, includeChow: bool, conditionalPart: bool, parmOpt: bool, propResiduals:bool, residualArray:np.ndarray):
     """
     Calculate Parameters function v1.1
     -- Presumably calculates parameters
     """
-     ### GLOBALS ###
-    GlobalMissingCode = -999
+    ### GLOBALS ###
+    globalMissingCode = _globalSettings['globalmissingcode']
     ### ####### ###
 
     #local vars
@@ -1733,15 +1778,15 @@ def calculateParameters(xMatrix: np.ndarray, yMatrix: np.ndarray, optimisationCh
 
         if (isValid): #Do we have enough data? Are both halves >10?
             ##Cool python hackz
-            results = calculateParameters2(xtemp[:firstHalf], ytemp[:firstHalf], optimisationChoice, NPredictors) #ignore error
+            results = calculateParameters2(xtemp[:firstHalf], ytemp[:firstHalf], NPredictors) #ignore error
             RSS1 = results["RSS"]
 
-            results = calculateParameters2(xtemp[firstHalf:], ytemp[firstHalf:], optimisationChoice, NPredictors) #ignore error
+            results = calculateParameters2(xtemp[firstHalf:], ytemp[firstHalf:],  NPredictors) #ignore error
             RSS2 = results["RSS"]
         #endif
     #endif
 
-    results = calculateParameters2(xMatrix, yMatrix, optimisationChoice, NPredictors)
+    results = calculateParameters2(xMatrix, yMatrix, NPredictors)
     RSSAll = results["RSS"]
     betaMatrix = results["betaMatrix"]
 
@@ -1775,7 +1820,7 @@ def calculateParameters(xMatrix: np.ndarray, yMatrix: np.ndarray, optimisationCh
 
     #Quick SError?
     if len(yMatrix) < 2:
-        SE = GlobalMissingCode
+        SE = globalMissingCode
     else:
         SE = np.sqrt(RSSAll / (len(yMatrix) - 1)) ##SQRT?
         SE = max(SE, 0.0001)
@@ -1803,7 +1848,7 @@ def calculateParameters(xMatrix: np.ndarray, yMatrix: np.ndarray, optimisationCh
             "chowStat":chowStat
             }
 
-def calculateParameters2(xMatrix: np.ndarray, yMatrix: np.ndarray, optimisationChoice: int, NPredictors: int):
+def calculateParameters2(xMatrix: np.ndarray, yMatrix: np.ndarray, NPredictors: int):
     """
     Calculate Parameters #2 v1.1
     Component function for Calculate Parameters #1 and Stepwise Regression
@@ -1816,13 +1861,14 @@ def calculateParameters2(xMatrix: np.ndarray, yMatrix: np.ndarray, optimisationC
     #-> PropResiduals never read
 
     ### GLOBALS ###
-    GlobalMissingCode = -999
+    globalMissingCode = _globalSettings['globalmissingcode']
     dependMsg = True #No idea where this is supposed to be defined...
+    optimisationChoice = _globalSettings['optAlg']
     ### ####### ###
 
     yBar = np.sum(yMatrix) / len(yMatrix)
 
-    if optimisationChoice == 1:
+    if optimisationChoice == 0:
         xTransY = np.matmul(xMatrix.transpose(), yMatrix)
         xTransXInverse = np.linalg.inv(np.matmul(xMatrix.transpose(), xMatrix))
         betaMatrix = np.matmul(xTransXInverse, xTransY)
@@ -1979,7 +2025,7 @@ def calculateParameters2(xMatrix: np.ndarray, yMatrix: np.ndarray, optimisationC
     if len(yMatrix) > 0:
         meanY = yBar
     else:
-        meanY = GlobalMissingCode
+        meanY = globalMissingCode
 
     RSS = 0
     for i in range(xMatrix.shape[0]):
@@ -1991,7 +2037,7 @@ def calculateParameters2(xMatrix: np.ndarray, yMatrix: np.ndarray, optimisationC
     #next i
     RSS = max(RSS, 0.0001)
     
-    if meanY != GlobalMissingCode:
+    if meanY != globalMissingCode:
         SSM = 0
         for i in range(xMatrix.shape[0]):
             modelled = 0
@@ -2002,7 +2048,7 @@ def calculateParameters2(xMatrix: np.ndarray, yMatrix: np.ndarray, optimisationC
         #next i
         fRatio = (SSM / NPredictors) / (RSS / (xMatrix.shape[0] - NPredictors))
     else:
-        fRatio = GlobalMissingCode
+        fRatio = globalMissingCode
     #endif
 
     return {"fRatio":fRatio, "betaMatrix":betaMatrix, "residualMatrix":residualMatrix, "predictedMatrix":predictedMatrix, "RSS":RSS}
@@ -2017,9 +2063,7 @@ def transformData(xMatrix: np.ndarray, yMatrix: np.array, yMatrixAboveThreshPos:
     ##Calls FindMinLambda
 
     ### GLOBALS ###
-    GlobalMissingCode = -999
-    #yMatrixAboveThreshPos = np.array()
-    #xMatrix = np.ndarray()
+    globalMissingCode = _globalSettings['globalmissingcode']
     ### ####### ###
 
     #If modelTrans == 1 then do nothing -> no transformation
@@ -2034,8 +2078,8 @@ def transformData(xMatrix: np.ndarray, yMatrix: np.array, yMatrixAboveThreshPos:
                 else:
                     yMatrix[i] = np.log(yMatrix[i])
             else:
-                yMatrix[i] = GlobalMissingCode #-> Global var that needs importing
-                yMatrixAboveThreshPos[i] = GlobalMissingCode   #     'this resords position of y values for detrend option - needs reducing too
+                yMatrix[i] = globalMissingCode #-> Global var that needs importing
+                yMatrixAboveThreshPos[i] = globalMissingCode   #     'this resords position of y values for detrend option - needs reducing too
                 missing += 1
         #next i
         
@@ -2048,7 +2092,7 @@ def transformData(xMatrix: np.ndarray, yMatrix: np.array, yMatrixAboveThreshPos:
                 newYMatrixAbove = np.ndarray((len(yMatrixAboveThreshPos) - missing))
                 count = 0
                 for i in range(len(yMatrix)): ##Drop unwanted arrayz
-                    if yMatrix[i] != GlobalMissingCode:
+                    if yMatrix[i] != globalMissingCode:
                         newYMatrix[count] = yMatrix[i]
                         newYMatrixAbove[count] = yMatrixAboveThreshPos[i]
                         for j in range(len(xMatrix[0])): #XCols
@@ -2087,7 +2131,7 @@ def transformData(xMatrix: np.ndarray, yMatrix: np.array, yMatrixAboveThreshPos:
         insufficientData = False    #'assume enough data unless FindMinLamda tells us otherwise
         lamda = findMinLamda(-2, 2, 0.25, yMatrix)  #'find a value between -2 to +2
 
-        if lamda != GlobalMissingCode: #  'now home in a bit more
+        if lamda != globalMissingCode: #  'now home in a bit more
             lamda = findMinLamda((lamda - 0.25), (lamda + 0.25), 0.1, yMatrix)
         else:
             message = "Sorry an error has occurred calculating the optimum lamda transform."
@@ -2095,7 +2139,7 @@ def transformData(xMatrix: np.ndarray, yMatrix: np.array, yMatrixAboveThreshPos:
             #MsgBox message, 0 + vbCritical, "Error Message"
             #insert error here
         #End If
-        if lamda != GlobalMissingCode: #'home in a bit further
+        if lamda != globalMissingCode: #'home in a bit further
             lamda = findMinLamda((lamda - 0.1), (lamda + 0.1), 0.01, yMatrix)
         else:
             message = "Sorry an error has occurred calculating the optimum lamda transform."
@@ -2104,7 +2148,7 @@ def transformData(xMatrix: np.ndarray, yMatrix: np.array, yMatrixAboveThreshPos:
             #insert error here
         #End If
 
-        if lamda == GlobalMissingCode:
+        if lamda == globalMissingCode:
             message = "Sorry an error has occurred calculating the optimum lamda transform."
             if insufficientData: message = message & " There are insufficient data for a Box Cox transformation.  Try an alternative transformation."
             #MsgBox message, 0 + vbCritical, "Error Message"
@@ -2209,7 +2253,7 @@ def calcRSQR(modMatrix: np.ndarray, yMatrix: np.ndarray, limit: int, checkMissin
     """
 
     ### GLOBALS ###
-    GlobalMissingCode = -999
+    globalMissingCode = _globalSettings['globalmissingcode']
     ### ####### ###
 
     if missingLim == None:
@@ -2218,7 +2262,7 @@ def calcRSQR(modMatrix: np.ndarray, yMatrix: np.ndarray, limit: int, checkMissin
     sumX = sumY = sumXX = sumYY = sumXY = missing = 0
 
     for i in range(limit):
-        if (modMatrix[i] != GlobalMissingCode and yMatrix[i] != GlobalMissingCode) or checkMissing == False:
+        if (modMatrix[i] != globalMissingCode and yMatrix[i] != globalMissingCode) or checkMissing == False:
             sumX += modMatrix[i]
             sumY += yMatrix[i]
             sumXX += modMatrix[i] ** 2
@@ -2228,7 +2272,7 @@ def calcRSQR(modMatrix: np.ndarray, yMatrix: np.ndarray, limit: int, checkMissin
             missing += 1
     ##end for
 
-    rsqr = GlobalMissingCode
+    rsqr = globalMissingCode
     if missing < missingLim: 
         totalVals = limit - missing
         denom = sumXX - (sumX ** 2 / totalVals)
@@ -2241,9 +2285,9 @@ def calcRSQR(modMatrix: np.ndarray, yMatrix: np.ndarray, limit: int, checkMissin
             ##Edge case testing
             debugMsg("Error: Edge Case Detected - denom < 0")
             #readline()
-            rsqr = GlobalMissingCode
+            rsqr = globalMissingCode
         else:
-            rsqr = GlobalMissingCode
+            rsqr = globalMissingCode
 
     debugMsg(f"calcRSQR: {rsqr}, only if {missing} < {missingLim}")
     
@@ -2254,12 +2298,12 @@ def calcPropCorrect(modMatrix: np.ndarray, yMatrix: np.ndarray, limit: int):
     Proportion Correct Shared code for xValidation:Unconditional (parmOpt=F) & Calculate Params #1
     """
 
-    GlobalMissingCode = -999
+    globalMissingCode = _globalSettings['globalmissingcode']
 
     correctCount = 0
     missing = 0
     for i in range(limit):
-        if (modMatrix[i] != GlobalMissingCode and yMatrix[i] != GlobalMissingCode):
+        if (modMatrix[i] != globalMissingCode and yMatrix[i] != globalMissingCode):
             if (yMatrix[i] == 0 and modMatrix[i] < 0.5):
                 correctCount += 1
             elif (yMatrix[i] == 1 and modMatrix[i] >= 0.5):
@@ -2272,7 +2316,7 @@ def calcPropCorrect(modMatrix: np.ndarray, yMatrix: np.ndarray, limit: int):
     if missing < limit:
         propCorrect = correctCount / (limit - missing)
     else:
-        propCorrect = GlobalMissingCode
+        propCorrect = globalMissingCode
     
     return propCorrect
 

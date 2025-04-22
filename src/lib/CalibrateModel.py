@@ -105,7 +105,7 @@ def calibrateModelDefaultExperience():
     ##ParmOpt(0) = Cond = True
     autoRegression = False ## Replaces AutoRegressionCheck -> Might be mutually exclusive with parmOpt - will check later...
     includeChow = True
-    detrendOption = 0 #0, 1 or 2...
+    detrendOption = 2 #0, 1 or 2...
     doCrossValidation = True
     crossValFolds = 7
 
@@ -144,40 +144,34 @@ def calibrateModelDefaultExperience():
     print(f"\nPredictors:\n")
     for i in fileList:
         print(i)
+
+    month_name = {
+        "January":"January  ",
+        "February":"February ",
+        "March":"March    ",
+        "April":"April    ",
+        "May":"May      ",
+        "June":"June     ",
+        "July":"July     ",
+        "August":"August   ",
+        "September":"September",
+        "October":"October  ",
+        "November":"November ",
+        "December":"December ",
+    }
+
             
     ##Useful info on how to display/format the resutls...
     #from calendar import month_name
     ## Better formatted Month Names so they are all same length
-    month_name = [
-        "January  ",
-        "February ",
-        "March    ",
-        "April    ",
-        "May      ",
-        "June     ",
-        "July     ",
-        "August   ",
-        "September",
-        "October  ",
-        "November ",
-        "December ",
-        "MEAN VALS",
-        ]
+    
     u = "Unconditional"
     c = "Conditional"
-    x = "xValidation"
-    cycle = range(13)
-    #cycle = {0,1,2,3,4,5,6,7,8,9,10,11,'Mean'}
-    ##Iterating through 0-12 is easier
-    for n in ({u, c} if parmOpt else {u}):
-        results[n][12] = results[n]['Mean']
-        if doCrossValidation:
-            results[n][x][12] = results[n][x]['Mean']
-        
+    x = "xValidation"      
     print(f"\nUnconditional Statistics:")
     print(f"\nMonth\t\tRSquared\tSE\t\tFRatio\t\t{'D-Watson' if not parmOpt else 'Prop Correct'}\t{'Chow' if includeChow else ''}")
     if not parmOpt:
-        for i in cycle:
+        for i in months:
             if includeChow:
                 print(f"{month_name[i]}\t{results[u][i]['RSquared']:.4f}\t\t{results[u][i]['SE']:.4f}\t\t{results[u][i]['FRatio']:.2f}\t\t{results[u][i]['D-Watson']:.4f}\t\t{results[u][i]['Chow']:.4f}")
             else:
@@ -185,11 +179,11 @@ def calibrateModelDefaultExperience():
         if doCrossValidation:
             print(f"\nCross Validation Results:")
             print(f"\nMonth\t\tRSquared\tSE\t\tD-Watson\tSpearman\tBias")
-            for i in cycle:
+            for i in months:
                 print(f"{month_name[i]}\t{results[u][x][i]['RSquared']:.4f}\t\t{results[u][x][i]['SE']:.4f}\t\t{results[u][x][i]['D-Watson']:.4f}\t\t{results[u][x][i]['SpearmanR']:.4f}\t\t{results[u][x][i]['Bias']:.4f}")
 
     else:
-        for i in cycle:
+        for i in months:
             if includeChow:
                 print(f"{month_name[i]}\t{results[u][i]['RSquared']:.4f}\t\t{results[u][i]['SE']:.4f}\t\t{results[u][i]['FRatio']:.4f}\t\t{results[u][i]['PropCorrect']:.4f}\t\t{results[u][i]['Chow']:.4f}")
             else:
@@ -197,11 +191,11 @@ def calibrateModelDefaultExperience():
         if doCrossValidation:
             print(f"\nCross Validation Results:")
             print(f"\nMonth\t\tRSquared\tSE\t\tProp Correct")
-            for i in cycle:
+            for i in months:
                 print(f"{month_name[i]}\t{results[u][x][i]['RSquared']:.4f}\t\t{results[u][x][i]['SE']:.4f}\t\t{results[u][x][i]['PropCorrect']:.4f}")
         print(f"\nConditional Statistics:")
         print(f"\nMonth\t\tRSquared\tSE\t\tFRatio\t\t{'Chow' if includeChow else ''}")
-        for i in cycle:
+        for i in months:
             if includeChow:
                 print(f"{month_name[i]}\t{results[c][i]['RSquared']:.4f}\t\t{results[c][i]['SE']:.4f}\t\t{results[c][i]['FRatio']:.4f}\t\t{results[c][i]['Chow']:.4f}")
             else:
@@ -209,7 +203,7 @@ def calibrateModelDefaultExperience():
         if doCrossValidation:
             print(f"\nCross Validation (Conditional Part) Results:")
             print(f"\nMonth\t\tRSquared\tSE\t\tSpearman")
-            for i in cycle:
+            for i in months:
                 print(f"{month_name[i]}\t{results[c][x][i]['RSquared']:.4f}\t\t{results[c][x][i]['SE']:.4f}\t\t{results[c][x][i]['SpearmanR']:.4f}")
         
         
@@ -222,7 +216,7 @@ def calibrateModelDefaultExperience():
 
 def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=False, autoRegression=False, includeChow=False, detrendOption=0, doCrossValidation=False, crossValFolds=2):
     """
-        Core Calibrate Model Function (v0.4.1)
+        Core Calibrate Model Function (v0.7.1)
         fileList -> Array of predictor file paths. First entry should be the predictand file
         PARfilePath -> Save path for the output file (PARfile)
         fsDate -> Fit start date (currently accepts Date object, may adjust to accept string)
@@ -247,58 +241,8 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
 
     ##Real comments will be added later
 
-    ##NEW in v0.2.0:
-    ## Readded LastSeason & LastMonth
-    ## Replaced all instances of np.array with np.ndarray
-    ## Added IncreaseDate back where necessary
-    ## Corrected periodWorkingOn to be within 0-11 rather than 1-12
-    ## Fixed section #5.2.0 such that it now runs without crashing
-
-    ##In v0.2.1:
-    ## detrendOption correctly uses 0, 1 & 2 rather than bool
-    ## Adjusted DetrendData to use detrendOption as parameter
-
-    ## In v0.2.2:
-    ## Propogate Conditional & Unconditional functions 
-    
-    ## In v0.3.0:
-    ## Calculate Parms & Calc Parms #2 implemented
-    ## calcPropCorrect & calcRSQR helper functions added
-    ## new parameter "optimisationChoice" (is int, might want bool or tiny int...)
-    ## new parameter includeChow (is bool)
-
-    ## In v0.4.0:
-    ## Various corrections so that the correct output is consistenty given for default parameters
-    ## - (Annual, 4 Predictor files, Conditional process, no autoregression or xvalidation, any date)
-    ## Corrections include adjustments to PTandRoot & FileList, calcRSQR, certain range() arrays, 
-    ##  matrix resizing in propogateConditional, corrections to transformData, calcParams1 and 2, 
-    ##  and finally fixing the issue regarding not all data being read in
-    ## Now gives correct output (i.e. identical to the original SDSM tool)
-
-    ## In v0.4.1
-    ## Revised parameters for CalibrateModel
-    ## Explicitly separated parameters read from the settings
-    ## Adjusted output format
-
-    ## In v0.5.0
-    ## Finished implementation of:
-    ## - Autoregression
-    ## - ChowStat
-    ## - Annual/Monthly/Season options
-    ## - parmOpt
-
-    ## In v0.5.1
-    ## Fixed bug regarding residualArrays being calculated twice during Conditional, and never during uncond
-    ## Removed PTandRoot - Will be handled externally. Assume that its been merged into the filelist
-
-    ## In v0.6.0
-    ## Finished implementation of CrossValidation
-
-    ## In v0.6.1
-    ## Added crossValFolds parameter
-
-    ## In v0.7.0
-    ## Imported Globals from settings via getSettings
+    ## In v0.7.1
+    ## DetrendOption sorta working...
 
     #------------------------
     # FUNCTION DEFINITITIONS:
@@ -323,6 +267,8 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
     debugMsg(fileList)
     ## Other Vars:
     progValue = 0 ## Progress Bar
+
+    betaTrend = {}
 
     ##???
     #propResiduals = False
@@ -681,7 +627,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
 
                 if (detrendOption != 0 and not parmOpt):
                     ##call detrendData(periodWorkingOn, False)
-                    detrendData(yMatrix, yMatrixAboveThreshPos, detrendOption, periodWorkingOn, False)
+                    betaTrend[periodWorkingOn] = detrendData(yMatrix, yMatrixAboveThreshPos, detrendOption, fsDateBaseline[periodWorkingOn], False)
 
                 savedYMatrix = deepcopy(yMatrix)
 
@@ -777,7 +723,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
 
                     if detrendOption != 0:
                         ##call DetrendData
-                        detrendData(yMatrix, yMatrixAboveThreshPos, detrendOption, periodWorkingOn, True)
+                        betaTrend[periodWorkingOn] = detrendData(yMatrix, yMatrixAboveThreshPos, detrendOption, periodWorkingOn, True)
 
 
                     if modelTrans == 5:
@@ -890,7 +836,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
 
                     if (detrendOption != 0 and not parmOpt):
                         ##call detrendData(periodWorkingOn, False)
-                        detrendData(yMatrix, yMatrixAboveThreshPos, detrendOption, periodWorkingOn, False)
+                        betaTrend[periodWorkingOn] = detrendData(yMatrix, yMatrixAboveThreshPos, detrendOption, periodWorkingOn, False)
                        
                     savedYMatrix = deepcopy(yMatrix)
 
@@ -1003,7 +949,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
 
                         if detrendOption != 0:
                             ##call DetrendData
-                            detrendData(yMatrix, yMatrixAboveThreshPos, detrendOption, periodWorkingOn, True)
+                            betaTrend[periodWorkingOn] = detrendData(yMatrix, yMatrixAboveThreshPos, detrendOption, periodWorkingOn, True)
 
                         if modelTrans == 5:
                             if seasonCode == 12:
@@ -1270,17 +1216,17 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
             ##Loop saves cloning the summary code
             for n in ({u, c} if parmOpt else {u}):
                 output[n]['Mean'] = {}
-                for key in output[n][0]:
+                for key in output[n][months[0]]:
                     output[n]['Mean'][key] = 0
                     for i in iterator:
-                        output[n]['Mean'][key] += output[n][i][key]
+                        output[n]['Mean'][key] += output[n][months[i]][key]
                     output[n]['Mean'][key] /= len(iterator)
                 if doCrossValidation:
                     output[n]["xValidation"]['Mean'] = {}
-                    for key in output[n]["xValidation"][0]:
+                    for key in output[n]["xValidation"][months[0]]:
                         output[n]["xValidation"]['Mean'][key] = 0
                         for i in iterator:
-                            output[n]["xValidation"]['Mean'][key] += output[n]["xValidation"][i][key]
+                            output[n]["xValidation"]['Mean'][key] += output[n]["xValidation"][months[i]][key]
                         output[n]["xValidation"]['Mean'][key] /= len(iterator)
 
             #call PrintResults
@@ -1300,13 +1246,14 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
             ##Can safely ignore (i think) -> more useful to output the results to the parent GUI object and handle it there, better, from scratch...
             analysisPeriod = ['Monthly', 'Seasonal', 'Annual']
             output['analysisPeriod'] = {
-            'startDate': fsDate,
-            'endDate': feDate,
-            'periodName': analysisPeriod[modelType],
-            'periodIndex': modelType
-        }
+                'startDate': fsDate,
+                'endDate': feDate,
+                'periodName': analysisPeriod[modelType],
+                'periodIndex': modelType
+            }
             output['autoregression'] = autoRegression
             output['ifXVal'] = doCrossValidation
+
             return output
 
 def do_nothing():
@@ -1319,13 +1266,18 @@ def do_nothing():
 
 ##Core functions called directly from calibrateModel()
 
-def detrendData(yMatrix: np.array, yMatrixAboveThreshPos: np.array, detrendOption: int, period: int, conditional: bool):
+def detrendData(yMatrix: np.array, yMatrixAboveThreshPos: np.array, detrendOption: int, fsDateBaseline: int, conditional: bool):
     """"
     Detrend Data Function v1.1
     -- May or may not work - Find out soon!
     DetrendOption: 0 = none, 1 = Linear, 2 = power function
     Requires yMatrixAboveThreshPos to be set (generally configured in TransformData)
     """
+
+    #Dim BetaTrend(1 To 12, 1 To 3) As Double    
+    # 'holds parameters of de trend funtion if detrend option is selected;
+    # '1 to 12 for each month or season; for linear model (y=mx+b) 1=intercept b, 2= gradient m
+    # 'for power function (y=ax^b;log y = log a + b log x ) 1=a, 2=b , 3=minimum applied before logs could be applied
 
 
 
@@ -1343,20 +1295,22 @@ def detrendData(yMatrix: np.array, yMatrixAboveThreshPos: np.array, detrendOptio
             xValues[i, 1] = i
         ##endif
         if detrendOption == 2:
-            xValues[i, 1] += fsDateBaseline[period]
+            xValues[i, 1] += fsDateBaseline
         ##endif
     ##next i
 
     if detrendOption == 1: #linear regression
-        tempMatrix1 = np.linalg.inv(np.matmul(xValues.transpose, xValues))
-        tempMatrix2 = np.matmul(xValues.transpose, yMatrix)
-        betaValues = np.matmul(tempMatrix1, tempMatrix2)
-        betaTrend[period, 0] = betaValues[0] #,0]
-        betaTrend[period, 1] = betaValues[1] #,0]
+        xTransY = np.matmul(xValues.transpose(), yMatrix)
+        xTransXInv = np.linalg.inv(np.matmul(xValues.transpose(), xValues))
+        betaValues = np.matmul(xTransXInv, xTransY)
+        #betaTrend[period, 0] = betaValues[0] #,0]
+        #betaTrend[period, 1] = betaValues[1] #,0]
 
         for i in range(len(yMatrix)):
             yMatrix[i] -= (xValues[i,1] * betaValues[1]) #,0])
         ##next i
+
+        return [betaValues[0], betaValues[1]]
 
     elif detrendOption == 2: #Power function
         xLogged = deepcopy(xValues)
@@ -1375,19 +1329,21 @@ def detrendData(yMatrix: np.array, yMatrixAboveThreshPos: np.array, detrendOptio
             xLogged[i] = np.log(xValues[i, 1])
 
         #tempMatrix1 = xLogged.transpose
-        tempMatrix1 = np.linalg.inv(np.matmul(xLogged.transpose, xLogged))
-        tempMatrix2 = np.matmul(xLogged.transpose, tempYMatrix)
-        betaValues = np.matmul(tempMatrix1, tempMatrix2)
+        xTransY = np.matmul(xLogged.transpose(), yMatrix)
+        xTransXInv = np.linalg.inv(np.matmul(xLogged.transpose(), xLogged))
+        betaValues = np.matmul(xTransXInv, xTransY)
         betaValues[0] = np.exp(betaValues[0]) #,0] = np.exp(betaBalues(0,0))
-        betaTrend[period, 0] = betaValues[0]
-        betaTrend[period, 1] = betaValues[1]
-        betaTrend[period, 2] = minY
+        #betaTrend[period, 0] = betaValues[0]
+        #betaTrend[period, 1] = betaValues[1]
+        #betaTrend[period, 2] = minY
 
         for i in range(len(yMatrix)):
-            yMatrix[i] -= (betaValues[0,0] * (xValues[i, 1] ** betaValues[1,0])) - np.abs(minY) - 0.001
+            yMatrix[i] -= (betaValues[0] * (xValues[i][1] ** betaValues[1])) - np.abs(minY) - 0.001
+
+        return [betaValues[0], betaValues[1], minY]
         
     else:
-        debugMsg("Error: Invalid Detrend Option")
+        debugMsg("[Error]: Invalid Detrend Option")
 
 def propogateUnconditional(yMatrix: np.array, thresh):
     """Propogate: Unconditional Function v1.0
@@ -1427,20 +1383,6 @@ def propogateConditional(xMatrix: np.ndarray, yMatrix: np.ndarray, yMatrixAboveT
 
     return 
 
-def xValUnConditional():
-    """
-    Cross Validation: Unconditional
-    -- Currently a placeholder
-    ----> Coming Soon
-    """
-def xValConditional():
-    """
-    Cross Validation: Conditional
-    -- Currently a placeholder
-    -- VERY similar functionality to xValUncond
-    ----> Might merge code if possible
-    ----> Coming Soon
-    """
 
 def xValidation(xMatrix: np.ndarray, yMatrix: np.ndarray, noOfFolds, parmOpt, conditionalPart=False):
     """

@@ -105,9 +105,13 @@ def calibrateModelDefaultExperience():
     ##ParmOpt(0) = Cond = True
     autoRegression = False ## Replaces AutoRegressionCheck -> Might be mutually exclusive with parmOpt - will check later...
     includeChow = True
-    detrendOption = 2 #0, 1 or 2...
+    detrendOption = 0 #0, 1 or 2...
     doCrossValidation = True
     crossValFolds = 7
+
+    ##Edit Settings for Testing
+    _globalSettings['modelTrans'] = 3 #Model transformation; 1=none, 2=4root, 3=ln, 4=Inv Normal, 5=box cox
+    _globalSettings['stepwiseregression'] = False
 
     #if PTandRoot == None:
     PTandRoot = "predictand files/NoviSadPrecOBS.dat" ##Predictand file
@@ -258,7 +262,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
     thresh = _globalSettings['thresh'] #Event thresh should be 0 by default...
     ## Import from "Advanced Settings"
     modelTrans = _globalSettings['modelTrans'] #Model transformation; 1=none, 2=4root, 3=ln, 4=Inv Normal, 5=box cox
-    applyStepwise = False #_globalSettings['stepwiseregression']
+    applyStepwise = _globalSettings['stepwiseregression']
     ## Location Unknown:
     countLeapYear = _globalSettings['leapYear']
     ## End of Settings Imports (Default Values for now)
@@ -1383,7 +1387,7 @@ def propogateConditional(xMatrix: np.ndarray, yMatrix: np.ndarray, yMatrixAboveT
 
     return 
 
-
+##XValidation + Helper functions
 def xValidation(xMatrix: np.ndarray, yMatrix: np.ndarray, noOfFolds, parmOpt, conditionalPart=False):
     """
     Cross Validation - Combined Function
@@ -1610,9 +1614,6 @@ def spearmanr(modMatrix, yMatrix):
     
     return d
 
-
-
-
 def calcDW(residualMatrix: np.ndarray):
     """
     Durbin Watson Shared Code for XValidation and CalibrateModel (Unconditional)
@@ -1634,6 +1635,7 @@ def calcDW(residualMatrix: np.ndarray):
         return globalMissingCode
     #Next i   
 
+##Stepwise Regression + Helper Functions
 def stepWiseRegression(xMatrix: np.ndarray, yMatrix: np.ndarray, NPredictors: int, includeChow: bool, conditionalPart: bool, parmOpt: bool, propResiduals:bool, residualArray:np.ndarray):
     """
     Stepwise Regression function
@@ -1683,7 +1685,6 @@ def stepWiseRegression(xMatrix: np.ndarray, yMatrix: np.ndarray, NPredictors: in
         for i in range(totalPerms):
             pass
         
-
 def determinePermutations(numbers):
     """
     Returns totalPerms, permArray, and Numbers?
@@ -2060,45 +2061,59 @@ def transformData(xMatrix: np.ndarray, yMatrix: np.array, yMatrixAboveThreshPos:
     ### ####### ###
 
     #If modelTrans == 1 then do nothing -> no transformation
-    if modelTrans == 2 or modelTrans == 3: #4th Root or Log selected
-        missing = 0
-        for i in range(len(yMatrix)):
-            #[arr[1] for arr in masterarr if cond = ???]
-            ##max(values, key=len)
-            if yMatrix[i] >= 0:
-                if modelTrans == 2:
-                    yMatrix[i] = yMatrix[i] ^ 0.25
-                else:
-                    yMatrix[i] = np.log(yMatrix[i])
-            else:
-                yMatrix[i] = globalMissingCode #-> Global var that needs importing
-                yMatrixAboveThreshPos[i] = globalMissingCode   #     'this resords position of y values for detrend option - needs reducing too
-                missing += 1
-        #next i
+    if modelTrans == 1:
+        pass
+    elif modelTrans == 2 or modelTrans == 3: #4th Root or Log selected
+        #missing = 0
+        #for i in range(len(yMatrix)):
+        #    #[arr[1] for arr in masterarr if cond = ???]
+        #    ##max(values, key=len)
+        #    if yMatrix[i] >= 0:
+        #        if modelTrans == 2:
+        #            yMatrix[i] = yMatrix[i] ** 0.25 #4th root
+        #        else:
+        #            yMatrix[i] = np.log(yMatrix[i]) #nat log
+        #    else:
+        #        yMatrix[i] = globalMissingCode #-> Global var that needs importing
+        #        yMatrixAboveThreshPos[i] = globalMissingCode   #     'this resords position of y values for detrend option - needs reducing too
+        #        missing += 1
+        ##next i
+        #
+        #if missing > 0:  #Remove missing valus
+        #    ##NB - Will be much easier to clone yMat and xMat and delete records,
+        #    ##     rather than this "selective copying"
+        #    if len(yMatrix) - missing > 10:   #'make sure there are enough data
+        #        newYMatrix = np.ndarray((len(yMatrix) - missing))
+        #        newXMatrix = np.ndarray((xMatrix.shape[0] - missing, xMatrix.shape[1]))
+        #        newYMatrixAbove = np.ndarray((len(yMatrixAboveThreshPos) - missing))
+        #        count = 0
+        #        for i in range(len(yMatrix)): ##Drop unwanted arrayz
+        #            if yMatrix[i] != globalMissingCode:
+        #                newYMatrix[count] = yMatrix[i]
+        #                newYMatrixAbove[count] = yMatrixAboveThreshPos[i]
+        #                for j in range(len(xMatrix[0])): #XCols
+        #                    newXMatrix[count, j] = xMatrix[i, j]
+        #                #Next j
+        #                count += 1
+        #
+        #            #End If
+        #        #Next i              'newXMatrix and newYMatrix and newYMatrixAbove now have good data in them
+        #        yMatrix = deepcopy(newYMatrix)
+        #        xMatrix = deepcopy(newXMatrix)
+        #        yMatrixAboveThreshPos = deepcopy(newYMatrixAbove)
         
-        if missing > 0:  #Remove missing valus
-            ##NB - Will be much easier to clone yMat and xMat and delete records,
-            ##     rather than this "selective copying"
-            if len(yMatrix) - missing > 10:   #'make sure there are enough data
-                newYMatrix = np.ndarray((len(yMatrix) - missing))
-                newXMatrix = np.ndarray((xMatrix.shape[0] - missing, xMatrix.shape[1]))
-                newYMatrixAbove = np.ndarray((len(yMatrixAboveThreshPos) - missing))
-                count = 0
-                for i in range(len(yMatrix)): ##Drop unwanted arrayz
-                    if yMatrix[i] != globalMissingCode:
-                        newYMatrix[count] = yMatrix[i]
-                        newYMatrixAbove[count] = yMatrixAboveThreshPos[i]
-                        for j in range(len(xMatrix[0])): #XCols
-                            newXMatrix[count, j] = xMatrix[i, j]
-                        #Next j
-                        count += 1
+        ##Shiny new list comp alternative
 
-                    #End If
-                #Next i              'newXMatrix and newYMatrix and newYMatrixAbove now have good data in them
-                yMatrix = deepcopy(newYMatrix)
-                xMatrix = deepcopy(newXMatrix)
-                yMatrixAboveThreshPos = deepcopy(newYMatrixAbove)
-        #End If
+        rejectedIndex = [i for i in range(len(yMatrix)) if yMatrix[i] < 0]
+        xMatrix = np.delete(xMatrix, rejectedIndex, 0)
+        yMatrix = np.delete(yMatrix, rejectedIndex)
+        yMatrixAboveThreshPos = np.delete(yMatrixAboveThreshPos, rejectedIndex)
+        
+        if modelTrans == 2:
+            yMatrix = [i ** 0.25 for i in yMatrix]
+        else:
+            yMatrix = [np.log(i) for i in yMatrix]
+        #endif
         
     elif modelTrans == 5: #          'box cox - so need to find best lamda of YMatrix
         #x = PeriodWorkingOn         'for testing!

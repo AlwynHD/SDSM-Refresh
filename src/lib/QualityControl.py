@@ -63,8 +63,7 @@ def getOutliers(filePath, outlierFile, sdFilterValue, applyThresh):
             mean = sum(workingData) / len(workingData)
             sd = 0
             for value in workingData:
-                if valueIsValid(value, applyThresh, missingCode, thresh):
-                    sd += np.power((value - mean), 2)
+                sd += np.power((value - mean), 2)
             sd = np.sqrt(sd / len(workingData))
             sdFilter = sd * sdFilterValue
 

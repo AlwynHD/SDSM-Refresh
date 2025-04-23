@@ -110,8 +110,10 @@ def calibrateModelDefaultExperience():
     crossValFolds = 7
 
     ##Edit Settings for Testing
-    _globalSettings['modelTrans'] = 3 #Model transformation; 1=none, 2=4root, 3=ln, 4=Inv Normal, 5=box cox
+    _globalSettings['modelTrans'] = 5 #Model transformation; 1=none, 2=4root, 3=ln, 4=Inv Normal, 5=box cox
     _globalSettings['stepwiseregression'] = False
+
+    print(f"Testing with 'modelTrans' == {_globalSettings['modelTrans']}")
 
     #if PTandRoot == None:
     PTandRoot = "predictand files/NoviSadPrecOBS.dat" ##Predictand file
@@ -285,6 +287,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
     #chowStat = 0
     #fRatio = 0
     parameterResultsArray = np.zeros((24,50))
+    biasCorrection = np.zeros(12)
     #CondPropCorrect = 5
 
     seasonMonths = [ ##Necesary for Season Month Lookups
@@ -320,7 +323,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
         #if ApplyStepwise:
             ## Add msg
     
-        lambdaArray = np.zeros((12,2)) ## Lamda array originally "LamdaArray(1 To 12, 1 To 2) As Double"
+        lamdaArray = np.zeros((12,2)) ## Lamda array originally "LamdaArray(1 To 12, 1 To 2) As Double"
 
         processTerminated = False
 
@@ -722,7 +725,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                             xValidationOutput["Conditional"][months[i]] = xValResults
 
                     #call TransformData
-                    transformData(xMatrix, yMatrix, yMatrixAboveThreshPos, modelTrans)
+                    tResults = transformData(xMatrix, yMatrix, yMatrixAboveThreshPos, modelTrans)
                     ##if errored then exit
 
                     if detrendOption != 0:
@@ -732,20 +735,22 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
 
                     if modelTrans == 5:
                         for i in range(12):
-                            lamdaArray[i, 0] = lamda
-                            lamdaArray[i, 1] = shiftRight
+                            lamdaArray[i, 0] = tResults['lamda']
+                            lamdaArray[i, 1] = tResults['shiftRight']
 
                     ##Can we move the following above, to make it an elif?
                     conditionalPart = True
                     #call CalculateParameters(true)
-                    params = calculateParameters(xMatrix, yMatrix, NPredictors, includeChow, conditionalPart, parmOpt, True, residualArray) #betaMatrix defined here
+                    params = calculateParameters(xMatrix, yMatrix, NPredictors, includeChow, conditionalPart, parmOpt, True, residualArray, tResults) #betaMatrix defined here
 
                     if processTerminated:
                         ##exit
                         do_nothing()
                     if modelTrans == 4:
+                        yDash = np.sum(np.matmul(xMatrix, params['betaMatrix']))
+                        biasCorrect = 0 if yDash == 0 else (np.sum(yMatrix) / yDash)
                         for i in range(12):
-                            biasCorrection[i] = CalculateBiasCorrection()
+                            biasCorrection[i] = biasCorrect
                     
                     for i in range(12, 24):
                         for j in range(NPredictors):
@@ -856,7 +861,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                         xValResults = xValidation(xMatrix, yMatrix, crossValFolds, parmOpt)
                         if seasonCode == 4:
                             for i in range(3):
-                                xValidationOutput["Unconditional"][seasonMonths[periodWorkingOn][i]] = xValResults
+                                xValidationOutput["Unconditional"][months[seasonMonths[periodWorkingOn][i]]] = xValResults
                         else: #Assume monthly
                             xValidationOutput["Unconditional"][months[periodWorkingOn]] = xValResults
 
@@ -943,12 +948,12 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                             xValResults = xValidation(xMatrix, yMatrix, crossValFolds, parmOpt, True)
                             if seasonCode == 4:
                                 for i in range(3):
-                                    xValidationOutput["Conditional"][seasonMonths[periodWorkingOn][i]] = xValResults
+                                    xValidationOutput["Conditional"][months[seasonMonths[periodWorkingOn][i]]] = xValResults
                             else: #Assume monthly
                                 xValidationOutput["Conditional"][months[periodWorkingOn]] = xValResults
                         
                         #call TransformData
-                        transformData(xMatrix, yMatrix, yMatrixAboveThreshPos, modelTrans)
+                        tResults = transformData(xMatrix, yMatrix, yMatrixAboveThreshPos, modelTrans)
                         #if errored then exit
 
                         if detrendOption != 0:
@@ -956,54 +961,31 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                             betaTrend[periodWorkingOn] = detrendData(yMatrix, yMatrixAboveThreshPos, detrendOption, periodWorkingOn, True)
 
                         if modelTrans == 5:
-                            if seasonCode == 12:
-                                lamdaArray[periodWorkingOn, 0] = lamda
-                                lamdaArray[periodWorkingOn, 1] = shiftRight
-                            else:
-                                if periodWorkingOn == 0:
-                                    lamdaArray[0, 0] = lamda
-                                    lamdaArray[1, 0] = lamda
-                                    lamdaArray[11, 0] = lamda
-                                    lamdaArray[0, 1] = shiftRight
-                                    lamdaArray[1, 1] = shiftRight
-                                    lamdaArray[11, 1] = shiftRight
-                                elif periodWorkingOn == 1:
-                                    lamdaArray[2, 0] = lamda
-                                    lamdaArray[3, 0] = lamda
-                                    lamdaArray[4, 0] = lamda
-                                    lamdaArray[2, 1] = shiftRight
-                                    lamdaArray[3, 1] = shiftRight
-                                    lamdaArray[4, 1] = shiftRight
-                                elif periodWorkingOn == 2:
-                                    lamdaArray[5, 0] = lamda
-                                    lamdaArray[6, 0] = lamda
-                                    lamdaArray[7, 0] = lamda
-                                    lamdaArray[5, 1] = shiftRight
-                                    lamdaArray[6, 1] = shiftRight
-                                    lamdaArray[7, 1] = shiftRight
-                                elif periodWorkingOn == 3:
-                                    lamdaArray[8, 0] = lamda
-                                    lamdaArray[9, 0] = lamda
-                                    lamdaArray[10, 0] = lamda
-                                    lamdaArray[8, 1] = shiftRight
-                                    lamdaArray[9, 1] = shiftRight
-                                    lamdaArray[10, 1] = shiftRight
-                                ##endif
+                            if seasonCode == 4:
+                                for i in range(3):
+                                    lamdaArray[seasonMonths[periodWorkingOn][i], 0] = tResults['lamda']
+                                    lamdaArray[seasonMonths[periodWorkingOn][i], 1] = tResults['shiftRight']
+                            else: #assume seasonCode == 12:
+                                lamdaArray[periodWorkingOn, 0] = tResults['lamda']
+                                lamdaArray[periodWorkingOn, 1] = tResults['shiftRight']
                             ##endif
                         ##endif
                         conditionalPart = True
                         ##call CalculateParameters(true)
-                        params = calculateParameters(xMatrix, yMatrix, NPredictors, includeChow, conditionalPart, parmOpt, True, residualArray) #BetaMatrix defined here
+                        params = calculateParameters(xMatrix, yMatrix, NPredictors, includeChow, conditionalPart, parmOpt, True, residualArray, tResults) #BetaMatrix defined here
                         if processTerminated:
                             ##exit
                             do_nothing()
                         if modelTrans == 4:
+                            yDash = np.sum(np.matmul(xMatrix, params['betaMatrix']))
+                            biasCorrect = 0 if yDash == 0 else (np.sum(yMatrix) / yDash)
+
                             if seasonCode == 4:
-                                for i in range(1,4): ##???
-                                    biasCorrection[seasonMonths[periodWorkingOn][i]] = calculateBiasCorrection()
+                                for i in range(4): ##???
+                                    biasCorrection[seasonMonths[periodWorkingOn][i]] = biasCorrect
                                 ##next i
                             else:
-                                biasCorrection[periodWorkingOn] = calculateBiasCorrection()
+                                biasCorrection[periodWorkingOn] = biasCorrect
                             ##endif
                         ##endif
 
@@ -1747,10 +1729,11 @@ def generateIfromN(sizeToPermute, numbers, appendString, totalPerms, permArray):
 
 
 
-def calculateParameters(xMatrix: np.ndarray, yMatrix: np.ndarray, NPredictors: int, includeChow: bool, conditionalPart: bool, parmOpt: bool, propResiduals:bool, residualArray:np.ndarray):
+def calculateParameters(xMatrix: np.ndarray, yMatrix: np.ndarray, NPredictors: int, includeChow: bool, conditionalPart: bool, parmOpt: bool, propResiduals: bool, residualArray: np.ndarray, lamdaValues = []):
     """
     Calculate Parameters function v1.1
     -- Presumably calculates parameters
+    -- LamdaValues and yMatrixAboveThreshPos are only necessary when modelTrans == 4 and ConditionalPart == True
     """
     ### GLOBALS ###
     globalMissingCode = _globalSettings['globalmissingcode']
@@ -1805,8 +1788,10 @@ def calculateParameters(xMatrix: np.ndarray, yMatrix: np.ndarray, NPredictors: i
 
     if parmOpt:
         if conditionalPart:
+            untransformData([modMatrix2Test, yMatrix2Test], lamdaValues)
             ##call untransformdata
             ##Useful when processing Transformed Data
+            ##only useful for the conditional part
             pass
         else: #i.e. Not conditionalPart
             condPropCorrect = calcPropCorrect(modMatrix2Test, yMatrix2Test, len(yMatrix2Test))
@@ -2047,7 +2032,7 @@ def calculateParameters2(xMatrix: np.ndarray, yMatrix: np.ndarray, NPredictors: 
 
     return {"fRatio":fRatio, "betaMatrix":betaMatrix, "residualMatrix":residualMatrix, "predictedMatrix":predictedMatrix, "RSS":RSS}
 
-def transformData(xMatrix: np.ndarray, yMatrix: np.array, yMatrixAboveThreshPos: np.array, modelTrans):
+def transformData(xMatrix: np.ndarray, yMatrix: np.ndarray, yMatrixAboveThreshPos: np.ndarray, modelTrans: int):
     """
         Transform data v1.0
         transforms data in Y Matrix according to transformation required.  Amends (reduces) X matrix too if some values are missing
@@ -2064,127 +2049,20 @@ def transformData(xMatrix: np.ndarray, yMatrix: np.array, yMatrixAboveThreshPos:
     if modelTrans == 1:
         pass
     elif modelTrans == 2 or modelTrans == 3: #4th Root or Log selected
-        #missing = 0
-        #for i in range(len(yMatrix)):
-        #    #[arr[1] for arr in masterarr if cond = ???]
-        #    ##max(values, key=len)
-        #    if yMatrix[i] >= 0:
-        #        if modelTrans == 2:
-        #            yMatrix[i] = yMatrix[i] ** 0.25 #4th root
-        #        else:
-        #            yMatrix[i] = np.log(yMatrix[i]) #nat log
-        #    else:
-        #        yMatrix[i] = globalMissingCode #-> Global var that needs importing
-        #        yMatrixAboveThreshPos[i] = globalMissingCode   #     'this resords position of y values for detrend option - needs reducing too
-        #        missing += 1
-        ##next i
-        #
-        #if missing > 0:  #Remove missing valus
-        #    ##NB - Will be much easier to clone yMat and xMat and delete records,
-        #    ##     rather than this "selective copying"
-        #    if len(yMatrix) - missing > 10:   #'make sure there are enough data
-        #        newYMatrix = np.ndarray((len(yMatrix) - missing))
-        #        newXMatrix = np.ndarray((xMatrix.shape[0] - missing, xMatrix.shape[1]))
-        #        newYMatrixAbove = np.ndarray((len(yMatrixAboveThreshPos) - missing))
-        #        count = 0
-        #        for i in range(len(yMatrix)): ##Drop unwanted arrayz
-        #            if yMatrix[i] != globalMissingCode:
-        #                newYMatrix[count] = yMatrix[i]
-        #                newYMatrixAbove[count] = yMatrixAboveThreshPos[i]
-        #                for j in range(len(xMatrix[0])): #XCols
-        #                    newXMatrix[count, j] = xMatrix[i, j]
-        #                #Next j
-        #                count += 1
-        #
-        #            #End If
-        #        #Next i              'newXMatrix and newYMatrix and newYMatrixAbove now have good data in them
-        #        yMatrix = deepcopy(newYMatrix)
-        #        xMatrix = deepcopy(newXMatrix)
-        #        yMatrixAboveThreshPos = deepcopy(newYMatrixAbove)
-        
-        ##Shiny new list comp alternative
 
+        ##First, remove missing valus
         rejectedIndex = [i for i in range(len(yMatrix)) if yMatrix[i] < 0]
         xMatrix = np.delete(xMatrix, rejectedIndex, 0)
         yMatrix = np.delete(yMatrix, rejectedIndex)
         yMatrixAboveThreshPos = np.delete(yMatrixAboveThreshPos, rejectedIndex)
         
+        ##Apply Transformations
         if modelTrans == 2:
-            yMatrix = [i ** 0.25 for i in yMatrix]
+            yMatrix = [i ** 0.25 for i in yMatrix] ##4th root
         else:
-            yMatrix = [np.log(i) for i in yMatrix]
+            yMatrix = [np.log(i) for i in yMatrix] ##nat log
         #endif
-        
-    elif modelTrans == 5: #          'box cox - so need to find best lamda of YMatrix
-        #x = PeriodWorkingOn         'for testing!
-        #minSoFar = 9999                 #'establish right shift for box cox transform as min value in y matrix if -ve.  Makes all values +ve
-        #for i in range(1,len(yMatrix)):
-        #    if yMatrix[i] < minSoFar:
-        #        minSoFar = yMatrix[i]
-        #Next i
-        minSoFar = np.min(yMatrix)
-        if minSoFar >= 0: 
-            ShiftRight = 0
-        else:
-            ShiftRight = np.abs(minSoFar)
-
-        for i in range(1, len(yMatrix)):              #'now shift all Y matrix data right to make sure it's +ve before we calculate lamda
-            yMatrix[i] += ShiftRight
-        #Next i
-
-        ################
-        ## Lamda Calc ##
-        ################
-
-        insufficientData = False    #'assume enough data unless FindMinLamda tells us otherwise
-        lamda = findMinLamda(-2, 2, 0.25, yMatrix)  #'find a value between -2 to +2
-
-        if lamda != globalMissingCode: #  'now home in a bit more
-            lamda = findMinLamda((lamda - 0.25), (lamda + 0.25), 0.1, yMatrix)
-        else:
-            message = "Sorry an error has occurred calculating the optimum lamda transform."
-            if insufficientData: message = message & " There are insufficient data for a Box Cox transformation.  Try an alternative transformation."
-            #MsgBox message, 0 + vbCritical, "Error Message"
-            #insert error here
-        #End If
-        if lamda != globalMissingCode: #'home in a bit further
-            lamda = findMinLamda((lamda - 0.1), (lamda + 0.1), 0.01, yMatrix)
-        else:
-            message = "Sorry an error has occurred calculating the optimum lamda transform."
-            if insufficientData: message = message & " There are insufficient data for a Box Cox transformation.  Try an alternative transformation."
-            #MsgBox message, 0 + vbCritical, "Error Message"
-            #insert error here
-        #End If
-
-        if lamda == globalMissingCode:
-            message = "Sorry an error has occurred calculating the optimum lamda transform."
-            if insufficientData: message = message & " There are insufficient data for a Box Cox transformation.  Try an alternative transformation."
-            #MsgBox message, 0 + vbCritical, "Error Message"
-            #insert error here
-        #End If
-
-        #######################
-        ## End of Find Lamda ##
-        #######################
-
-        for i in range(len(yMatrix)):
-            if lamda == 0:                          # 'apply box cox lamda transform - do some checks for division by zero first
-                if yMatrix[i] != 0:
-                    yMatrix[i] = np.log(yMatrix[i]) - ShiftRight         #'shift it back to left after transform
-                else:
-                    yMatrix[i] = -5 - ShiftRight     #'cannot log zero so -5 represents log of a very small number
-                #End If
-            else:
-                yMatrix[i] = (((yMatrix[i] ^ lamda) - 1) / lamda) - ShiftRight     #'shift it back to left after transform
-            #End If
-        #Next i
-
-    else:        #'Inverse normal selected: model trans=4
-
-        def fxNormal(fx):
-            return np.exp(-(fx ** 2) / 2) / np.sqrt(2 * np.pi)
-
-        
+    elif modelTrans == 4:        #'Inverse normal selected: model trans=4
         rankMatrix = np.zeros((2, len(yMatrix))) #'add an extra column     ##In this era, for the sake of storage, these matricies are stored horizontally. Mechanically adding another row..
         rankMatrix[0] = deepcopy(yMatrix)      #'copy Y matrix into RankMatrix
         #Set ReSampleMatrix = New Matrix         'save these data in global matrix so can be resampled when untransforming
@@ -2243,11 +2121,285 @@ def transformData(xMatrix: np.ndarray, yMatrix: np.array, yMatrixAboveThreshPos:
         #    YMatrix(i - 1, 0) = RankMatrix(i - 1, 0)
         #Next i
 
+        return reSampleMatrix
+
+    elif modelTrans == 5: #          'box cox - so need to find best lamda of YMatrix
+
+        minSoFar = np.min(yMatrix)
+        shiftRight = np.abs(min(minSoFar, 0))
+
+        for i in range(1, len(yMatrix)):              #'now shift all Y matrix data right to make sure it's +ve before we calculate lamda
+            yMatrix[i] += shiftRight
+        #Next i
+
+        ################
+        ## Lamda Calc ##
+        ################
+
+        insufficientData = False    #'assume enough data unless FindMinLamda tells us otherwise
+        lamda = findMinLamda(-2, 2, 0.25, yMatrix)  #'find a value between -2 to +2
+
+        if lamda != globalMissingCode: #  'now home in a bit more
+            lamda = findMinLamda((lamda - 0.25), (lamda + 0.25), 0.1, yMatrix)
+        else:
+            message = "Sorry an error has occurred calculating the optimum lamda transform."
+            if insufficientData: message = message & " There are insufficient data for a Box Cox transformation.  Try an alternative transformation."
+            #MsgBox message, 0 + vbCritical, "Error Message"
+            #insert error here
+        #End If
+        if lamda != globalMissingCode: #'home in a bit further
+            lamda = findMinLamda((lamda - 0.1), (lamda + 0.1), 0.01, yMatrix)
+        else:
+            message = "Sorry an error has occurred calculating the optimum lamda transform."
+            if insufficientData: message = message & " There are insufficient data for a Box Cox transformation.  Try an alternative transformation."
+            #MsgBox message, 0 + vbCritical, "Error Message"
+            #insert error here
+        #End If
+
+        if lamda == globalMissingCode:
+            message = "Sorry an error has occurred calculating the optimum lamda transform."
+            if insufficientData: message = message & " There are insufficient data for a Box Cox transformation.  Try an alternative transformation."
+            #MsgBox message, 0 + vbCritical, "Error Message"
+            #insert error here
+        #End If
+
+        #######################
+        ## End of Find Lamda ##
+        #######################
+
+        for i in range(len(yMatrix)):
+            if lamda == 0:                          # 'apply box cox lamda transform - do some checks for division by zero first
+                if yMatrix[i] != 0:
+                    yMatrix[i] = np.log(yMatrix[i]) - shiftRight         #'shift it back to left after transform
+                else:
+                    yMatrix[i] = -5 - shiftRight     #'cannot log zero so -5 represents log of a very small number
+                #End If
+            else:
+                yMatrix[i] = (((yMatrix[i] ** lamda) - 1) / lamda) - shiftRight     #'shift it back to left after transform
+            #End If
+        #Next i
+
+        return {'lamda':lamda, 'shiftRight':shiftRight}
+
+   
+
     #End If
     
     #return Something here
+    return None
 
+def findMinLamda(start: float, finish: float, stepSize: float, passedMatrix: np.ndarray) -> int:
+    #Start, Finish & Stepsize were previously of type "double" (equivalent to float?)
+    """
+        Find Min Lambda
+        Idk
+    """
 
+    #'uses DosserCox transformation and tries different values of lamda
+    #'until lowest result identified - where result is Hinkley (1977) equation
+    #'tries lamda values from start to finish in steps of stepsize for passedMatrix
+    #'passedMatrix has already been right shifted by shiftright to make sure it is all >=0
+    #'returns either GlobalMissingCode if not found or minimum lamda value if it was
+    GlobalMissingCode = -999
+    #bestLamdaSoFar As Double  #'Best Lamda so far
+    #Dim minResultSoFar As Double  #'Hinkley (1977) calculation for optimum lamda
+    #Dim Mean As Double      #'mean of transformed values
+    #Dim IQR As Double        #'Inter Quartile Range of transformed values
+    #Dim upper As Long: Dim Lower As Long #'position of IQR values
+    #Dim Median As Double    #'Median
+    #Dim d As Double         #'d as per Hinkley
+    #Dim tempMatrix As Matrix
+    #Dim counter As Integer, Missing As Integer  #'missing counts number we can't transform
+    bestLamdaSoFar = start  #'set best lamda to first point to try
+    minResultSoFar = 99999  #'set minimum d value to big number to start
+
+    #may need finish+1
+    #for k in range(start, finish, stepSize):   #'try each value of lamda in turn
+    #python doesn't like for range loops over floats
+    
+    k = start
+    while k < finish:
+        #Set tempMatrix = New Matrix
+        tempMatrix = deepcopy(passedMatrix)    #'copy passedMatrix into tempmatrix so we don't disturb it just in case
+        mean = 0                            #'ymatrix contains only values>=0
+        counter = 0
+        missing = 0                         #'count of numbers we can't transform
+        for i in range(len(tempMatrix)):   #'set up temp matrix with transformed data
+            if (k == 0) and (tempMatrix[i] == 0):
+                tempMatrix[i] = -99999        #'can't log zero so set missing value to -99999 as these will be sorted to top later
+                missing = missing + 1
+            else:
+                if k == 0:      #'ln transform for lamda = 0
+                    tempMatrix[i] = np.log(tempMatrix[i])
+                else:
+                    tempMatrix[i] = ((tempMatrix[i] ** k) - 1) / k #'BoxCox transform
+                #End If
+            mean = mean + tempMatrix[i]
+            counter = counter + 1
+            #End If
+        #Next i    'temp matrix set up with transformed data, mean has mean and counter number of valid values
+        if counter >= 50:           #'do we have enough data to work with?
+            mean = mean / counter
+            tempMatrix.sort()         #'will put all -99999s to the top (there are missing of these)
+            #' need to calculate median and SD
+            median = tempMatrix[((counter // 2) + missing)]           #'add on missing so we only look at valid numbers
+            lower = (counter // 4) + missing
+            upper = (counter - lower) + missing
+            
+            IQR = tempMatrix[upper] - tempMatrix[lower]
+
+            #'now calculate d as per Hinkley
+            if IQR > 0:
+                d = (mean - median) / IQR
+            else:
+                d = GlobalMissingCode
+            #End If
+            
+            if (d != GlobalMissingCode) and (np.abs(d) < minResultSoFar):
+                minResultSoFar = np.abs(d) #'keep track of best values so far
+                bestLamdaSoFar = k
+            #End If
+        else:
+            insufficientData = True
+        #End If      ' end of check for sufficient data to calculate lamda
+        k += stepSize
+    #Next k  'try for all values of k
+    
+    if minResultSoFar == 99999:  #'haven't found anything
+        return GlobalMissingCode
+    else:
+        return bestLamdaSoFar   #'return bestLamdaSoFar as this has lowest d value
+    #End If
+
+def untransformData(matricies: np.ndarray, tResults):
+    """
+    Untransform Data for Conditional Part
+    -- tResults is the results array from the Transform Data function
+    """
+
+    ### GLOBALS ###
+    globalMissingCode = _globalSettings['globalmissingcode']
+    modelTrans = _globalSettings['modelTrans']
+    ### ####### ###
+
+    if modelTrans == 1: #no transform
+        pass
+    elif modelTrans == 2: #4th root
+        for matrix in matricies:
+            for i in range(len(matrix)):
+                if matrix[i] != globalMissingCode:
+                    matrix[i] **= 4
+            #if yMatrix[i] != globalMissingCode:
+            #    yMatrix[i] **= 4
+    elif modelTrans == 3: #nat log
+        for matrix in matricies:
+            for i in range(len(matrix)):
+                if matrix[i] != globalMissingCode:
+                    matrix[i] = np.exp(matrix[i])
+            #if yMatrix[i] != globalMissingCode:
+            #    yMatrix[i] = np.exp(yMatrix[i])
+
+    elif modelTrans == 4: #inverse normal 
+        #transformResults = reSampleMatrix -> unsorted data to take resampling from
+        ##SORT ROWS
+        rsMatrix = np.sort(tResults)
+        ## "Locate lower bound to begin estimation of cdf"
+        error = False
+        zStart = 1 / (len(rsMatrix) + 1) 
+        delta = 0.0001
+        area = 0.5
+        fx = 0
+        fxOld = fxNormal(fx)
+        if fxOld == globalMissingCode: 
+            #BombOut
+            error = True
+        if not error:
+            for i in range(50000):
+                fx = fx - delta
+                fxNew = fxNormal(fx)
+                if fxNew == globalMissingCode:
+                    # Then BombOut
+                    error = True
+                    break
+                area = area - (delta * 0.5 * (fxOld + fxNew))
+                if area <= zStart:
+                    break
+                fxOld = fxNew
+            #Next i
+        if error: #Untransform failed - inverse normal cannot be calculated
+            debugMsg("[Error]: Inverse normal cannot be calculated")
+            for matrix in matricies:
+                for i in range(len(matrix)):
+                    matrix[i] = globalMissingCode
+                #yMatrix[i] = globalMissingCode
+        else:
+            ## "Compute area between lower and each z-score"
+            limit = fx
+            totalArea = (1 - (2 * zStart))
+
+            for matrix in matricies:
+                for i in range(len(matrix)): #'now use translator to convert all values
+                    if matrix[i] != globalMissingCode:
+                        matrix[i] = translator(matrix[i] , limit, totalArea, rsMatrix)
+                #if yMatrix[i] != globalMissingCode:
+                #    yMatrix[i] = translator(yMatrix[i], limit, totalArea, tResults)
+            #next i
+        #endif
+    
+    elif modelTrans == 5: #Box Cox
+        #transformResults = {'lamda', 'shiftRight'}
+        lamda = tResults['lamda']
+        shift = tResults['shiftRight']
+        for matrix in matricies:
+            for i in range(len(matrix)):
+                if matrix[i] != globalMissingCode:
+                    tempValue = matrix[i] + shift #shift right for current period
+                    if lamda == 0:
+                        tempValue = np.exp(tempValue) - shift #log transform
+                    else:
+                        tempValue = (lamda * tempValue) + 1
+                        if tempValue > 0:
+                            tempValue = np.log(tempValue) / lamda
+                            tempvalue = np.exp(tempValue) - shift
+                        else:
+                            tempValue = globalMissingCode
+                    matrix[i] = tempValue
+           #next i
+        #next matrix
+    #endif
+
+def translator(passedValue: float, limit: float, totalArea: float, reSampleMatrix) -> float:
+
+    ### GLOBALS ###
+    globalMissingCode = _globalSettings['globalmissingcode']
+    ### ####### ###
+
+    if passedValue <= limit:
+        return reSampleMatrix[0]
+    else:
+        try:
+            fxOld = fxNormal(limit)
+        except: #fxOld is invalid / cannot be caluclated
+            return globalMissingCode
+        else:
+            interval = (passedValue - limit) / 100
+            area = 0
+            fx = limit
+            for i in range(100):
+                fx = fx + interval
+                try: 
+                    fxNew = fxNormal(fx)
+                except:
+                    return globalMissingCode
+                else:
+                    area += (interval * 0.5 * (fxOld + fxNew))
+                    fxOld = fxNew
+                #end catch
+            #next i
+            area = min(area, totalArea)
+            locateValue = int(np.round(area * len(reSampleMatrix) / totalArea))
+            locateValue = min(locateValue, (len(reSampleMatrix) - 1))
+            return reSampleMatrix[locateValue]
 
 ##Helper Functions:
 
@@ -2338,6 +2490,8 @@ def getSeason(month):
     else: #Months 12,1,2 (Winter)
         return 0
     
+def fxNormal(fx):
+    return np.exp(-(fx ** 2) / 2) / np.sqrt(2 * np.pi)
 
 
 

@@ -250,6 +250,9 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
     ## In v0.7.1
     ## DetrendOption sorta working...
 
+    ## In v0.8.1
+    ## ModelTrans sorta working...
+
     #------------------------
     # FUNCTION DEFINITITIONS:
     #------------------------
@@ -1239,6 +1242,14 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
             }
             output['autoregression'] = autoRegression
             output['ifXVal'] = doCrossValidation
+
+            #Plot Residual Graph?
+            #if residualAnalysis == 1:
+                #Show Scatter:
+            #plotScatter(residualArray)
+            output['residualArray'] = residualArray
+
+
 
             return output
 
@@ -2401,6 +2412,46 @@ def translator(passedValue: float, limit: float, totalArea: float, reSampleMatri
             locateValue = min(locateValue, (len(reSampleMatrix) - 1))
             return reSampleMatrix[locateValue]
 
+def plotScatter(residualArray):
+    #mimicked from ScreenVariables
+    import pyqtgraph as pg
+
+    """
+    On Error GoTo ErrorHandler
+    Dim i As Long
+    Load ScatterChartFrm
+    ScatterChartFrm.HiddenXTitleText.Text = "Predicted Value (Y')"    'X axis label
+    ScatterChartFrm.HiddenYTitleText.Text = "Residual"       'Y axis label
+    ScatterChartFrm.Chart1.Plot.Axis(VtChAxisIdY).AxisTitle.Text = "Residual"
+    ScatterChartFrm.Chart1.Plot.Axis(VtChAxisIdX).AxisTitle.Text = "Predicted Value (Y')"
+    ScatterChartFrm.Chart1.ColumnCount = 2
+    ScatterChartFrm.Chart1.rowCount = NoOfResiduals         'Maximum possible data to display
+    
+    For i = 1 To NoOfResiduals
+        ScatterChartFrm.Chart1.DataGrid.SetData i, 2, ResidualArray(2, i), 0    'Insert the residual into this row - Y axis
+        ScatterChartFrm.Chart1.DataGrid.SetData i, 1, ResidualArray(1, i), 0    'Insert Y' value onto X axis
+    Next i
+    ScatterChartFrm.Chart1.DataGrid.SetSize 0, 0, NoOfResiduals, 2   'Resize data grid to only show data wanted
+    
+    ScatterChartFrm.Chart1.Title = "Residual Plot"
+    ScatterChartFrm.HiddenTitleText = "Residual Plot"
+    ScatterChartFrm.Show   
+    """
+    #ResidualArray(1,i) is equivalent to residualArray['predicted'][i], and should go on the X axis
+    #ResidualArray(2,i) is equivalent to residualArray['residual'][i], and should go on the Y axis
+    #NoOfResiduals is equivalent to residualArray['noOfResiduals'] and should contain the length of the array
+
+    plot = pg.plot()
+    scatter = pg.ScatterPlotItem(size=10, brush=pg.mkBrush(255, 255, 255, 120))
+
+    outputData = residualArray
+    spots = [
+        {"pos": [residualArray['predicted'][i], residualArray['residual'][i]]}
+        for i in range(residualArray['noOfResiduals'])
+    ]
+    scatter.addPoints(spots)
+    plot.addItem(scatter)
+   
 ##Helper Functions:
 
 def calcRSQR(modMatrix: np.ndarray, yMatrix: np.ndarray, limit: int, checkMissing: bool, missingLim: int = None):

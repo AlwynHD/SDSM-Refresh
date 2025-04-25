@@ -3,7 +3,9 @@ import math
 import matplotlib.pyplot as plt
 from datetime import date
 from typing import Optional, Callable
-from src.lib.FrequencyAnalysis.frequency_analysis_functions import (dateDiff, dateSerial, increaseDate, doWeWantThisDatum, getSeason)
+from src.lib.FrequencyAnalysis.frequency_analysis_functions import (
+    increaseDate, doWeWantThisDatum, getSeason
+)
 
 def linePlot(
     observedFilePath: str,
@@ -34,11 +36,6 @@ def linePlot(
       - exitAnalysesFunc:   returns True if user hit “Cancel”
     """
 
-    global currentDay, currentMonth, currentYear, currentSeason, yearLength, leapValue
-
-    yearLength = 1
-    leapValue = 1
-
     # 1) check files exist & derive labels
     obsExists = bool(observedFilePath and os.path.exists(observedFilePath))
     modExists = bool(modelledFilePath and os.path.exists(modelledFilePath))
@@ -47,15 +44,20 @@ def linePlot(
     obsLabel = os.path.basename(observedFilePath) if obsExists else ""
     modLabel = os.path.basename(modelledFilePath) if modExists else ""
 
-    # 2) determine ensemble structure in the modelled file
+    # 2) open files
+    fObs = open(observedFilePath, 'r') if obsExists else None
+    fMod = open(modelledFilePath, 'r') if modExists else None
+
+    # 3) determine ensemble structure
     noOfEnsembles = 1
     ensemblePresent = False
-    if modExists:
-        with open(modelledFilePath, 'r') as f:
-            firstLine = f.readline().rstrip("\n")
+    if fMod:
+        firstLine = fMod.readline().rstrip("\n")
         if len(firstLine) > 15:
             ensemblePresent = True
             noOfEnsembles = len(firstLine) // 14
+        # rewind
+        fMod.seek(0)
 
         if ensembleMode == 'ensembleMember':
             if ensembleIndex is None or not (1 <= ensembleIndex <= noOfEnsembles):
@@ -63,121 +65,132 @@ def linePlot(
                     f"You selected ensemble #{ensembleIndex}, but only {noOfEnsembles} exist."
                 )
 
-    # 3) open files
-    fObs = open(observedFilePath, 'r') if obsExists else None
-    fMod = open(modelledFilePath, 'r') if modExists else None
+    # 4) skip up to analysisStartDate
+    #    seed current to the file’s first date (e.g. 1948-01-01)
+    currentDay, currentMonth, currentYear = 1, 1, 1948
+    currentSeason = getSeason(currentMonth)
+    yearLength, leapValue = 1, 1
+    current = date(currentYear, currentMonth, currentDay)
 
-    # 4) skip until analysisStartDate
-    currentDay, currentMonth, currentYear = (
-        analysisStartDate.day,
-        analysisStartDate.month,
-        analysisStartDate.year
-    )
-
-    while dateDiff(dateSerial(currentYear, currentMonth, currentDay),analysisStartDate) > 0:
+    while current < analysisStartDate:
         if exitAnalysesFunc():
             return
         if fObs: fObs.readline()
         if fMod: fMod.readline()
-        currentDay, currentMonth, currentYear, currentSeason, yearLength, leapValue = increaseDate(currentDay, currentMonth, currentYear, currentSeason, yearLength, leapValue)
+        currentDay, currentMonth, currentYear, currentSeason, yearLength, leapValue = \
+            increaseDate(currentDay, currentMonth, currentYear,
+                         currentSeason, yearLength, leapValue)
+        current = date(currentYear, currentMonth, currentDay)
 
-    # 5) read & filter between analysisStartDate and analysisEndDate
+    # 5) read & filter between start and end
     observedData = []
     modelledData = [[] for _ in range(noOfEnsembles)]
-    # reset cursor
-    currentDay, currentMonth, currentYear = (
-        analysisStartDate.day,
-        analysisStartDate.month,
-        analysisStartDate.year
-    )
-    currentSeason = getSeason(currentMonth)
 
-    while dateDiff(dateSerial(currentYear, currentMonth, currentDay), analysisEndDate) > 0:
+    counters = {
+        'total_days': 0,
+        'passed_period_filter': 0,
+        'dropped_missing_obs': 0,
+        'dropped_thresh_obs': 0,
+        'dropped_missing_mod': 0,
+        'kept': 0,
+    }
+
+    while current < analysisEndDate:
         if exitAnalysesFunc():
             return
+        counters['total_days'] += 1
 
-        # --- read one day’s raw values
+        # read raw
         if fObs:
             rawObs = fObs.readline().strip()
             obsRaw = float(rawObs)
-            # convert missing‐code sentinel into NaN
             if obsRaw == globalMissingCode:
                 obsRaw = math.nan
-
         if fMod:
             if ensemblePresent:
                 rawLine = fMod.readline().rstrip("\n")
             else:
-                rawMod = fMod.readline().strip()
-                modRaw = float(rawMod)
-                if modRaw == globalMissingCode:
-                    modRaw = math.nan
+                rawMod = float(fMod.readline().strip())
+                if rawMod == globalMissingCode:
+                    rawMod = math.nan
 
-        if doWeWantThisDatum(dataPeriod, currentMonth):
-            # parse modelled values into a list, handling sentinel
-            if fMod:
-                if not ensemblePresent:
-                    modVals = [modRaw]
-                else:
-                    modVals = []
-                    for i in range(noOfEnsembles):
-                        txt = rawLine[i*14:(i+1)*14].strip()
-                        val = float(txt) if txt else math.nan
-                        if val == globalMissingCode:
-                            val = math.nan
-                        modVals.append(val)
+        # period‐filter
+        if not doWeWantThisDatum(dataPeriod, currentMonth):
+            currentDay, currentMonth, currentYear, currentSeason, yearLength, leapValue = \
+                increaseDate(currentDay, currentMonth, currentYear,
+                             currentSeason, yearLength, leapValue)
+            current = date(currentYear, currentMonth, currentDay)
+            continue
+        counters['passed_period_filter'] += 1
 
-            # --- threshold & missing‐code logic
-            obsVal = obsRaw if fObs else math.nan
-            valid = True
+        # parse modelled
+        if fMod:
+            if not ensemblePresent:
+                modVals = [rawMod]
+            else:
+                modVals = []
+                for i in range(noOfEnsembles):
+                    txt = rawLine[i*14:(i+1)*14].strip()
+                    val = float(txt) if txt else math.nan
+                    if val == globalMissingCode:
+                        val = math.nan
+                    modVals.append(val)
 
-            # any NaN in observed = invalid
-            if fObs and math.isnan(obsVal):
-                valid = False
-            # threshold failure
-            if fObs and applyThreshold and obsVal < thresholdValue:
-                valid = False
+        # missing‐obs check
+        obsVal = obsRaw if fObs else math.nan
+        valid = True
+        if fObs and math.isnan(obsVal):
+            counters['dropped_missing_obs'] += 1
+            valid = False
 
-            if fMod and valid:
-                for m in modVals:
-                    # NaN or below threshold → invalid
-                    if math.isnan(m) or (applyThreshold and m < thresholdValue):
-                        valid = False
-                        break
+        # threshold
+        if fObs and valid and applyThreshold and obsVal < thresholdValue:
+            counters['dropped_thresh_obs'] += 1
+            valid = False
 
-            # replace invalids with NaN
-            if not valid:
-                obsVal = math.nan
-                if fMod:
-                    modVals = [math.nan]*noOfEnsembles
+        # modelled check
+        if fMod and valid:
+            for m in modVals:
+                if math.isnan(m) or (applyThreshold and m < thresholdValue):
+                    counters['dropped_missing_mod'] += 1
+                    valid = False
+                    break
 
+        # append or drop
+        if valid:
+            counters['kept'] += 1
             if fObs:
                 observedData.append(obsVal)
             if fMod:
                 for idx, m in enumerate(modVals):
                     modelledData[idx].append(m)
 
-        currentDay, currentMonth, currentYear, currentSeason, yearLength, leapValue = increaseDate(currentDay, currentMonth, currentYear, currentSeason, yearLength, leapValue)
+        # advance date
+        currentDay, currentMonth, currentYear, currentSeason, yearLength, leapValue = \
+            increaseDate(currentDay, currentMonth, currentYear,
+                         currentSeason, yearLength, leapValue)
+        current = date(currentYear, currentMonth, currentDay)
+
+    # summary
+    print("\nData-pipeline summary:")
+    for k, v in counters.items():
+        print(f"  {k:20s}: {v}")
 
     # 6) ensure enough data
     if fObs and len(observedData) < 10:
-        raise ValueError("Insufficient data to plot—please check your files.")
+        raise ValueError("Insufficient data to plot, please check your files.")
 
-    # 7) build plotting series
-    length = len(observedData) if fObs else len(modelledData[0])
-    x = list(range(1, length+1))
+    # 7) build series
     series = []
-
     if fObs:
         series.append((obsLabel, observedData))
-
     if fMod:
-        if   ensembleMode == 'ensembleMember':
-            idx = ensembleIndex - 1
-            series.append((f"{modLabel} Ensemble {ensembleIndex}", modelledData[idx]))
+        if ensembleMode == 'ensembleMember':
+            vals = modelledData[ensembleIndex-1]
+            series.append((f"{modLabel} Ensemble {ensembleIndex}", vals))
         elif ensembleMode == 'allPlusMean':
-            for i in range(noOfEnsembles):
-                series.append((f"{modLabel} Ensemble {i+1}", modelledData[i]))
+            for i, vals in enumerate(modelledData, start=1):
+                series.append((f"{modLabel} Ensemble {i}", vals))
             meanVals = [
                 (math.nan if any(math.isnan(v) for v in vals)
                  else sum(vals)/len(vals))
@@ -192,12 +205,18 @@ def linePlot(
             ]
             series.append((f"{modLabel} Mean", meanVals))
         else:  # 'allMembers'
-            for i in range(noOfEnsembles):
-                series.append((f"{modLabel} Ensemble {i+1}", modelledData[i]))
+            for i, vals in enumerate(modelledData, start=1):
+                series.append((f"{modLabel} Ensemble {i}", vals))
 
-    # 8) plot
+    # 8) print & plot
+    length = len(observedData) if fObs else len(modelledData[0])
+    x = list(range(1, length+1))
     for label, y in series:
+        print(f"\n{label}:")
+        for i, val in enumerate(y, start=1):
+            print(f"  step {i:3d} → {val}")
         plt.plot(x, y, label=label)
+
     plt.xlabel("Time step")
     plt.ylabel("Value")
     plt.legend()

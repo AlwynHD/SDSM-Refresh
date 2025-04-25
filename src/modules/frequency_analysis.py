@@ -384,14 +384,14 @@ class ContentWidget(QWidget):
         endDate   = self.endDate.date().toPyDate()
 
         # ─── VALIDATION: must be exactly 10 years apart ───
-        #yearDiff = endDate.year - startDate.year
-        #if yearDiff > 10:
-        #    QMessageBox.warning(
-        #        self,
-        #        "Invalid Date Range",
-        #        "For a line plot, start and end dates must be less than 10 years apart."
-        #    )
-        #    return
+        yearDiff = endDate.year - startDate.year
+        if yearDiff > 10:
+            QMessageBox.warning(
+                self,
+                "Invalid Date Range",
+                "For a line plot, start and end dates must be less than 10 years apart."
+            )
+            return
 
         # 3) ensemble mode + index
         if self.allMembersRadio.isChecked():

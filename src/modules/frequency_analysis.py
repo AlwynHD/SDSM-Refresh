@@ -3,11 +3,9 @@ from PyQt5.QtWidgets import (QApplication, QCheckBox, QPushButton, QComboBox, QF
                              QRadioButton, QGroupBox, QSpinBox, QLineEdit, QDateEdit, QFileDialog)
 from PyQt5.QtCore import Qt
 import sys
-#from src.lib.FrequencyAnalysis import IDFTabular
+from src.lib.FrequencyAnalysis import IDFTabular
 from src.lib.FrequencyAnalysis.IDF import run_idf
-#from src.lib.FrequencyAnalysis.FATabular import frequency_analysis
-
-
+from src.lib.FrequencyAnalysis.FA import frequency_analysis
 import configparser
 from PyQt5.QtCore import QDate
 from datetime import datetime

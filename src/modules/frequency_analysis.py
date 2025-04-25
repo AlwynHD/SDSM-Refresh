@@ -3,8 +3,11 @@ from PyQt5.QtWidgets import (QApplication, QCheckBox, QPushButton, QComboBox, QF
                              QRadioButton, QGroupBox, QSpinBox, QLineEdit, QDateEdit, QFileDialog)
 from PyQt5.QtCore import Qt
 import sys
-from src.lib.FrequencyAnalysis import IDFTabular
-from src.lib.FrequencyAnalysis.FATabular import frequency_analysis
+#from src.lib.FrequencyAnalysis import IDFTabular
+from src.lib.FrequencyAnalysis.IDF import run_idf
+#from src.lib.FrequencyAnalysis.FATabular import frequency_analysis
+
+
 import configparser
 from PyQt5.QtCore import QDate
 from datetime import datetime
@@ -328,8 +331,9 @@ class ContentWidget(QWidget):
         self.faTabButton.clicked.connect(self.faTabButtonClicked)
         self.idfPlotButton = QPushButton("IDF Plot")
         self.idfPlotButton.setStyleSheet("background-color: #dd7973; color: white; font-weight: bold")
+        self.idfPlotButton.clicked.connect(lambda: self.run_idf_analysis("Graphical"))
         self.idfTabButton = QPushButton("IDF Tabular")
-        self.idfTabButton.clicked.connect(self.idfTabButtonClicked)
+        self.idfTabButton.clicked.connect(lambda: self.run_idf_analysis("Tabular"))
         self.idfTabButton.setStyleSheet("background-color: #4681f4; color: white; font-weight: bold")
         self.resetButton = QPushButton(" 🔄 Reset Values")
         self.resetButton.setStyleSheet("background-color: #ED0800; color: white; font-weight: bold;")
@@ -352,7 +356,10 @@ class ContentWidget(QWidget):
     def selectObservedData(self):
         # Use the default directory for open dialogs as well
         default_dir = settingsAsArrays["defaultdir"][0]
-        fileName, _ = QFileDialog.getOpenFileName(self, "Select Observed Data File", default_dir)
+        filter_str = (
+        "OUT Files (*.OUT);;DAT Files (*.DAT);;TXT Files (*.TXT);;All Files (*.*)"
+         )
+        fileName, _ = QFileDialog.getOpenFileName(self, "Select Observed Data File", default_dir,filter_str)
         if fileName:
             self.obsDataFile = fileName
             self.obsDataLabel.setText(f"File: {fileName}")
@@ -360,12 +367,71 @@ class ContentWidget(QWidget):
     def selectModelledData(self):
         # Same default starting directory is used here
         default_dir = settingsAsArrays["defaultdir"][0]
-        fileName, _ = QFileDialog.getOpenFileName(self, "Select Modelled Data File", default_dir)
+        filter_str = (
+        "OUT Files (*.OUT);;DAT Files (*.DAT);;TXT Files (*.TXT);;All Files (*.*)"
+         )
+        fileName, _ = QFileDialog.getOpenFileName(self, "Select Modelled Data File", default_dir,filter_str)
         if fileName:
             self.modDataFile = fileName
             self.modDataLabel.setText(f"File: {fileName}")
 
+    def run_idf_analysis(self, presentation_type):
+    # Fetch file paths
+       file1_used = hasattr(self, "obsDataFile") and bool(self.obsDataFile)
+       file2_used = hasattr(self, "modDataFile") and bool(self.modDataFile)
+       file1_name = getattr(self, "obsDataFile", "")
+       file2_name = getattr(self, "modDataFile", "")
+
+    # Dates
+       start_date = self.startDate.date().toPyDate()
+       end_date = self.endDate.date().toPyDate()
+
+    # Parameter method
+       if self.methodMomentsRadio.isChecked():
+              idf_method = "Intensity"
+       elif self.parameterPowerRadio.isChecked():
+            idf_method = "Power"
+       elif self.parameterLinearRadio.isChecked():
+           idf_method = "Linear"
+       else:
+            idf_method = "Intensity"
+
+    # Running sum length
+       running_sum_length = self.runningSumInput.value()
+
+    #Threshold check
+       use_threshold = self.applyThresholdCheckbox.isChecked()
+
+    # Data period 
+       data_period_choice = self.dataPeriodCombo.currentText()
+
+    # Ensemble options
+       if self.ensembleMemberRadio.isChecked():
+           ensemble_option = "Single Member"
+           ensemble_index = self.ensembleMemberSpinBox.value()
+       else:
+           ensemble_option = "All Members"
+           ensemble_index = 0
+
+       print(f"🔍 Calling run_idf with: {presentation_type}, {idf_method}, files: {file1_name}, {file2_name}")
     
+       # Call the run_idf function
+       run_idf(
+           file1_used=file1_used,
+           file2_used=file2_used,
+           file1_name=file1_name,
+           file2_name=file2_name,
+           start_date=start_date,
+           end_date=end_date,
+           presentation_type= presentation_type,
+           idf_method=idf_method,
+           running_sum_length=running_sum_length,
+           ensemble_option=ensemble_option,
+           ensemble_index=ensemble_index,
+           use_threshold=use_threshold,
+           data_period_choice = data_period_choice
+       )
+       
     def faTabButtonClicked(self):
         if not hasattr(self, "obsDataFile") or not hasattr(self, "modDataFile"):
             print("Please select both Observed and Modelled data files.")
@@ -407,70 +473,6 @@ class ContentWidget(QWidget):
         )
 
         # Optionally, load results into a QTableWidget for GUI display.
-
-    def idfTabButtonClicked(self):
-        # --- Fetch UI inputs ---
-        # Analysis start and end dates.
-        startDateValue = self.startDate.date().toPyDate()
-        endDateValue = self.endDate.date().toPyDate()
-        numDays = (endDateValue - startDateValue).days + 1
-
-        # Threshold from the UI.
-        thresholdUI = self.thresholdInput.value()
-        
-        # Running Sum Length (in days) from the UI.
-        runningSumLength = self.runningSumInput.value()
-        
-        # Determine the parameter estimation method.
-        if self.methodMomentsRadio.isChecked():
-            paramMethod = "Method of Moments"
-        elif self.parameterPowerRadio.isChecked():
-            paramMethod = "Parameter Power Scaling"
-        elif self.parameterLinearRadio.isChecked():
-            paramMethod = "Parameter Linear Scaling"
-        else:
-            paramMethod = "Method of Moments"
-        
-        # Determine the ensemble option.
-        if self.allMembersRadio.isChecked():
-            ensembleOption = "All Members"
-        elif self.ensembleMeanRadio.isChecked():
-            ensembleOption = "Ensemble Mean"
-        elif self.ensembleMemberRadio.isChecked():
-            ensembleOption = f"Ensemble Member: {self.ensembleMemberSpinBox.value()}"
-        elif self.allMeanEnsembleRadio.isChecked():
-            ensembleOption = "All + Mean Ensemble"
-        else:
-            ensembleOption = "Not selected"
-        
-        # Additional settings.
-        dataPeriod = self.dataPeriodCombo.currentText()
-        pdfCategories = self.pdfSpinBox.value()
-        confidence = self.confidenceInput.value()
-        
-        # File information (the UI labels show the file name).
-        observedFileUI = self.obsDataLabel.text()
-        modelledFileUI = self.modDataLabel.text()
-        
-        # --- Print all UI inputs ---
-        print("====== UI Inputs ======")
-        print("Analysis Start Date       :", startDateValue)
-        print("Analysis End Date         :", endDateValue)
-        print("Number of Days in Period  :", numDays)
-        print("Threshold (UI)            :", thresholdUI)
-        print("Running Sum Length (Days) :", runningSumLength)
-        print("Parameter Estimation Method:", paramMethod)
-        print("Ensemble Option           :", ensembleOption)
-        print("Data Period               :", dataPeriod)
-        print("PDF Categories            :", pdfCategories)
-        print("Confidence (%)            :", confidence)
-        print("Observed Data File (UI)   :", observedFileUI)
-        print("Modelled Data File (UI)   :", modelledFileUI)
-        
-        for key, value in settingsAsArrays.items():
-            print(f"{key} ({type(value[0]).__name__}): {value}")
-
-
 
 
 if __name__ == "__main__":

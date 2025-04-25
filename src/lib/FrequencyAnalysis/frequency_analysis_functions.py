@@ -195,6 +195,16 @@ def isDate(dateText, fmt="%Y-%m-%d"):
         return True
     except ValueError:
         return False
+    
+def dateSerial(year: int, month: int, day: int) -> date:
+    return date(year, month, day)
+
+def dateDiff(start, end):
+    """
+    Difference in days between two date strings.
+    Raises ValueError on invalid input.
+    """
+    return (end - start).days
 
 def dateDiffDays(startDateText, endDateText, fmt="%Y-%m-%d"):
     """
@@ -361,7 +371,7 @@ def increaseObsDate():
     currentSeason = getSeason(currentMonth)
 
 
-def increaseDate():
+def increaseDate(currentDay, currentMonth, currentYear, currentSeason, yearLength, leapValue):
     """
     Advance the current date by one day, using a user‑defined leap‑day flag.
 
@@ -376,7 +386,7 @@ def increaseDate():
       4. If month rolls past December, roll to January of next year.
       5. Update currentSeason via getSeason().
     """
-    global currentDay, currentMonth, currentYear, currentSeason, yearLength, leapValue
+    #global currentDay, currentMonth, currentYear, currentSeason, yearLength, leapValue
 
     # 1) Next day
     currentDay += 1
@@ -398,6 +408,8 @@ def increaseDate():
 
     # 5) Update season
     currentSeason = getSeason(currentMonth)
+
+    return currentDay, currentMonth, currentYear, currentSeason, yearLength, leapValue
 
 def calcGEVValue(beta, eta, kay, year):
     """

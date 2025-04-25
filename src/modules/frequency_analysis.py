@@ -1,8 +1,9 @@
 from PyQt5.QtWidgets import (QApplication, QCheckBox, QPushButton, QComboBox, QFrame, QWidget, 
                              QVBoxLayout, QHBoxLayout, QTextEdit, QLabel, QTableWidget, QTableWidgetItem, 
-                             QRadioButton, QGroupBox, QSpinBox, QLineEdit, QDateEdit, QFileDialog)
+                             QRadioButton, QGroupBox, QSpinBox, QLineEdit, QDateEdit, QFileDialog, QMessageBox)
 from PyQt5.QtCore import Qt
 import sys
+from src.lib.FrequencyAnalysis.Line import linePlot
 from src.lib.FrequencyAnalysis.IDF import run_idf
 from src.lib.FrequencyAnalysis.FA import frequency_analysis
 import configparser
@@ -313,6 +314,7 @@ class ContentWidget(QWidget):
         self.pdfPlotButton.setStyleSheet("background-color: #1FC7F5; color: white; font-weight: bold")
         self.linePlotButton = QPushButton("Line Plot")
         self.linePlotButton.setStyleSheet("background-color: #F57F0C; color: white; font-weight: bold")
+        self.linePlotButton.clicked.connect(self.linePlotButtonClicked)
         self.faGraphicalButton = QPushButton("FA Graphical")
         self.faGraphicalButton.setStyleSheet("background-color: #5adbb5; color: white; font-weight: bold;")
         
@@ -325,12 +327,12 @@ class ContentWidget(QWidget):
         tabButtonsLayout = QHBoxLayout()
         self.faTabButton = QPushButton("FA Tabular")
         self.faTabButton.setStyleSheet("background-color: #ffbd03; color: white; font-weight: bold;")
-        self.faTabButton.clicked.connect(self.faTabButtonClicked)
+        #self.faTabButton.clicked.connect(self.faTabButtonClicked)
         self.idfPlotButton = QPushButton("IDF Plot")
         self.idfPlotButton.setStyleSheet("background-color: #dd7973; color: white; font-weight: bold")
-        self.idfPlotButton.clicked.connect(lambda: self.run_idf_analysis("Graphical"))
+        #self.idfPlotButton.clicked.connect(lambda: self.run_idf_analysis("Graphical"))
         self.idfTabButton = QPushButton("IDF Tabular")
-        self.idfTabButton.clicked.connect(lambda: self.run_idf_analysis("Tabular"))
+        #self.idfTabButton.clicked.connect(lambda: self.run_idf_analysis("Tabular"))
         self.idfTabButton.setStyleSheet("background-color: #4681f4; color: white; font-weight: bold")
         self.resetButton = QPushButton(" 🔄 Reset Values")
         self.resetButton.setStyleSheet("background-color: #ED0800; color: white; font-weight: bold;")
@@ -371,6 +373,63 @@ class ContentWidget(QWidget):
         if fileName:
             self.modDataFile = fileName
             self.modDataLabel.setText(f"File: {fileName}")
+
+    def linePlotButtonClicked(self):
+        # 1) file paths (None if not selected)
+        obsPath = getattr(self, "obsDataFile", None)
+        modPath = getattr(self, "modDataFile", None)
+
+        # 2) dates
+        startDate = self.startDate.date().toPyDate()
+        endDate   = self.endDate.date().toPyDate()
+
+        # ─── VALIDATION: must be exactly 10 years apart ───
+        #yearDiff = endDate.year - startDate.year
+        #if yearDiff > 10:
+        #    QMessageBox.warning(
+        #        self,
+        #        "Invalid Date Range",
+        #        "For a line plot, start and end dates must be less than 10 years apart."
+        #    )
+        #    return
+
+        # 3) ensemble mode + index
+        if self.allMembersRadio.isChecked():
+            ensembleMode  = 'allMembers'
+            ensembleIndex = None
+        elif self.ensembleMeanRadio.isChecked():
+            ensembleMode  = 'ensembleMean'
+            ensembleIndex = None
+        elif self.ensembleMemberRadio.isChecked():
+            ensembleMode  = 'ensembleMember'
+            ensembleIndex = self.ensembleMemberSpinBox.value()
+        else:
+            ensembleMode  = 'allPlusMean'
+            ensembleIndex = None
+
+        # 4) data period
+        dataPeriod = self.dataPeriodCombo.currentIndex()
+
+        # 5) threshold toggles
+        applyThreshold  = self.applyThresholdCheckbox.isChecked()
+        thresholdValue  = self.thresholdInput.value()
+
+        #try:
+        linePlot(
+                observedFilePath  = obsPath,
+                modelledFilePath  = modPath,
+                analysisStartDate = startDate,
+                analysisEndDate   = endDate,
+                ensembleMode      = ensembleMode,
+                ensembleIndex     = ensembleIndex,
+                dataPeriod        = dataPeriod,
+                applyThreshold    = applyThreshold,
+                thresholdValue    = thresholdValue,
+                globalMissingCode = settings["globalmissingcode"],
+                exitAnalysesFunc  = lambda: False
+            )
+        #except Exception as e:
+        #    print("Line Plot Error")
 
     def run_idf_analysis(self, presentation_type):
     # Fetch file paths

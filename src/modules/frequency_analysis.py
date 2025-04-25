@@ -356,7 +356,7 @@ class ContentWidget(QWidget):
         # Use the default directory for open dialogs as well
         default_dir = settingsAsArrays["defaultdir"][0]
         filter_str = (
-        "OUT Files (*.OUT);;DAT Files (*.DAT);;TXT Files (*.TXT);;All Files (*.*)"
+        "TXT Files (*.TXT);;OUT Files (*.OUT);;DAT Files (*.DAT);;All Files (*.*)"
          )
         fileName, _ = QFileDialog.getOpenFileName(self, "Select Observed Data File", default_dir,filter_str)
         if fileName:

@@ -171,11 +171,6 @@ def linePlot(
                          currentSeason, yearLength, leapValue)
         current = date(currentYear, currentMonth, currentDay)
 
-    # summary
-    print("\nData-pipeline summary:")
-    for k, v in counters.items():
-        print(f"  {k:20s}: {v}")
-
     # 6) ensure enough data
     if fObs and len(observedData) < 10:
         raise ValueError("Insufficient data to plot, please check your files.")
@@ -211,14 +206,23 @@ def linePlot(
     # 8) print & plot
     length = len(observedData) if fObs else len(modelledData[0])
     x = list(range(1, length+1))
+
     for label, y in series:
-        print(f"\n{label}:")
-        for i, val in enumerate(y, start=1):
-            print(f"  step {i:3d} → {val}")
-        plt.plot(x, y, label=label)
+        if 'Mean' in label:
+            color = 'limegreen'
+            z = 2
+        elif 'Ensemble' in label:
+            color = 'red'
+            z = 1
+        else:
+            color = 'blue'
+            z = 3
+
+        plt.plot(x, y, color=color, label=label, zorder=z)
 
     plt.xlabel("Time step")
     plt.ylabel("Value")
     plt.legend()
     plt.tight_layout()
     plt.show()
+

@@ -1,6 +1,7 @@
 import math
 import configparser
 from datetime import datetime, date
+import os
 
 def convertValue(key, value):
     if key in ('globalsdate', 'globaledate'):
@@ -733,3 +734,213 @@ def stripMissing(freqAnalData, obsYears, modYears, noOfXCols):
             newFreqAnalData[i][7] = row[4]        # col 8 = upper%
     
     return newFreqAnalData, totalCount
+
+def empiricalAnalysis(
+    observedData,
+    modelledData,
+    noOfObserved,
+    noOfEnsembles,
+    noOfModelledList,
+    endOfSection,
+    useThresh,
+    thresh,
+    file1Used,
+    file2Used,
+    defaultDir,
+    noOfXCols,
+    file2ColStart,
+    percentileWanted
+):
+    """
+    Performs the empirical analysis, producing a return-period vs. annual-max matrix
+    for observed and modelled ensemble data.
+
+    Returns:
+        (success: bool, freqAnalData: list[list], noOfXDataPoints: int)
+    """
+    try:
+        # (A) Prepare annual-max storage
+        obsMaxSeries = []
+        modMaxSeries = [[] for _ in range(noOfEnsembles)]
+
+        obsYearsAvailable = 0
+        modYearsAvailable = 0
+        minModYearsAvailable = float('inf')
+        maxModYearsAvailable = 0
+
+        # (B) Extract observed annual maxima
+        if file1Used:
+            yearCounter = 0
+            yearMax = -12344
+            for i in range(noOfObserved):
+                val = observedData[i]
+                if val == endOfSection:
+                    if yearMax != -12344:
+                        yearCounter += 1
+                        obsMaxSeries.append(yearMax)
+                    yearMax = -12344
+                else:
+                    if useThresh == 0 or (useThresh == 1 and val > thresh):
+                        if val != globalMissingCode and val > yearMax:
+                            yearMax = val
+            obsYearsAvailable = yearCounter
+            if obsYearsAvailable < 10:
+                return False, None, 0
+
+        # (C) Extract modelled annual maxima
+        if file2Used:
+            for j in range(noOfEnsembles):
+                yearCounter = 0
+                yearMax = -12344
+                for i in range(noOfModelledList[j]):
+                    val = modelledData[j][i]
+                    if val == endOfSection:
+                        if yearMax != -12344:
+                            yearCounter += 1
+                            modMaxSeries[j].append(yearMax)
+                        yearMax = -12344
+                    else:
+                        if useThresh == 0 or (useThresh == 1 and val > thresh):
+                            if val != globalMissingCode and val > yearMax:
+                                yearMax = val
+                maxModYearsAvailable = max(maxModYearsAvailable, yearCounter)
+                minModYearsAvailable = min(minModYearsAvailable, yearCounter)
+
+            modYearsAvailable = maxModYearsAvailable
+            if modYearsAvailable < 10:
+                return False, None, 0
+            if maxModYearsAvailable != minModYearsAvailable:
+                return False, None, 0
+
+        # (D) Determine how many rows we’ll output
+        maxYearsAvailable = max(obsYearsAvailable, modYearsAvailable)
+
+        # Prepare containers
+        sortingMatrix = [[None] for _ in range(maxYearsAvailable)]
+        freqAnalData = [[None] * noOfXCols for _ in range(maxYearsAvailable)]
+        noOfXDataPoints = maxYearsAvailable
+
+        # (E) Fill in observed return-period vs max
+        if file1Used:
+            for i in range(obsYearsAvailable):
+                sortingMatrix[i][0] = obsMaxSeries[i]
+            sortedObs = sorted(sortingMatrix[:obsYearsAvailable],
+                               key=lambda r: r[0],
+                               reverse=True)
+            for idx, row in enumerate(sortedObs):
+                freqAnalData[idx][0] = obsYearsAvailable / (idx + 1)
+                freqAnalData[idx][1] = row[0]
+
+        # (F) Fill in modelled + percentiles
+        if file2Used:
+            # File-output block left in place but disabled
+            if False:
+                drive = os.path.splitdrive(defaultDir)[0]
+                tempFile = os.path.join(drive + os.sep, "SDSMEmpResults.txt")
+                with open(tempFile, "w") as fout:
+                    fout.write("Empirical Results\n\t\t\t\tReturn Period\nEnsemble\t")
+                    for y in range(modYearsAvailable, 0, -1):
+                        fout.write(f"{round(modYearsAvailable / y, 1)}\t")
+                    fout.write("\n")
+                    # … etc. …
+
+            # Compute medians & return periods
+            for i in range(modYearsAvailable):
+                series_i = [modMaxSeries[j][i] for j in range(noOfEnsembles)]
+                # median
+                freqAnalData[i][file2ColStart - 1] = calcPercentile(series_i, 50)
+                # return period
+                freqAnalData[i][file2ColStart - 2] = modYearsAvailable / (i + 1)
+
+                # percentile bounds
+                if noOfEnsembles > 1 and percentileWanted > 0:
+                    upp = calcPercentile(series_i, 100 - percentileWanted / 2)
+                    low = calcPercentile(series_i, percentileWanted / 2)
+                    if upp != globalMissingCode and low != globalMissingCode:
+                        rp = modYearsAvailable / (i + 1)
+                        freqAnalData[i][file2ColStart]     = upp
+                        freqAnalData[i][file2ColStart - 3] = low
+                        freqAnalData[i][file2ColStart - 1] = rp
+                        freqAnalData[i][file2ColStart - 4] = rp
+
+        # (G) “Pack” if one series is shorter
+        if file1Used and file2Used:
+            if modYearsAvailable > obsYearsAvailable:
+                last = freqAnalData[obsYearsAvailable - 1]
+                for k in range(modYearsAvailable - obsYearsAvailable):
+                    freqAnalData[obsYearsAvailable + k][0] = last[0]
+                    freqAnalData[obsYearsAvailable + k][1] = last[1]
+            elif obsYearsAvailable > modYearsAvailable:
+                last = freqAnalData[modYearsAvailable - 1]
+                for k in range(obsYearsAvailable - modYearsAvailable):
+                    freqAnalData[modYearsAvailable + k][0] = last[0]
+                    freqAnalData[modYearsAvailable + k][1] = last[1]
+
+        return True, freqAnalData, noOfXDataPoints
+
+    except Exception:
+        return False, None, 0
+
+if __name__ == "__main__":
+    # --- PARAMETERS FOR TEST ---
+    endOfSection     = None
+    useThresh        = 0
+    thresh           = 0.0
+    file1Used        = True
+    file2Used        = True
+    defaultDir       = "C:\\"
+    noOfXCols        = 4
+    file2ColStart    = 3   # so columns are: [0]=RP_obs, [1]=max_obs, [2]=RP_mod, [3]=max_mod
+    percentileWanted = 90
+
+    # --- SYNTHETIC OBSERVED DATA: 5 YEARS ---
+    observedData = []
+    for year in range(1, 13):
+        # make daily-values so that the max of each “year” is exactly year*100
+        for day in range(365):
+            observedData.append(year * 100 - day)
+        observedData.append(endOfSection)
+    noOfObserved = len(observedData)
+
+    # --- SYNTHETIC MODELLED DATA: 2 ENSEMBLES, SAME STRUCTURE ---
+    modelledData    = []
+    noOfModelledList = []
+    for ensemble in range(2):
+        seq = []
+        for year in range(1, 13):
+            for day in range(365):
+                # give a slight offset per ensemble
+                seq.append(year * 100 + ensemble - day)
+            seq.append(endOfSection)
+        modelledData.append(seq)
+        noOfModelledList.append(len(seq))
+    noOfEnsembles = len(modelledData)
+
+    # --- CALL THE FUNCTION ---
+    success, freqMat, rows = empiricalAnalysis(
+        observedData,
+        modelledData,
+        noOfObserved,
+        noOfEnsembles,
+        noOfModelledList,
+        endOfSection,
+        useThresh,
+        thresh,
+        file1Used,
+        file2Used,
+        defaultDir,
+        noOfXCols,
+        file2ColStart,
+        percentileWanted
+    )
+
+    # --- PRINT RESULTS ---
+    print(f"Success: {success}")
+    print(f"Rows:    {rows}")
+    print(" RP_obs | max_obs | RP_mod | max_mod")
+    print("--------------------------------------")
+    if success:
+        for row in freqMat:
+            print(f"{row[0]:7.2f} | {row[1]:7.2f} | {row[2]:7.2f} | {row[3]:7.2f}")
+    else:
+        print("→ empiricalAnalysis returned False; no data to display.")

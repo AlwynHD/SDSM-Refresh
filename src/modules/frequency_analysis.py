@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import (QApplication, QCheckBox, QPushButton, QComboBox, QF
                              QRadioButton, QGroupBox, QSpinBox, QLineEdit, QDateEdit, QFileDialog, QMessageBox)
 from PyQt5.QtCore import Qt
 import sys
+from src.lib.FrequencyAnalysis.PDF import pdfPlot
 from src.lib.FrequencyAnalysis.Line import linePlot
 from src.lib.FrequencyAnalysis.IDF import run_idf
 from src.lib.FrequencyAnalysis.FA import frequency_analysis
@@ -312,6 +313,7 @@ class ContentWidget(QWidget):
         self.qqPlotButton.setStyleSheet("background-color: #4CAF50; color: white; font-weight: bold;")
         self.pdfPlotButton = QPushButton("PDF Plot")
         self.pdfPlotButton.setStyleSheet("background-color: #1FC7F5; color: white; font-weight: bold")
+        self.pdfPlotButton.clicked.connect(self.pdfPlotButtonClicked)
         self.linePlotButton = QPushButton("Line Plot")
         self.linePlotButton.setStyleSheet("background-color: #F57F0C; color: white; font-weight: bold")
         self.linePlotButton.clicked.connect(self.linePlotButtonClicked)
@@ -374,6 +376,62 @@ class ContentWidget(QWidget):
             self.modDataFile = fileName
             self.modDataLabel.setText(f"File: {fileName}")
 
+    def pdfPlotButtonClicked(self):
+        # 1) file paths
+        obsPath = getattr(self, "obsDataFile", None)
+        modPath = getattr(self, "modDataFile", None)
+
+        # 2) global start date from settings
+        globalSDate = settingsAsArrays["globalsdate"][0]
+
+        # 3) analysis dates
+        fsDate = self.startDate.date().toPyDate()
+        feDate = self.endDate.date().toPyDate()
+
+        # 4) ensemble option
+        if self.allMembersRadio.isChecked():
+            ensembleOption = "all"
+            ensembleWanted = None
+        elif self.ensembleMeanRadio.isChecked():
+            ensembleOption = "mean"
+            ensembleWanted = None
+        elif self.ensembleMemberRadio.isChecked():
+            ensembleOption = "member"
+            ensembleWanted = self.ensembleMemberSpinBox.value()
+        else:
+            ensembleOption = "allPlusMean"
+            ensembleWanted = None
+
+        # 5) number of PDF bins
+        numPdfCategories = self.pdfSpinBox.value()
+
+        dataPeriod = self.dataPeriodCombo.currentIndex()
+
+        # 6) threshold
+        applyThreshold = self.applyThresholdCheckbox.isChecked()
+        threshold = self.thresholdInput.value()
+
+        # 7) missing‐code
+        globalMissingCode = settings["globalmissingcode"]
+
+        #try:
+        pdfPlot(
+            observedFile      = obsPath,
+            modelledFile      = modPath,
+            fsDate            = fsDate,
+            feDate            = feDate,
+            ensembleOption    = ensembleOption,
+            ensembleWanted    = ensembleWanted,
+            numPdfCategories  = numPdfCategories,
+            dataPeriod        = dataPeriod,
+            applyThreshold    = applyThreshold,
+            threshold         = threshold,
+            missingCode       = globalMissingCode,
+            exitAnalyses      = lambda: False
+        )
+        #except Exception as e:
+        #    QMessageBox.critical(self, "PDF Plot Error", str(e))
+    
     def linePlotButtonClicked(self):
         # 1) file paths (None if not selected)
         obsPath = getattr(self, "obsDataFile", None)

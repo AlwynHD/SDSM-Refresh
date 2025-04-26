@@ -336,7 +336,7 @@ def lMoment(data, k):
     return total
 
 
-def increaseObsDate():
+def increaseObsDate(currentDay, currentMonth, currentYear, currentSeason):
     """
     Advance the observed date by one day, accounting for leap years.
 
@@ -350,7 +350,7 @@ def increaseObsDate():
       4. If month rolls past December, roll to January of next year.
       5. Update currentSeason via getSeason().
     """
-    global currentDay, currentMonth, currentYear, currentSeason
+    #global currentDay, currentMonth, currentYear, currentSeason
 
     # 1) Next day
     currentDay += 1
@@ -370,6 +370,8 @@ def increaseObsDate():
 
     # 5) Update season
     currentSeason = getSeason(currentMonth)
+
+    return currentDay, currentMonth, currentYear, currentSeason
 
 
 def increaseDate(currentDay, currentMonth, currentYear, currentSeason, yearLength, leapValue):

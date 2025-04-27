@@ -48,11 +48,6 @@ class ContentWidget(QWidget):
         self.global_missing_code = global_missing_code
         # --- --- --- --- --- ---
 
-        print(f"Year Indicator: {self.local_year_indicator}")
-        print(f"Global Start Date: {self.fs_date}")
-        print(f"Global End Date: {self.fe_date}")
-        print(f"Global Missing Code: {self.global_missing_code}")
-
         self.input_filename = ""
         self.output_filename = ""
         self.input_file_root = ""
@@ -1089,7 +1084,7 @@ class ContentWidget(QWidget):
                         prog_value = int((total_numbers / total_to_read) * 100)
                         self.progress_bar.setValue(prog_value)
                         
-                        # Check if we've reached the end date
+                        # Check if reached the end date
                         if datetime.datetime(current_year, current_month, current_day) > calc_end_date:
                             break
                     
@@ -1132,7 +1127,7 @@ class ContentWidget(QWidget):
                     pbt_count = 0
                     dry_day_count = 0
                     
-                    was_any_data_valid[i, j] = False  # Assume no valid data initially
+                    was_any_data_valid[i, j] = False  
                     
                     # Process data values for this period
                     for k in range(1, array_position[i, j]):
@@ -2038,7 +2033,7 @@ class ContentWidget(QWidget):
                         for j in range(1, len(self.stats_params) + 1):
                             if j < len(self.stats_params) and self.stats_params[j-1][1] == "Y":
                                 if self.delta_wanted == 1:  # Percentage
-                                    if (abs(base_results[i, j]) < 0.000000001 or  # Use smaller epsilon for higher precision
+                                    if (abs(base_results[i, j]) < 0.000000001 or 
                                         base_results[i, j] == self.global_missing_code or 
                                         self.results_array[1, i, j] == self.global_missing_code):
                                         self.deltaresults[i, j] = self.global_missing_code

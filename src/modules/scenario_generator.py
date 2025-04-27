@@ -58,7 +58,7 @@ class SDSMContext:
         self.amount_option = 0          # 0 = factor, 1 = addition
         self.amount_factor = 0.0        # User input value (e.g., 5 for +5%)
         self.amount_factor_percent = 1.0 # Multiplier (e.g., 1.05 for +5%)
-        self.amount_addition = 0.0
+        self.amount_addition = 0
 
         self.variance_check = False
         self.variance_factor = 0.0      # User input value (e.g., 10 for +10%)
@@ -66,8 +66,8 @@ class SDSMContext:
 
         self.trend_check = False
         self.linear_trend = 0.0
-        self.exp_trend = 0.0 # VB code defaults ExpTrend to 1, but 0 makes more sense for 'no trend'
-        self.logistic_trend = 0.0 # VB code defaults LogisticTrend to 1, but 0 makes more sense
+        self.exp_trend = 1 # VB code defaults ExpTrend to 1, but 0 makes more sense for 'no trend'
+        self.logistic_trend = 1 # VB code defaults LogisticTrend to 1, but 0 makes more sense
         self.trend_option = 0 # 0 = Linear, 1 = Exponential, 2 = Logistic (matching VB OptionButton index)
         self.add_exp_option = True # Derived from ExpTrend sign
 

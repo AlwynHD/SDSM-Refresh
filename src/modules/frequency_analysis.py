@@ -390,17 +390,17 @@ class ContentWidget(QWidget):
 
         # 4) ensemble option
         if self.allMembersRadio.isChecked():
-            ensembleOption = "all"
-            ensembleWanted = None
+            ensembleMode  = 'allMembers'
+            ensembleIndex = None
         elif self.ensembleMeanRadio.isChecked():
-            ensembleOption = "mean"
-            ensembleWanted = None
+            ensembleMode  = 'ensembleMean'
+            ensembleIndex = None
         elif self.ensembleMemberRadio.isChecked():
-            ensembleOption = "member"
-            ensembleWanted = self.ensembleMemberSpinBox.value()
+            ensembleMode  = 'ensembleMember'
+            ensembleIndex = self.ensembleMemberSpinBox.value()
         else:
-            ensembleOption = "allPlusMean"
-            ensembleWanted = None
+            ensembleMode  = 'allPlusMean'
+            ensembleIndex = None
 
         # 5) number of PDF bins
         numPdfCategories = self.pdfSpinBox.value()
@@ -420,8 +420,8 @@ class ContentWidget(QWidget):
             modelledFile      = modPath,
             fsDate            = fsDate,
             feDate            = feDate,
-            ensembleOption    = ensembleOption,
-            ensembleWanted    = ensembleWanted,
+            ensembleOption    = ensembleMode,
+            ensembleWanted    = ensembleIndex,
             numPdfCategories  = numPdfCategories,
             dataPeriod        = dataPeriod,
             applyThreshold    = applyThreshold,

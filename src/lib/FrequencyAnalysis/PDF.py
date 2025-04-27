@@ -2,6 +2,7 @@ import os
 import math
 import matplotlib.pyplot as plt
 from datetime import date
+import numpy as np
 from typing import Optional, Callable, List, Tuple
 from src.lib.FrequencyAnalysis.frequency_analysis_functions import (
     fsDateOk, feDateOk, ensembleNumberOK,
@@ -26,7 +27,7 @@ def pdfPlot(
     threshold: float,
     missingCode,
     exitAnalyses: Callable[[], bool]
-) -> None:
+):
     """
     Generate a PDF plot comparing observed and modelled data.
     """
@@ -58,6 +59,8 @@ def pdfPlot(
     modExists = modelledFile and os.path.exists(modelledFile)
     if not obsExists and not modExists:
         raise ValueError("At least one data file must be provided.")
+    obsLabel = os.path.basename(observedFile) if obsExists else ""
+    modLabel = os.path.basename(modelledFile) if modExists else ""
 
     fObs = open(observedFile, 'r') if obsExists else None
     fMod = open(modelledFile, 'r') if modExists else None
@@ -138,35 +141,43 @@ def pdfPlot(
                     v = math.nan
                 valsMod = [v]
 
-        # Filter
-        if fObs and not doWeWantThisDatum(dataPeriod, rdM):
+                # 1) Skip days outside the desired period
+        if not doWeWantThisDatum(dataPeriod, rdM):
             rdD, rdM, rdY, obsSeason = increaseObsDate(rdD, rdM, rdY, obsSeason)
             if fMod:
-                rdD, rdM, rdY, modSeason, length, leap = increaseDate(rdD, rdM, rdY, modSeason, length, leap)
-            continue
-        if fMod and not doWeWantThisDatum(dataPeriod, rdM):
-            rdD, rdM, rdY, modSeason, length, leap = increaseDate(rdD, rdM, rdY, modSeason, length, leap)
+                rdD, rdM, rdY, modSeason, length, leap = increaseDate(
+                    rdD, rdM, rdY, modSeason, length, leap
+                )
             continue
 
-        ok = True
-        if fObs and math.isnan(valObs): ok = False
-        if ok and fObs and applyThreshold and valObs < threshold: ok = False
-        if fMod and ok:
-            for vv in valsMod:
-                if math.isnan(vv) or (applyThreshold and vv < threshold):
-                    ok = False
-                    break
+        # 2) Append observed if it passes missing‐code and threshold
+        if fObs and not math.isnan(valObs) and (
+           not applyThreshold or valObs >= threshold
+        ):
+            observedData.append(valObs)
 
-        if ok:
-            if fObs:
-                observedData.append(valObs)
-            if fMod:
+        # 3) Append each modelled ensemble value independently
+        if fMod:
+            if ensemblePresent:
                 for idx, vv in enumerate(valsMod):
-                    modelledData[idx].append(vv)
+                    if not math.isnan(vv) and (
+                       not applyThreshold or vv >= threshold
+                    ):
+                        modelledData[idx].append(vv)
+            else:
+                vv = valsMod[0]
+                if not math.isnan(vv) and (
+                   not applyThreshold or vv >= threshold
+                ):
+                    modelledData[0].append(vv)
 
+        # 4) Advance both date counters
         rdD, rdM, rdY, obsSeason = increaseObsDate(rdD, rdM, rdY, obsSeason)
         if fMod:
-            rdD, rdM, rdY, modSeason, length, leap = increaseDate(rdD, rdM, rdY, modSeason, length, leap)
+            rdD, rdM, rdY, modSeason, length, leap = increaseDate(
+                rdD, rdM, rdY, modSeason, length, leap
+            )
+
 
     # Close
     if fObs:
@@ -182,61 +193,92 @@ def pdfPlot(
             if len(ser) < minDataPoints:
                 print(f"[warning] only {len(ser)} records for ensemble {i}; proceeding")
 
-    # Line plots
-    allVals = observedData.copy()
-    for ser in modelledData:
-        allVals.extend(ser)
-    if not allVals:
+    # 1) Determine the exact lo/hi that VB would use
+    if fMod:
+        if ensembleOption == 'ensembleMember':
+            dataToRange = observedData + modelledData[ensembleWanted-1]
+        else:
+            dataToRange = observedData.copy()
+            for vals in modelledData:
+                dataToRange.extend(vals)
+    else:
+        dataToRange = observedData.copy()
+
+    if not dataToRange:
         print("[error] No data to plot.")
         return
 
-    lo, hi = min(allVals), max(allVals)
+    lo = min(dataToRange)
+    hi = max(dataToRange)
+    # handle the degenerate single-value case
     if hi == lo:
-        # Single-value data
-        obsCounts = [len(observedData)]
-        modCounts = [[len(ser)] for ser in modelledData]
-        centers = [lo]
+        width = 1e-6
     else:
         width = (hi - lo) / numPdfCategories
-        centers = [lo + (i + 0.5) * width for i in range(numPdfCategories)]
-        obsCounts = [0] * numPdfCategories
-        for v in observedData:
-            idx = int((v - lo) / width)
-            idx = min(idx, numPdfCategories - 1)
-            obsCounts[idx] += 1
-        modCounts = [[0] * numPdfCategories for _ in range(noEnsembles)]
-        for ei, ser in enumerate(modelledData):
-            for v in ser:
-                idx = int((v - lo) / width)
-                idx = min(idx, numPdfCategories - 1)
+
+    # 2) Build VB-style bin lower-edges
+    binEdges = [lo + i * width for i in range(numPdfCategories + 1)]
+    xValues  = binEdges[:-1]   # VB plots at each CatMin
+
+    # 3) Count & normalise to get densities
+    #    (VB shows count/total → "standardised density")
+    obsCounts = [0] * numPdfCategories
+    for v in observedData:
+        idx = min(int((v - lo) / width), numPdfCategories - 1)
+        obsCounts[idx] += 1
+    obsDensity = [c / len(observedData) for c in obsCounts]
+
+    modDensity = []
+    if fMod:
+        # count per ensemble
+        modCounts = [[0]*numPdfCategories for _ in range(noEnsembles)]
+        for ei, vals in enumerate(modelledData):
+            for v in vals:
+                idx = min(int((v - lo) / width), numPdfCategories - 1)
                 modCounts[ei][idx] += 1
+        # normalise
+        modDensity = [
+            [c / len(modelledData[ei]) for c in modCounts[ei]]
+            for ei in range(noEnsembles)
+        ]
 
-    seriesList: List[Tuple[List[int], str]] = [(obsCounts, 'Observed')]
-    if modelledFile:
-        if ensembleOption == 'member':
-            seriesList.append((modCounts[ensembleWanted-1], f'Ensemble{ensembleWanted}'))
-        elif ensembleOption == 'mean':
-            meanC = [sum(bin_) / noEnsembles for bin_ in zip(*modCounts)]
-            seriesList.append((meanC, 'Mean'))
-        elif ensembleOption == 'all':
-            for i, cnt in enumerate(modCounts, start=1):
-                seriesList.append((cnt, f'Ensemble{i}'))
+    # 4) Build your series list
+    series = []
+    if fObs:
+        series.append((obsLabel, obsDensity))
+
+    if fMod:
+        if ensembleOption == 'ensembleMember':
+            series.append(
+                (f"{modLabel} Ensemble {ensembleWanted}",
+                modDensity[ensembleWanted-1])
+            )
+        elif ensembleOption == 'ensembleMean':
+            meanVals = [sum(bin_) / noEnsembles for bin_ in zip(*modDensity)]
+            series.append((f"{modLabel} Mean", meanVals))
+        elif ensembleOption == 'allMembers':
+            for i, vals in enumerate(modDensity, start=1):
+                series.append((f"{modLabel} Ensemble {i}", vals))
         elif ensembleOption == 'allPlusMean':
-            for i, cnt in enumerate(modCounts, start=1):
-                seriesList.append((cnt, f'Ensemble{i}'))
-            meanC = [sum(bin_) / noEnsembles for bin_ in zip(*modCounts)]
-            seriesList.append((meanC, 'Mean'))
+            for i, vals in enumerate(modDensity, start=1):
+                series.append((f"{modLabel} Ensemble {i}", vals))
+            meanVals = [sum(bin_) / noEnsembles for bin_ in zip(*modDensity)]
+            series.append((f"{modLabel} Mean", meanVals))
 
+    # 5) Plot VB-style line-PDF
     plt.figure()
-    for cnt, lbl in seriesList:
-        if 'Ensemble' in lbl:
-            plt.plot(centers, cnt, label=lbl, color='red', zorder=1)
-        elif 'Mean' in lbl:
-            plt.plot(centers, cnt, label=lbl, color='lime', zorder=2)
-        else:
-            plt.plot(centers, cnt, label=lbl, zorder=3)
-    plt.xlabel('Value')
-    plt.ylabel('Frequency')
-    plt.legend()
+    for label, yVals in series:
+        plt.plot(xValues, yVals, label=label, linewidth=1.5)
+        print(f"{yVals}")
+
+    # only show the first & last bin-edge as X-tick labels
+    plt.xticks(
+        [xValues[0], xValues[-1]],
+        [f"{xValues[0]:.5g}", f"{xValues[-1]:.5g}"]
+    )
+
+    plt.xlabel("Value")
+    plt.ylabel("Standardised Density")
+    plt.legend(loc="best")
     plt.tight_layout()
     plt.show()

@@ -395,16 +395,173 @@ class ContentWidget(QWidget):
         mainLayout.addWidget(self.progress_bar)
 
     def CreateFileSelectionGroup(self, title):
+        """
+        Creates a file selection group with directory navigation and file selection capabilities
+        
+        Args:
+            title (str): The title for the group box
+            
+        Returns:
+            QGroupBox: The configured file selection group
+        """
         group = QGroupBox(title)
         layout = QVBoxLayout()
-        fileList = QListWidget()
-        fileList.setFixedHeight(80)
-        directoryBrowser = QListWidget()
-        directoryBrowser.setFixedHeight(80)
-        layout.addWidget(fileList)
-        layout.addWidget(directoryBrowser)
+        
+        # Create file list widget
+        file_list = QListWidget()
+        file_list.setFixedHeight(150)
+        file_list.setSelectionMode(QListWidget.MultiSelection)
+        file_list.itemSelectionChanged.connect(lambda: self.updateFileCount(file_list, title))
+        
+        # Create directory navigator
+        dir_layout = QHBoxLayout()
+        
+        # Drive selection dropdown
+        drive_combo = QComboBox()
+        drives = [chr(x) + ':' for x in range(65, 91) if os.path.exists(chr(x) + ':')]
+        drive_combo.addItems(drives)
+        if drives:  # Set default drive if available
+            default_drive = os.path.abspath(os.path.dirname(__file__))[0:2]
+            index = drive_combo.findText(default_drive)
+            if index >= 0:
+                drive_combo.setCurrentIndex(index)
+        drive_combo.currentTextChanged.connect(lambda text: self.onDriveChanged(text, file_list, dir_list))
+        
+        # Directory list widget
+        dir_list = QListWidget()
+        dir_list.setFixedHeight(100)
+        dir_list.itemClicked.connect(lambda item: self.onDirChanged(item.text(), file_list, dir_list))
+        
+        # Populate directories for current drive
+        if drives:
+            current_drive = drive_combo.currentText()
+            try:
+                current_dir = os.path.join(current_drive, '\\')
+                dirs = [d for d in os.listdir(current_dir) if os.path.isdir(os.path.join(current_dir, d))]
+                dir_list.addItems(dirs)
+            except Exception as e:
+                print(f"Error accessing drive {current_drive}: {str(e)}")
+        
+        # Add drive and directory list to layout
+        dir_layout.addWidget(QLabel("Drive:"))
+        dir_layout.addWidget(drive_combo)
+        
+        # Store the file_list and dir_list as properties of the group box for later access
+        group.file_list = file_list
+        group.dir_list = dir_list
+        group.drive_combo = drive_combo
+        group.current_path = os.path.abspath(os.path.dirname(__file__))
+        
+        # Count label for selected files
+        count_label = QLabel("Selected: 0")
+        group.count_label = count_label
+        
+        # Add widgets to main layout
+        layout.addWidget(file_list)
+        layout.addLayout(dir_layout)
+        layout.addWidget(dir_list)
+        layout.addWidget(count_label)
+        
         group.setLayout(layout)
         return group
+
+    def onDriveChanged(self, drive, file_list, dir_list):
+        """Handle drive selection change"""
+        try:
+            # Update current path
+            self.current_path = drive + "\\"
+            
+            # Clear and update directory list
+            dir_list.clear()
+            try:
+                dirs = [d for d in os.listdir(self.current_path) 
+                    if os.path.isdir(os.path.join(self.current_path, d))]
+                dir_list.addItems(dirs)
+            except Exception as e:
+                print(f"Error accessing directories on drive {drive}: {str(e)}")
+            
+            # Clear file list
+            file_list.clear()
+            
+            # Update corresponding file selection count
+            self.updateFileCount(file_list, file_list.parent().title())
+            
+        except Exception as e:
+            print(f"Error changing drive: {str(e)}")
+            QMessageBox.critical(self, "Drive Error", 
+                            f"Cannot access drive {drive}. It may not be ready or may require permission.")
+
+    def onDirChanged(self, dir_name, file_list, dir_list):
+        """Handle directory selection change"""
+        try:
+            # Get the parent group box to access its properties
+            group_box = file_list.parent()
+            
+            # Build the new path
+            new_path = os.path.join(group_box.current_path, dir_name)
+            
+            # Update current path
+            group_box.current_path = new_path
+            
+            # Clear and update directory list
+            dir_list.clear()
+            try:
+                dirs = [d for d in os.listdir(new_path) 
+                    if os.path.isdir(os.path.join(new_path, d))]
+                dir_list.addItems(dirs)
+            except Exception as e:
+                print(f"Error accessing directories in {new_path}: {str(e)}")
+                return
+            
+            # Clear and update file list - only show CSV files
+            file_list.clear()
+            try:
+                files = [f for f in os.listdir(new_path) 
+                        if os.path.isfile(os.path.join(new_path, f)) and f.lower().endswith('.csv')]
+                file_list.addItems(files)
+            except Exception as e:
+                print(f"Error accessing files in {new_path}: {str(e)}")
+                return
+            
+            # Store the path in the file_list for later access
+            file_list.path = new_path
+            
+            # Update corresponding file selection count
+            self.updateFileCount(file_list, group_box.title())
+            
+        except Exception as e:
+            print(f"Error changing directory: {str(e)}")
+
+    def updateFileCount(self, file_list, title):
+        """Update the count of selected files"""
+        try:
+            # Get parent group box
+            group_box = file_list.parent()
+            if not group_box:
+                return
+                
+            # Count selected items
+            selected_count = len(file_list.selectedItems())
+            
+            # Update the count label
+            group_box.count_label.setText(f"Selected: {selected_count}")
+            
+            # Update appropriate counter based on which file list this is
+            if "North" in title:
+                self.left_files_count = selected_count
+            else:
+                self.right_files_count = selected_count
+                
+            # Update total file count
+            self.total_time_series_files = self.left_files_count + self.right_files_count
+            
+            # Check if too many files selected
+            if self.total_time_series_files > 5:
+                QMessageBox.warning(self, "Warning Message", 
+                                "You can only plot up to five files. You will have to deselect at least one file.")
+                
+        except Exception as e:
+            print(f"Error updating file count: {str(e)}")
 
     def SelectSaveFile(self):
         file_name, _ = QFileDialog.getSaveFileName(self, "Save To File", filter="CSV Files (*.csv)")
@@ -2249,20 +2406,21 @@ class ContentWidget(QWidget):
     def GeneratePrecipAnnualMax(self):
         try:
             # Initialize variables
+            year_percentile = [[self.global_missing_code for _ in range(200)] for _ in range(6)]
             total_to_read_in = (datetime.strptime(self.FSDate, "%d/%m/%Y") - 
                             datetime.strptime(self.global_start_date, "%d/%m/%Y")).days
             
+            # Show progress bar if we need to skip data
             if total_to_read_in > 0:
-                # Show progress bar
                 self.progress_bar.setVisible(True)
                 self.progress_bar.setValue(0)
                 self.progress_bar.setMaximum(100)
                 self.progress_bar.setFormat("Skipping Unnecessary Annual Data")
             
-            # Initialize year percentile array to store annual percentiles for each file and year
-            year_percentile = [[self.global_missing_code for _ in range(200)] for _ in range(6)]  # [1-5][1-200]
+            # Set cursor to hourglass
+            self.setCursor(Qt.WaitCursor)
             
-            # Set current date to the global start date
+            # Initialize date to start date
             self.CurrentDay = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").day)
             self.CurrentMonth = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").month)
             self.CurrentYear = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").year)
@@ -2270,81 +2428,68 @@ class ContentWidget(QWidget):
             self.CurrentWaterYear = self.GetWaterYear(self.CurrentMonth, self.CurrentYear)
             total_numbers = 0
             
-            # Skip unwanted data at the start of the file
+            # --- PASS 1: Calculate annual percentiles ---
+            
+            # Skip to analysis start date
             date_start = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
             date_target = datetime.strptime(self.FSDate, "%d/%m/%Y")
             
-            # Loop until we reach the start date for analysis
+            # Store original file positions so we can rewind later
+            original_positions = []
+            
+            # Skip unwanted data at the start
             while date_start < date_target:
-                # Check if user wants to exit
                 if self.ExitAnalysis():
                     self.Mini_Reset()
                     return False
                 
-                # Skip data from all files
-                for i, file in enumerate(self.open_files):
-                    try:
-                        if self.EnsembleFile[i]:
-                            # Handle multi-column file (ensemble)
-                            line = file.readline()
-                            if not line:  # EOF
-                                break
-                        else:
-                            # Handle single-column file
-                            line = file.readline()
-                            if not line:  # EOF
-                                break
-                    except Exception as e:
-                        print(f"Error reading file {i}: {str(e)}")
-                        self.Mini_Reset()
-                        return False
+                # Skip a line in each file
+                for file in self.open_files:
+                    file.readline()
                 
                 total_numbers += 1
                 self.IncreaseDate()
                 date_start = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
                 
-                # Update progress bar
-                progress_value = int((total_numbers / total_to_read_in) * 100) if total_to_read_in > 0 else 100
-                self.progress_bar.setValue(progress_value)
+                # Update progress
+                if total_to_read_in > 0:
+                    progress_value = int((total_numbers / total_to_read_in) * 100)
+                    self.progress_bar.setValue(progress_value)
             
-            # Now read in the data for annual percentile calculations
+            # Now read annual data for percentile calculation
             total_numbers = 0
             total_to_read_in = (datetime.strptime(self.FEdate, "%d/%m/%Y") - 
-                            datetime.strptime(self.FSDate, "%d/%m/%Y")).days + 1
+                        datetime.strptime(self.FSDate, "%d/%m/%Y")).days + 1
             
             self.progress_bar.setVisible(True)
             self.progress_bar.setValue(0)
             self.progress_bar.setMaximum(100)
             self.progress_bar.setFormat("Reading Annual Data")
             
-            # Reset current date to start date for analysis
+            # Reset to analysis start date
             self.CurrentDay = int(datetime.strptime(self.FSDate, "%d/%m/%Y").day)
             self.CurrentMonth = int(datetime.strptime(self.FSDate, "%d/%m/%Y").month)
             self.CurrentYear = int(datetime.strptime(self.FSDate, "%d/%m/%Y").year)
             self.CurrentSeason = self.GetSeason(self.CurrentMonth)
             self.CurrentWaterYear = self.GetWaterYear(self.CurrentMonth, self.CurrentYear)
             
-            # Initialize count array - tracks valid data for each file
+            # Initialize count array - tracks valid data points per file
             count = [0] * 6
             
-            this_month = self.CurrentMonth
             this_year = self.CurrentYear
-            this_season = self.CurrentSeason
-            this_water_year = self.CurrentWaterYear
-            
             year_index = 1
             
-            # Read annual data to calculate annual percentiles
+            # Read data for annual percentile calculations
             date_current = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
             date_end = datetime.strptime(self.FEdate, "%d/%m/%Y")
             
             while date_current <= date_end:
-                # Check if user wants to exit
+                # Check for user exit
                 if self.ExitAnalysis():
                     self.Mini_Reset()
                     return False
                 
-                # Check if we've reached the end of a year
+                # Check if we've reached end of year
                 if this_year != self.CurrentYear:
                     year_index = this_year - int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + 1
                     
@@ -2353,27 +2498,26 @@ class ContentWidget(QWidget):
                         if count[i] == 0:  # No valid data
                             year_percentile[i][year_index] = self.global_missing_code
                         else:
-                            # Use the PercentilePeriodArray function to calculate the annual percentile
                             year_percentile[i][year_index] = self.PercentilePeriodArray(i, count[i], self.annual_percentile)
                     
                     # Reset counters
                     for i in range(1, self.total_time_series_files + 1):
                         count[i] = 0
                 
-                # Read data for the current day
+                # Read data for current day
                 total_numbers += 1
                 
                 for i, file in enumerate(self.open_files):
                     try:
                         file_idx = i + 1  # Adjust for 1-based indexing in arrays
                         
-                        if self.EnsembleFile[i]:
-                            # Handle multi-column file (ensemble)
-                            line = file.readline()
-                            if not line:  # EOF
-                                value_in = self.global_missing_code
-                            else:
-                                # Extract first value from line
+                        line = file.readline()
+                        if not line:  # EOF
+                            value_in = self.global_missing_code
+                        else:
+                            # Extract value from line
+                            if self.EnsembleFile[i]:
+                                # Handle multi-column file
                                 parts = line.strip().split()
                                 if len(parts) > 0:
                                     if ',' in parts[0]:
@@ -2383,15 +2527,12 @@ class ContentWidget(QWidget):
                                         value_in = float(parts[0]) if parts[0].strip() else self.global_missing_code
                                 else:
                                     value_in = self.global_missing_code
-                        else:
-                            # Handle single-column file
-                            line = file.readline()
-                            if not line:  # EOF
-                                value_in = self.global_missing_code
                             else:
+                                # Handle single-column file
                                 line = line.strip()
                                 value_in = float(line) if line else self.global_missing_code
                         
+                        # Store valid precipitation values
                         if value_in != self.global_missing_code and value_in >= self.thresh:
                             count[file_idx] += 1
                             self.periodArray[file_idx][count[file_idx]] = value_in
@@ -2401,11 +2542,11 @@ class ContentWidget(QWidget):
                 
                 this_year = self.CurrentYear
                 
-                # Increase date for next iteration
+                # Increment date
                 self.IncreaseDate()
                 date_current = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
                 
-                # Update progress bar
+                # Update progress
                 progress_value = int((total_numbers / total_to_read_in) * 100)
                 self.progress_bar.setValue(progress_value)
             
@@ -2418,26 +2559,23 @@ class ContentWidget(QWidget):
                 else:
                     year_percentile[i][year_index] = self.PercentilePeriodArray(i, count[i], self.annual_percentile)
             
-            # Close and reopen files to process monthly/seasonal data
+            # --- PASS 2: Calculate percentage above annual percentile ---
+            
+            # Reset file positions for second pass by reopening files
             self.close_open_files()
             
             # Reopen the files
-            file_no = 2
+            self.open_files = []
             for i, file_path in enumerate(self.AllFilesList):
                 try:
-                    # Find the full path based on whether the file is in left or right list
+                    # Find the full path
+                    full_path = ""
                     if i < self.left_files_count:
-                        full_path = os.path.join(self.fileSelectionLeft.findChild(QListWidget).path, file_path)
+                        full_path = os.path.join(self.fileSelectionLeft.file_list.path, file_path)
                     else:
-                        full_path = os.path.join(self.fileSelectionRight.findChild(QListWidget).path, file_path)
+                        full_path = os.path.join(self.fileSelectionRight.file_list.path, file_path)
                     
-                    # Check if this is an ensemble file
-                    with open(full_path, 'r') as f:
-                        line = f.readline()
-                        if len(line) > 15:
-                            self.EnsembleFile[i] = True
-                    
-                    # Open the file for reading
+                    # Open the file
                     input_file = open(full_path, 'r')
                     self.open_files.append(input_file)
                 except Exception as e:
@@ -2445,7 +2583,7 @@ class ContentWidget(QWidget):
                     self.Mini_Reset()
                     return False
             
-            # Skip unwanted data at the start of the file again for second pass
+            # Skip to analysis start date again
             self.CurrentDay = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").day)
             self.CurrentMonth = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").month)
             self.CurrentYear = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").year)
@@ -2456,34 +2594,32 @@ class ContentWidget(QWidget):
             date_start = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
             date_target = datetime.strptime(self.FSDate, "%d/%m/%Y")
             
-            # Loop until we reach the start date for analysis (second pass)
+            # Skip unwanted data at start of second pass
             while date_start < date_target:
-                for i, file in enumerate(self.open_files):
-                    line = file.readline()  # Skip a line
+                for file in self.open_files:
+                    file.readline()
                 
-                total_numbers += 1
                 self.IncreaseDate()
                 date_start = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
             
-            # Now read in data for period calculations
+            # Now read data for period calculations
             total_numbers = 0
             total_to_read_in = (datetime.strptime(self.FEdate, "%d/%m/%Y") - 
-                            datetime.strptime(self.FSDate, "%d/%m/%Y")).days + 1
+                        datetime.strptime(self.FSDate, "%d/%m/%Y")).days + 1
             
             self.progress_bar.setVisible(True)
             self.progress_bar.setValue(0)
             self.progress_bar.setMaximum(100)
-            self.progress_bar.setFormat("Calculating Percentiles")
+            self.progress_bar.setFormat("Calculating Percentages")
             
-            # Reset current date to start date for second pass
+            # Reset count array and dates
+            count = [0] * 6
+            
             self.CurrentDay = int(datetime.strptime(self.FSDate, "%d/%m/%Y").day)
             self.CurrentMonth = int(datetime.strptime(self.FSDate, "%d/%m/%Y").month)
             self.CurrentYear = int(datetime.strptime(self.FSDate, "%d/%m/%Y").year)
             self.CurrentSeason = self.GetSeason(self.CurrentMonth)
             self.CurrentWaterYear = self.GetWaterYear(self.CurrentMonth, self.CurrentYear)
-            
-            # Initialize count array again
-            count = [0] * 6
             
             this_month = self.CurrentMonth
             this_year = self.CurrentYear
@@ -2492,21 +2628,26 @@ class ContentWidget(QWidget):
             
             year_index = 1
             
-            # Read data for period calculations (month/season)
+            # Read data for period calculations
             date_current = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
             date_end = datetime.strptime(self.FEdate, "%d/%m/%Y")
             
+            # Initialize fraction result array
+            for i in range(self.total_time_series_files):
+                for j in range(200):
+                    self.FractionResult[i][j] = self.global_missing_code
+            
             while date_current <= date_end:
-                # Check if user wants to exit
+                # Check for user exit
                 if self.ExitAnalysis():
                     self.Mini_Reset()
                     return False
                 
-                # Check if we've reached the end of the selected period
+                # Check if we've reached end of period
                 if self.FinishedCurrentPeriod():
                     year_index = this_year - int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + 1
                     
-                    # Only calculate if this period is the one selected by user
+                    # Only calculate if this is the selected period
                     if (this_month == self.DatesCombo.currentIndex() or 
                         (this_season + 12) == self.DatesCombo.currentIndex()):
                         
@@ -2514,28 +2655,28 @@ class ContentWidget(QWidget):
                             if count[i] == 0:  # No valid data
                                 self.FractionResult[i-1][year_index] = self.global_missing_code
                             else:
-                                # Calculate percentage above annual percentile
+                                # Calculate % precipitation above annual percentile
                                 self.FractionResult[i-1][year_index] = self.FindPrecipAboveAnnPercentile(
                                     i, count[i], year_percentile[i][year_index])
                     
-                    # Reset counters for next period
+                    # Reset counters
                     for i in range(1, 6):
                         count[i] = 0
                 
-                # Read data for the current day
+                # Read data for current day
                 total_numbers += 1
                 
                 for i, file in enumerate(self.open_files):
                     try:
                         file_idx = i + 1  # Adjust for 1-based indexing in arrays
                         
-                        if self.EnsembleFile[i]:
-                            # Handle multi-column file (ensemble)
-                            line = file.readline()
-                            if not line:  # EOF
-                                value_in = self.global_missing_code
-                            else:
-                                # Extract first value from line
+                        line = file.readline()
+                        if not line:  # EOF
+                            value_in = self.global_missing_code
+                        else:
+                            # Extract value from line
+                            if self.EnsembleFile[i]:
+                                # Handle multi-column file
                                 parts = line.strip().split()
                                 if len(parts) > 0:
                                     if ',' in parts[0]:
@@ -2545,18 +2686,16 @@ class ContentWidget(QWidget):
                                         value_in = float(parts[0]) if parts[0].strip() else self.global_missing_code
                                 else:
                                     value_in = self.global_missing_code
-                        else:
-                            # Handle single-column file
-                            line = file.readline()
-                            if not line:  # EOF
-                                value_in = self.global_missing_code
                             else:
+                                # Handle single-column file
                                 line = line.strip()
                                 value_in = float(line) if line else self.global_missing_code
                         
+                        # Store valid precipitation values
                         if value_in != self.global_missing_code and value_in >= self.thresh:
-                            count[file_idx] += 1
-                            self.periodArray[file_idx][count[file_idx]] = value_in
+                            if count[file_idx] < len(self.periodArray[file_idx]) - 1:  # Check array bounds
+                                count[file_idx] += 1
+                                self.periodArray[file_idx][count[file_idx]] = value_in
                     
                     except Exception as e:
                         print(f"Error processing file {i} on day {total_numbers}: {str(e)}")
@@ -2567,14 +2706,13 @@ class ContentWidget(QWidget):
                 this_season = self.CurrentSeason
                 this_water_year = self.CurrentWaterYear
                 
-                # Increase date for next iteration
+                # Increment date
                 self.IncreaseDate()
                 date_current = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
                 
-                # Update progress bar
+                # Update progress
                 progress_value = int((total_numbers / total_to_read_in) * 100)
                 self.progress_bar.setValue(progress_value)
-                self.progress_bar.setFormat("Calculating Percentiles")
             
             # Process the last period's data
             year_index = this_year - int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + 1
@@ -2586,7 +2724,7 @@ class ContentWidget(QWidget):
                     if count[i] == 0:  # No valid data
                         self.FractionResult[i-1][year_index] = self.global_missing_code
                     else:
-                        # Calculate percentage above annual percentile
+                        # Calculate % precipitation above annual percentile
                         self.FractionResult[i-1][year_index] = self.FindPrecipAboveAnnPercentile(
                             i, count[i], year_percentile[i][year_index])
             
@@ -2594,7 +2732,7 @@ class ContentWidget(QWidget):
             start_year = 1
             end_year = year_index
             
-            # Adjust start and end years based on selected period
+            # Adjust based on selected period
             if self.DatesCombo.currentIndex() >= 1 and self.DatesCombo.currentIndex() <= 12:  # Month
                 if self.DatesCombo.currentIndex() < int(datetime.strptime(self.FSDate, "%d/%m/%Y").month):
                     start_year = 2
@@ -2608,9 +2746,8 @@ class ContentWidget(QWidget):
                     selected_season > self.GetSeason(int(datetime.strptime(self.FEdate, "%d/%m/%Y").month))):
                     end_year -= 1
             
-            # Prepare data for plotting
+            # Prepare time series data for plotting
             self.TimeSeriesLength = end_year - start_year + 1
-            # Create and initialize the TimeSeriesData array
             self.TimeSeriesData = [[None for _ in range(self.total_time_series_files + 1)] 
                                 for _ in range(self.TimeSeriesLength)]
             
@@ -2618,29 +2755,38 @@ class ContentWidget(QWidget):
             
             for i in range(1, self.total_time_series_files + 1):
                 for j in range(1, self.TimeSeriesLength + 1):
-                    if self.FractionResult[i-1][j+start_year-1] == self.global_missing_code:
-                        self.TimeSeriesData[j-1][i] = None  # Empty value
-                        any_missing = True
-                    else:
-                        self.TimeSeriesData[j-1][i] = self.FractionResult[i-1][j+start_year-1]
+                    idx = j + start_year - 1
                     
+                    if idx < len(self.FractionResult[i-1]) and self.FractionResult[i-1][idx] == self.global_missing_code:
+                        self.TimeSeriesData[j-1][i] = None
+                        any_missing = True
+                    elif idx < len(self.FractionResult[i-1]):
+                        self.TimeSeriesData[j-1][i] = self.FractionResult[i-1][idx]
+                    else:
+                        self.TimeSeriesData[j-1][i] = None
+                        any_missing = True
+                    
+                    # Set year label for x-axis
                     if self.DatesCombo.currentIndex() == 18:  # Water year
                         self.TimeSeriesData[j-1][0] = str(int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + j + start_year - 3)
                     else:
                         self.TimeSeriesData[j-1][0] = str(int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + start_year + j - 2)
             
+            # Final progress update
+            self.progress_bar.setValue(100)
+            self.progress_bar.setFormat("Percentile Calculation Complete")
+            
             if any_missing:
                 print("Warning - some of the data were missing and will not be plotted.")
             
-            # Update progress bar
-            self.progress_bar.setValue(100)
-            self.progress_bar.setFormat("Percentile Calculation Complete")
+            # Reset cursor
+            self.setCursor(Qt.ArrowCursor)
             
             return True
         
         except Exception as e:
             print(f"Error in GeneratePrecipAnnualMax: {str(e)}")
-            traceback.print_exc()  # Print the full traceback for debugging
+            traceback.print_exc()  # Print full traceback for debugging
             self.Mini_Reset()
             return False
 
@@ -3119,46 +3265,53 @@ class ContentWidget(QWidget):
         else:  # January through September
             return year - 1
 
-    def PercentilePeriodArray(self, file_no, size_of, percentile):
+    def PercentilePeriodArray(self, file_number, size, ptile):
         try:
             # Create a filtered copy without missing values
-            temp_array = []
-            missing_value_count = 0
+            valid_values = []
             
-            for i in range(size_of):
-                if self.periodArray[file_no][i] != self.global_missing_code:
-                    temp_array.append(self.periodArray[file_no][i])
-                else:
-                    missing_value_count += 1
+            # Handle Python's 0-based indexing vs VB's 1-based indexing
+            file_idx = file_number if isinstance(file_number, int) else int(file_number)
             
-            local_size = size_of - missing_value_count
+            # Extract non-missing values
+            for i in range(size):
+                if i < len(self.periodArray[file_idx]) and self.periodArray[file_idx][i] != self.global_missing_code:
+                    valid_values.append(self.periodArray[file_idx][i])
             
             # Handle edge cases
-            if local_size == 0:
+            valid_size = len(valid_values)
+            if valid_size == 0:
                 return self.global_missing_code
-            elif local_size == 1:
-                return temp_array[0]
+            elif valid_size == 1:
+                return valid_values[0]
             
-            # Sort the array in ascending order
-            temp_array.sort()
+            # Sort the values in ascending order
+            valid_values.sort()
             
-            # Calculate percentile position
-            position = 1 + (percentile * (local_size - 1) / 100)
-            lower_bound = int(position)
-            upper_bound = lower_bound + 1
-            proportion = position - lower_bound
+            # Calculate the position for the percentile
+            # Formula for percentile position: 1 + (P/100) * (n-1) where P is percentile and n is sample size
+            position = 1 + (ptile * (valid_size - 1) / 100)
             
-            # Calculate final percentile value
-            if upper_bound >= local_size:
-                return temp_array[local_size - 1]
+            # Get the indices for interpolation
+            lower_idx = int(position) - 1  # Adjust for 0-based indexing
+            upper_idx = min(lower_idx + 1, valid_size - 1)  # Ensure we don't go out of bounds
             
-            value_range = temp_array[upper_bound] - temp_array[lower_bound]
-            percentile_value = temp_array[lower_bound] + (value_range * proportion)
+            # Calculate the interpolation proportion
+            fraction = position - int(position)
             
-            return percentile_value
-    
+            # Handle edge cases where indices are the same
+            if lower_idx == upper_idx:
+                return valid_values[lower_idx]
+            
+            # Calculate the interpolated value
+            range_value = valid_values[upper_idx] - valid_values[lower_idx]
+            result = valid_values[lower_idx] + (range_value * fraction)
+            
+            return result
+        
         except Exception as e:
             print(f"Error in PercentilePeriodArray: {str(e)}")
+            traceback.print_exc()  # Print full traceback for debugging
             self.Mini_Reset()
             return self.global_missing_code
 
@@ -3242,10 +3395,11 @@ class ContentWidget(QWidget):
         try:
             # Create wet spell array first
             self.CreateWetSpellArray(file_no, size_of)
-            
+
             max_wet_count = 0
-            
+
             # Find the longest wet spell
+            
             if self.TotalWetSpells[file_no] > 0:
                 for i in range(self.TotalWetSpells[file_no]):
                     if self.WetSpellArray[file_no][i] > max_wet_count:
@@ -3261,90 +3415,132 @@ class ContentWidget(QWidget):
     def CreateWetSpellArray(self, file_no, size_of):
         try:
             # Initialize counters
-            wet_count = 0                         # Counter for consecutive wet days
-            self.TotalWetSpells[file_no] = 0      # Reset count of wet spells for this file
+            wet_count = 0                           # Counter for consecutive wet days
+            self.TotalWetSpells[file_no] = 0        # Reset count of wet spells
             
-            # Determine initial state
-            if (self.periodArray[file_no][0] == self.global_missing_code or 
-                self.periodArray[file_no][0] <= self.thresh):
-                is_wet = False                    # Start in dry state
+            # Convert file_no to 0-based indexing if it's coming from 1-based code
+            file_idx = file_no
+            
+            # Initialize spell array - clear any existing values
+            self.WetSpellArray[file_idx] = [0] * len(self.WetSpellArray[file_idx])
+            
+            # Skip processing if no data
+            if size_of <= 0:
+                return
+            
+            # Determine initial state - are we starting in a wet spell?
+            if (self.periodArray[file_idx][0] == self.global_missing_code or 
+                self.periodArray[file_idx][0] <= self.thresh):
+                is_wet = False                      # Start as not in a wet spell
             else:
-                is_wet = True                     # Start in wet state
+                is_wet = True                       # Start in a wet spell
                 wet_count = 1
             
             # Process each day
             for i in range(1, size_of):
-                # Case 1: Continuing wet spell
-                if (is_wet and self.periodArray[file_no][i] > self.thresh):
+                # Make sure we don't exceed array bounds
+                if i >= len(self.periodArray[file_idx]):
+                    break
+                    
+                # Case 1: Continuing wet spell (wet day follows wet day)
+                if is_wet and self.periodArray[file_idx][i] > self.thresh:
                     wet_count += 1
                     
-                # Case 2: End of wet spell (wet to dry or missing)
-                elif (is_wet and (self.periodArray[file_no][i] <= self.thresh or 
-                                self.periodArray[file_no][i] == self.global_missing_code)):
+                # Case 2: End of wet spell (dry or missing day follows wet day)
+                elif is_wet and (self.periodArray[file_idx][i] <= self.thresh or 
+                                self.periodArray[file_idx][i] == self.global_missing_code):
+                    # Record the completed wet spell
+                    self.TotalWetSpells[file_idx] += 1
+                    spell_idx = self.TotalWetSpells[file_idx] - 1
+                    if spell_idx < len(self.WetSpellArray[file_idx]):
+                        self.WetSpellArray[file_idx][spell_idx] = wet_count
+                    
+                    # Reset counter and state
                     is_wet = False
-                    self.TotalWetSpells[file_no] += 1
-                    self.WetSpellArray[file_no][self.TotalWetSpells[file_no] - 1] = wet_count
                     wet_count = 0
                     
-                # Case 3: Start of wet spell (dry to wet)
-                elif (not is_wet and self.periodArray[file_no][i] > self.thresh):
+                # Case 3: Start of wet spell (wet day follows dry or missing day)
+                elif not is_wet and self.periodArray[file_idx][i] > self.thresh:
                     is_wet = True
                     wet_count = 1
-                
-                # Case 4: Continuing dry spell (do nothing)
             
-            # Check if we're still in a wet spell at the end of the period
+            # If we're still in a wet spell at the end of the period, record it
             if wet_count > 0:
-                self.TotalWetSpells[file_no] += 1
-                self.WetSpellArray[file_no][self.TotalWetSpells[file_no] - 1] = wet_count
-        
+                self.TotalWetSpells[file_idx] += 1
+                spell_idx = self.TotalWetSpells[file_idx] - 1
+                if spell_idx < len(self.WetSpellArray[file_idx]):
+                    self.WetSpellArray[file_idx][spell_idx] = wet_count
+            
         except Exception as e:
             print(f"Error in CreateWetSpellArray: {str(e)}")
+            traceback.print_exc()  # Print full traceback for debugging
             self.Mini_Reset()
+
 
     def CreateDrySpellArray(self, file_no, size_of):
         try:
             # Initialize counters
-            dry_count = 0                         # Counter for consecutive dry days
-            self.TotalDrySpells[file_no] = 0      # Reset count of dry spells for this file
+            dry_count = 0                           # Counter for consecutive dry days
+            self.TotalDrySpells[file_no] = 0        # Reset count of dry spells
             
-            # Determine initial state
-            if (self.periodArray[file_no][0] == self.global_missing_code or 
-                self.periodArray[file_no][0] > self.thresh):
-                is_dry = False                    # Start in wet state
+            # Convert file_no to 0-based indexing if it's coming from 1-based code
+            file_idx = file_no
+            
+            # Initialize spell array - clear any existing values
+            self.DrySpellArray[file_idx] = [0] * len(self.DrySpellArray[file_idx])
+            
+            # Skip processing if no data
+            if size_of <= 0:
+                return
+            
+            # Determine initial state - are we starting in a dry spell?
+            if (self.periodArray[file_idx][0] == self.global_missing_code or 
+                self.periodArray[file_idx][0] > self.thresh):
+                is_dry = False                      # Start as not in a dry spell
             else:
-                is_dry = True                     # Start in dry state
+                is_dry = True                       # Start in a dry spell
                 dry_count = 1
             
             # Process each day
             for i in range(1, size_of):
-                # Case 1: Continuing dry spell
-                if (is_dry and self.periodArray[file_no][i] <= self.thresh):
+                # Make sure we don't exceed array bounds
+                if i >= len(self.periodArray[file_idx]):
+                    break
+                    
+                # Case 1: Continuing dry spell (dry day follows dry day)
+                if is_dry and self.periodArray[file_idx][i] <= self.thresh:
                     dry_count += 1
                     
-                # Case 2: End of dry spell (dry to wet or missing)
-                elif (is_dry and (self.periodArray[file_no][i] > self.thresh or 
-                                self.periodArray[file_no][i] == self.global_missing_code)):
+                # Case 2: End of dry spell (wet or missing day follows dry day)
+                elif is_dry and (self.periodArray[file_idx][i] > self.thresh or 
+                                self.periodArray[file_idx][i] == self.global_missing_code):
+                    # Record the completed dry spell
+                    self.TotalDrySpells[file_idx] += 1
+                    spell_idx = self.TotalDrySpells[file_idx] - 1
+                    if spell_idx < len(self.DrySpellArray[file_idx]):
+                        self.DrySpellArray[file_idx][spell_idx] = dry_count
+                    
+                    # Reset counter and state
                     is_dry = False
-                    self.TotalDrySpells[file_no] += 1
-                    self.DrySpellArray[file_no][self.TotalDrySpells[file_no] - 1] = dry_count
                     dry_count = 0
                     
-                # Case 3: Start of dry spell (wet to dry)
-                elif (not is_dry and self.periodArray[file_no][i] <= self.thresh):
+                # Case 3: Start of dry spell (dry day follows wet or missing day)
+                elif not is_dry and self.periodArray[file_idx][i] <= self.thresh:
                     is_dry = True
                     dry_count = 1
-                
-                # Case 4: Continuing wet spell (do nothing)
             
-            # Check if we're still in a dry spell at the end of the period
+            # If we're still in a dry spell at the end of the period, record it
             if dry_count > 0:
-                self.TotalDrySpells[file_no] += 1
-                self.DrySpellArray[file_no][self.TotalDrySpells[file_no] - 1] = dry_count
-        
+                self.TotalDrySpells[file_idx] += 1
+                spell_idx = self.TotalDrySpells[file_idx] - 1
+                if spell_idx < len(self.DrySpellArray[file_idx]):
+                    self.DrySpellArray[file_idx][spell_idx] = dry_count
+            
         except Exception as e:
             print(f"Error in CreateDrySpellArray: {str(e)}")
+            traceback.print_exc()  # Print full traceback for debugging
             self.Mini_Reset()
+
 
     def FindMeanDrySpell(self, file_no, size_of):
         try:
@@ -3503,21 +3699,24 @@ class ContentWidget(QWidget):
             return 0
 
 
-    def FindDDPersistence(self, file_no, size_of):
+    def FindDryDayPersistence(self, file_no, size_of):
         try:
-        # Create dry spell array first
+            # Create the dry spell array first
             self.CreateDrySpellArray(file_no, size_of)
             
             dry_day_persistence = 0
             dry_day_count = 0        # counts all dry days
-            consec_dry_count = 0     # counts only consecutive dry days
-        
+            consec_dry_count = 0     # counts only consecutive dry days (in spells > 1 day)
+            
+            # Calculate dry day persistence if there are any dry spells
             if self.TotalDrySpells[file_no] > 0:
                 for i in range(self.TotalDrySpells[file_no]):
-                    dry_day_count += self.DrySpellArray[file_no][i]
+                    spell_length = self.DrySpellArray[file_no][i]
+                    dry_day_count += spell_length
+                    
                     # Only count consecutive days if spell length > 1
-                    if self.DrySpellArray[file_no][i] > 1:
-                        consec_dry_count += self.DrySpellArray[file_no][i]
+                    if spell_length > 1:
+                        consec_dry_count += spell_length
                 
                 # Calculate persistence if there were any dry days
                 if dry_day_count > 0:
@@ -3526,34 +3725,39 @@ class ContentWidget(QWidget):
             return dry_day_persistence
     
         except Exception as e:
-            print(f"Error in FindDryDayPersistence: {str(e)}")
+            print(f"Error in FindDDPersistence: {str(e)}")
+            traceback.print_exc()  # Print full traceback for debugging
             self.Mini_Reset()
-            return 0   
+            return 0
 
-    def FindWDPersistence(self, file_no, size_of):
+    def FindWetDayPersistence(self, file_no, size_of):
         try:
-            # Create wet spell array first
+            # Create the wet spell array first
             self.CreateWetSpellArray(file_no, size_of)
             
             wet_day_persistence = 0
             wet_day_count = 0        # counts all wet days
-            consec_wet_count = 0     # counts only consecutive wet days
+            consec_wet_count = 0     # counts only consecutive wet days (in spells > 1 day)
             
+            # Calculate wet day persistence if there are any wet spells
             if self.TotalWetSpells[file_no] > 0:
                 for i in range(self.TotalWetSpells[file_no]):
-                    wet_day_count += self.WetSpellArray[file_no][i]
+                    spell_length = self.WetSpellArray[file_no][i]
+                    wet_day_count += spell_length
+                    
                     # Only count consecutive days if spell length > 1
-                    if self.WetSpellArray[file_no][i] > 1:
-                        consec_wet_count += self.WetSpellArray[file_no][i]
+                    if spell_length > 1:
+                        consec_wet_count += spell_length
                 
                 # Calculate persistence if there were any wet days
                 if wet_day_count > 0:
                     wet_day_persistence = consec_wet_count / wet_day_count
             
             return wet_day_persistence
-    
+        
         except Exception as e:
-            print(f"Error in FindWetDayPersistence: {str(e)}")
+            print(f"Error in FindWDPersistence: {str(e)}")
+            traceback.print_exc()  # Print full traceback for debugging
             self.Mini_Reset()
             return 0
 
@@ -3567,7 +3771,7 @@ class ContentWidget(QWidget):
             self.Mini_Reset()
             return 0
 
-    #Utility Functions
+        #Utility Functions
 
     def CreateDrySpellArray():
         pass

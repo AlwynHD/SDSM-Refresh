@@ -271,12 +271,6 @@ def pdfPlot(
         plt.plot(xValues, yVals, label=label, linewidth=1.5)
         print(f"{yVals}")
 
-    # only show the first & last bin-edge as X-tick labels
-    plt.xticks(
-        [xValues[0], xValues[-1]],
-        [f"{xValues[0]:.5g}", f"{xValues[-1]:.5g}"]
-    )
-
     plt.xlabel("Value")
     plt.ylabel("Standardised Density")
     plt.legend(loc="best")

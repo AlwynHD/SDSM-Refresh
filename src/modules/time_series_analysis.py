@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QFrame, QComboBox, 
     QLineEdit, QListWidget, QFileDialog, QCheckBox, QRadioButton, QButtonGroup, 
-    QGridLayout, QGroupBox, QSizePolicy, QMessageBox, QProgressBar, QSpacerItem, 
+    QGridLayout, QGroupBox, QSizePolicy, QMessageBox, QProgressBar, QSpacerItem, QListWidgetItem,
     QDialog
 )
 from PyQt5.QtCore import QUrl
@@ -147,13 +147,89 @@ class ContentWidget(QWidget):
         leftSideLayout = QVBoxLayout()
         leftSideLayout.setSpacing(10)
 
-        # North File Selection
-        self.fileSelectionLeft = self.CreateFileSelectionGroup("North File Selection")
-        leftSideLayout.addWidget(self.fileSelectionLeft)
+        # Create North File Selection Group
+        northGroupBox = QGroupBox("North File Selection")
+        northLayout = QVBoxLayout()
 
-        # South File Selection
-        self.fileSelectionRight = self.CreateFileSelectionGroup("South File Selection")
-        leftSideLayout.addWidget(self.fileSelectionRight)
+        # Create file list widget for North files
+        self.northFileList = QListWidget()
+        self.northFileList.setFixedHeight(150)
+        self.northFileList.setSelectionMode(QListWidget.MultiSelection)
+        self.northFileList.path = ""
+        self.northFileList.itemSelectionChanged.connect(
+            lambda: self.updateFileCount(self.northFileList, "North")
+        )
+
+        # Create button layout for North files
+        northButtonLayout = QHBoxLayout()
+
+        # Create select files button for North files
+        northSelectButton = QPushButton("Browse Files")
+        northSelectButton.setFixedHeight(30)
+        northSelectButton.clicked.connect(
+            lambda: self.openFileExplorer(self.northFileList, "North")
+        )
+        northButtonLayout.addWidget(northSelectButton)
+
+        # Create clear button for North files
+        northClearButton = QPushButton("Clear")
+        northClearButton.setFixedHeight(30)
+        northClearButton.clicked.connect(
+            lambda: (self.northFileList.clear(), self.updateFileCount(self.northFileList, "North"))
+        )
+        northButtonLayout.addWidget(northClearButton)
+
+        # Count label for North files
+        self.northCountLabel = QLabel("Selected: 0")
+
+        # Add widgets to North layout
+        northLayout.addWidget(self.northFileList)
+        northLayout.addLayout(northButtonLayout)
+        northLayout.addWidget(self.northCountLabel)
+        northGroupBox.setLayout(northLayout)
+        leftSideLayout.addWidget(northGroupBox)
+
+        # Create South File Selection Group (similar to North)
+        southGroupBox = QGroupBox("South File Selection")
+        southLayout = QVBoxLayout()
+
+        # Create file list widget for South files
+        self.southFileList = QListWidget()
+        self.southFileList.setFixedHeight(150)
+        self.southFileList.setSelectionMode(QListWidget.MultiSelection)
+        self.southFileList.path = ""
+        self.southFileList.itemSelectionChanged.connect(
+            lambda: self.updateFileCount(self.southFileList, "South")
+        )
+
+        # Create button layout for South files
+        southButtonLayout = QHBoxLayout()
+
+        # Create select files button for South files
+        southSelectButton = QPushButton("Browse Files")
+        southSelectButton.setFixedHeight(30)
+        southSelectButton.clicked.connect(
+            lambda: self.openFileExplorer(self.southFileList, "South")
+        )
+        southButtonLayout.addWidget(southSelectButton)
+
+        # Create clear button for South files
+        southClearButton = QPushButton("Clear")
+        southClearButton.setFixedHeight(30)
+        southClearButton.clicked.connect(
+            lambda: (self.southFileList.clear(), self.updateFileCount(self.southFileList, "South"))
+        )
+        southButtonLayout.addWidget(southClearButton)
+
+        # Count label for South files
+        self.southCountLabel = QLabel("Selected: 0")
+
+        # Add widgets to South layout
+        southLayout.addWidget(self.southFileList)
+        southLayout.addLayout(southButtonLayout)
+        southLayout.addWidget(self.southCountLabel)
+        southGroupBox.setLayout(southLayout)
+        leftSideLayout.addWidget(southGroupBox)
 
         # Add left side to main content layout
         mainContentLayout.addLayout(leftSideLayout)
@@ -464,6 +540,40 @@ class ContentWidget(QWidget):
         
         group.setLayout(layout)
         return group
+    
+    def openFileExplorer(self, file_list, section_name):
+        """Opens file explorer dialog to select multiple CSV files"""
+        files, _ = QFileDialog.getOpenFileNames(
+            self, f"Select CSV Files for {section_name}", "", "CSV Files (*.csv)"
+        )
+        
+        if files:
+            file_list.path = os.path.dirname(files[0])
+            for file_path in files:
+                file_name = os.path.basename(file_path)
+                # Check if file already in list
+                if not file_list.findItems(file_name, Qt.MatchExactly):
+                    item = QListWidgetItem(file_name)
+                    file_list.addItem(item)
+                    item.setSelected(True)
+            self.updateFileCount(file_list, section_name)
+
+    def updateFileCount(self, file_list, section_name):
+        """Update the count of selected files"""
+        selected_count = len(file_list.selectedItems())
+        
+        if section_name == "North":
+            self.northCountLabel.setText(f"Selected: {selected_count}")
+            self.left_files_count = selected_count
+        else:  # South
+            self.southCountLabel.setText(f"Selected: {selected_count}")
+            self.right_files_count = selected_count
+        
+        self.total_time_series_files = self.left_files_count + self.right_files_count
+        
+        if self.total_time_series_files > 5:
+            QMessageBox.warning(self, "Warning Message", 
+                            "You can only plot up to five files. You will have to deselect at least one file.")
 
     def onDriveChanged(self, drive, file_list, dir_list):
         """Handle drive selection change"""
@@ -864,13 +974,12 @@ class ContentWidget(QWidget):
                 file_no = 2  # File number 1 reserved for save file
                 
                 # Check left file list
-                left_list_widget = self.fileSelectionLeft.findChild(QListWidget)
-                for i in range(left_list_widget.count()):
-                    item = left_list_widget.item(i)
+                for i in range(self.northFileList.count()):
+                    item = self.northFileList.item(i)
                     if item.isSelected():
                         self.AllFilesList.append(item.text())
                         
-                        file_path = os.path.join(left_list_widget.path, item.text())
+                        file_path = os.path.join(self.northFileList.path, item.text())
                         try:
                             # Check if this is an ensemble file by reading first line
                             with open(file_path, 'r') as f:
@@ -889,13 +998,12 @@ class ContentWidget(QWidget):
                             return
                 
                 # Check right file list
-                right_list_widget = self.fileSelectionRight.findChild(QListWidget)
-                for i in range(right_list_widget.count()):
-                    item = right_list_widget.item(i)
+                for i in range(self.southFileList.count()):
+                    item = self.southFileList.item(i)
                     if item.isSelected():
                         self.AllFilesList.append(item.text())
                         
-                        file_path = os.path.join(right_list_widget.path, item.text())
+                        file_path = os.path.join(self.southFileList.path, item.text())
                         try:
                             # Check if this is an ensemble file by reading first line
                             with open(file_path, 'r') as f:
@@ -4159,13 +4267,13 @@ class ContentWidget(QWidget):
             # Reset total statistics available
             self.total_stats_available = 23
             
-            # Clear file selections in left and right list widgets
-            file_lists = [
-                self.fileSelectionLeft.findChild(QListWidget),
-                self.fileSelectionRight.findChild(QListWidget)
-            ]
-            for file_list in file_lists:
-                file_list.clearSelection()
+            # Clear file selections in North and South lists
+            self.northFileList.clear()
+            self.southFileList.clear()
+            
+            # Reset selection count labels
+            self.northCountLabel.setText("Selected: 0")
+            self.southCountLabel.setText("Selected: 0")
             
             # Reset file counts
             self.left_files_count = 0
@@ -4180,9 +4288,6 @@ class ContentWidget(QWidget):
             # Reset date fields to global defaults
             self.startDateInput.setText(self.global_start_date)
             self.endDateInput.setText(self.global_end_date)
-            
-            # Set days between dates
-            # Actual days calculation would require datetime conversion
             
             # Reset dropdowns
             self.DatesCombo.setCurrentIndex(0)
@@ -4199,7 +4304,6 @@ class ContentWidget(QWidget):
             
             # Reset N values
             self.nth_largest = 1
-            
             self.largest_n_day = 1
             
             # Reset statistics options - select Sum as default
@@ -4216,8 +4320,8 @@ class ContentWidget(QWidget):
             self.pnl90_percentile = 90
             self.numEventsInput.setText("90")
             
-            # Reset directory paths would go here
-            # These would interact with the file browsers
+            # Clear any data arrays/lists as needed
+            self.AllFilesList = []
             
         except Exception as e:
             # Handle errors

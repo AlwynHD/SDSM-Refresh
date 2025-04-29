@@ -12,6 +12,7 @@ def linePlot(
     modelledFilePath: Optional[str],
     analysisStartDate: date,
     analysisEndDate: date,
+    globalStartDate: date,
     ensembleMode: str,        # 'allMembers', 'ensembleMean', 'ensembleMember', or 'allPlusMean'
     ensembleIndex: Optional[int],
     dataPeriod: str,          # passed into doWeWantThisDatum(...)
@@ -67,7 +68,7 @@ def linePlot(
 
     # 4) skip up to analysisStartDate
     #    seed current to the file’s first date (e.g. 1948-01-01)
-    currentDay, currentMonth, currentYear = 1, 1, 1948
+    currentDay, currentMonth, currentYear = int(globalStartDate.strftime("%d")), int(globalStartDate.strftime("%m")), int(globalStartDate.strftime("%Y"))
     currentSeason = getSeason(currentMonth)
     yearLength, leapValue = 1, 1
     current = date(currentYear, currentMonth, currentDay)

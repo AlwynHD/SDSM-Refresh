@@ -21,6 +21,7 @@ def qqPlot(
     modelledFilePath: str,
     analysisStartDate: date,
     analysisEndDate: date,
+    globalStartDate: date,
     ensembleMode: str,          # 'allMembers', 'ensembleMean', 'ensembleMember', 'allPlusMean'
     ensembleIndex: Optional[int],
     dataPeriod: int,
@@ -52,8 +53,7 @@ def qqPlot(
     fMod.seek(0)
 
     # 5) Initialize date counters exactly as linePlot
-    #    Always starts at 1 Jan 1948 for true calendar data
-    currentDay, currentMonth, currentYear = 1, 1, 1948
+    currentDay, currentMonth, currentYear = int(globalStartDate.strftime("%d")), int(globalStartDate.strftime("%m")), int(globalStartDate.strftime("%Y"))
     currentSeason = getSeason(currentMonth)
     yearLength, leapValue = 1, 1
     current = date(currentYear, currentMonth, currentDay)

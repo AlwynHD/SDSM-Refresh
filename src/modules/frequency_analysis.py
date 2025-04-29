@@ -92,7 +92,8 @@ def load_settings(config_path="src/lib/settings.ini"):
             - settingsAsArrays: A dictionary with each setting's value ensured to be a list.
     """
     config = configparser.ConfigParser()
-    config.read(config_path)
+    with open(config_path, 'r') as f:
+        config.read_file(f)
 
     # Fetch and convert all settings from the 'Settings' section.
     settings = {}
@@ -350,6 +351,25 @@ class ContentWidget(QWidget):
         layout.addLayout(tabButtonsLayout)
         
         self.setLayout(layout)
+
+    def showEvent(self, event):
+        global globalSDate 
+        settings, settingsAsArrays = load_settings()
+        globalSDate = settings["globalsdate"]
+
+        # Extract the first (and only) element from the array for both start and end dates
+        py_start_date = settingsAsArrays["globalsdate"][0]
+        py_end_date = settingsAsArrays["globaledate"][0]
+
+        # Convert Python date objects to QDate objects
+        q_start_date = QDate(py_start_date.year, py_start_date.month, py_start_date.day)
+        q_end_date = QDate(py_end_date.year, py_end_date.month, py_end_date.day)
+
+        # Set the QDate values into your QDate widgets
+        self.startDate.setDate(q_start_date)
+        self.endDate.setDate(q_end_date)
+
+        return super().showEvent(event)
     
     def saveResults(self):
         # Use the default directory from your configuration (assuming it's in settingsAsArrays)
@@ -540,6 +560,7 @@ class ContentWidget(QWidget):
                 modelledFilePath   = modPath,
                 analysisStartDate  = fsDate,
                 analysisEndDate    = feDate,
+                globalStartDate    = globalSDate,
                 ensembleMode       = ensembleMode,
                 ensembleIndex      = ensembleIndex,
                 dataPeriod         = dataPeriodIndex,

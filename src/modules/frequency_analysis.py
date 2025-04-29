@@ -110,6 +110,8 @@ def load_settings(config_path="src/lib/settings.ini"):
 # Integrate the settings into your existing code without changing variable names.
 settings, settingsAsArrays = load_settings()
 
+globalSDate = settings["globalsdate"]
+
 moduleName = "Frequency Analysis"
 
 class ContentWidget(QWidget):
@@ -480,6 +482,7 @@ class ContentWidget(QWidget):
                 modelledFilePath  = modPath,
                 analysisStartDate = startDate,
                 analysisEndDate   = endDate,
+                globalStartDate   = globalSDate,
                 ensembleMode      = ensembleMode,
                 ensembleIndex     = ensembleIndex,
                 dataPeriod        = dataPeriod,

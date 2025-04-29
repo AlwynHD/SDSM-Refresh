@@ -1,15 +1,17 @@
+# src/lib/FrequencyAnalysis/QQ.py
+
 import os
-import numpy as np
 import math
-from datetime import timedelta
+import numpy as np
 import matplotlib.pyplot as plt
+from datetime import date
 from typing import Optional, Callable
 
 from src.lib.FrequencyAnalysis.frequency_analysis_functions import (
     doWeWantThisDatum,
     calcPercentile,
-    fsDateOk,
-    feDateOk,
+    increaseDate,
+    getSeason,
     globalMissingCode
 )
 
@@ -17,9 +19,9 @@ from src.lib.FrequencyAnalysis.frequency_analysis_functions import (
 def qqPlot(
     observedFilePath: str,
     modelledFilePath: str,
-    analysisStartDate,
-    analysisEndDate,
-    ensembleMode: str,
+    analysisStartDate: date,
+    analysisEndDate: date,
+    ensembleMode: str,          # 'allMembers', 'ensembleMean', 'ensembleMember', 'allPlusMean'
     ensembleIndex: Optional[int],
     dataPeriod: int,
     applyThreshold: bool,
@@ -27,100 +29,121 @@ def qqPlot(
     exitAnalysesFunc: Callable[[], bool]
 ):
     """
-    Generate a Quantile-Quantile plot comparing observed and modelled series.
+    Generate a QQ-plot by mirroring the same file-streaming logic as linePlot,
+    then computing quantiles of the collected daily pairs.
     """
-    # 1) Validate dates
-    valid_fs, fs, _ = fsDateOk(analysisStartDate, analysisEndDate, analysisStartDate)
-    valid_fe, fe, _ = feDateOk(analysisStartDate, analysisEndDate, analysisEndDate)
-    if not valid_fs:
-        raise ValueError("Invalid start date.")
-    if not valid_fe:
-        raise ValueError("Invalid end date.")
+    # 1) Dates must be in correct order
+    if analysisStartDate >= analysisEndDate:
+        raise ValueError("Start date must be before end date.")
 
-    # 2) Check files
+    # 2) Files must exist
     if not os.path.exists(observedFilePath) or not os.path.exists(modelledFilePath):
         raise ValueError("Both observed and modelled files must exist.")
     obsLabel = os.path.basename(observedFilePath)
     modLabel = os.path.basename(modelledFilePath)
 
-    # 3) Read raw lines
-    obsLines = open(observedFilePath).read().splitlines()
-    modLines = open(modelledFilePath).read().splitlines()
-    total_days = (fe - fs).days + 1
-    if len(obsLines) < total_days or len(modLines) < total_days:
-        raise IOError("Data files shorter than selected date range.")
+    # 3) Open the two streams
+    fObs = open(observedFilePath, 'r')
+    fMod = open(modelledFilePath, 'r')
 
-    # 4) Determine ensemble count
-    firstMod = modLines[0]
-    ens_count = len(firstMod) // 14 if len(firstMod) > 15 else 1
+    # 4) Determine ensembles by sampling first model line
+    first_line = fMod.readline().rstrip("\n")
+    ens_count = len(first_line) // 14 if len(first_line) > 15 else 1
+    fMod.seek(0)
 
-    # 5) Build date list
-    dates = [fs + timedelta(days=i) for i in range(total_days)]
+    # 5) Initialize date counters exactly as linePlot
+    #    Always starts at 1 Jan 1948 for true calendar data
+    currentDay, currentMonth, currentYear = 1, 1, 1948
+    currentSeason = getSeason(currentMonth)
+    yearLength, leapValue = 1, 1
+    current = date(currentYear, currentMonth, currentDay)
 
-    # 6) Read and filter series
-    obs_vals = []
-    mod_vals = [[] for _ in range(ens_count)]
-    for idx, dt in enumerate(dates):
+    # 6) Skip file lines until analysisStartDate
+    while current < analysisStartDate:
         if exitAnalysesFunc():
             return
-        # period filter
-        if not doWeWantThisDatum(dataPeriod, dt.month):
-            continue
-        # observed
-        raw_o = float(obsLines[idx].strip())
-        if raw_o == globalMissingCode or (applyThreshold and raw_o < thresholdValue):
-            continue
-        obs_vals.append(raw_o)
-        # modelled
-        line = modLines[idx].ljust(14 * ens_count)
-        row = []
-        for e in range(ens_count):
-            seg = line[e*14:(e+1)*14].strip()
-            v = float(seg) if seg else globalMissingCode
-            if v == globalMissingCode or (applyThreshold and v < thresholdValue):
-                row.append(math.nan)
-            else:
-                row.append(v)
-        # ensemble logic
-        arr = np.array(row, dtype=float)
-        if ensembleMode == 'ensembleMean':
-            mean = np.nanmean(arr)
-            mod_vals = [mod_vals[0] + [mean]] if ens_count == 1 else [lst + [mean] for lst in mod_vals[:1]]
-        elif ensembleMode == 'ensembleMember' and ensembleIndex is not None:
-            sel = arr[ensembleIndex-1]
-            mod_vals = [[sel] for _ in range(1)]
-        elif ensembleMode == 'allPlusMean':
-            # each ensemble plus overall mean as last column
-            for i, v in enumerate(arr):
-                mod_vals[i].append(v)
-            mean = np.nanmean(arr)
-            mod_vals.append([mean])
-        else:  # 'allMembers'
-            for i, v in enumerate(arr):
-                mod_vals[i].append(v)
+        fObs.readline()
+        fMod.readline()
+        currentDay, currentMonth, currentYear, currentSeason, yearLength, leapValue = \
+            increaseDate(currentDay, currentMonth, currentYear, currentSeason, yearLength, leapValue)
+        current = date(currentYear, currentMonth, currentDay)
 
-    obs = np.array(obs_vals, dtype=float)
-    # stack mod_vals into 2D array (time × ensembles)
-    mod = np.column_stack(mod_vals)
+    # 7) Collect to lists
+    obs_vals = []
+    mod_vals_list = [[] for _ in range(ens_count)]
 
-    # 7) Ensure ≥100 points
-    if len(obs) < 100 or any(np.count_nonzero(~np.isnan(mod[:, c])) < 100 for c in range(mod.shape[1])):
-        raise ValueError("Insufficient data (<100) to plot.")
+    while current <= analysisEndDate:
+        if exitAnalysesFunc():
+            return
+        # Read one day from each file
+        try:
+            raw_o = float(fObs.readline().strip())
+        except:
+            raw_o = globalMissingCode
 
-    # 8) Compute quantiles (1–99%) via shared calcPercentile
-    obs_q = np.array([calcPercentile(obs_vals, p) for p in range(1, 100)])
+        # read model line
+        line_m = fMod.readline().rstrip("\n").ljust(14 * ens_count)
+        mods = []
+        for i in range(ens_count):
+            seg = line_m[i*14:(i+1)*14].strip()
+            try:
+                v = float(seg) if seg else globalMissingCode
+            except:
+                v = globalMissingCode
+            mods.append(v)
 
-    # 9) Plot
+        # Period filter
+        if doWeWantThisDatum(dataPeriod, current.month):
+            # Check obs and mods
+            if raw_o != globalMissingCode and (not applyThreshold or raw_o >= thresholdValue):
+                if all(v != globalMissingCode and (not applyThreshold or v >= thresholdValue) for v in mods):
+                    obs_vals.append(raw_o)
+                    for idx, v in enumerate(mods):
+                        mod_vals_list[idx].append(v)
+
+        # Advance the date
+        currentDay, currentMonth, currentYear, currentSeason, yearLength, leapValue = \
+            increaseDate(currentDay, currentMonth, currentYear, currentSeason, yearLength, leapValue)
+        current = date(currentYear, currentMonth, currentDay)
+
+    # 8) Require at least 100 paired values
+    if len(obs_vals) < 100 or any(len(m) < 100 for m in mod_vals_list):
+        counts = [len(obs_vals)] + [len(m) for m in mod_vals_list]
+        raise ValueError(
+            f"Insufficient data (<100) to plot (obs={counts[0]}, " +
+            ", ".join(f"mod{i+1}={counts[i+1]}" for i in range(ens_count)) + ")"
+        )
+
+    # 9) Compute quantiles 1–99%
+    obs_q = [calcPercentile(obs_vals, p) for p in range(1,100)]
+    ensemble_q = [
+        [calcPercentile(mod_vals_list[i], p) for p in range(1,100)]
+        for i in range(ens_count)
+    ]
+
+    # 10) Scatter according to ensembleMode
     plt.figure()
-    for c in range(mod.shape[1]):
-        col = mod[:, c]
-        col = col[~np.isnan(col)]
-        mq = [calcPercentile(col.tolist(), p) for p in range(1, 100)]
-        plt.scatter(mq, obs_q, s=10, c='k')
+    if ensembleMode == 'allMembers':
+        for q in ensemble_q:
+            plt.scatter(q, obs_q, s=10, c='k')
+    elif ensembleMode == 'ensembleMean':
+        mean_q = [sum(ensemble_q[j][i] for j in range(ens_count))/ens_count for i in range(99)]
+        plt.scatter(mean_q, obs_q, s=10, c='k')
+    elif ensembleMode == 'ensembleMember':
+        if ensembleIndex is None or ensembleIndex < 1 or ensembleIndex > ens_count:
+            raise ValueError(f"Invalid ensembleIndex {ensembleIndex!r}")
+        plt.scatter(ensemble_q[ensembleIndex-1], obs_q, s=10, c='k')
+    else:  # allPlusMean
+        for q in ensemble_q:
+            plt.scatter(q, obs_q, s=10, c='k')
+        mean_q = [sum(ensemble_q[j][i] for j in range(ens_count))/ens_count for i in range(99)]
+        plt.scatter(mean_q, obs_q, s=10, c='k')
 
-    M = max(np.nanmax(obs_q), *(max(mq) for mq in
-                                 ([calcPercentile(mod[:, c].tolist(), p) for p in range(1, 100)]
-                                  for c in range(mod.shape[1]))))
+    # 11) 1:1 line
+    all_mod = [v for q in ensemble_q for v in q]
+    if ensembleMode in ('ensembleMean','allPlusMean'):
+        all_mod.extend(mean_q)
+    M = max(max(obs_q), max(all_mod))
     plt.plot([0, M], [0, M], 'b-', linewidth=2)
 
     plt.title("Quantile-Quantile Plot")

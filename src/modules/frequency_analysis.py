@@ -5,6 +5,7 @@ from PyQt5.QtCore import Qt
 import sys
 from src.lib.FrequencyAnalysis.PDF import pdfPlot
 from src.lib.FrequencyAnalysis.Line import linePlot
+from src.lib.FrequencyAnalysis.QQ import qqPlot
 from src.lib.FrequencyAnalysis.IDF import run_idf
 from src.lib.FrequencyAnalysis.FA import frequency_analysis
 import configparser
@@ -311,6 +312,7 @@ class ContentWidget(QWidget):
         graphButtonsLayout = QHBoxLayout()
         self.qqPlotButton = QPushButton("Q-Q Plot")
         self.qqPlotButton.setStyleSheet("background-color: #4CAF50; color: white; font-weight: bold;")
+        self.qqPlotButton.clicked.connect(self.qqPlotButtonClicked)
         self.pdfPlotButton = QPushButton("PDF Plot")
         self.pdfPlotButton.setStyleSheet("background-color: #1FC7F5; color: white; font-weight: bold")
         self.pdfPlotButton.clicked.connect(self.pdfPlotButtonClicked)
@@ -489,6 +491,65 @@ class ContentWidget(QWidget):
         #except Exception as e:
         #    print("Line Plot Error")
 
+    
+    def qqPlotButtonClicked(self):
+        # 1) files
+        if not hasattr(self, "obsDataFile") or not hasattr(self, "modDataFile"):
+            QMessageBox.warning(self, "Input Required",
+                                "Please select both Observed and Modelled data files.")
+            return
+        obsPath = self.obsDataFile
+        modPath = self.modDataFile
+
+        # 2) dates
+        fsDate = self.startDate.date().toPyDate()
+        feDate = self.endDate.date().toPyDate()
+        if fsDate >= feDate:
+            QMessageBox.critical(self, "Error", "Start date must be before end date.")
+            return
+
+        # 3) ensemble settings
+        if self.allMembersRadio.isChecked():
+            ensembleMode  = 'allMembers'
+            ensembleIndex = None
+        elif self.ensembleMeanRadio.isChecked():
+            ensembleMode  = 'ensembleMean'
+            ensembleIndex = None
+        elif self.ensembleMemberRadio.isChecked():
+            ensembleMode  = 'ensembleMember'
+            ensembleIndex = self.ensembleMemberSpinBox.value()
+        else:
+            ensembleMode  = 'allPlusMean'
+            ensembleIndex = None
+
+        # 4) numeric period index (matches your QQ.py _in_period)
+        dataPeriodIndex = self.dataPeriodCombo.currentIndex()
+
+        # 5) threshold
+        applyThresh = self.applyThresholdCheckbox.isChecked()
+        threshValue = self.thresholdInput.value()
+
+        # 6) call QQ routine with error‐handling
+        try:
+            qqPlot(
+                observedFilePath   = obsPath,
+                modelledFilePath   = modPath,
+                analysisStartDate  = fsDate,
+                analysisEndDate    = feDate,
+                ensembleMode       = ensembleMode,
+                ensembleIndex      = ensembleIndex,
+                dataPeriod         = dataPeriodIndex,
+                applyThreshold     = applyThresh,
+                thresholdValue     = threshValue,
+                exitAnalysesFunc   = lambda: False
+            )
+
+        except IOError as ioe:
+            QMessageBox.critical(self, "Q-Q Plot Error", str(ioe))
+        except ValueError as ve:
+            QMessageBox.critical(self, "Q-Q Plot Error", str(ve))
+    
+    
     def run_idf_analysis(self, presentation_type):
     # Fetch file paths
        file1_used = hasattr(self, "obsDataFile") and bool(self.obsDataFile)

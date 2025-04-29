@@ -341,107 +341,214 @@ class ContentWidget(QWidget):
         statsGroup = QGroupBox("Select Statistics")
         statsLayout = QGridLayout()
 
-        statsLayout.setSpacing(1)
-        statsLayout.setContentsMargins(2, 2, 2, 2)
+        statsLayout.setSpacing(5)  # Increased spacing for better appearance
+        statsLayout.setContentsMargins(10, 15, 10, 15)
 
+        # Create a button group for statistics (single selection)
+        self.statsButtonGroup = QButtonGroup()
+
+        # Statistics options
         self.statsOptions = [
             "Sum", "Mean", "Maximum", "Winter/Summer ratio",
             "Maximum dry spell", "Maximum wet spell",
             "Dry day persistence", "Wet day persistence",
             "Partial Duration Series", "Percentile",
-            "Standard Precipitation Index", "Peaks Over Threshold"
+            "Standard Precipitation Index", "Peaks Over Threshold",
+            "Nth largest", "Largest N-day total"
         ]
 
-        # Create stat checkboxes and initialize statOptions array for compatibility
-        self.statCheckboxes = []
-        self.StatOptions = [False] * len(self.statsOptions)  # For compatibility with original code
-        
+        # Create radio buttons instead of checkboxes
+        self.statRadioButtons = []
         for i, stat in enumerate(self.statsOptions):
-            checkbox = QCheckBox(stat)
-
+            radio = QRadioButton(stat)
             font = QFont()
-            font.setPointSize(14)  # Set font size to 10 for better readability
-            checkbox.setFont(font)
+            font.setPointSize(14)
+            radio.setFont(font)
+            
+            # Add to button group
+            self.statsButtonGroup.addButton(radio, i)
+            
+            # Add to layout - 3 columns
+            statsLayout.addWidget(radio, i // 3, i % 3)
+            self.statRadioButtons.append(radio)
 
-            checkbox.setStyleSheet("""
-            QCheckBox {
-                spacing: 1px;
-                margin-top: 1px;
-                margin-bottom: 1px;
-                }
-            """)
+        # Set first option (Sum) as default
+        self.statRadioButtons[0].setChecked(True)
 
-            if i == 0:  # Set Sum as default checked
-                checkbox.setChecked(True)
-                self.StatOptions[i] = True
-
-            checkbox.stateChanged.connect(lambda state, idx=i: self.onStatOptionChanged(state, idx))
-            self.statCheckboxes.append(checkbox)
-            statsLayout.addWidget(checkbox, i // 3, i % 3)  # Three columns
+        # Connect selection changed signal
+        self.statsButtonGroup.buttonClicked.connect(self.onStatOptionChanged)
 
         # --- Spell Duration Selection ---
         spellGroup = QGroupBox("Spell Duration Selection")
         spellLayout = QVBoxLayout()
+        spellLayout.setContentsMargins(10, 15, 10, 15)
+        spellLayout.setSpacing(8)
 
         self.spellOptions = [
             "Mean dry spell", "Mean wet spell",
             "Median dry spell", "Median wet spell",
             "SD dry spell", "SD wet spell", "Spell length correlation"
         ]
-        self.spellGroup = QButtonGroup()
 
-        for option in self.spellOptions:
+        # Create button group for spell selection
+        self.spellButtonGroup = QButtonGroup()
+
+        for i, option in enumerate(self.spellOptions):
             radio = QRadioButton(option)
-
             font = QFont()
-            font.setPointSize(14)  
+            font.setPointSize(14)
             radio.setFont(font)
-
-            self.spellGroup.addButton(radio)
+            
+            self.spellButtonGroup.addButton(radio, i)
             spellLayout.addWidget(radio)
 
-        spellGroup.setLayout(spellLayout)
-        spellGroup.setFixedHeight(300) 
+        # Set first spell option as default
+        self.spellButtonGroup.buttons()[0].setChecked(True)
 
-        stat_rows = (len(self.statsOptions) + 2)/3
+        spellGroup.setLayout(spellLayout)
+        spellGroup.setFixedHeight(300)
+
+        # Calculate how many rows the stats grid will have
+        stat_rows = (len(self.statsOptions) + 2) // 3
         statsLayout.addWidget(spellGroup, 0, 3, stat_rows, 1)
 
         # --- Threshold Inputs ---
-        thresholdLayout = QGridLayout()
+        # Create parameter groups for each statistic that needs it
+        # Each will be shown/hidden based on the selected statistic
+
+        # Main parameters container
+        paramsGroup = QGroupBox("Parameters")
+        paramsLayout = QGridLayout()
+        paramsLayout.setContentsMargins(10, 15, 10, 15)
+        paramsLayout.setSpacing(10)
+
+        # 1. Percentile parameters
+        self.percentileParams = QWidget()
+        percentileLayout = QGridLayout(self.percentileParams)
+        percentileLayout.setContentsMargins(0, 0, 0, 0)
 
         self.percentileInput = QLineEdit()
         self.percentileInput.setPlaceholderText("90")
         self.percentileInput.setText("90")
         self.percentileInput.setFixedHeight(25)
+        percentileLayout.addWidget(QLabel("Percentile value:"), 0, 0)
+        percentileLayout.addWidget(self.percentileInput, 0, 1)
+
+        # 2. SPI parameters
+        self.spiParams = QWidget()
+        spiLayout = QGridLayout(self.spiParams)
+        spiLayout.setContentsMargins(0, 0, 0, 0)
+
+        self.spiValueInput = QLineEdit()
+        self.spiValueInput.setPlaceholderText("3")
+        self.spiValueInput.setText("3")
+        self.spiValueInput.setFixedHeight(25)
+        spiLayout.addWidget(QLabel("SPI period (months):"), 0, 0)
+        spiLayout.addWidget(self.spiValueInput, 0, 1)
+
+        # 3. Peaks Over Threshold parameters
+        self.potParams = QWidget()
+        potLayout = QGridLayout(self.potParams)
+        potLayout.setContentsMargins(0, 0, 0, 0)
+
+        self.potValueInput = QLineEdit()
+        self.potValueInput.setPlaceholderText("0.1")
+        self.potValueInput.setText("0.1")
+        self.potValueInput.setFixedHeight(25)
+        potLayout.addWidget(QLabel("Threshold value:"), 0, 0)
+        potLayout.addWidget(self.potValueInput, 0, 1)
+
+        # 4. Nth Largest parameters
+        self.nthLargestParams = QWidget()
+        nthLargestLayout = QGridLayout(self.nthLargestParams)
+        nthLargestLayout.setContentsMargins(0, 0, 0, 0)
+
+        self.nthLargestInput = QLineEdit()
+        self.nthLargestInput.setPlaceholderText("1")
+        self.nthLargestInput.setText("1")
+        self.nthLargestInput.setFixedHeight(25)
+        nthLargestLayout.addWidget(QLabel("N (nth largest):"), 0, 0)
+        nthLargestLayout.addWidget(self.nthLargestInput, 0, 1)
+
+        # 5. Largest N-day total parameters
+        self.largestNDayParams = QWidget()
+        largestNDayLayout = QGridLayout(self.largestNDayParams)
+        largestNDayLayout.setContentsMargins(0, 0, 0, 0)
+
+        self.largestNDayInput = QLineEdit()
+        self.largestNDayInput.setPlaceholderText("1")
+        self.largestNDayInput.setText("1")
+        self.largestNDayInput.setFixedHeight(25)
+        largestNDayLayout.addWidget(QLabel("N (days):"), 0, 0)
+        largestNDayLayout.addWidget(self.largestNDayInput, 0, 1)
+
+        # 6. PDS Parameters
+        self.pdsParams = QWidget()
+        pdsLayout = QGridLayout(self.pdsParams)
+        pdsLayout.setContentsMargins(0, 0, 0, 0)
+
+        self.pdsThreshInput = QLineEdit()
+        self.pdsThreshInput.setPlaceholderText("0.1")
+        self.pdsThreshInput.setText("0.1")
+        self.pdsThreshInput.setFixedHeight(25)
+        pdsLayout.addWidget(QLabel("Threshold value:"), 0, 0)
+        pdsLayout.addWidget(self.pdsThreshInput, 0, 1)
+
+        # 7. Annual Percentile parameters (existing UI)
+        self.annualPercentileParams = QWidget()
+        annualPercentileLayout = QGridLayout(self.annualPercentileParams)
+        annualPercentileLayout.setContentsMargins(0, 0, 0, 0)
+
+        self.annualPercentileInput = QLineEdit()
+        self.annualPercentileInput.setPlaceholderText("90")
+        self.annualPercentileInput.setText("90")
+        self.annualPercentileInput.setFixedHeight(25)
+        annualPercentileLayout.addWidget(QLabel("%Prec > annual %ile:"), 0, 0)
+        annualPercentileLayout.addWidget(self.annualPercentileInput, 0, 1)
 
         self.precipLongTermInput = QLineEdit()
         self.precipLongTermInput.setPlaceholderText("90")
         self.precipLongTermInput.setText("90")
         self.precipLongTermInput.setFixedHeight(25)
+        annualPercentileLayout.addWidget(QLabel("% All precip from events > long-term %ile:"), 1, 0)
+        annualPercentileLayout.addWidget(self.precipLongTermInput, 1, 1)
 
         self.numEventsInput = QLineEdit()
         self.numEventsInput.setPlaceholderText("90")
         self.numEventsInput.setText("90")
         self.numEventsInput.setFixedHeight(25)
+        annualPercentileLayout.addWidget(QLabel("No. of events > long-term %ile:"), 2, 0)
+        annualPercentileLayout.addWidget(self.numEventsInput, 2, 1)
 
-        self.setupInputValidation()
+        # Add all parameter widgets to the params layout
+        # Initially only show the default one (Sum has no parameters)
+        paramsLayout.addWidget(self.percentileParams, 0, 0)
+        paramsLayout.addWidget(self.spiParams, 1, 0)
+        paramsLayout.addWidget(self.potParams, 2, 0)
+        paramsLayout.addWidget(self.nthLargestParams, 3, 0)
+        paramsLayout.addWidget(self.largestNDayParams, 4, 0)
+        paramsLayout.addWidget(self.pdsParams, 5, 0)
+        paramsLayout.addWidget(self.annualPercentileParams, 6, 0)
 
-        thresholdLayout.addWidget(QLabel("%Prec > annual %ile:"), 0, 0)
-        thresholdLayout.addWidget(self.percentileInput, 0, 1)
+        # Hide all parameter sets initially
+        self.percentileParams.hide()
+        self.spiParams.hide()
+        self.potParams.hide()
+        self.nthLargestParams.hide()
+        self.largestNDayParams.hide()
+        self.pdsParams.hide()
+        self.annualPercentileParams.hide()
 
-        thresholdLayout.addWidget(QLabel("% All precip from events > long-term %ile:"), 1, 0)
-        thresholdLayout.addWidget(self.precipLongTermInput, 1, 1)
-
-        thresholdLayout.addWidget(QLabel("No. of events > long-term %ile:"), 2, 0)
-        thresholdLayout.addWidget(self.numEventsInput, 2, 1)
-
-        statsLayout.addLayout(thresholdLayout, stat_rows, 0, 3, 3)
+        paramsGroup.setLayout(paramsLayout)
+        statsLayout.addWidget(paramsGroup, stat_rows, 0, 3, 3)
 
         statsGroup.setLayout(statsLayout)
         mainLayout.addWidget(statsGroup)
 
+        # Call setup validation function (need to modify this function)
+        self.setupInputValidation()
+
         # --- Action Buttons ---
-        #buttonLayout = QHBoxLayout()
         BottomButtonLayout = QHBoxLayout()
 
         self.generateButton = QPushButton("🚀 Generate")
@@ -464,11 +571,43 @@ class ContentWidget(QWidget):
 
         mainLayout.addLayout(BottomButtonLayout)
 
-
         # Add progress bar
         self.progress_bar = QProgressBar()
         self.progress_bar.setVisible(False)
         mainLayout.addWidget(self.progress_bar)
+
+
+    def onStatOptionChanged(self, button):
+        """Handler for when a statistic option is changed"""
+        # Hide all parameter sets first
+        self.percentileParams.hide()
+        self.spiParams.hide()
+        self.potParams.hide()
+        self.nthLargestParams.hide()
+        self.largestNDayParams.hide()
+        self.pdsParams.hide()
+        self.annualPercentileParams.hide()
+        
+        # Show parameters based on which statistic is selected
+        selected_id = self.statsButtonGroup.id(button)
+        
+        if selected_id == 3:  # Winter/Summer ratio
+            # Set period to Annual
+            self.DatesCombo.setCurrentIndex(17)
+        elif selected_id == 8:  # Partial Duration Series
+            self.pdsParams.show()
+        elif selected_id == 9:  # Percentile
+            self.percentileParams.show()
+        elif selected_id == 10:  # Standard Precipitation Index
+            self.spiParams.show()
+        elif selected_id == 11:  # Peaks Over Threshold
+            self.potParams.show()
+        elif selected_id == 12:  # Nth largest
+            self.nthLargestParams.show()
+        elif selected_id == 13:  # Largest N-day total
+            self.largestNDayParams.show()
+        elif selected_id == 14:  # %Prec > annual %ile
+            self.annualPercentileParams.show()
 
     def CreateFileSelectionGroup(self, title):
         """
@@ -697,6 +836,30 @@ class ContentWidget(QWidget):
         self.percentileInput.textChanged.connect(self.onPercentileChanged)
         self.percentileInput.editingFinished.connect(self.onPercentileEditFinished)
         
+        # SPI value input
+        self.spiValueInput.textChanged.connect(self.onSPIValueChanged)
+        self.spiValueInput.editingFinished.connect(self.onSPIValueEditFinished)
+        
+        # POT value input
+        self.potValueInput.textChanged.connect(self.onPOTValueChanged)
+        self.potValueInput.editingFinished.connect(self.onPOTValueEditFinished)
+        
+        # Nth largest input
+        self.nthLargestInput.textChanged.connect(self.onNthLargestChanged)
+        self.nthLargestInput.editingFinished.connect(self.onNthLargestEditFinished)
+        
+        # Largest N-day input
+        self.largestNDayInput.textChanged.connect(self.onLargestNDayChanged)
+        self.largestNDayInput.editingFinished.connect(self.onLargestNDayEditFinished)
+        
+        # PDS threshold input
+        self.pdsThreshInput.textChanged.connect(self.onPDSThreshChanged)
+        self.pdsThreshInput.editingFinished.connect(self.onPDSThreshEditFinished)
+        
+        # Annual percentile input
+        self.annualPercentileInput.textChanged.connect(self.onAnnualPercentileChanged)
+        self.annualPercentileInput.editingFinished.connect(self.onAnnualPercentileEditFinished)
+        
         # Long-term precipitation percentile input
         self.precipLongTermInput.textChanged.connect(self.onPrecipLongTermChanged)
         self.precipLongTermInput.editingFinished.connect(self.onPrecipLongTermEditFinished)
@@ -711,7 +874,6 @@ class ContentWidget(QWidget):
         
         self.endDateInput.textChanged.connect(self.onEndDateChanged)
         self.endDateInput.editingFinished.connect(self.onEndDateEditFinished)
-
 
     def onPercentileChanged(self):
         """Handler for when percentile input text changes"""

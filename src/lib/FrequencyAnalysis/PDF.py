@@ -2,7 +2,6 @@ import os
 import math
 import matplotlib.pyplot as plt
 from datetime import date
-import numpy as np
 from typing import Optional, Callable, List, Tuple
 from src.lib.FrequencyAnalysis.frequency_analysis_functions import (
     fsDateOk, feDateOk, ensembleNumberOK,
@@ -31,7 +30,7 @@ def pdfPlot(
     """
     Generate a PDF plot comparing observed and modelled data.
     """
-    # Validate and clamp dates using fixed global start date
+    # --- Date validation ---
     fsOk, corrFs, _ = fsDateOk(global_start_date, fsDate, global_start_date)
     if not fsOk:
         corrFs = global_start_date
@@ -42,7 +41,7 @@ def pdfPlot(
         print(f"[warning] feDate {feDate} invalid; using {corrFe}")
     fsDate, feDate = corrFs, corrFe
 
-    # Validate ensemble selection
+    # --- Ensemble validation ---
     isMember = (ensembleOption == 'member')
     validEns, _, updWanted = ensembleNumberOK(
         isMember,
@@ -54,225 +53,155 @@ def pdfPlot(
     if isMember:
         ensembleWanted = int(updWanted)
 
-    # Check files
-    obsExists = observedFile and os.path.exists(observedFile)
-    modExists = modelledFile and os.path.exists(modelledFile)
+    # --- File setup ---
+    obsExists = bool(observedFile and os.path.exists(observedFile))
+    modExists = bool(modelledFile and os.path.exists(modelledFile))
     if not obsExists and not modExists:
         raise ValueError("At least one data file must be provided.")
-    obsLabel = os.path.basename(observedFile) if obsExists else ""
-    modLabel = os.path.basename(modelledFile) if modExists else ""
+    obsLabel = os.path.basename(observedFile) if obsExists else None
+    modLabel = os.path.basename(modelledFile) if modExists else None
 
     fObs = open(observedFile, 'r') if obsExists else None
     fMod = open(modelledFile, 'r') if modExists else None
 
-    # Determine ensemble structure
+    # Determine ensemble count
     noEnsembles = 1
     ensemblePresent = False
     if fMod:
-        header = fMod.readline().rstrip("\n")
-        if len(header) > 15:
+        first_line = fMod.readline().rstrip("\n")
+        if len(first_line) > 15:
             ensemblePresent = True
-            noEnsembles = len(header) // 14
+            noEnsembles = len(first_line) // 14
         fMod.seek(0)
 
-    # Skip up to fsDate in observed file
-    if fObs:
-        skip_days = (fsDate - global_start_date).days
-        for _ in range(skip_days):
-            if exitAnalyses(): return
-            if not fObs.readline():
-                raise ValueError(f"Reached EOF in observed file before {fsDate}")
+    # Skip to fsDate in files
+    for fh in (fObs, fMod):
+        if fh:
+            skip_days = (fsDate - global_start_date).days
+            for _ in range(skip_days):
+                if exitAnalyses(): return
+                if not fh.readline():
+                    raise ValueError(f"Reached EOF before {fsDate}")
 
-    # Skip up to fsDate in modelled file (daily increment assumed)
-    if fMod:
-        skip_days = (fsDate - global_start_date).days
-        for _ in range(skip_days):
-            if exitAnalyses(): return
-            if not fMod.readline():
-                raise ValueError(f"Reached EOF in modelled file before {fsDate}")
-
-    # Read data
+    # Read and filter data
     observedData: List[float] = []
     modelledData: List[List[float]] = [[] for _ in range(noEnsembles)]
-    rdY, rdM, rdD = fsDate.year, fsDate.month, fsDate.day
-    obsSeason = getSeason(rdM)
+
+    obs_d, obs_m, obs_y = fsDate.day, fsDate.month, fsDate.year
+    mod_d, mod_m, mod_y = obs_d, obs_m, obs_y
+    obsSeason = getSeason(obs_m)
     modSeason = obsSeason
     length, leap = 1, 1
 
     while True:
-        current = dateSerial(rdY, rdM, rdD)
-        if current > feDate:
+        current_obs = dateSerial(obs_y, obs_m, obs_d)
+        if current_obs > feDate or exitAnalyses():
             break
-        if exitAnalyses():
-            return
 
-        # Read observed
-        valObs = math.nan
-        if fObs:
-            txt = fObs.readline().strip()
-            try:
-                valObs = float(txt)
-                if valObs == missingCode:
-                    valObs = math.nan
-            except ValueError:
-                valObs = math.nan
-
-        # Read modelled
-        valsMod: List[float] = []
+        # Read one day value(s)
+        valObs = (lambda txt: float(txt) if txt and float(txt)!=missingCode else math.nan)(fObs.readline().strip()) if fObs else math.nan
+        valsMod = []
         if fMod:
             if ensemblePresent:
                 line = fMod.readline().rstrip("\n")
                 for i in range(noEnsembles):
-                    seg = line[i*14:(i+1)*14].strip()
-                    try:
-                        v = float(seg) if seg else math.nan
-                        if v == missingCode:
-                            v = math.nan
-                    except ValueError:
-                        v = math.nan
-                    valsMod.append(v)
+                    part = line[i*14:(i+1)*14].strip()
+                    valsMod.append(float(part) if part and float(part)!=missingCode else math.nan)
             else:
                 txtm = fMod.readline().strip()
-                try:
-                    v = float(txtm)
-                    if v == missingCode:
-                        v = math.nan
-                except ValueError:
-                    v = math.nan
-                valsMod = [v]
+                valsMod = [float(txtm) if txtm and float(txtm)!=missingCode else math.nan]
 
-                # 1) Skip days outside the desired period
-        if not doWeWantThisDatum(dataPeriod, rdM):
-            rdD, rdM, rdY, obsSeason = increaseObsDate(rdD, rdM, rdY, obsSeason)
+        # Skip outside period
+        if not doWeWantThisDatum(dataPeriod, obs_m):
+            obs_d, obs_m, obs_y, obsSeason = increaseObsDate(obs_d, obs_m, obs_y, obsSeason)
             if fMod:
-                rdD, rdM, rdY, modSeason, length, leap = increaseDate(
-                    rdD, rdM, rdY, modSeason, length, leap
-                )
+                mod_d, mod_m, mod_y, modSeason, length, leap = increaseDate(mod_d, mod_m, mod_y, modSeason, length, leap)
             continue
 
-        # 2) Append observed if it passes missing‐code and threshold
-        if fObs and not math.isnan(valObs) and (
-           not applyThreshold or valObs >= threshold
-        ):
+        # Append valid
+        if fObs and not math.isnan(valObs) and (not applyThreshold or valObs>=threshold):
             observedData.append(valObs)
-
-        # 3) Append each modelled ensemble value independently
         if fMod:
-            if ensemblePresent:
-                for idx, vv in enumerate(valsMod):
-                    if not math.isnan(vv) and (
-                       not applyThreshold or vv >= threshold
-                    ):
-                        modelledData[idx].append(vv)
-            else:
-                vv = valsMod[0]
-                if not math.isnan(vv) and (
-                   not applyThreshold or vv >= threshold
-                ):
-                    modelledData[0].append(vv)
+            for idx, v in enumerate(valsMod):
+                if not math.isnan(v) and (not applyThreshold or v>=threshold):
+                    modelledData[idx].append(v)
 
-        # 4) Advance both date counters
-        rdD, rdM, rdY, obsSeason = increaseObsDate(rdD, rdM, rdY, obsSeason)
+        # Advance one day each
+        obs_d, obs_m, obs_y, obsSeason = increaseObsDate(obs_d, obs_m, obs_y, obsSeason)
         if fMod:
-            rdD, rdM, rdY, modSeason, length, leap = increaseDate(
-                rdD, rdM, rdY, modSeason, length, leap
-            )
+            mod_d, mod_m, mod_y, modSeason, length, leap = increaseDate(mod_d, mod_m, mod_y, modSeason, length, leap)
 
+    # Close files
+    for fh in (fObs, fMod):
+        if fh: fh.close()
 
-    # Close
-    if fObs:
-        fObs.close()
+    # Debug counts
+    print(f"Loaded {len(observedData)} observed records")
     if fMod:
-        fMod.close()
+        print(f"Loaded {len(modelledData[0])} modelled records")
 
-    # Check and warn
-    if fObs and len(observedData) < minDataPoints:
-        print(f"[warning] only {len(observedData)} observed records; proceeding")
-    if fMod:
-        for i, ser in enumerate(modelledData, start=1):
-            if len(ser) < minDataPoints:
-                print(f"[warning] only {len(ser)} records for ensemble {i}; proceeding")
-
-    # 1) Determine the exact lo/hi that VB would use
-    if fMod:
-        if ensembleOption == 'ensembleMember':
-            dataToRange = observedData + modelledData[ensembleWanted-1]
-        else:
-            dataToRange = observedData.copy()
-            for vals in modelledData:
-                dataToRange.extend(vals)
-    else:
-        dataToRange = observedData.copy()
+    # Combine for range
+    dataToRange = observedData.copy()
+    if fMod and ensembleOption!='member':
+        for series in modelledData:
+            dataToRange.extend(series)
+    elif fMod and ensembleOption=='member':
+        dataToRange.extend(modelledData[ensembleWanted-1])
 
     if not dataToRange:
         print("[error] No data to plot.")
         return
 
-    lo = min(dataToRange)
-    hi = max(dataToRange)
-    # handle the degenerate single-value case
-    if hi == lo:
-        width = 1e-6
-    else:
-        width = (hi - lo) / numPdfCategories
+    lo, hi = min(dataToRange), max(dataToRange)
+    width = (hi-lo)/numPdfCategories if hi!=lo else 1e-6
+    binEdges = [lo + i*width for i in range(numPdfCategories+1)]
+    xValues = binEdges[:-1]
 
-    # 2) Build VB-style bin lower-edges
-    binEdges = [lo + i * width for i in range(numPdfCategories + 1)]
-    xValues  = binEdges[:-1]   # VB plots at each CatMin
+    print("Bin edges (xValues):", xValues)
 
-    # 3) Count & normalise to get densities
-    #    (VB shows count/total → "standardised density")
-    obsCounts = [0] * numPdfCategories
-    for v in observedData:
-        idx = min(int((v - lo) / width), numPdfCategories - 1)
-        obsCounts[idx] += 1
-    obsDensity = [c / len(observedData) for c in obsCounts]
+    # Count & standardise per series
+    def compute_density(data_series):
+        counts = [0]*numPdfCategories
+        for v in data_series:
+            if lo <= v < hi:
+                counts[int((v-lo)/width)] += 1
+        maxc = max(counts) if counts else 1
+        return [c / maxc for c in counts]
 
-    modDensity = []
+    obsDensity = compute_density(observedData)
+    modDensities = [compute_density(series) for series in modelledData] if fMod else []
+
+    # ▶ DEBUG: display densities in terminal
+    print("Observed densities:", obsDensity)
     if fMod:
-        # count per ensemble
-        modCounts = [[0]*numPdfCategories for _ in range(noEnsembles)]
-        for ei, vals in enumerate(modelledData):
-            for v in vals:
-                idx = min(int((v - lo) / width), numPdfCategories - 1)
-                modCounts[ei][idx] += 1
-        # normalise
-        modDensity = [
-            [c / len(modelledData[ei]) for c in modCounts[ei]]
-            for ei in range(noEnsembles)
-        ]
+        for idx, dens in enumerate(modDensities, start=1):
+            print(f"Ensemble {idx} densities:", dens)
 
-    # 4) Build your series list
-    series = []
-    if fObs:
-        series.append((obsLabel, obsDensity))
-
+    # 4) Build legend series
+    series = [(obsLabel, obsDensity)] if fObs else []
     if fMod:
-        if ensembleOption == 'ensembleMember':
-            series.append(
-                (f"{modLabel} Ensemble {ensembleWanted}",
-                modDensity[ensembleWanted-1])
-            )
-        elif ensembleOption == 'ensembleMean':
-            meanVals = [sum(bin_) / noEnsembles for bin_ in zip(*modDensity)]
-            series.append((f"{modLabel} Mean", meanVals))
-        elif ensembleOption == 'allMembers':
-            for i, vals in enumerate(modDensity, start=1):
-                series.append((f"{modLabel} Ensemble {i}", vals))
+        if ensembleOption == 'member':
+            series.append((f"{modLabel} Ensemble {ensembleWanted}", modDensities[ensembleWanted-1]))
+        elif ensembleOption in ('all', 'allMembers'):
+            for i, dens in enumerate(modDensities, start=1):
+                series.append((f"{modLabel} Ensemble {i}", dens))
+        elif ensembleOption == 'mean':
+            mean_vals = [sum(vals[i] for vals in modDensities)/len(modDensities) for i in range(numPdfCategories)]
+            series.append((f"{modLabel} Mean", mean_vals))
         elif ensembleOption == 'allPlusMean':
-            for i, vals in enumerate(modDensity, start=1):
-                series.append((f"{modLabel} Ensemble {i}", vals))
-            meanVals = [sum(bin_) / noEnsembles for bin_ in zip(*modDensity)]
-            series.append((f"{modLabel} Mean", meanVals))
+            for i, dens in enumerate(modDensities, start=1):
+                series.append((f"{modLabel} Ensemble {i}", dens))
+            mean_vals = [sum(vals[i] for vals in modDensities)/len(modDensities) for i in range(numPdfCategories)]
+            series.append((f"{modLabel} Mean", mean_vals))
 
-    # 5) Plot VB-style line-PDF
+    print(applyThreshold, threshold)
+
+    # Plot
     plt.figure()
-    for label, yVals in series:
-        plt.plot(xValues, yVals, label=label, linewidth=1.5)
-        print(f"{yVals}")
-
-    plt.xlabel("Value")
-    plt.ylabel("Standardised Density")
-    plt.legend(loc="best")
+    for label, y in series:
+        plt.plot(xValues, y, label=label, linewidth=1.5)
+    plt.xlabel('Value')
+    plt.ylabel('Standardised Density')
+    plt.legend(loc='best')
     plt.tight_layout()
     plt.show()

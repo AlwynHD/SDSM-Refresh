@@ -9,8 +9,6 @@ from src.lib.FrequencyAnalysis.frequency_analysis_functions import (
     doWeWantThisDatum, dateSerial, getSeason
 )
 
-# Fix the global start date to Jan 1, 1948
-global_start_date = date(1948, 1, 1)
 minDataPoints = 100  # Minimum entries required per series for PDF
 
 def pdfPlot(
@@ -18,6 +16,7 @@ def pdfPlot(
     modelledFile: Optional[str],
     fsDate: date,
     feDate: date,
+    global_start_date: date,
     ensembleOption: str,        # 'all', 'mean', 'member', 'allPlusMean'
     ensembleWanted: Optional[int],
     numPdfCategories: int,

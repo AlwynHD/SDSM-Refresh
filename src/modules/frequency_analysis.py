@@ -424,6 +424,7 @@ class ContentWidget(QWidget):
             modelledFile      = modPath,
             fsDate            = fsDate,
             feDate            = feDate,
+            globalStartDate   = globalSDate,
             ensembleOption    = ensembleMode,
             ensembleWanted    = ensembleIndex,
             numPdfCategories  = numPdfCategories,

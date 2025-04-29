@@ -121,13 +121,24 @@ def qqPlot(
         for i in range(ens_count)
     ]
 
+    # --- DEBUG: dump quantile arrays ---
+    print(f"\nQQ-Plot Debug: {len(obs_q)} observed quantiles (1–99%):")
+    print(obs_q)
+    for idx, qlist in enumerate(ensemble_q, start=1):
+        print(f"QQ-Plot Debug: Ensemble #{idx} quantiles:")
+        print(qlist)
+
+    if ensembleMode in ('ensembleMean', 'allPlusMean'):
+        mean_q = [sum(ensemble_q[j][i] for j in range(ens_count)) / ens_count for i in range(99)]
+        print("QQ-Plot Debug: Ensemble MEAN quantiles:")
+        print(mean_q)
+
     # 10) Scatter according to ensembleMode
     plt.figure()
     if ensembleMode == 'allMembers':
         for q in ensemble_q:
             plt.scatter(q, obs_q, s=10, c='k')
     elif ensembleMode == 'ensembleMean':
-        mean_q = [sum(ensemble_q[j][i] for j in range(ens_count))/ens_count for i in range(99)]
         plt.scatter(mean_q, obs_q, s=10, c='k')
     elif ensembleMode == 'ensembleMember':
         if ensembleIndex is None or ensembleIndex < 1 or ensembleIndex > ens_count:
@@ -136,7 +147,6 @@ def qqPlot(
     else:  # allPlusMean
         for q in ensemble_q:
             plt.scatter(q, obs_q, s=10, c='k')
-        mean_q = [sum(ensemble_q[j][i] for j in range(ens_count))/ens_count for i in range(99)]
         plt.scatter(mean_q, obs_q, s=10, c='k')
 
     # 11) 1:1 line

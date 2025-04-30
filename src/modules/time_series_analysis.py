@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import QUrl
 from PyQt5.QtGui import QDesktopServices
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QEvent
 from PyQt5.QtGui import QFont
 import os
 import csv
@@ -17,6 +17,7 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 import matplotlib.pyplot as plt
 import numpy as np
+import traceback
 
 # Chapter 1 for me
 """
@@ -45,6 +46,10 @@ class ContentWidget(QWidget):
         self.global_start_date = "01/01/1948"
         self.global_end_date = "31/12/2017"
         self.global_n_days = "25567"
+
+        # Initialize FSDate and FEdate with global defaults
+        self.FSDate = self.global_start_date
+        self.FEdate = self.global_end_date
 
         # Define missing value code
         self.global_missing_code = -999.0
@@ -319,7 +324,7 @@ class ContentWidget(QWidget):
         saveButtonsLayout.addWidget(self.selectSaveButton)
         saveButtonsLayout.addWidget(self.clearSaveButton)
 
-        self.saveFileLabel = QLabel("File: *.CSV")
+        self.saveFileLabel = QLabel("File: *.dat")
         self.saveFileLabel.setStyleSheet("border: 1px solid gray; padding: 5px;")
 
         saveLayout.addLayout(saveButtonsLayout)
@@ -354,7 +359,9 @@ class ContentWidget(QWidget):
             "Dry day persistence", "Wet day persistence",
             "Partial Duration Series", "Percentile",
             "Standard Precipitation Index", "Peaks Over Threshold",
-            "Nth largest", "Largest N-day total"
+            "Nth largest", "Largest N-day total", "Mean dry spell", "Mean wet spell",
+            "Median dry spell", "Median wet spell",
+            "SD dry spell", "SD wet spell", "Spell length correlation"
         ]
 
         # Create radio buttons instead of checkboxes
@@ -369,7 +376,14 @@ class ContentWidget(QWidget):
             self.statsButtonGroup.addButton(radio, i)
             
             # Add to layout - 3 columns
-            statsLayout.addWidget(radio, i // 3, i % 3)
+            # For first 14 options, use a 3-column layout
+            if i < 14:
+                statsLayout.addWidget(radio, i // 3, i % 3)
+            # For spell duration options, add to a 4th column
+            else:
+                spell_idx = i - 14
+                statsLayout.addWidget(radio, spell_idx, 3)
+            
             self.statRadioButtons.append(radio)
 
         # Set first option (Sum) as default
@@ -377,40 +391,6 @@ class ContentWidget(QWidget):
 
         # Connect selection changed signal
         self.statsButtonGroup.buttonClicked.connect(self.onStatOptionChanged)
-
-        # --- Spell Duration Selection ---
-        spellGroup = QGroupBox("Spell Duration Selection")
-        spellLayout = QVBoxLayout()
-        spellLayout.setContentsMargins(10, 15, 10, 15)
-        spellLayout.setSpacing(8)
-
-        self.spellOptions = [
-            "Mean dry spell", "Mean wet spell",
-            "Median dry spell", "Median wet spell",
-            "SD dry spell", "SD wet spell", "Spell length correlation"
-        ]
-
-        # Create button group for spell selection
-        self.spellButtonGroup = QButtonGroup()
-
-        for i, option in enumerate(self.spellOptions):
-            radio = QRadioButton(option)
-            font = QFont()
-            font.setPointSize(14)
-            radio.setFont(font)
-            
-            self.spellButtonGroup.addButton(radio, i)
-            spellLayout.addWidget(radio)
-
-        # Set first spell option as default
-        self.spellButtonGroup.buttons()[0].setChecked(True)
-
-        spellGroup.setLayout(spellLayout)
-        spellGroup.setFixedHeight(300)
-
-        # Calculate how many rows the stats grid will have
-        stat_rows = (len(self.statsOptions) + 2) // 3
-        statsLayout.addWidget(spellGroup, 0, 3, stat_rows, 1)
 
         # --- Threshold Inputs ---
         # Create parameter groups for each statistic that needs it
@@ -538,9 +518,6 @@ class ContentWidget(QWidget):
         self.largestNDayParams.hide()
         self.pdsParams.hide()
         self.annualPercentileParams.hide()
-
-        paramsGroup.setLayout(paramsLayout)
-        statsLayout.addWidget(paramsGroup, stat_rows, 0, 3, 3)
 
         statsGroup.setLayout(statsLayout)
         mainLayout.addWidget(statsGroup)
@@ -681,9 +658,12 @@ class ContentWidget(QWidget):
         return group
     
     def openFileExplorer(self, file_list, section_name):
-        """Opens file explorer dialog to select multiple CSV files"""
+        """Opens file explorer dialog to select multiple dat files"""
+        # Use current directory as starting point or a more suitable location
+        start_dir = os.path.dirname(os.path.abspath(__file__))
+        
         files, _ = QFileDialog.getOpenFileNames(
-            self, f"Select CSV Files for {section_name}", "", "CSV Files (*.csv)"
+            self, f"Select DAT Files for {section_name}", start_dir, "DAT Files (*.dat)"
         )
         
         if files:
@@ -699,20 +679,28 @@ class ContentWidget(QWidget):
 
     def updateFileCount(self, file_list, section_name):
         """Update the count of selected files"""
-        selected_count = len(file_list.selectedItems())
-        
-        if section_name == "North":
-            self.northCountLabel.setText(f"Selected: {selected_count}")
-            self.left_files_count = selected_count
-        else:  # South
-            self.southCountLabel.setText(f"Selected: {selected_count}")
-            self.right_files_count = selected_count
-        
-        self.total_time_series_files = self.left_files_count + self.right_files_count
-        
-        if self.total_time_series_files > 5:
-            QMessageBox.warning(self, "Warning Message", 
+        try:
+            # Count selected items
+            selected_count = len(file_list.selectedItems())
+            
+            # Update appropriate label and counter based on which file list this is
+            if section_name == "North":
+                self.northCountLabel.setText(f"Selected: {selected_count}")
+                self.left_files_count = selected_count
+            else:  # South
+                self.southCountLabel.setText(f"Selected: {selected_count}")
+                self.right_files_count = selected_count
+            
+            # Update total file count
+            self.total_time_series_files = self.left_files_count + self.right_files_count
+            
+            # Check if too many files selected
+            if self.total_time_series_files > 5:
+                QMessageBox.warning(self, "Warning Message", 
                             "You can only plot up to five files. You will have to deselect at least one file.")
+                
+        except Exception as e:
+            print(f"Error updating file count: {str(e)}")
 
     def onDriveChanged(self, drive, file_list, dir_list):
         """Handle drive selection change"""
@@ -762,12 +750,13 @@ class ContentWidget(QWidget):
                 print(f"Error accessing directories in {new_path}: {str(e)}")
                 return
             
-            # Clear and update file list - only show CSV files
+            # Clear and update file list - only show DAT files
             file_list.clear()
             try:
                 files = [f for f in os.listdir(new_path) 
-                        if os.path.isfile(os.path.join(new_path, f)) and f.lower().endswith('.csv')]
+                        if os.path.isfile(os.path.join(new_path, f)) and f.lower().endswith('.dat')]
                 file_list.addItems(files)
+                print(f"Found {len(files)} DAT files in {new_path}")
             except Exception as e:
                 print(f"Error accessing files in {new_path}: {str(e)}")
                 return
@@ -781,37 +770,6 @@ class ContentWidget(QWidget):
         except Exception as e:
             print(f"Error changing directory: {str(e)}")
 
-    def updateFileCount(self, file_list, title):
-        """Update the count of selected files"""
-        try:
-            # Get parent group box
-            group_box = file_list.parent()
-            if not group_box:
-                return
-                
-            # Count selected items
-            selected_count = len(file_list.selectedItems())
-            
-            # Update the count label
-            group_box.count_label.setText(f"Selected: {selected_count}")
-            
-            # Update appropriate counter based on which file list this is
-            if "North" in title:
-                self.left_files_count = selected_count
-            else:
-                self.right_files_count = selected_count
-                
-            # Update total file count
-            self.total_time_series_files = self.left_files_count + self.right_files_count
-            
-            # Check if too many files selected
-            if self.total_time_series_files > 5:
-                QMessageBox.warning(self, "Warning Message", 
-                                "You can only plot up to five files. You will have to deselect at least one file.")
-                
-        except Exception as e:
-            print(f"Error updating file count: {str(e)}")
-
     def SelectSaveFile(self):
         file_name, _ = QFileDialog.getSaveFileName(self, "Save To File", filter="CSV Files (*.csv)")
         if file_name:
@@ -821,14 +779,6 @@ class ContentWidget(QWidget):
         self.saveFileLabel.setText("File: *.CSV")
 
     # Main functions
-
-    def onStatOptionChanged(self, state, idx):
-        """Handler for when a statistic checkbox is changed"""
-        self.StatOptions[idx] = (state == Qt.Checked)
-        
-        # Special handling for Winter/Summer ratio
-        if idx == 6 and state == Qt.Checked:  # Winter/summer ratio selected
-            self.DatesCombo.setCurrentIndex(17)
 
     def setupInputValidation(self):
         """Connect validation handlers to input fields"""
@@ -1060,6 +1010,7 @@ class ContentWidget(QWidget):
         except ValueError:
             return False
 
+    
     def PlotData(self):
         try:
             # Initialize variables
@@ -1068,6 +1019,12 @@ class ContentWidget(QWidget):
             
             # Set focus to save button to ensure all values are updated
             self.selectSaveButton.setFocus()
+            
+            # Get selected statistic
+            stat_info = self.getSelectedStatistic()
+            if stat_info is None:
+                QMessageBox.critical(self, "Error Message", "You must select a statistic.")
+                return
             
             # Check if user has made correct selections
             if self.total_time_series_files < 1:
@@ -1088,14 +1045,14 @@ class ContentWidget(QWidget):
                                 "Fit end date must be earlier than record end date. Check program settings.")
                 self.endDateInput.setText(self.global_end_date)
                 return
-            elif (self.statCheckboxes[6].isChecked() and self.DatesCombo.currentIndex() != 17):
+            elif (stat_info["id"] == 3 and self.DatesCombo.currentIndex() != 17):  # Winter/Summer ratio
                 QMessageBox.critical(self, "Error Message", 
                                 "You can only calculate Winter/Summer ratios with annual data. Please try again.")
                 return
             elif ((datetime.strptime(self.FEdate, "%d/%m/%Y").year - 
                 datetime.strptime(self.FSDate, "%d/%m/%Y").year > 10) and 
                 (self.DatesCombo.currentIndex() == 0) and 
-                (not self.statCheckboxes[4].isChecked())):
+                (stat_info["id"] != 10)):  # Not SPI
                 QMessageBox.critical(self, "Error Message", 
                                 "Maximum number of years you can plot as raw data is 10. Please try again.")
                 return
@@ -1104,7 +1061,7 @@ class ContentWidget(QWidget):
                 QMessageBox.critical(self, "Error Message", 
                                 "Maximum number of years you can work with is 150. Please try again.")
                 return
-            elif ((self.statCheckboxes[14].isChecked()) and (self.DatesCombo.currentIndex() > 16)):
+            elif (stat_info["id"] == 14 and self.DatesCombo.currentIndex() > 16):  # %Prec > annual %ile
                 QMessageBox.critical(self, "Error Message", 
                                 "You can only calculate Percentage Precipitation>Annual Percentile for monthly or seasonal data. Please try again.")
                 return
@@ -1135,7 +1092,7 @@ class ContentWidget(QWidget):
                 # Open files and check if they're ensemble files
                 file_no = 2  # File number 1 reserved for save file
                 
-                # Check left file list
+                # Check North file list
                 for i in range(self.northFileList.count()):
                     item = self.northFileList.item(i)
                     if item.isSelected():
@@ -1159,7 +1116,7 @@ class ContentWidget(QWidget):
                             self.Mini_Reset()
                             return
                 
-                # Check right file list
+                # Check South file list
                 for i in range(self.southFileList.count()):
                     item = self.southFileList.item(i)
                     if item.isSelected():
@@ -1190,20 +1147,36 @@ class ContentWidget(QWidget):
                                     "Only the first column will be plotted.\n\n" +
                                     "Note - you can extract individual members using the Transform Screen.")
                 
-                # Process data based on selected statistics
-                if self.statCheckboxes[4].isChecked():
-                    # SPI option chosen - ignores DatesCombo
+                # Process data based on selected statistic
+                if stat_info["id"] == 10:  # SPI
+                    # Update SPI value from input field
+                    self.spi_value = int(self.spiValueInput.text())
                     ok_to_plot = self.GenerateSPI()
                 elif self.DatesCombo.currentIndex() == 0:
                     # Raw data selected
                     ok_to_plot = self.RawData()
-                elif self.statCheckboxes[14].isChecked():
-                    # % precipitation > annual maximum
+                elif stat_info["id"] == 14:  # %Precip > annual %ile
+                    # Update annual percentile from input field
+                    self.annual_percentile = int(self.annualPercentileInput.text())
                     ok_to_plot = self.GeneratePrecipAnnualMax()
-                elif self.statCheckboxes[22].isChecked() or self.statCheckboxes[23].isChecked():
-                    # pfl90 or pnl90 statistics
+                elif stat_info["id"] == 15 or stat_info["id"] == 16:  # pfl90 or pnl90
+                    # Update percentiles from input fields
+                    self.pfl90_percentile = float(self.precipLongTermInput.text())
+                    self.pnl90_percentile = float(self.numEventsInput.text())
                     ok_to_plot = self.LongTermStats()
                 else:
+                    # Update parameters based on selected statistic
+                    if stat_info["id"] == 8:  # PDS
+                        self.local_thresh = float(self.pdsThreshInput.text())
+                    elif stat_info["id"] == 9:  # Percentile
+                        self.percentile = int(self.percentileInput.text())
+                    elif stat_info["id"] == 11:  # POT
+                        self.pot_value = float(self.potValueInput.text())
+                    elif stat_info["id"] == 12:  # Nth largest
+                        self.nth_largest = int(self.nthLargestInput.text())
+                    elif stat_info["id"] == 13:  # Largest N-day total
+                        self.largest_n_day = int(self.largestNDayInput.text())
+                    
                     # Other statistics
                     ok_to_plot = self.GenerateData()
                 
@@ -1216,7 +1189,7 @@ class ContentWidget(QWidget):
                     
                     # Save results if requested
                     if (self.save_root and 
-                        (self.statCheckboxes[4].isChecked() or self.DatesCombo.currentIndex() != 0)):
+                        (stat_info["id"] == 10 or self.DatesCombo.currentIndex() != 0)):  # SPI or not raw data
                         self.SaveResults(series_data_first_value)
                 else:
                     # Error occurred during data processing
@@ -1239,7 +1212,48 @@ class ContentWidget(QWidget):
         
         except Exception as e:
             print(f"Error in PlotData: {str(e)}")
+            traceback.print_exc()  # Print full traceback for debugging
             self.Mini_Reset()
+
+    def getSelectedStatistic(self):
+        """Returns information about the selected statistic"""
+        selected_id = self.statsButtonGroup.checkedId()
+        if selected_id == -1:
+            return None
+        
+        stat_info = {
+            "id": selected_id,
+            "name": self.statsOptions[selected_id]
+        }
+        
+        # Map to the old checkbox indexes for compatibility with existing chart functions
+        # This helps during transition to the new system
+        stat_map = stat_map = {
+            0: 0,   # Sum
+            1: 1,   # Mean
+            2: 2,   # Maximum
+            3: 6,   # Winter/Summer ratio
+            4: 10,  # Maximum dry spell
+            5: 11,  # Maximum wet spell
+            6: 19,  # Dry day persistence
+            7: 20,  # Wet day persistence
+            8: 5,   # Partial Duration Series
+            9: 3,   # Percentile
+            10: 4,  # Standard Precipitation Index
+            11: 7,  # Peaks Over Threshold
+            12: 8,  # Nth largest
+            13: 9,  # Largest N-day total
+            14: 12, # Mean dry spell
+            15: 13, # Mean wet spell
+            16: 15, # Median dry spell
+            17: 16, # Median wet spell
+            18: 17, # SD dry spell
+            19: 18, # SD wet spell
+            20: 21  # Spell length correlation
+        }
+        
+        stat_info["old_id"] = stat_map.get(selected_id, -1)
+        return stat_info
 
     def close_open_files(self):
         """Close any open file handles"""
@@ -1276,6 +1290,11 @@ class ContentWidget(QWidget):
     def create_and_show_chart(self):
         """Creates and displays the time series chart using matplotlib"""
         try:
+            # Get selected statistic info
+            stat_info = self.getSelectedStatistic()
+            if stat_info is None:
+                QMessageBox.critical(self, "Error Message", "No statistic selected.")
+                return
             
             # Create chart window
             self.chart_window = QDialog(self)
@@ -1300,67 +1319,60 @@ class ContentWidget(QWidget):
             y_label = ""
             
             # Set chart source type
-            if self.statCheckboxes[4].isChecked():
+            if stat_info["id"] == 10:  # SPI
                 chart_source = "SPI"
             elif self.DatesCombo.currentIndex() == 0:
                 chart_source = "raw"
-            elif self.statCheckboxes[14].isChecked() or self.statCheckboxes[22].isChecked():
+            elif stat_info["id"] == 14 or stat_info["id"] == 15:  # %Prec or pfl90
                 chart_source = "percentage"
             else:
                 chart_source = "analysed"
             
             # Set Y-axis label based on selected statistic
-            if self.statCheckboxes[0].isChecked():
+            if stat_info["id"] == 0:  # Sum
                 y_label = "Sum"
-            elif self.statCheckboxes[1].isChecked():
+            elif stat_info["id"] == 1:  # Mean
                 y_label = "Mean"
-            elif self.statCheckboxes[2].isChecked():
+            elif stat_info["id"] == 2:  # Maximum
                 y_label = "Maximum"
-            elif self.statCheckboxes[3].isChecked():
-                y_label = "Percentile"
-            elif self.statCheckboxes[4].isChecked():
-                y_label = "SPI"
-            elif self.statCheckboxes[5].isChecked():
-                y_label = "PDS"
-            elif self.statCheckboxes[6].isChecked():
+            elif stat_info["id"] == 3:  # Winter/Summer ratio
                 y_label = "Winter/Summer Ratio"
-            elif self.statCheckboxes[7].isChecked():
-                y_label = "Peaks Over Threshold"
-            elif self.statCheckboxes[8].isChecked():
-                y_label = f"{self.nth_largest} largest"
-            elif self.statCheckboxes[9].isChecked():
-                y_label = f"Largest {self.largest_n_day} Total"
-            elif self.statCheckboxes[10].isChecked():
+            elif stat_info["id"] == 4:  # Maximum dry spell
                 y_label = "Maximum Dry Spell"
-            elif self.statCheckboxes[11].isChecked():
+            elif stat_info["id"] == 5:  # Maximum wet spell
                 y_label = "Maximum Wet Spell"
-            elif self.statCheckboxes[12].isChecked():
-                y_label = "Mean Dry Spell"
-            elif self.statCheckboxes[13].isChecked():
-                y_label = "Mean Wet Spell"
-            elif self.statCheckboxes[14].isChecked():
-                y_label = "Percentage"
-            elif self.statCheckboxes[15].isChecked():
-                y_label = "Median Dry Spell"
-            elif self.statCheckboxes[16].isChecked():
-                y_label = "Median Wet Spell"
-            elif self.statCheckboxes[17].isChecked():
-                y_label = "SD Dry Spell"
-            elif self.statCheckboxes[18].isChecked():
-                y_label = "SD Wet Spell"
-            elif self.statCheckboxes[19].isChecked():
+            elif stat_info["id"] == 6:  # Dry day persistence
                 y_label = "Dry Day Persistence"
-            elif self.statCheckboxes[20].isChecked():
+            elif stat_info["id"] == 7:  # Wet day persistence
                 y_label = "Wet Day Persistence"
-            elif self.statCheckboxes[21].isChecked():
-                y_label = "Spell Length Correlation"
-            elif self.statCheckboxes[22].isChecked():
+            elif stat_info["id"] == 8:  # Partial Duration Series
+                y_label = "PDS"
+            elif stat_info["id"] == 9:  # Percentile
+                y_label = "Percentile"
+            elif stat_info["id"] == 10:  # SPI
+                y_label = "SPI"
+            elif stat_info["id"] == 11:  # Peaks Over Threshold
+                y_label = "Peaks Over Threshold"
+            elif stat_info["id"] == 12:  # Nth largest
+                y_label = f"{self.nth_largest} largest"
+            elif stat_info["id"] == 13:  # Largest N-day total
+                y_label = f"Largest {self.largest_n_day} Total"
+            elif stat_info["id"] == 14:  # %Prec > annual %ile
                 y_label = "Percentage"
-            elif self.statCheckboxes[23].isChecked():
+            elif stat_info["id"] == 15:  # pfl90
                 y_label = "Percentage Precip>Long Term Percentile"
+            elif stat_info["id"] == 16:  # pnl90
+                y_label = "Number of Events>Long Term Percentile"
+                
+            # Get selected spell type if needed
+            if stat_info["name"] in ["Mean dry spell", "Mean wet spell", "Median dry spell", 
+                                "Median wet spell", "SD dry spell", "SD wet spell"]:
+                selected_spell = self.spellButtonGroup.checkedButton()
+                if selected_spell:
+                    y_label = selected_spell.text()
             
             # Set chart title based on selected time period
-            if self.statCheckboxes[4].isChecked():
+            if stat_info["id"] == 10:  # SPI
                 title = f"Standard Precipitation Index (SPI) - {self.spi_value} Month Period"
             elif self.DatesCombo.currentIndex() == 0:
                 title = "Raw Data Time Series"
@@ -1383,7 +1395,7 @@ class ContentWidget(QWidget):
             ax.set_ylabel(y_label, fontsize=10)
             
             # Set X-axis label based on data type
-            if self.statCheckboxes[4].isChecked():
+            if stat_info["id"] == 10:  # SPI
                 ax.set_xlabel("Date", fontsize=10)
             elif self.DatesCombo.currentIndex() == 0:
                 ax.set_xlabel("Day", fontsize=10)
@@ -1507,8 +1519,9 @@ class ContentWidget(QWidget):
             
         except Exception as e:
             print(f"Error creating chart: {str(e)}")
+            traceback.print_exc()  # Print full traceback for debugging
             QMessageBox.critical(self, "Chart Error", 
-                            f"An error occurred while creating the chart: {str(e)}")
+                        f"An error occurred while creating the chart: {str(e)}")
 
     def save_chart_image(self, figure):
         """Saves the chart as an image file"""
@@ -1707,8 +1720,8 @@ class ContentWidget(QWidget):
             total_numbers = 0
             
             # Skip unwanted data at the start of the file
-            date_start = datetime(current_day=current_day, month=current_month, year=current_year)
-            date_target = datetime.strptime(self.FSDate, "%d/%m/%Y")
+            date_start = datetime(self.CurrentYear, self.CurrentMonth, self.CurrentDay)
+            date_target = datetime.strptime(self.FSDate, "%y/%m/%d")
             
             # Loop until we reach the start date for analysis
             while date_start < date_target:
@@ -1734,7 +1747,7 @@ class ContentWidget(QWidget):
                 
                 total_numbers += 1
                 self.IncreaseDate()
-                date_start = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
+                date_start = datetime(self.CurrentDay, self.CurrentMonth, self.CurrentYear)
                 
                 # Update progress bar
                 progress_value = int((total_numbers / total_to_read_in) * 100)
@@ -1743,8 +1756,8 @@ class ContentWidget(QWidget):
             
             # Now read in the data we want to analyze
             total_numbers = 0
-            total_to_read_in = (datetime.strptime(self.FEdate, "%d/%m/%Y") - 
-                            datetime.strptime(self.FSDate, "%d/%m/%Y")).days + 1
+            total_to_read_in = (datetime.strptime(self.FEdate, "%y/%m/%d") - 
+                            datetime.strptime(self.FSDate, "%y/%m/%d")).days + 1
             
             self.progress_bar.setVisible(True)
             self.progress_bar.setValue(0)
@@ -1752,17 +1765,17 @@ class ContentWidget(QWidget):
             self.progress_bar.setFormat("Reading Time Series Data")
             
             # Set current date to start date for analysis
-            self.CurrentDay = int(datetime.strptime(self.FSDate, "%d/%m/%Y").day)
-            self.CurrentMonth = int(datetime.strptime(self.FSDate, "%d/%m/%Y").month)
-            self.CurrentYear = int(datetime.strptime(self.FSDate, "%d/%m/%Y").year)
+            self.CurrentDay = int(datetime.strptime(self.FSDate, "%y/%m/%d").day)
+            self.CurrentMonth = int(datetime.strptime(self.FSDate, "%y/%m/%d").month)
+            self.CurrentYear = int(datetime.strptime(self.FSDate, "%y/%m/%d").year)
             
             # Create a temporary array for the time series data
             time_series_data2 = [[None for _ in range(self.total_time_series_files + 1)] 
                             for _ in range(total_to_read_in + 1)]
             
             # Read in the data
-            date_current = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
-            date_end = datetime.strptime(self.FEdate, "%d/%m/%Y")
+            date_current = datetime(self.CurrentDay, self.CurrentMonth,self.CurrentYear)
+            date_end = datetime.strptime(self.FEdate, "%y/%m/%d")
             
             while date_current <= date_end:
                 # Check if user wants to exit
@@ -1817,7 +1830,7 @@ class ContentWidget(QWidget):
                 
                 # Increase date for next iteration
                 self.IncreaseDate()
-                date_current = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
+                date_current = datetime(self.CurrentYear, self.CurrentMonth, self.CurrentDay)
                 
                 # Update progress bar
                 progress_value = int((total_numbers / total_to_read_in) * 100)
@@ -1851,8 +1864,8 @@ class ContentWidget(QWidget):
     def GenerateData(self):
         try:
             # Calculate days to skip at the beginning
-            total_to_read_in = (datetime.strptime(self.FSDate, "%d/%m/%Y") - 
-                            datetime.strptime(self.global_start_date, "%d/%m/%Y")).days
+            total_to_read_in = (datetime.strptime(self.FSDate, "%y/%m/%dY") - 
+                            datetime.strptime(self.global_start_date, "%y/%m/%d")).days
             
             if total_to_read_in > 0:
                 # Show progress bar
@@ -1862,16 +1875,16 @@ class ContentWidget(QWidget):
                 self.progress_bar.setFormat("Skipping Unnecessary Data")
             
             # Set current date to global start date
-            self.CurrentDay = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").day)
-            self.CurrentMonth = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").month)
-            self.CurrentYear = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").year)
+            self.CurrentDay = int(datetime.strptime(self.global_start_date, "%y/%m/%d").day)
+            self.CurrentMonth = int(datetime.strptime(self.global_start_date, "%y/%m/%d").month)
+            self.CurrentYear = int(datetime.strptime(self.global_start_date, "%y/%m/%d").year)
             self.CurrentSeason = self.GetSeason(self.CurrentMonth)
             self.CurrentWaterYear = self.GetWaterYear(self.CurrentMonth, self.CurrentYear)
             total_numbers = 0
             
             # Skip unwanted data at the start of the file
-            date_start = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
-            date_target = datetime.strptime(self.FSDate, "%d/%m/%Y")
+            date_start = datetime(self.CurrentDay,self.CurrentMonth, self.CurrentYear)
+            date_target = datetime.strptime(self.FSDate, "%y/%m/%d")
             
             # Loop until we reach the start date for analysis
             while date_start < date_target:
@@ -1908,8 +1921,8 @@ class ContentWidget(QWidget):
             
             # Now read in the data we want to analyze
             total_numbers = 0
-            total_to_read_in = (datetime.strptime(self.FEdate, "%d/%m/%Y") - 
-                            datetime.strptime(self.FSDate, "%d/%m/%Y")).days + 1
+            total_to_read_in = (datetime.strptime(self.FEdate, "%y/%m/%d") - 
+                            datetime.strptime(self.FSDate, "%y/%m/%d")).days + 1
             
             self.progress_bar.setVisible(True)
             self.progress_bar.setValue(0)
@@ -1917,9 +1930,9 @@ class ContentWidget(QWidget):
             self.progress_bar.setFormat("Reading in data for plot")
             
             # Reset current date to start date for analysis
-            self.CurrentDay = int(datetime.strptime(self.FSDate, "%d/%m/%Y").day)
-            self.CurrentMonth = int(datetime.strptime(self.FSDate, "%d/%m/%Y").month)
-            self.CurrentYear = int(datetime.strptime(self.FSDate, "%d/%m/%Y").year)
+            self.CurrentDay = int(datetime.strptime(self.FSDate, "%y/%m/%d").day)
+            self.CurrentMonth = int(datetime.strptime(self.FSDate, "%y/%m/%d").month)
+            self.CurrentYear = int(datetime.strptime(self.FSDate, "%y/%m/%d").year)
             self.CurrentSeason = self.GetSeason(self.CurrentMonth)
             self.CurrentWaterYear = self.GetWaterYear(self.CurrentMonth, self.CurrentYear)
             
@@ -1940,8 +1953,8 @@ class ContentWidget(QWidget):
             year_index = 1
             
             # Read in data and process by period
-            date_current = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
-            date_end = datetime.strptime(self.FEdate, "%d/%m/%Y")
+            date_current = datetime(self.CurrentYear,self.CurrentMonth,self.CurrentDay)
+            date_end = datetime.strptime(self.FEdate, "%y/%m/%d")
             
             while date_current <= date_end:
                 # Check if user wants to exit
@@ -1951,7 +1964,7 @@ class ContentWidget(QWidget):
                 
                 # Check if we've reached the end of the current period
                 if self.FinishedCurrentPeriod():
-                    year_index = this_year - int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + 1
+                    year_index = this_year - int(datetime.strptime(self.FSDate, "%y/%m/%d").year) + 1
                     
                     # For each file, update summary array with period's statistics
                     for i in range(1, self.total_time_series_files + 1):
@@ -2065,7 +2078,7 @@ class ContentWidget(QWidget):
                 
                 # Increase date for next iteration
                 self.IncreaseDate()
-                date_current = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
+                date_current = datetime(self.CurrentYear, self.CurrentMonth, self.CurrentDay)
                 
                 # Update progress bar
                 progress_value = int((total_numbers / total_to_read_in) * 100)
@@ -2073,18 +2086,18 @@ class ContentWidget(QWidget):
                 self.progress_bar.setFormat("Generating Time Series Plot")
             
             # Process the last period's data
-            year_index = this_year - int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + 1
+            year_index = this_year - int(datetime.strptime(self.FSDate, "%y/%m/%d").year) + 1
             
             # Determine array position for last period
             if self.statCheckboxes[6].isChecked():  # Winter/summer ratio
                 array_position = this_season + 12
-                if this_season == 1 and int(datetime.strptime(self.FEdate, "%d/%m/%Y").month) == 12:
+                if this_season == 1 and int(datetime.strptime(self.FEdate, "%y/%m/%d").month) == 12:
                     year_index += 1  # Adjust for winter spanning year boundary
             elif self.DatesCombo.currentIndex() >= 1 and self.DatesCombo.currentIndex() <= 12:
                 array_position = this_month
             elif self.DatesCombo.currentIndex() >= 13 and self.DatesCombo.currentIndex() <= 16:
                 array_position = this_season + 12
-                if this_season == 1 and int(datetime.strptime(self.FEdate, "%d/%m/%Y").month) == 12:
+                if this_season == 1 and int(datetime.strptime(self.FEdate, "%y/%m/%d").month) == 12:
                     year_index += 1  # Adjust for winter spanning year boundary
             elif self.DatesCombo.currentIndex() == 17:
                 array_position = 17  # Annual
@@ -2129,23 +2142,23 @@ class ContentWidget(QWidget):
             
             # Adjust start and end years based on selected period and available data
             if self.statCheckboxes[6].isChecked():  # Winter/summer ratio
-                if int(datetime.strptime(self.FEdate, "%d/%m/%Y").month) == 12:
+                if int(datetime.strptime(self.FEdate, "%y/%m/%d").month) == 12:
                     end_year -= 1  # Don't have following year's ratio
-                if int(datetime.strptime(self.FEdate, "%d/%m/%Y").month) < 6:
+                if int(datetime.strptime(self.FEdate, "%y/%m/%d").month) < 6:
                     end_year -= 1  # Don't have a summer to divide by
-                if int(datetime.strptime(self.FSDate, "%d/%m/%Y").month) > 2:
+                if int(datetime.strptime(self.FSDate, "%y/%m/%d").month) > 2:
                     start_year = 2  # Don't have a start winter in first year
             elif self.DatesCombo.currentIndex() >= 1 and self.DatesCombo.currentIndex() <= 12:  # Month
-                if self.DatesCombo.currentIndex() < int(datetime.strptime(self.FSDate, "%d/%m/%Y").month):
+                if self.DatesCombo.currentIndex() < int(datetime.strptime(self.FSDate, "%y/%m/%d").month):
                     start_year = 2  # This month is before fit start date
-                if self.DatesCombo.currentIndex() > int(datetime.strptime(self.FEdate, "%d/%m/%Y").month):
+                if self.DatesCombo.currentIndex() > int(datetime.strptime(self.FEdate, "%y/%m/%d").month):
                     end_year -= 1  # This month is after fit end date
             elif self.DatesCombo.currentIndex() >= 13 and self.DatesCombo.currentIndex() <= 16:  # Season
                 selected_season = self.DatesCombo.currentIndex() - 12
-                if selected_season < self.GetSeason(int(datetime.strptime(self.FSDate, "%d/%m/%Y").month)):
+                if selected_season < self.GetSeason(int(datetime.strptime(self.FSDate, "%y/%m/%d").month)):
                     start_year = 2  # Season comes before fit start date
                 if (int(datetime.strptime(self.FEdate, "%d/%m/%Y").month) != 12 and 
-                    selected_season > self.GetSeason(int(datetime.strptime(self.FEdate, "%d/%m/%Y").month))):
+                    selected_season > self.GetSeason(int(datetime.strptime(self.FEdate, "%y/%m/%d").month))):
                     end_year -= 1  # Season comes after fit end date
                 if (int(datetime.strptime(self.FEdate, "%d/%m/%Y").month) == 12 and 
                     self.DatesCombo.currentIndex() != 13):  # Not winter
@@ -4451,43 +4464,68 @@ class ContentWidget(QWidget):
             self.startDateInput.setText(self.global_start_date)
             self.endDateInput.setText(self.global_end_date)
             
+            # Reset FSDate and FEdate variables
+            self.FSDate = self.global_start_date
+            self.FEdate = self.global_end_date
+            
             # Reset dropdowns
             self.DatesCombo.setCurrentIndex(0)
             
-            # Reset percentile and statistics values
+            # Reset statistics selection to the first option (Sum)
+            if self.statsButtonGroup.button(0):
+                self.statsButtonGroup.button(0).setChecked(True)
+            
+            # Reset all parameter values
             self.percentile = 90
-            self.percentileInput.setText("90")
-            
             self.spi_value = 3
-            
-            # Reset threshold values
-            self.local_thresh = self.thresh  # For Partial Duration Series
-            self.pot_value = self.thresh  # For Peaks Over Threshold
-            
-            # Reset N values
+            self.local_thresh = self.thresh
+            self.pot_value = self.thresh
             self.nth_largest = 1
             self.largest_n_day = 1
-            
-            # Reset statistics options - select Sum as default
-            for checkbox in self.statCheckboxes:
-                checkbox.setChecked(checkbox.text() == "Sum")
-            
-            # Reset annual percentile
             self.annual_percentile = 90
-            self.percentileInput.setText("90")
-            
-            # Reset STARDEX statistics percentiles
             self.pfl90_percentile = 90
-            self.precipLongTermInput.setText("90")
             self.pnl90_percentile = 90
+            
+            # Reset parameter input fields
+            self.percentileInput.setText("90")
+            self.spiValueInput.setText("3")
+            self.potValueInput.setText(str(self.thresh))
+            self.nthLargestInput.setText("1")
+            self.largestNDayInput.setText("1")
+            self.pdsThreshInput.setText(str(self.thresh))
+            self.annualPercentileInput.setText("90")
+            self.precipLongTermInput.setText("90")
             self.numEventsInput.setText("90")
             
-            # Clear any data arrays/lists as needed
+            # Hide all parameter sets and show the appropriate one for the selected statistic
+            self.percentileParams.hide()
+            self.spiParams.hide()
+            self.potParams.hide()
+            self.nthLargestParams.hide()
+            self.largestNDayParams.hide()
+            self.pdsParams.hide()
+            self.annualPercentileParams.hide()
+            
+            # Update UI to reflect the selected statistic
+            if len(self.statRadioButtons) > 0:
+                self.onStatOptionChanged(self.statRadioButtons[0])
+            
+            # Clear any data arrays/lists
             self.AllFilesList = []
+            
+            # Reset progress bar
+            self.progress_bar.setVisible(False)
+            self.progress_bar.setValue(0)
             
         except Exception as e:
             # Handle errors
             print(f"Error in Reset_All: {str(e)}")
+            traceback.print_exc()  # Print full traceback for debugging
+            
+        except Exception as e:
+            # Handle errors
+            print(f"Error in Reset_All: {str(e)}")
+            traceback.print_exc()  # Print full traceback for debugging
 
     def DumpForm(self):
         try:
@@ -4508,3 +4546,221 @@ class ContentWidget(QWidget):
         
         except Exception as e:
             print(f"Error in DumpForm: {str(e)}")
+        
+    def onSPIValueChanged(self):
+        """Handler for when SPI value input text changes"""
+        text = self.spiValueInput.text()
+        
+        if not text or not self.isNumeric(text):
+            return  # Wait for editingFinished to show error
+        
+        value = int(float(text))
+        if value < 1 or value > 48:
+            return  # Wait for editingFinished to show error
+        
+        self.spi_value = value
+
+    def onSPIValueEditFinished(self):
+        """Validation when SPI value input loses focus"""
+        text = self.spiValueInput.text()
+        
+        if not text or not self.isNumeric(text):
+            QMessageBox.critical(self, "Error Message", "SPI period must be a number.")
+            self.spiValueInput.setText(str(self.spi_value))
+            return
+        
+        value = int(float(text))
+        if value < 1 or value > 48:
+            QMessageBox.critical(self, "Error Message", "SPI period must be between 1 and 48 months.")
+            self.spiValueInput.setText(str(self.spi_value))
+            return
+        
+        self.spi_value = value
+        self.spiValueInput.setText(str(self.spi_value))
+
+    def onPOTValueChanged(self):
+        """Handler for when POT value input text changes"""
+        text = self.potValueInput.text()
+        
+        if not text or not self.isNumeric(text):
+            return  # Wait for editingFinished to show error
+        
+        value = float(text)
+        if value < 0:
+            return  # Wait for editingFinished to show error
+        
+        self.pot_value = value
+
+    def onPOTValueEditFinished(self):
+        """Validation when POT value input loses focus"""
+        text = self.potValueInput.text()
+        
+        if not text or not self.isNumeric(text):
+            QMessageBox.critical(self, "Error Message", "Threshold value must be a number.")
+            self.potValueInput.setText(str(self.pot_value))
+            return
+        
+        value = float(text)
+        if value < 0:
+            QMessageBox.critical(self, "Error Message", "Threshold value must be positive.")
+            self.potValueInput.setText(str(self.pot_value))
+            return
+        
+        self.pot_value = value
+        self.potValueInput.setText(str(self.pot_value))
+
+    def onNthLargestChanged(self):
+        """Handler for when Nth largest input text changes"""
+        text = self.nthLargestInput.text()
+        
+        if not text or not self.isNumeric(text):
+            return  # Wait for editingFinished to show error
+        
+        value = int(float(text))
+        if value < 1:
+            return  # Wait for editingFinished to show error
+        
+        self.nth_largest = value
+
+    def onNthLargestEditFinished(self):
+        """Validation when Nth largest input loses focus"""
+        text = self.nthLargestInput.text()
+        
+        if not text or not self.isNumeric(text):
+            QMessageBox.critical(self, "Error Message", "N value must be a positive integer.")
+            self.nthLargestInput.setText(str(self.nth_largest))
+            return
+        
+        value = int(float(text))
+        if value < 1:
+            QMessageBox.critical(self, "Error Message", "N value must be at least 1.")
+            self.nthLargestInput.setText(str(self.nth_largest))
+            return
+        
+        self.nth_largest = value
+        self.nthLargestInput.setText(str(self.nth_largest))
+
+    def onLargestNDayChanged(self):
+        """Handler for when Largest N-day input text changes"""
+        text = self.largestNDayInput.text()
+        
+        if not text or not self.isNumeric(text):
+            return  # Wait for editingFinished to show error
+        
+        value = int(float(text))
+        if value < 1:
+            return  # Wait for editingFinished to show error
+        
+        self.largest_n_day = value
+
+    def onLargestNDayEditFinished(self):
+        """Validation when Largest N-day input loses focus"""
+        text = self.largestNDayInput.text()
+        
+        if not text or not self.isNumeric(text):
+            QMessageBox.critical(self, "Error Message", "N days value must be a positive integer.")
+            self.largestNDayInput.setText(str(self.largest_n_day))
+            return
+        
+        value = int(float(text))
+        if value < 1:
+            QMessageBox.critical(self, "Error Message", "N days value must be at least 1.")
+            self.largestNDayInput.setText(str(self.largest_n_day))
+            return
+        
+        self.largest_n_day = value
+        self.largestNDayInput.setText(str(self.largest_n_day))
+
+    def onPDSThreshChanged(self):
+        """Handler for when PDS threshold input text changes"""
+        text = self.pdsThreshInput.text()
+        
+        if not text or not self.isNumeric(text):
+            return  # Wait for editingFinished to show error
+        
+        value = float(text)
+        if value < 0:
+            return  # Wait for editingFinished to show error
+        
+        self.local_thresh = value
+
+    def onPDSThreshEditFinished(self):
+        """Validation when PDS threshold input loses focus"""
+        text = self.pdsThreshInput.text()
+        
+        if not text or not self.isNumeric(text):
+            QMessageBox.critical(self, "Error Message", "Threshold value must be a number.")
+            self.pdsThreshInput.setText(str(self.local_thresh))
+            return
+        
+        value = float(text)
+        if value < 0:
+            QMessageBox.critical(self, "Error Message", "Threshold value must be positive.")
+            self.pdsThreshInput.setText(str(self.local_thresh))
+            return
+        
+        self.local_thresh = value
+        self.pdsThreshInput.setText(str(self.local_thresh))
+
+    def onAnnualPercentileChanged(self):
+        """Handler for when annual percentile input text changes"""
+        text = self.annualPercentileInput.text()
+        
+        if not text or not self.isNumeric(text):
+            return  # Wait for editingFinished to show error
+        
+        value = float(text)
+        if value < 1 or value > 100:
+            return  # Wait for editingFinished to show error
+        
+        self.annual_percentile = int(value)
+
+    def onAnnualPercentileEditFinished(self):
+        """Validation when annual percentile input loses focus"""
+        text = self.annualPercentileInput.text()
+        
+        if not text or not self.isNumeric(text):
+            QMessageBox.critical(self, "Error Message", "Percentile must be a value.")
+            self.annualPercentileInput.setText(str(self.annual_percentile))
+            return
+        
+        value = float(text)
+        if value < 1 or value > 100:
+            QMessageBox.critical(self, "Error Message", "Percentile must be between 1 and 100.")
+            self.annualPercentileInput.setText(str(self.annual_percentile))
+            return
+        
+        self.annual_percentile = int(value)
+        self.annualPercentileInput.setText(str(self.annual_percentile))
+
+    def getSelectedStatistic(self):
+        """Returns information about the selected statistic"""
+        selected_id = self.statsButtonGroup.checkedId()
+        if selected_id == -1:
+            return None
+        
+        stat_info = {
+            "id": selected_id,
+            "name": self.statsOptions[selected_id]
+        }
+        
+        # Map to the old checkbox indexes for compatibility
+        stat_map = {
+            0: 0,   # Sum
+            1: 1,   # Mean
+            2: 2,   # Maximum
+            3: 6,   # Winter/Summer ratio
+            4: 10,  # Maximum dry spell
+            5: 11,  # Maximum wet spell
+            6: 19,  # Dry day persistence
+            7: 20,  # Wet day persistence
+            8: 5,   # Partial Duration Series
+            9: 3,   # Percentile
+            10: 4,  # Standard Precipitation Index
+            11: 7,  # Peaks Over Threshold
+            12: 8,  # Nth largest
+            13: 9   # Largest N-day total
+        }
+        
+        stat_info["old_id"] = stat_map.get(selected_id, -1)
+        return stat_info

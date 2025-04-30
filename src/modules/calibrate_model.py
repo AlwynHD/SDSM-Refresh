@@ -560,7 +560,7 @@ class ContentWidget(QWidget):
         buttonLayout.addWidget(resetButton)
 
     def doCalibration(self):
-        from src.lib.CalibrateModel import calibrateModel, CalibrateAnalysisApp
+        from src.lib.CalibrateModel import calibrateModel, CalibrateAnalysisApp, displayError
 
         print(self.predictandSelected)
         fitStartDate = self.QDateEditToDateTime(self.fitStartDateChooser)
@@ -573,23 +573,28 @@ class ContentWidget(QWidget):
         ]  # Copy predictors to a new list so when calibrateModel messes with it it doesnt break absolutely everything
         for predictor in self.predictorsSelected:
             fileList.append(predictor)
-        data = calibrateModel(
-            fileList,
-            self.outputSelected,
-            fitStartDate,
-            fitEndDate,
-            modelType,
-            parmOpt,
-            self.autoregressionCheck.isChecked(),
-            self.chowCheck.isChecked(),
-            deTrend,
-            self.crossValCalcCheck.isChecked(),
-            int(self.crossValInput.text()),
-        )
-        print(data)
-        self.newWindow = CalibrateAnalysisApp()
-        self.newWindow.loadResults(data)
-        self.newWindow.show()
+        
+        try:
+            data = calibrateModel(
+                fileList,
+                self.outputSelected,
+                fitStartDate,
+                fitEndDate,
+                modelType,
+                parmOpt,
+                self.autoregressionCheck.isChecked(),
+                self.chowCheck.isChecked(),
+                deTrend,
+                self.crossValCalcCheck.isChecked(),
+                int(self.crossValInput.text()),
+            )   
+        except Exception as e:
+            displayError(e)
+        else:
+            #print(data)
+            self.newWindow = CalibrateAnalysisApp()
+            self.newWindow.loadResults(data)
+            self.newWindow.show()
 
     def resetAll(self):
         # Reset file and path variables and labels
@@ -622,7 +627,7 @@ class ContentWidget(QWidget):
         return dateTime
 
     def writePredictors(self):
-        for predictor in listdir(self.predictorPath):
+        for predictor in sorted(listdir(self.predictorPath)):
             # These are functionally labels, but QLabels do not have an onclick function that emits a sender signal,
             # so QPushButtons are used instead
             predictor = predictor.lower()

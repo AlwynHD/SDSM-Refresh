@@ -319,7 +319,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
     ##i have notes trust me
     if fileList[0] == "":
         raise ValueError("You must select a predictand")
-    elif fileList < 2:
+    elif len(fileList) < 2:
         raise ValueError("You must select at least one predictor")
     elif applyStepwise and doCrossValidation:
         raise ValueError("You cannot perform a cross validation with the stepwise approach")
@@ -329,9 +329,9 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
         raise ValueError("You can only select an unconditional model for the stepwise approach")
     elif PARfilePath == "":
         raise ValueError("You must enter an appropriate output (PAR) file name")
-    elif fSDateOK(fsdate, fedate, globalStartDate):
+    elif not fSDateOK(fsDate, feDate, globalStartDate):
         raise ValueError("Invalid start date, see logs for more information")
-    elif fEDateOK(fsDate, feDate, globalEndDate):
+    elif not fEDateOK(fsDate, feDate, globalEndDate):
         raise ValueError("Invalid end date, see logs for more information")
     else:
 
@@ -1127,7 +1127,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
             ##endif
                 
             #------------------------
-            #----- SECTION #6.0 ----- Printing to Scream?
+            #----- SECTION #6.0 ----- PARfile Output
             #------------------------
 
             ##what is PARROOT FOR OUTPUT???
@@ -1161,51 +1161,45 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
             #next subloop
 
             ##Vars "Written" to PAR file:
-            PARfileOutput = {
-                "NPredictors": NPredictors if detrendOption == 0 else -NPredictors,
-                "SeasonCode": seasonCode,
-                #"YearIndicator": yearIndicator,
-                "GlobalStartDate": globalStartDate,
-                "NDaysR": nDaysR,
-                "FitStartDate": fsDate,
-                "NoOfDays2Fit": noOfDays2Fit,
-                "RainfallParameter":parmOpt,
-                "ModelTrans": modelTrans,
-                "1":1, ##Idk what to do with this
-                "AutoRegression": autoRegression,
-                #"Predictand File": "your_predictand_file.dat"
-            }
+            print("GlobalSettings:")
+            for i in _globalSettings:
+                print(f"{i}: {_globalSettings[i]}")
+            PARfileOutput = [
+                f"{NPredictors if detrendOption == 0 else -NPredictors}", #NPredictors
+                f"{seasonCode}", #Season Code
+                "360" if _globalSettings['thirtyDay'] else ("366" if countLeapYear else "365"), #"YearIndicator": 
+                f"{globalStartDate}", #"Record Start Date": 
+                f"{nDaysR}", #"Record Length": 
+                f"{fsDate}", #"Fit start date": 
+                f"{noOfDays2Fit}", #"No of days in fit": 
+                f"{int(parmOpt)}", #"Set Rainfall Parameter": ?
+                f"{modelTrans}", #"Model Transformation option": 
+                "1", #"Ensemble size set to 1":#Idk what to do with this
+                f"{int(autoRegression)}", #"Autoregression": 
+            ]
+            for file in fileList:    
+                PARfileOutput.append(file) #Save predictand & predictor file names
+            PARfileOutput = "\n".join(PARfileOutput) + "\n"
 
-            ##OUTPUTS:
-            #showPARRout = True
-            if debug:
-                print()
-                print("#####################################")
-                print("########## PARFILE OUTPUTS ##########")
-                print("#####################################")
-                if detrendOption == 0:
-                    print(f"NPredictors: {NPredictors}")
-                else:
-                    print(f"NPredictors: {-NPredictors} (Detrend option selected)")
-                ##endif
-                print(f"Season Code: {seasonCode}")
-                print(f"Year Indicator: unknown") #yearIndicator
-                print(f"Record Start Date: {globalStartDate}")
-                print(f"Record Length: {nDaysR}")
-                print(f"Fit Start Date: {fsDate}")
-                print(f"No of days in fit: {noOfDays2Fit}")
-                print(f"Set Rainfall Parameter: {parmOpt}")
-                print(f"Model Transformation option: {modelTrans}")
-                print(f"1")
-                print(f"Autoregression: {autoRegression}")
+            #call PrintResults
+            PARfileOutput += printResults(parameterResultsArray, NPredictors, parmOpt, biasCorrection, autoRegression, modelTrans, tResults)
+ 
+            #print PTandRoot
+            if detrendOption != 0:   ##Will need to double check and standardise this parameter
+                #call PrintTrendParms]
+                PARfileOutput += printTrendParms(detrendOption, betaTrend, seasonCode)
+            #call newProgressBar
 
-                print("#####################################")
-                print("########## END OF PARFILE ###########")
-                print("#####################################")
-                print()
+            #Write to file
+            with open(PARfilePath, "w") as f:
+                print(PARfileOutput, file=f)
+                f.close()
+            
 
-
-            ##real change here:
+            #------------------------
+            #----- SECTION #6.1 ----- Results Screen output
+            #------------------------
+            
             #from calendar import month_name as months
 
             output = {"Predictand": fileList[0]}
@@ -1279,21 +1273,10 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                             output[n]['xValidation']['Mean'][key] += output[n]['xValidation'][months[i]][key]
                         output[n]['xValidation']['Mean'][key] /= len(iterator)
 
-            #call PrintResults
-            #print PTandRoot
-            if detrendOption != 0:   ##Will need to double check and standardise this parameter
-                #call PrintTrendParms
-                #printTrendParms() ##???
-                do_nothing()
-            #call newProgressBar
+            #------------------------
+            #----- SECTION #6.2 ----- last minute information appends / info not directly displayed
+            #------------------------
             
-
-            #------------------------
-            #----- SECTION #6.1 ----- something something load calibResultsFrm
-            #------------------------
-
-            ##This section is dedicated to the absolutely horrendous layout of the OG SDSM-DC application
-            ##Can safely ignore (i think) -> more useful to output the results to the parent GUI object and handle it there, better, from scratch...
             analysisPeriod = ['Monthly', 'Seasonal', 'Annual']
             output['analysisPeriod'] = {
                 'startDate': fsDate,
@@ -2501,6 +2484,70 @@ def translator(passedValue: float, limit: float, totalArea: float, reSampleMatri
             locateValue = int(area * len(reSampleMatrix) / totalArea)
             locateValue = min(locateValue, (len(reSampleMatrix) - 1))
             return reSampleMatrix[locateValue]
+
+def printResults(parameterResultsArray: np.ndarray, NPredictors: int, parmOpt: bool, biasCorrection, autoRegression: bool, modelTrans: int, tResults: list):
+    #We want: parmOpt, parameterResultsArray, nPredictors, autoregrssion, lamdaArray, modelTrans, biascorrection
+    giga_array = ""
+    if parmOpt:
+        for i in range(12):
+            parameterResultsArray[i, NPredictors + 2 + int(autoRegression)] = 0
+    for i in range(12):
+        for j in range(NPredictors + 3 + int(autoRegression)):
+            giga_array += f"{parameterResultsArray[i, j]:.3f}\t"
+        #next j
+        if modelTrans == 5:
+            #tResults is the LamdaArray
+            giga_array += f"{tResults[i,0]:.3f}\t"
+            giga_array += f"{tResults[i,1]:.3f}"
+        #endif
+        giga_array += "\n"
+    #next i
+    if parmOpt:
+        for i in range(13, 24):
+            giga_array += f"{parameterResultsArray[i, 1]:.3f}\t"
+            giga_array += f"{biasCorrection[i - 12]:.3f}\t"
+            for j in range(1, NPredictors + 3):
+                giga_array += f"{parameterResultsArray[i, j]:.3f}\t"
+            #next j
+            giga_array += "\n"
+        #next i
+    #endif
+
+    return giga_array
+
+    #Write to file
+    #with open(parfile, "a") as f:
+    #    print(giga_array, file=f)
+    #    f.close()
+
+def printTrendParms(detrendOption: int, betaTrend, seasonCode: int):
+    giga_array = ""
+    if detrendOption == 1:
+        giga_array += "1\n"
+    else: #Assume option #2
+        giga_array += "2\n"
+    #endif
+
+    #if seasonCode == 1:
+    #    giga_array += f"{betaTrend[0,0]}\t{betaTrend[0,1]}"
+    #    if detrendOption == 2:
+    #        giga_array += f"\t{betaTrend[0,2]}\n"
+    #    else:
+    for i in range(seasonCode):
+        giga_array += f"{betaTrend[i,0]}\t{betaTrend[i,1]}"
+        if detrendOption == 2:
+            giga_array += f"\t{betaTrend[0,2]}"
+        giga_array += "\n"
+    
+    return giga_array
+
+    #Write to file
+    #with open(parfile, "a") as f:
+    #    print(giga_array, file=f)
+    #    f.close()
+                
+                
+
 
 def plotScatter(residualArray):
     #mimicked from ScreenVariables

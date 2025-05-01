@@ -2,6 +2,7 @@ from PyQt5.QtWidgets import (QApplication, QCheckBox, QPushButton, QComboBox, QF
                              QVBoxLayout, QHBoxLayout, QTextEdit, QLabel, QTableWidget, QTableWidgetItem, 
                              QRadioButton, QGroupBox, QSpinBox, QLineEdit, QDateEdit, QFileDialog, QMessageBox)
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QFontMetrics
 import sys
 from src.lib.FrequencyAnalysis.PDF import pdfPlot
 from src.lib.FrequencyAnalysis.Line import linePlot
@@ -376,7 +377,9 @@ class ContentWidget(QWidget):
         default_dir = settingsAsArrays["defaultdir"][0]
         fileName, _ = QFileDialog.getSaveFileName(self, "Save Results File", default_dir)
         if fileName:
-            self.saveLabel.setText(f"File: {fileName}")
+            fm = QFontMetrics(self.saveLabel.font())
+            elided = fm.elidedText(fileName, Qt.ElideMiddle, self.saveLabel.width())
+            self.saveLabel.setText(elided)
 
     def selectObservedData(self):
         # Use the default directory for open dialogs as well
@@ -387,7 +390,9 @@ class ContentWidget(QWidget):
         fileName, _ = QFileDialog.getOpenFileName(self, "Select Observed Data File", default_dir,filter_str)
         if fileName:
             self.obsDataFile = fileName
-            self.obsDataLabel.setText(f"File: {fileName}")
+            fm = QFontMetrics(self.obsDataLabel.font())
+            elided = fm.elidedText(fileName, Qt.ElideMiddle, self.obsDataLabel.width())
+            self.obsDataLabel.setText(elided)
 
     def selectModelledData(self):
         # Same default starting directory is used here
@@ -398,7 +403,9 @@ class ContentWidget(QWidget):
         fileName, _ = QFileDialog.getOpenFileName(self, "Select Modelled Data File", default_dir,filter_str)
         if fileName:
             self.modDataFile = fileName
-            self.modDataLabel.setText(f"File: {fileName}")
+            fm = QFontMetrics(self.modDataLabel.font())
+            elided = fm.elidedText(fileName, Qt.ElideMiddle, self.modDataLabel.width())
+            self.modDataLabel.setText(elided)
 
     def pdfPlotButtonClicked(self):
         # 1) file paths

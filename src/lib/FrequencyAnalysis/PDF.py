@@ -16,7 +16,7 @@ def pdfPlot(
     modelledFile: Optional[str],
     fsDate: date,
     feDate: date,
-    global_start_date: date,
+    globalStartDate: date,
     ensembleOption: str,        # 'all', 'mean', 'member', 'allPlusMean'
     ensembleWanted: Optional[int],
     numPdfCategories: int,
@@ -30,9 +30,9 @@ def pdfPlot(
     Generate a PDF plot comparing observed and modelled data.
     """
     # --- Date validation ---
-    fsOk, corrFs, _ = fsDateOk(global_start_date, fsDate, global_start_date)
+    fsOk, corrFs, _ = fsDateOk(globalStartDate, fsDate, globalStartDate)
     if not fsOk:
-        corrFs = global_start_date
+        corrFs = globalStartDate
         print(f"[warning] fsDate {fsDate} before data start; using {corrFs}")
     feOk, corrFe, _ = feDateOk(corrFs, feDate, feDate)
     if not feOk:
@@ -76,7 +76,7 @@ def pdfPlot(
     # Skip to fsDate in files
     for fh in (fObs, fMod):
         if fh:
-            skip_days = (fsDate - global_start_date).days
+            skip_days = (fsDate - globalStartDate).days
             for _ in range(skip_days):
                 if exitAnalyses(): return
                 if not fh.readline():

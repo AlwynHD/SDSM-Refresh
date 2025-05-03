@@ -313,56 +313,108 @@ class ContentWidget(QWidget):
     def doBarChart(self):
         from src.lib.CompareResults import readSumStatsFile, plotMultiple
 
-        if self.fileOneFrame.pathSelected == "" or self.fileTwoFrame.pathSelected == "":
+        if self.fileOneFrame.pathSelected == "" and self.fileTwoFrame.pathSelected == "":
             return displayBox(
                 "File Error",
-                "Two statistics files must be selected",
+                "You must select at least one statistic file.",
                 "Files Not Selected",
                 isError=True,
             )
-        if self.fileOneFrame.statSelected == "" or self.fileTwoFrame.statSelected == "":
+        
+        if self.fileOneFrame.pathSelected != "" and self.fileOneFrame.statSelected == "":
             return displayBox(
                 "Stats Error",
-                "One statistic to be compared must be selected per file.",
+                "Please select a statistic for file one.",
                 "Statistics Not Selected",
                 isError=True,
             )
-        fieldsOne, statsOne = readSumStatsFile(self.fileOneFrame.pathSelected)
-        fieldsTwo, statsTwo = readSumStatsFile(self.fileTwoFrame.pathSelected)
-        statIndexOne = fieldsOne.index(self.fileOneFrame.statSelected)
-        statIndexTwo = fieldsTwo.index(self.fileTwoFrame.statSelected)
+        
+        if self.fileTwoFrame.pathSelected != "" and self.fileTwoFrame.statSelected == "":
+            return displayBox(
+                "Stats Error",
+                "Please select a statistic for file two.",
+                "Statistics Not Selected",
+                isError=True,
+            )
+        
+        fields = []
+        stats = []
+        statIndices = []
+
+        if self.fileOneFrame.pathSelected != "":
+            fieldsOne, statsOne = readSumStatsFile(self.fileOneFrame.pathSelected)
+            statIndexOne = fieldsOne.index(self.fileOneFrame.statSelected)
+
+            fields.append(fieldsOne)
+            stats.append(statsOne)
+            statIndices.append(statIndexOne)
+
+        if self.fileTwoFrame.pathSelected != "":
+            fieldsTwo, statsTwo = readSumStatsFile(self.fileTwoFrame.pathSelected)
+            statIndexTwo = fieldsTwo.index(self.fileTwoFrame.statSelected)
+
+            fields.append(fieldsTwo)
+            stats.append(statsTwo)
+            statIndices.append(statIndexTwo)
+        
         plotMultiple(
-            [fieldsOne, fieldsTwo],
-            [statsOne, statsTwo],
-            [statIndexOne, statIndexTwo],
+            fields,
+            stats,
+            statIndices,
             False,
         )
 
     def doLineChart(self):
         from src.lib.CompareResults import readSumStatsFile, plotMultiple
 
-        if self.fileOneFrame.pathSelected == "" or self.fileTwoFrame.pathSelected == "":
+        if self.fileOneFrame.pathSelected == "" and self.fileTwoFrame.pathSelected == "":
             return displayBox(
                 "File Error",
-                "Two statistics files must be selected",
+                "You must select at least one statistic file.",
                 "Files Not Selected",
                 isError=True,
             )
-        if self.fileOneFrame.statSelected == "" or self.fileTwoFrame.statSelected == "":
+        
+        if self.fileOneFrame.pathSelected != "" and self.fileOneFrame.statSelected == "":
             return displayBox(
                 "Stats Error",
-                "One statistic to be compared must be selected per file.",
+                "Please select a statistic for file one.",
                 "Statistics Not Selected",
                 isError=True,
             )
-        fieldsOne, statsOne = readSumStatsFile(self.fileOneFrame.pathSelected)
-        fieldsTwo, statsTwo = readSumStatsFile(self.fileTwoFrame.pathSelected)
-        statIndexOne = fieldsOne.index(self.fileOneFrame.statSelected)
-        statIndexTwo = fieldsTwo.index(self.fileTwoFrame.statSelected)
+        
+        if self.fileTwoFrame.pathSelected != "" and self.fileTwoFrame.statSelected == "":
+            return displayBox(
+                "Stats Error",
+                "Please select a statistic for file two.",
+                "Statistics Not Selected",
+                isError=True,
+            )
+        
+        fields = []
+        stats = []
+        statIndices = []
+
+        if self.fileOneFrame.pathSelected != "":
+            fieldsOne, statsOne = readSumStatsFile(self.fileOneFrame.pathSelected)
+            statIndexOne = fieldsOne.index(self.fileOneFrame.statSelected)
+
+            fields.append(fieldsOne)
+            stats.append(statsOne)
+            statIndices.append(statIndexOne)
+
+        if self.fileTwoFrame.pathSelected != "":
+            fieldsTwo, statsTwo = readSumStatsFile(self.fileTwoFrame.pathSelected)
+            statIndexTwo = fieldsTwo.index(self.fileTwoFrame.statSelected)
+
+            fields.append(fieldsTwo)
+            stats.append(statsTwo)
+            statIndices.append(statIndexTwo)
+        
         plotMultiple(
-            [fieldsOne, fieldsTwo],
-            [statsOne, statsTwo],
-            [statIndexOne, statIndexTwo],
+            fields,
+            stats,
+            statIndices,
             True,
         )
 

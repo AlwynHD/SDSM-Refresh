@@ -105,14 +105,23 @@ def displayFiles(selected_files):
 
 def selectFile():
     """
-    pulls up the windows file explorer for user to select any file that ends in .Dat
+    pulls up the windows file explorer for user to select a select
+    files are ordered according to the sdsm manual
     returns file path
     """
     app = QApplication([])
     file_dialog = QFileDialog()
     file_dialog.setFileMode(QFileDialog.ExistingFiles)
-    file_dialog.setNameFilter("DAT files (*.DAT)")
-    if file_dialog.exec_():
+    file_dialog.setNameFilters({
+    "DAT files (.DAT))",
+    "PAR files (.PAR)",
+    "SIM files (.SIM)",
+    "OUTfiles (.OUT)",
+    "TXTfiles (*.TXT)",
+    "All Files ()"
+    })
+    file_dialog.selectNameFilter("All File ()"); 
+    if file_dialog.exec():
         files = file_dialog.selectedFiles()
         return files
 

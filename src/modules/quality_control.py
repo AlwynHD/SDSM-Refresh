@@ -428,12 +428,12 @@ class ContentWidget(QWidget):
         # Update correct label depending on button pressed
         if self.sender().objectName() == "check file":
             fileName = QFileDialog.getOpenFileName(
-                self, "Select file", "predictand files", "DAT Files (*.DAT)"
+                self, "Select file", "predictand files", "All Files ();;DAT Files (*.DAT);;PAR Files (*.PAR);;SIM Files (*.SIM);;OUT Files (*.OUT);;TXT Files (*.TXT)"
             )
             self.selectedFile = self.updateLabels(self.selectedFileLabel, fileName[0])
         elif self.sender().objectName() == "outlier file":
             fileName = QFileDialog.getOpenFileName(
-                self, "Select file", "SDSM-REFRESH", "Text Files (*.txt)"
+                self, "Select file", "SDSM-REFRESH", "All Files ();;DAT Files (*.DAT);;PAR Files (*.PAR);;SIM Files (*.SIM);;OUT Files (*.OUT);;TXT Files (*.TXT)"
             )
             self.selectedOutlier = self.updateLabels(
                 self.selectedOutlierLabel, fileName[0]

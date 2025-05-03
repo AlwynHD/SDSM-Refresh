@@ -558,7 +558,7 @@ class ContentWidget(QWidget):
     def selectInputButtonClicked(self):
         # Will have to be changed soon, as it relies on known file "predictand files"
         fileName = QFileDialog.getOpenFileName(
-            self, "Select input file", "predictand files", "DAT Files (*.DAT)"
+            self, "Select input file", "predictand files", "All Files ();;DAT Files (*.DAT);;PAR Files (*.PAR);;SIM Files (*.SIM);;OUT Files (*.OUT);;TXT Files (*.TXT)"
         )
         print(fileName)
         if fileName[0] != "":
@@ -573,7 +573,7 @@ class ContentWidget(QWidget):
     def selectOutputButtonClicked(self):
         # Will have to be changed soon, as it relies on known file "predictand files"
         fileName = QFileDialog.getOpenFileName(
-            self, "Select output file", "SDSM Refresh", ""
+            self, "Select output file", "SDSM Refresh", "All Files ();;DAT Files (*.DAT);;PAR Files (*.PAR);;SIM Files (*.SIM);;OUT Files (*.OUT);;TXT Files (*.TXT)"
         )
         print(fileName)
         if fileName[0] != "":

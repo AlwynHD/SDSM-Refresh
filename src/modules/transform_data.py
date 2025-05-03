@@ -1,12 +1,24 @@
 from PyQt5.QtWidgets import (QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QSizePolicy, 
                              QFrame, QLabel, QFileDialog, QScrollArea, QDateEdit, QCheckBox,
-                             QButtonGroup, QRadioButton, QLineEdit, QGroupBox)
+                             QButtonGroup, QRadioButton, QLineEdit, QGroupBox, QMessageBox)
 from PyQt5.QtCore import Qt, QDate
 from PyQt5.QtGui import QPalette, QColor, QIcon
-from src.lib.TransformData import *
+from src.lib.utils import loadFilesIntoMemory
+import os
 
 # Define the name of the module for display in the content area
 moduleName = "Transform Data"
+
+def displayBox(messageType, messageInfo, messageTitle, isError=False):
+    messageBox = QMessageBox()
+    if isError:
+        messageBox.setIcon(QMessageBox.Critical)
+    else:
+        messageBox.setIcon(QMessageBox.Information)
+    messageBox.setText(messageType)
+    messageBox.setInformativeText(messageInfo)
+    messageBox.setWindowTitle(messageTitle)
+    messageBox.exec_()
 
 class borderedQGroupBox(QGroupBox):
     def __init__(self,args):
@@ -23,6 +35,8 @@ class labeledQLineEditFrame(QFrame):
         self.setLayout(layout)
     def getLineEditVal(self):
         return self.lineEdit.text()
+    def setLineEditVal(self,text):
+        self.lineEdit.setText(text)
     
 
 
@@ -269,22 +283,22 @@ class ContentWidget(QWidget):
         self.selectInputLabel = QLabel("File: Not Selected")
         selectInputFileLayout.addWidget(self.selectInputLabel)
 
-        columnInput = QLineEdit("1")
-        columnLayout.addWidget(columnInput)
+        self.columnInput = QLineEdit("1")
+        columnLayout.addWidget(self.columnInput)
         
-        simCheckBox = QCheckBox("Create")
-        simLayout.addWidget(simCheckBox)
+        self.simCheckBox = QCheckBox("Create")
+        simLayout.addWidget(self.simCheckBox)
 
-        ensembleCheckBox = QCheckBox("Extract")
-        ensembleInput = QLineEdit("1")
-        ensembleLayout.addWidget(ensembleCheckBox)
-        ensembleLayout.addWidget(ensembleInput)
+        self.ensembleCheckBox = QCheckBox("Extract")
+        self.ensembleInput = QLineEdit("1")
+        ensembleLayout.addWidget(self.ensembleCheckBox)
+        ensembleLayout.addWidget(self.ensembleInput)
 
-        thresholdCheckBox = QCheckBox("Apply Threshold")
-        thresholdLayout.addWidget(thresholdCheckBox)
+        self.thresholdCheckBox = QCheckBox("Apply Threshold")
+        thresholdLayout.addWidget(self.thresholdCheckBox)
 
-        outputCheckBox = QCheckBox("Create .OUT File")
-        outputLayout.addWidget(outputCheckBox)
+        self.outputCheckBox = QCheckBox("Create .OUT File")
+        outputLayout.addWidget(self.outputCheckBox)
 
 
 
@@ -387,10 +401,14 @@ class ContentWidget(QWidget):
         lagNLayout = QHBoxLayout()
         lagNRadio = QRadioButton("Lag n")
         self.transformRadioGroup.addButton(lagNRadio)
-        lagNLineEdit = QLineEdit("0")
+        self.lagNLineEdit = QLineEdit("0")
+        self.wrapCheckBox = QCheckBox("Wrap")
         lagNLayout.addWidget(lagNRadio)
-        lagNLayout.addWidget(lagNLineEdit)
+        
+        lagNLayout.addWidget(self.lagNLineEdit)
+        lagNLayout.addWidget(self.wrapCheckBox)
         lagNFrame.setLayout(lagNLayout)
+        
         otherTransformationsLayout.addWidget(lagNFrame)
 
         binomialFrame = QFrame()
@@ -398,11 +416,10 @@ class ContentWidget(QWidget):
         binomialRadio = QRadioButton("Binomial")
         self.transformRadioGroup.addButton(binomialRadio)
 
-        binomialLineEdit = QLineEdit("0")
-        binomialWrapCheckBox = QCheckBox("Wrap")
+        self.binomialLineEdit = QLineEdit("0")
+        
         binomialLayout.addWidget(binomialRadio)
-        binomialLayout.addWidget(binomialLineEdit)
-        binomialLayout.addWidget(binomialWrapCheckBox)
+        binomialLayout.addWidget(self.binomialLineEdit)
         binomialFrame.setLayout(binomialLayout)
         otherTransformationsLayout.addWidget(binomialFrame)
         
@@ -418,46 +435,49 @@ class ContentWidget(QWidget):
         self.selectOutputLabel = QLabel("File: Not Selected")
         selectOutputFileLayout.addWidget(self.selectOutputLabel)
 
-        padDataCheckBox = QCheckBox("Pad Data")
+        self.padDataCheckBox = QCheckBox("Pad Data")
 
         startDateFrame = QFrame()
         startDateLayout = QHBoxLayout()
         startDateLabel = QLabel("Start Date: ")
-        startDateEdit = QDateEdit(QDate(1948,1,1))
+        self.startDateEdit = QDateEdit(calendarPopup=True)
+        self.startDateEdit.setDate(QDate(1948,1,1))
+
         startDateLayout.addWidget(startDateLabel)
-        startDateLayout.addWidget(startDateEdit)
+        startDateLayout.addWidget(self.startDateEdit)
         startDateFrame.setLayout(startDateLayout)
         
         endDateFrame = QFrame()
         endDateLayout = QHBoxLayout()
         endDateLabel = QLabel("End Date: ")
-        endDateEdit = QDateEdit(QDate(2015,12,31))
+        self.endDateEdit = QDateEdit(calendarPopup=True)
+        self.endDateEdit.setDate(QDate(2015,12,31))
         endDateLayout.addWidget(endDateLabel)
-        endDateLayout.addWidget(endDateEdit)
+        endDateLayout.addWidget(self.endDateEdit)
         endDateFrame.setLayout(endDateLayout)
 
-        padDataLayout.addWidget(padDataCheckBox)
+        padDataLayout.addWidget(self.padDataCheckBox)
         padDataLayout.addWidget(startDateFrame)
         padDataLayout.addWidget(endDateFrame)
 
-        boxCoxRadioGroup = QButtonGroup()
-        boxCoxRadioGroup.setExclusive(True)
+
         boxCoxRadio = QRadioButton("Box Cox")
         unBoxCoxRadio = QRadioButton("Un-Box Cox")
-        boxCoxRadioGroup.addButton(boxCoxRadio)
-        boxCoxRadioGroup.addButton(unBoxCoxRadio)
-        lambdaFrame = labeledQLineEditFrame("Lambda: ", "1")
-        shiftFrame = labeledQLineEditFrame("Shift: ", "0")
+        self.transformRadioGroup.addButton(boxCoxRadio)
+        self.transformRadioGroup.addButton(unBoxCoxRadio)
+        self.lambdaFrame = labeledQLineEditFrame("Lambda: ", "1")
+        self.shiftFrame = labeledQLineEditFrame("Shift: ", "0")
 
         boxLayout.addWidget(boxCoxRadio)
         boxLayout.addWidget(unBoxCoxRadio)
-        boxLayout.addWidget(lambdaFrame)
-        boxLayout.addWidget(shiftFrame)
+        boxLayout.addWidget(self.lambdaFrame)
+        boxLayout.addWidget(self.shiftFrame)
 
-        outlierCheckBox = QCheckBox("Remove Outliers")
-        standardDevFrame = labeledQLineEditFrame("Standard Dev: ", "0")
-        outlierLayout.addWidget(outlierCheckBox)
-        outlierLayout.addWidget(standardDevFrame)
+        self.outlierRadio = QRadioButton("Remove Outliers")
+        self.transformRadioGroup.addButton(self.outlierRadio)
+        self.standardDevFrame = labeledQLineEditFrame("Standard Dev: ", "0")
+        outlierLayout.addWidget(self.outlierRadio)
+        outlierLayout.addWidget(self.standardDevFrame)
 
         transformButton = QPushButton("Transform Data")
         transformButton.clicked.connect(self.doTransform)
@@ -465,8 +485,52 @@ class ContentWidget(QWidget):
 
         buttonLayout.addWidget(transformButton)
 
+        resetButton = QPushButton("🔄 Reset")
+        resetButton.clicked.connect(self.resetAll)
+        resetButton.setStyleSheet("background-color: #F44336; color: white; font-weight: bold;")
+        buttonLayout.addWidget(resetButton)
+        
+
+    def resetAll(self):
+        #Uncheck all buttons
+        buttons = self.transformRadioGroup.buttons()
+        self.transformRadioGroup.setExclusive(False) #Set exclusive to false so that its fine with none being checked
+        for button in buttons:
+            button.setChecked(False)
+        self.transformRadioGroup.setExclusive(True)        
+        #Remove selected files
+        self.inputSelected = ""
+        self.outputSelected = ""
+
+        self.selectInputLabel.setText("File: Not Selected")
+        self.selectOutputLabel.setText("File: Not Selected")
+
+        #Reset check boxes
+        self.simCheckBox.setChecked(False)
+        self.ensembleCheckBox.setChecked(False)
+        self.thresholdCheckBox.setChecked(False)
+        self.outputCheckBox.setChecked(False)
+        self.wrapCheckBox.setChecked(False)
+        self.padDataCheckBox.setChecked(False)
+
+        #Reset line edit fields
+        self.columnInput.setText("1")
+        self.ensembleInput.setText("1")
+        self.lagNLineEdit.setText("0")
+        self.binomialLineEdit.setText("0")
+        self.lambdaFrame.setLineEditVal("1")
+        self.shiftFrame.setLineEditVal("0")
+        self.standardDevFrame.setLineEditVal("0")
+
+        #Reset dates
+        self.startDateEdit.setDate(QDate(1948,1,1))
+        self.endDateEdit.setDate(QDate(2015,12,31))
 
 
+    def QDateEditToDateTime(self, dateEdit):
+        rawStartDate = dateEdit.date()
+        dateTime = rawStartDate.toPyDate()
+        return dateTime
 
     def selectInputButtonClicked(self):
         #Will have to be changed soon, as it relies on known file "predictand files"
@@ -476,7 +540,7 @@ class ContentWidget(QWidget):
             self.inputSelected = fileName[0]
             self.selectInputLabel.setText("File: "+self.inputSelected.split("/")[-1]) #Only show the name of the file, not the whole path
         else:
-            self.inputSelected = None
+            self.inputSelected = ""
             self.selectInputLabel.setText("File: Not Selected")
 
     def selectOutputButtonClicked(self):
@@ -487,11 +551,11 @@ class ContentWidget(QWidget):
             self.outputSelected = fileName[0]
             self.selectOutputLabel.setText("File: "+self.outputSelected.split("/")[-1]) #Only show the name of the file, not the whole path
         else:
-            self.outputSelected = None
+            self.outputSelected = ""
             self.selectOutputLabel.setText("File: Not Selected")
 
     def unPressOtherRadios(self,*args):
-         #Needed to make sure function radio and inverse radio buttons cant be clicked at same time
+        #Needed to make sure function radio and inverse radio buttons cant be clicked at same time
         radio = self.sender()
         buttons = self.transformRadioGroup.buttons()
         for button in buttons:
@@ -500,4 +564,68 @@ class ContentWidget(QWidget):
                     button.setChecked(False)
 
     def doTransform(self):
-        print("https://www.youtube.com/watch?v=7F2QE8O-Y1g")
+        from src.lib.utils import getSettings
+        from src.lib.TransformData import square, cube, powFour, powMinusOne, eToTheN, tenToTheN, lag, binomial, backwardsChange, removeOutliers
+        from src.lib.TransformData import powHalf, powThird,powQuarter,returnSelf, padData, genericTransform, loadData, boxCox, unBoxCox
+        from numpy import log, log10, ndim, empty,longdouble
+        #print("https://www.youtube.com/watch?v=7F2QE8O-Y1g")
+
+        settings = getSettings()
+        try: #Check if an input file is selected
+            file = open(self.inputSelected,"r")
+            file.close()
+        except FileNotFoundError:
+            return displayBox("Input Error","No input file selected.","Error",isError=True)
+        try: #Check if an output file is selected
+            outputFile = open(self.outputSelected, "w")
+        except (FileNotFoundError, TypeError) as e: 
+            if not self.outputCheckBox.isChecked(): #If an OUT file is not being generated
+                return displayBox("Output Error","No output file selected, and you have not selected one to be generated.","Error",isError=True)
+            else:
+                outputFile = open(self.inputSelected.split("/")[-1]+" transformed.OUT","w")
+        applyThresh = self.thresholdCheckBox.isChecked()
+        data = loadData([self.inputSelected])
+        try: #Check if a transformation is selected
+            trans = self.transformRadioGroup.checkedButton().text() 
+        except AttributeError:
+            return displayBox("Transformation Error","A transformation must be selected.","Error",isError=True)
+        transformations = [["Ln",log],["Log",log10],["x²",square], ["x³",cube],["x⁴",powFour],["x⁻¹",powMinusOne],["eˣ",eToTheN],["10ˣ",tenToTheN],["√x",powHalf],["∛x",powThird],["∜x",powQuarter],["x",returnSelf]]
+        if self.padDataCheckBox.isChecked():
+            data = padData(data, self.QDateEditToDateTime(self.startDateEdit), self.QDateEditToDateTime(self.endDateEdit))
+        genericTrans = False
+        for i in transformations:
+            if i[0] == trans:
+                genericTrans = True
+                returnedData, returnedInfo = genericTransform(data, i[1],applyThresh)
+                for i in returnedData:
+                    outputFile.write(str(i[0])+"\n")
+        if not genericTrans:
+            if trans == "Box Cox":
+                returnedData, returnedInfo = boxCox(data, applyThresh)
+            elif trans == "Un-Box Cox":
+                if not self.lambdaFrame.getLineEditVal().isdigit() or not self.shiftFrame.getLineEditVal().isdigit():
+                    return displayBox("Value error","Lamda and left shift values must be integers","Error",isError=True)
+                returnedData, returnedInfo = unBoxCox(data, self.lambdaFrame.getLineEditVal(),self.shiftFrame.getLineEditVal(),applyThresh)
+            elif trans == "Lag n":
+                if not self.lagNLineEdit.text().isdigit():
+                    return displayBox("Value error","Lag N value must be an integer","Error",isError=True)
+                returnedData, returnedInfo = lag(data, int(self.lagNLineEdit.text()), self.wrapCheckBox.isChecked())
+            elif trans == "Binomial":
+                if  not self.binomialLineEdit.text().isdigit():
+                    return displayBox("Value error","Binomial value must be an integer","Error",isError=True)
+                returnedData, returnedInfo = binomial(data, int(self.binomialLineEdit.text()), applyThresh)
+            elif trans == "Backward Change":
+                returnedData, returnedInfo = backwardsChange(data, applyThresh)
+            elif trans == "Remove Outliers":
+                if not self.standardDevFrame.getLineEditVal().isdigit():
+                    return displayBox("Value error","Standard deviation value must be an integer","Error",isError=True)
+                returnedData,returnedInfo = removeOutliers(data, int(self.standardDevFrame.getLineEditVal()),applyThresh)
+
+        outputFile.close()
+        if self.outputSelected != "" and self.outputCheckBox.isChecked():
+            transformedFile = open(self.outputSelected,"r")
+            outputFile = open(self.inputSelected.split("/")[-1]+" transformed.OUT","w")
+            for line in transformedFile:
+                outputFile.write(line)
+        return displayBox("Data Transformed",returnedInfo,"Transformation Success")
+

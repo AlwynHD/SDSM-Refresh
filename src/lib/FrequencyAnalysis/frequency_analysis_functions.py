@@ -1,8 +1,9 @@
 import math
+from math import gamma
 import configparser
 from datetime import datetime, date
 import os
-
+from collections import defaultdict
 import numpy as np
 
 def convertValue(key, value):
@@ -660,55 +661,56 @@ def ensembleNumberOK(ensembleOptionSelected, ensembleNumberText, ensembleWanted)
 
 def stripMissing(freqAnalData, obsYears, modYears, noOfXCols):
     """
-    Strips missing data from the frequency analysis matrix.
+    Strips missing data from the frequency analysis matrix,
+    mirroring the VB StripMissing logic exactly.
     
     Parameters:
-        freqAnalData (list of lists): 
-            2D array where each row is:
-              [rp, obs, mod, lowerPct, upperPct, ...] or flattened into 8 cols.
-        obsYears (int): number of observed‐years rows in freqAnalData.
-        modYears (int): number of modelled‐years rows in freqAnalData.
-        noOfXCols (int): if 8, percentiles are present.
+        freqAnalData (list of lists): side-by-side [rp, obs, mod, lowerPct, upperPct, ...]
+        obsYears (int): number of observed-year rows
+        modYears (int): number of modelled-year rows
+        noOfXCols (int): total columns in freqAnalData (4 or 8)
     
     Returns:
-        tuple: (newFreqAnalData, totalCount)
+        (newFreqAnalData, totalCount)
     """
-    # 1) allocate workingMatrix
     maxRows = obsYears + modYears
+    # 1) allocate workingMatrix[maxRows][5]
     workingMatrix = [[globalMissingCode]*5 for _ in range(maxRows)]
     
     # 2) fill observed rows
     for i in range(obsYears):
-        workingMatrix[i][0] = freqAnalData[i][0]  # return period
-        workingMatrix[i][1] = freqAnalData[i][1]  # observed
-        # mod stays missing
+        workingMatrix[i][0] = freqAnalData[i][0]  # RP
+        workingMatrix[i][1] = freqAnalData[i][1]  # Obs
+        # Mod stays missing (globalMissingCode)
         if noOfXCols == 8:
-            workingMatrix[i][3] = workingMatrix[i][4] = globalMissingCode
+            workingMatrix[i][3] = globalMissingCode
+            workingMatrix[i][4] = globalMissingCode
     
-    # 3) fill modelled rows
+    # 3) fill modelled rows (note: src from freqAnalData[i], not [obsYears+i])
     for i in range(modYears):
         outIdx = obsYears + i
-        src = freqAnalData[outIdx]
-        workingMatrix[outIdx][0] = src[2]         # return period from col 3
-        workingMatrix[outIdx][2] = src[3]         # modelled from col 4
-        # obs stays missing
+        src = freqAnalData[i]
+        workingMatrix[outIdx][0] = src[2]  # RP from mod column
+        workingMatrix[outIdx][2] = src[3]  # Mod
+        # Obs stays missing
         if noOfXCols == 8:
-            workingMatrix[outIdx][3] = src[5]     # lower% from col 6
-            workingMatrix[outIdx][4] = src[7]     # upper% from col 8
+            workingMatrix[outIdx][3] = src[5]  # lower%
+            workingMatrix[outIdx][4] = src[7]  # upper%
     
-    # 4) sort by return period descending
-    workingMatrix.sort(key=lambda row: row[0], reverse=False)
+    # 4) sort by RP descending
+    workingMatrix.sort(key=lambda row: row[0], reverse=True)
     
-    # 5) collapse duplicates
+    # 5) collapse duplicates, merging Obs/Mod into the same RP row
     workingMatrix2 = []
     prevRp = None
     for row in workingMatrix:
         rp = row[0]
         if rp == prevRp:
             last = workingMatrix2[-1]
-            # merge obs/mod
+            # if last.obs missing, fill from this row
             if last[1] == globalMissingCode and row[1] != globalMissingCode:
                 last[1] = row[1]
+            # if last.mod missing, fill from this row
             if last[2] == globalMissingCode and row[2] != globalMissingCode:
                 last[2] = row[2]
             if noOfXCols == 8:
@@ -722,163 +724,133 @@ def stripMissing(freqAnalData, obsYears, modYears, noOfXCols):
     
     totalCount = len(workingMatrix2)
     
-    # 6) build new frequency array
+    # 6) rebuild into newFreqAnalData with VB's column layout
     newCols = 8 if noOfXCols == 8 else 4
     newFreqAnalData = [[globalMissingCode]*newCols for _ in range(totalCount)]
-    
     for i, row in enumerate(workingMatrix2):
-        newFreqAnalData[i][0] = row[0]            # col 1 = rp
-        newFreqAnalData[i][1] = row[1]            # col 2 = obs
-        newFreqAnalData[i][2] = row[0]            # col 3 = rp
-        newFreqAnalData[i][3] = row[2]            # col 4 = mod
+        newFreqAnalData[i][0] = row[0]  # RP
+        newFreqAnalData[i][1] = row[1]  # Obs
+        newFreqAnalData[i][2] = row[0]  # RP
+        newFreqAnalData[i][3] = row[2]  # Mod
         if newCols == 8:
-            newFreqAnalData[i][4] = row[0]        # col 5 = rp
-            newFreqAnalData[i][5] = row[3]        # col 6 = lower%
-            newFreqAnalData[i][6] = row[0]        # col 7 = rp
-            newFreqAnalData[i][7] = row[4]        # col 8 = upper%
+            newFreqAnalData[i][4] = row[0]  # RP
+            newFreqAnalData[i][5] = row[3]  # lower%
+            newFreqAnalData[i][6] = row[0]  # RP
+            newFreqAnalData[i][7] = row[4]  # upper%
     
     return newFreqAnalData, totalCount
 
 def empiricalAnalysis(
-    observedData,
-    modelledData,
-    noOfObserved,
+    obsDates, observedData,
+    modDatesList, modelledData,
     noOfEnsembles,
-    noOfModelledList,
-    endOfSection,
-    useThresh,
-    thresh,
-    file1Used,
-    file2Used,
+    useThresh, thresh,
+    file1Used, file2Used,
     defaultDir,
-    noOfXCols,
-    file2ColStart,
-    percentileWanted
+    noOfXCols, file2ColStart,
+    percentileWanted,
+    globalMissingCode
 ):
     """
-    Performs the empirical analysis, producing a return-period vs. annual-max matrix
-    for observed and modelled ensemble data.
-
-    Returns:
-        (success: bool, freqAnalData: list[list], noOfXDataPoints: int)
+    Calculates the empirical return‐period vs. annual‐max table,
+    matching the VB EmpiricalAnalysis exactly: skips empty years,
+    sorts each ensemble descending, uses nearest‐rank percentiles,
+    and duplicates RP next to every statistic column.
+    Returns (success: bool, freqAnalData: List[List], noOfXDataPoints: int).
     """
     try:
-        # (A) Prepare annual-max storage
-        obsMaxSeries = []
-        modMaxSeries = [[] for _ in range(noOfEnsembles)]
-
-        obsYearsAvailable = 0
-        modYearsAvailable = 0
-        minModYearsAvailable = float('inf')
-        maxModYearsAvailable = 0
-
-        # (B) Extract observed annual maxima
+        # 1) OBSERVED: bucket by calendar year
         if file1Used:
-            yearCounter = 0
-            yearMax = -12344
-            for i in range(noOfObserved):
-                val = observedData[i]
-                if val == endOfSection:
-                    if yearMax != -12344:
-                        yearCounter += 1
-                        obsMaxSeries.append(yearMax)
-                    yearMax = -12344
-                else:
-                    if useThresh == 0 or (useThresh == 1 and val > thresh):
-                        if val != globalMissingCode and val > yearMax:
-                            yearMax = val
-            obsYearsAvailable = yearCounter
+            byYear = defaultdict(lambda: -12344)
+            for dt, val in zip(obsDates, observedData):
+                if (useThresh == 0 or val > thresh) and val != globalMissingCode:
+                    y = dt.year
+                    if val > byYear[y]:
+                        byYear[y] = val
+            # skip any year with no valid days
+            obsMaxSeries = [v for v in byYear.values() if v != -12344]
+            obsYearsAvailable = len(obsMaxSeries)
             if obsYearsAvailable < 10:
                 return False, None, 0
+        else:
+            obsYearsAvailable = 0
 
-        # (C) Extract modelled annual maxima
+        # 2) MODELLED: same, per ensemble, then sort descending
         if file2Used:
+            modMaxSeries = [[] for _ in range(noOfEnsembles)]
+            yearCounts = []
             for j in range(noOfEnsembles):
-                yearCounter = 0
-                yearMax = -12344
-                for i in range(noOfModelledList[j]):
-                    val = modelledData[j][i]
-                    if val == endOfSection:
-                        if yearMax != -12344:
-                            yearCounter += 1
-                            modMaxSeries[j].append(yearMax)
-                        yearMax = -12344
-                    else:
-                        if useThresh == 0 or (useThresh == 1 and val > thresh):
-                            if val != globalMissingCode and val > yearMax:
-                                yearMax = val
-                maxModYearsAvailable = max(maxModYearsAvailable, yearCounter)
-                minModYearsAvailable = min(minModYearsAvailable, yearCounter)
+                byYear = defaultdict(lambda: -12344)
+                for dt, val in zip(modDatesList[j], modelledData[j]):
+                    if (useThresh == 0 or val > thresh) and val != globalMissingCode:
+                        y = dt.year
+                        if val > byYear[y]:
+                            byYear[y] = val
+                series = [v for v in byYear.values() if v != -12344]
+                series.sort(reverse=True)              # ← match VB.SortRows Descending
+                modMaxSeries[j] = series
+                yearCounts.append(len(series))
 
-            modYearsAvailable = maxModYearsAvailable
-            if modYearsAvailable < 10:
+            maxModYears = max(yearCounts)
+            minModYears = min(yearCounts)
+            if maxModYears < 10 or maxModYears != minModYears:
                 return False, None, 0
-            if maxModYearsAvailable != minModYearsAvailable:
-                return False, None, 0
+            modYearsAvailable = maxModYears
+        else:
+            modYearsAvailable = 0
 
-        # (D) Determine how many rows we’ll output
-        maxYearsAvailable = max(obsYearsAvailable, modYearsAvailable)
+        # 3) Prepare output matrix
+        maxYears = max(obsYearsAvailable, modYearsAvailable)
+        freqAnalData = [[None]*noOfXCols for _ in range(maxYears)]
+        noOfXDataPoints = maxYears
 
-        # Prepare containers
-        sortingMatrix = [[None] for _ in range(maxYearsAvailable)]
-        freqAnalData = [[None] * noOfXCols for _ in range(maxYearsAvailable)]
-        noOfXDataPoints = maxYearsAvailable
-
-        # (E) Fill in observed return-period vs max
+        # 4) Fill observed columns (RP & max)
         if file1Used:
-            for i in range(obsYearsAvailable):
-                sortingMatrix[i][0] = obsMaxSeries[i]
-            sortedObs = sorted(sortingMatrix[:obsYearsAvailable],
-                               key=lambda r: r[0],
-                               reverse=True)
-            for idx, row in enumerate(sortedObs):
-                freqAnalData[idx][0] = obsYearsAvailable / (idx + 1)
-                freqAnalData[idx][1] = row[0]
+            sortedObs = sorted(obsMaxSeries, reverse=True)
+            for i, v in enumerate(sortedObs):
+                freqAnalData[i][0] = obsYearsAvailable / (i+1)
+                freqAnalData[i][1] = v
 
-        # (F) Fill in modelled + percentiles
+        # 5) Fill modelled columns (RP, median, Upper, Lower),
+        #    duplicating RP next to each statistic
         if file2Used:
-            # File-output block left in place but disabled
-            if False:
-                drive = os.path.splitdrive(defaultDir)[0]
-                tempFile = os.path.join(drive + os.sep, "SDSMEmpResults.txt")
-                with open(tempFile, "w") as fout:
-                    fout.write("Empirical Results\n\t\t\t\tReturn Period\nEnsemble\t")
-                    for y in range(modYearsAvailable, 0, -1):
-                        fout.write(f"{round(modYearsAvailable / y, 1)}\t")
-                    fout.write("\n")
-                    # … etc. …
+            # compute Python indices for VB columns
+            rp_idx1 = file2ColStart - 2       # VB: File2ColStart-1
+            med_idx  = file2ColStart - 1       # VB: File2ColStart
+            up_idx   = file2ColStart + 1       # VB: File2ColStart+2
+            rp_idx2  = file2ColStart           # VB: File2ColStart+1
+            rp_idx3  = file2ColStart + 2       # VB: File2ColStart+3
+            lo_idx   = file2ColStart + 3       # VB: File2ColStart+4
 
-            # Compute medians & return periods
             for i in range(modYearsAvailable):
-                series_i = [modMaxSeries[j][i] for j in range(noOfEnsembles)]
-                # median
-                freqAnalData[i][file2ColStart - 1] = calcPercentile(series_i, 50)
-                # return period
-                freqAnalData[i][file2ColStart - 2] = modYearsAvailable / (i + 1)
+                yearVals = [modMaxSeries[j][i] for j in range(noOfEnsembles)]
+                rp  = modYearsAvailable / (i+1)
+                med = calcPercentile(yearVals, 50)
 
-                # percentile bounds
-                if noOfEnsembles > 1 and percentileWanted > 0:
-                    upp = calcPercentile(series_i, 100 - percentileWanted / 2)
-                    low = calcPercentile(series_i, percentileWanted / 2)
-                    if upp != globalMissingCode and low != globalMissingCode:
-                        rp = modYearsAvailable / (i + 1)
-                        freqAnalData[i][file2ColStart]     = upp
-                        freqAnalData[i][file2ColStart - 3] = low
-                        freqAnalData[i][file2ColStart - 1] = rp
-                        freqAnalData[i][file2ColStart - 4] = rp
+                # write RP & median
+                freqAnalData[i][rp_idx1] = rp
+                freqAnalData[i][med_idx]  = med
+                
+                if noOfEnsembles > 1 and percentileWanted:
+                    up = calcPercentile(yearVals, 100 - percentileWanted/2)
+                    lo = calcPercentile(yearVals,     percentileWanted/2)
+                    # write upper bound + its RP
+                    freqAnalData[i][up_idx]  = up
+                    freqAnalData[i][rp_idx2] = rp
+                    # write lower bound + its RP
+                    freqAnalData[i][lo_idx]  = lo
+                    freqAnalData[i][rp_idx3] = rp
 
-        # (G) “Pack” if one series is shorter
+        # 6) Pad the shorter series so plots stay continuous
         if file1Used and file2Used:
             if modYearsAvailable > obsYearsAvailable:
-                last = freqAnalData[obsYearsAvailable - 1]
+                lastObs = freqAnalData[obsYearsAvailable-1][:2]
                 for k in range(modYearsAvailable - obsYearsAvailable):
-                    freqAnalData[obsYearsAvailable + k][0] = last[0]
-                    freqAnalData[obsYearsAvailable + k][1] = last[1]
+                    freqAnalData[obsYearsAvailable + k][0:2] = lastObs
             elif obsYearsAvailable > modYearsAvailable:
-                last = freqAnalData[modYearsAvailable - 1]
+                lastMod = freqAnalData[modYearsAvailable-1][:2]
                 for k in range(obsYearsAvailable - modYearsAvailable):
-                    freqAnalData[modYearsAvailable + k][0] = last[0]
-                    freqAnalData[modYearsAvailable + k][1] = last[1]
+                    freqAnalData[modYearsAvailable + k][0:2] = lastMod
 
         return True, freqAnalData, noOfXDataPoints
 
@@ -886,332 +858,276 @@ def empiricalAnalysis(
         return False, None, 0
 
 def gevAnalysis(
-    observedData,
-    modelledData,
-    noOfObserved,
+    obsDates, observedData,
+    modDatesList, modelledData,
     noOfEnsembles,
-    noOfModelledList,
-    totalObsYears,
-    totalModYears,
-    endOfSection,
-    useThresh,
-    thresh,
-    file1Used,
-    file2Used,
+    useThresh, thresh,
+    file1Used, file2Used,
     defaultDir,
-    noOfXCols,
-    file2ColStart,
-    percentileWanted
+    noOfXCols, file2ColStart,
+    percentileWanted,
+    globalMissingCode
 ):
     """
     GEV analysis on observed and modelled AMS.
     Returns (success, freqAnalData, noOfXDataPoints).
     """
     try:
-        # ----- (A)
-        print("  (A) initializing series…")
-        obsMaxSeries = []
-        ModMaxSeries = [[None] * totalModYears for _ in range(noOfEnsembles)]
-        obsYearsAvailable = 0
-        MinModAvailable = float('inf')         
-
-        # ----- (B)
+        # ----- (A) OBSERVED: bucket by calendar year
         if file1Used:
-            print("  (B) extracting observed AMS…")
-            yearCounter = 0
-            yearMax = -22222
-            for i in range(noOfObserved):
-                v = observedData[i]
-                if v == endOfSection:
-                    if yearMax != -22222:
-                        yearCounter += 1
-                        obsMaxSeries.append(yearMax)
-                    yearMax = -22222
-                else:
-                    if (useThresh == 0 or (useThresh == 1 and v >= thresh)) and (v != globalMissingCode):
-                        if v > yearMax:
-                            yearMax = v
-            obsYearsAvailable = yearCounter
-            print(f"    → obsYearsAvailable = {obsYearsAvailable}")
-            print(f"    → obsMaxSeries[:5] = {obsMaxSeries[:5]} …")
+            byYear = defaultdict(lambda: globalMissingCode)
+            for dt, v in zip(obsDates, observedData):
+                if v != globalMissingCode and (useThresh == 0 or v >= thresh):
+                    y = dt.year
+                    if v > byYear[y]:
+                        byYear[y] = v
+            obsMaxSeries = [val for val in byYear.values() if val != globalMissingCode]
+            obsYearsAvailable = len(obsMaxSeries)
             if obsYearsAvailable < 3:
-                print("Error: need ≥3 obs years")
-                return False, None, 0
-
-        # ----- (C)
-        if file2Used:
-            print("  (C) extracting modelled AMS…")
-            perEnsemble = []
-            for j in range(noOfEnsembles):
-                yearCounter = 0
-                yearMax = -22222
-                for x in range(noOfModelledList[j]):
-                    v = modelledData[j][x]
-                    if v == endOfSection:
-                        if yearMax != -22222:
-                            yearCounter += 1
-                            ModMaxSeries[j][yearCounter-1] = yearMax
-                        yearMax = -22222
-                    else:
-                        if (useThresh == 0 or (useThresh == 1 and v >= thresh)) and (v != globalMissingCode):
-                            if v > yearMax:
-                                yearMax = v
-                perEnsemble.append(yearCounter)
-                MinModAvailable = min(MinModAvailable, yearCounter)
-                print(f"    → Ensemble {j}, years found = {yearCounter}")
-            print(f"    → perEnsembleYears={perEnsemble}")
-            if MinModAvailable < 3:
-                print("Error: need ≥3 mod years")
-                return False, None, 0
-
-        # ----- (D)
-        noOfXDataPoints = 10
-        if MinModAvailable > 100:
-            noOfXDataPoints = 12
-        print(f"  (D) noOfXDataPoints={noOfXDataPoints}")
-
-        # ----- (E)
-        print("  (E) estimating GEV params…")
-        # 1) set up return periods & freqAnalData
-        returnPeriods = [2,3,4,5,10,15,20,30,50,100]
-        if noOfXDataPoints == 12:
-            returnPeriods += [500,1000]
-        FreqAnalData = [[None]*noOfXCols for _ in range(noOfXDataPoints)]
-        for i, rp in enumerate(returnPeriods):
-            FreqAnalData[i][0] = rp
-
-        # 2) sort obs-series and compute L-moments on the extracted AMS
-        sortingMatrix = [[None] for _ in range(obsYearsAvailable)]
-        for i in range(obsYearsAvailable):
-            sortingMatrix[i][0] = obsMaxSeries[i]
-        sortingMatrix[:obsYearsAvailable] = sorted(sortingMatrix[:obsYearsAvailable],
-                                                   key=lambda r: r[0])
-        # now pass the obsMaxSeries list into lMoment
-        LM1 = lMoment(obsMaxSeries, 1)
-        LM2 = lMoment(obsMaxSeries, 2)
-        LM3 = lMoment(obsMaxSeries, 3)
-        if 0 in (LM1, LM2, LM3):
-            print("Error: L-moment calc failed")
-            return False, None, 0
-
-        # 3) Kysely → Zed, Kay, Beta, Eta
-        zed = 3 + (LM3/LM2)
-        zed = 2/zed - (math.log(2)/math.log(3))
-        kay = 7.859*zed + 2.9554*(zed**2)
-        if abs(kay) > 0.005:
-            # 3-param
-            gammaVal = gamma(1 + kay)
-            if gammaVal in (0, globalMissingCode):
-                print("Error: gamma invalid")
-                return False, None, 0
-            beta = (LM2*kay)/( (1 - 2**(-kay))*gammaVal )
-            eta = beta*(gammaVal - 1)/kay + LM1
-            for idx, rp in enumerate(returnPeriods):
-                FreqAnalData[idx][1] = calcGEVValue(beta, eta, kay, rp)
-        else:
-            # 2-param Gumbel
-            beta = LM2/math.log(2)
-            eta  = LM1 - (0.557215665*LM2/math.log(2))
-            for idx, rp in enumerate(returnPeriods):
-                FreqAnalData[idx][1] = calcGEVSmallKay(beta, eta, rp)
-
-        # ----- (F) (file-dump disabled)
-        if False and file2Used:
-            # … your old temp-file code here …
-            pass
-
-        # ----- (G) extra columns of RP if >2 cols
-        if noOfXCols > 2:
-            for col in range(2, noOfXCols, 2):
-                for i, rp in enumerate(returnPeriods):
-                    FreqAnalData[i][col] = rp
-
-        print(f"\n  → gev params done (Kay={kay:.3f})")
-        return True, FreqAnalData, noOfXDataPoints
-
-    except Exception as e:
-        print("❌ Exception in gevAnalysis:", e)
-        return False, None, 0
-    
-EndOfSection = -99999
-
-def gumbelAnalysis(
-    observedData,
-    modelledData,
-    noOfObserved,
-    noOfEnsembles,
-    noOfModelledList,
-    totalObsYears,
-    totalModYears,
-    endOfSection,
-    useThresh,
-    thresh,
-    file1Used,
-    file2Used,
-    defaultDir,
-    noOfXCols,
-    file2ColStart,
-    percentileWanted
-):
-    """
-    Performs Gumbel analysis on observed and modelled annual-max series.
-
-    Returns:
-        (success: bool, freqAnalData: List[List], noOfXDataPoints: int)
-    """
-    try:
-        # (A) Extract observed AMS
-        obsMaxSeries = []
-        if file1Used:
-            yearCounter = 0
-            yearMax = -12344
-            for v in observedData[:noOfObserved]:
-                if v == endOfSection:
-                    if yearMax != -12344:
-                        yearCounter += 1
-                        obsMaxSeries.append(yearMax)
-                    yearMax = -12344
-                else:
-                    if (useThresh == 0 or (useThresh == 1 and v >= thresh)) and v != globalMissingCode:
-                        if v > yearMax:
-                            yearMax = v
-            obsYearsAvailable = yearCounter
-            if obsYearsAvailable < 3:
-                print("Error: need ≥3 obs years")
                 return False, None, 0
         else:
             obsYearsAvailable = 0
 
-        # (B) Extract modelled AMS
+        # ----- (B) MODELLED: same, per ensemble
         if file2Used:
-            minModAvailable = float('inf')
-            modMaxSeries = [[None]*totalModYears for _ in range(noOfEnsembles)]
-            modYearsAvailableList = [0]*noOfEnsembles
+            ModMaxSeries = []
+            MinModAvailable = float('inf')
             for j in range(noOfEnsembles):
-                yearCounter = 0
-                yearMax = -12344
-                for v in modelledData[j][:noOfModelledList[j]]:
-                    if v == endOfSection:
-                        if yearMax != -12344:
-                            yearCounter += 1
-                            modMaxSeries[j][yearCounter-1] = yearMax
-                        yearMax = -12344
-                    else:
-                        if (useThresh == 0 or (useThresh == 1 and v >= thresh)) and v != globalMissingCode:
-                            if v > yearMax:
-                                yearMax = v
-                modYearsAvailableList[j] = yearCounter
-                minModAvailable = min(minModAvailable, yearCounter)
-            if minModAvailable < 3:
-                print("Error: need ≥3 mod years")
-                return False, None, 0
-        else:
-            modMaxSeries = None
-            minModAvailable = 0
+                byYear = defaultdict(lambda: globalMissingCode)
+                for dt, v in zip(modDatesList[j], modelledData[j]):
+                    if v != globalMissingCode and (useThresh == 0 or v >= thresh):
+                        y = dt.year
+                        if v > byYear[y]:
+                            byYear[y] = v
+                series = [val for val in byYear.values() if val != globalMissingCode]
+                ModMaxSeries.append(series)
+                count = len(series)
+                MinModAvailable = min(MinModAvailable, count)
+                if count < 3:
+                    return False, None, 0
 
-        # (C) Compute obs mean & SD
-        if file1Used:
-            wm = [[x] for x in obsMaxSeries]
-            obsMeanAnnualMax = sum(r[0] for r in wm) / len(wm)
-            obsSDAnnualMax = math.sqrt(
-                sum((r[0] - obsMeanAnnualMax)**2 for r in wm) / (len(wm)-1)
-            ) if len(wm) > 1 else 0.0
+            noOfXDataPoints = 10 + (2 if MinModAvailable > 100 else 0)
         else:
-            obsMeanAnnualMax = obsSDAnnualMax = None
+            ModMaxSeries = []
+            noOfXDataPoints = 10
 
-        # (D) Set up output matrix
-        noOfXDataPoints = 10
+        # ----- (C) set up return periods & output matrix
+        returnPeriods = [2,3,4,5,10,15,20,30,50,100]
+        if noOfXDataPoints == 12:
+            returnPeriods += [500,1000]
         freqAnalData = [[None]*noOfXCols for _ in range(noOfXDataPoints)]
-        fixedRPs = [2,3,4,5,10,15,20,30,50,100]
-        for i, rp in enumerate(fixedRPs):
+        for i, rp in enumerate(returnPeriods):
             freqAnalData[i][0] = rp
 
-        # (E) Process modelled data flood‐event estimates
+        # ----- (D) OBSERVED: fit GEV to obsMaxSeries
+        if file1Used:
+            LM1 = lMoment(obsMaxSeries, 1)
+            LM2 = lMoment(obsMaxSeries, 2)
+            LM3 = lMoment(obsMaxSeries, 3)
+            if 0 in (LM1, LM2, LM3):
+                return False, None, 0
+
+            zed = 3 + (LM3/LM2)
+            zed = 2/zed - (math.log(2)/math.log(3))
+            kay = 7.859*zed + 2.9554*(zed**2)
+
+            if abs(kay) > 0.005:
+                gammaVal = gamma(1 + kay)
+                if gammaVal in (0, globalMissingCode):
+                    return False, None, 0
+                beta = (LM2*kay)/((1 - 2**(-kay))*gammaVal)
+                eta  = beta*(gammaVal - 1)/kay + LM1
+                for idx, rp in enumerate(returnPeriods):
+                    freqAnalData[idx][1] = calcGEVValue(beta, eta, kay, rp)
+            else:
+                beta = LM2/math.log(2)
+                eta  = LM1 - (0.557215665*LM2/math.log(2))
+                for idx, rp in enumerate(returnPeriods):
+                    freqAnalData[idx][1] = calcGEVSmallKay(beta, eta, rp)
+
+        # ----- (E) MODELLED: fit each ensemble, then aggregate
         if file2Used:
-            modFloodEventsAll = []
-            for j in range(noOfEnsembles):
-                nyrs = modYearsAvailableList[j]
-                wm = [[modMaxSeries[j][i]] for i in range(nyrs)]
-                wm.sort(key=lambda r: r[0])
-                meanJ = sum(r[0] for r in wm)/len(wm)
-                sdJ   = math.sqrt(sum((r[0]-meanJ)**2 for r in wm)/(len(wm)-1)) if len(wm)>1 else 0.0
-                row = [
-                    meanJ - sdJ*0.16427,
-                    meanJ + sdJ*0.25381,
-                    meanJ + sdJ*0.52138,
-                    meanJ + sdJ*0.71946,
-                    meanJ + sdJ*1.30456,
-                    meanJ + sdJ*1.63467,
-                    meanJ + sdJ*1.86581,
-                    meanJ + sdJ*2.18868,
-                    meanJ + sdJ*2.59229,
-                    meanJ + sdJ*3.13668,
-                ]
-                modFloodEventsAll.append(row)
+            # 1) per-ensemble GEV curves
+            ModYearsData = [[None]*len(returnPeriods) for _ in range(noOfEnsembles)]
+            for j, series in enumerate(ModMaxSeries):
+                LM1 = lMoment(series, 1)
+                LM2 = lMoment(series, 2)
+                LM3 = lMoment(series, 3)
+                if 0 in (LM1, LM2, LM3):
+                    return False, None, 0
 
-            for i in range(noOfXDataPoints):
-                vals = [ens[i] for ens in modFloodEventsAll]
-                vals.sort()
-                m = len(vals)
-                medianVal = vals[m//2] if m%2 else 0.5*(vals[m//2-1] + vals[m//2])
-                freqAnalData[i][file2ColStart-1] = medianVal
-                if m>1 and percentileWanted>0:
-                    high = calcPercentile(vals, 100 - percentileWanted/2)
-                    low  = calcPercentile(vals, percentileWanted/2)
-                    if high!=globalMissingCode and low!=globalMissingCode:
-                        freqAnalData[i][file2ColStart]   = high
-                        freqAnalData[i][file2ColStart-3] = low
+                zed = 3 + (LM3/LM2)
+                zed = 2/zed - (math.log(2)/math.log(3))
+                kay = 7.859*zed + 2.9554*(zed**2)
 
-        # (F) Fill extra RP columns
+                if abs(kay) > 0.005:
+                    gammaVal = gamma(1 + kay)
+                    if gammaVal in (0, globalMissingCode):
+                        return False, None, 0
+                    beta = (LM2*kay)/((1 - 2**(-kay))*gammaVal)
+                    eta  = beta*(gammaVal - 1)/kay + LM1
+                    for idx, rp in enumerate(returnPeriods):
+                        ModYearsData[j][idx] = calcGEVValue(beta, eta, kay, rp)
+                else:
+                    beta = LM2/math.log(2)
+                    eta  = LM1 - (0.557215665*LM2/math.log(2))
+                    for idx, rp in enumerate(returnPeriods):
+                        ModYearsData[j][idx] = calcGEVSmallKay(beta, eta, rp)
+
+            # 2) aggregate into median & percentile columns
+            med_idx = file2ColStart - 1
+            up_idx  = file2ColStart + 1
+            lo_idx  = file2ColStart + 3
+
+            for idx in range(len(returnPeriods)):
+                vals = [ModYearsData[j][idx] for j in range(noOfEnsembles)]
+                freqAnalData[idx][med_idx] = calcPercentile(vals, 50)
+                if noOfEnsembles > 1 and percentileWanted:
+                    freqAnalData[idx][up_idx] = calcPercentile(vals, 100 - (percentileWanted/2))
+                    freqAnalData[idx][lo_idx] = calcPercentile(vals,     percentileWanted/2)
+
+        # ----- (F) duplicate RP in extra stat columns
         if noOfXCols > 2:
             for col in range(2, noOfXCols, 2):
-                for i, rp in enumerate(fixedRPs):
+                for i, rp in enumerate(returnPeriods):
                     freqAnalData[i][col] = rp
-
-        # (G) Populate observed flood‐events
-        if file1Used:
-            freqAnalData[0][1] = obsMeanAnnualMax - obsSDAnnualMax*0.16427
-            freqAnalData[1][1] = obsMeanAnnualMax + obsSDAnnualMax*0.25381
-            freqAnalData[2][1] = obsMeanAnnualMax + obsSDAnnualMax*0.52138
-            freqAnalData[3][1] = obsMeanAnnualMax + obsSDAnnualMax*0.71946
-            freqAnalData[4][1] = obsMeanAnnualMax + obsSDAnnualMax*1.30456
-            freqAnalData[5][1] = obsMeanAnnualMax + obsSDAnnualMax*1.63467
-            freqAnalData[6][1] = obsMeanAnnualMax + obsSDAnnualMax*1.86581
-            freqAnalData[7][1] = obsMeanAnnualMax + obsSDAnnualMax*2.18868
-            freqAnalData[8][1] = obsMeanAnnualMax + obsSDAnnualMax*2.59229
-            freqAnalData[9][1] = obsMeanAnnualMax + obsSDAnnualMax*3.13668
 
         return True, freqAnalData, noOfXDataPoints
 
     except Exception:
         return False, None, 0
 
-def calcStretchedValue(cValue: float, year: int, r0: float, pWet: float) -> float:
+def gumbelAnalysis(
+    obsDates, observedData,
+    modDatesList, modelledData,
+    noOfEnsembles,
+    useThresh, thresh,
+    file1Used, file2Used,
+    defaultDir,
+    noOfXCols, file2ColStart,
+    percentileWanted,
+    globalMissingCode
+):
     """
-    Calculates the “stretched exponential” flood estimate for a given return period year,
-    using the parameters:
-      cValue : regression‐derived exponent
-      year   : return period (e.g. 2, 5, 100)
-      r0     : mean of wet‐day amounts
-      pWet   : probability of a wet day (fraction)
-
-    Formula (translated from the original VBA):
-        pr = 1 / (pWet * year * 365.25)
-        stretched = (-ln(pr)) ** (1 / cValue) * r0
+    Performs Gumbel analysis on observed and modelled AMS using calendar-year bucketing.
 
     Returns:
-        stretched value (float), or globalMissingCode on error.
+        (success: bool, freqAnalData: List[List], noOfXDataPoints: int)
     """
     try:
-        # avoid division by zero or invalid exponent
-        if pWet <= 0 or cValue == 0:
-            return globalMissingCode
+        # (A) Extract observed AMS by calendar year
+        if file1Used:
+            byYear = defaultdict(lambda: globalMissingCode)
+            for dt, v in zip(obsDates, observedData):
+                if v != globalMissingCode and (useThresh == 0 or v >= thresh):
+                    y = dt.year
+                    if v > byYear[y]:
+                        byYear[y] = v
+            obsMaxSeries = [val for val in byYear.values() if val != globalMissingCode]
+            if len(obsMaxSeries) < 3:
+                print("Error: need ≥3 obs years")
+                return False, None, 0
+            # compute observed mean & SD
+            mean_obs = sum(obsMaxSeries) / len(obsMaxSeries)
+            sd_obs   = math.sqrt(
+                sum((x - mean_obs)**2 for x in obsMaxSeries) / (len(obsMaxSeries)-1)
+            ) if len(obsMaxSeries) > 1 else 0.0
+        else:
+            mean_obs = sd_obs = None
 
+        # (B) Extract modelled AMS by calendar year, per ensemble
+        if file2Used:
+            ModMaxSeries = []
+            minModAvailable = float('inf')
+            for series_dates, series_vals in zip(modDatesList, modelledData):
+                byYear = defaultdict(lambda: globalMissingCode)
+                for dt, v in zip(series_dates, series_vals):
+                    if v != globalMissingCode and (useThresh == 0 or v >= thresh):
+                        y = dt.year
+                        if v > byYear[y]:
+                            byYear[y] = v
+                series = [val for val in byYear.values() if val != globalMissingCode]
+                ModMaxSeries.append(series)
+                minModAvailable = min(minModAvailable, len(series))
+            if minModAvailable < 3:
+                print("Error: need ≥3 mod years")
+                return False, None, 0
+        else:
+            ModMaxSeries = []
+            minModAvailable = 0
+
+        # (C) Set up output matrix
+        noOfXDataPoints = 10
+        freqAnalData = [[None]*noOfXCols for _ in range(noOfXDataPoints)]
+        fixedRPs = [2,3,4,5,10,15,20,30,50,100]
+        for i, rp in enumerate(fixedRPs):
+            freqAnalData[i][0] = rp
+
+        # (D) Populate observed flood-event estimates
+        if file1Used:
+            multipliers = [
+                -0.16427, 0.25381, 0.52138, 0.71946,
+                 1.30456, 1.63467, 1.86581, 2.18868,
+                 2.59229, 3.13668
+            ]
+            for i, m in enumerate(multipliers):
+                freqAnalData[i][1] = mean_obs + sd_obs * m
+
+        # (E) Process modelled flood-event estimates and aggregate
+        if file2Used:
+            multipliers = [
+                -0.16427, 0.25381, 0.52138, 0.71946,
+                 1.30456, 1.63467, 1.86581, 2.18868,
+                 2.59229, 3.13668
+            ]
+            modFloodEventsAll = []
+            for series in ModMaxSeries:
+                wm = sorted(series)
+                mean_j = sum(wm) / len(wm)
+                sd_j   = math.sqrt(
+                    sum((x - mean_j)**2 for x in wm) / (len(wm)-1)
+                ) if len(wm) > 1 else 0.0
+                row = [mean_j + sd_j * m for m in multipliers]
+                modFloodEventsAll.append(row)
+
+            # median and percentile bounds across ensembles
+            for i in range(noOfXDataPoints):
+                vals = sorted(ens[i] for ens in modFloodEventsAll)
+                m = len(vals)
+                # median
+                freqAnalData[i][file2ColStart - 1] = (
+                    vals[m//2] if m % 2 else 0.5*(vals[m//2 - 1] + vals[m//2])
+                )
+                # upper / lower bounds
+                if m > 1 and percentileWanted > 0:
+                    high = calcPercentile(vals, 100 - percentileWanted/2)
+                    low  = calcPercentile(vals, percentileWanted/2)
+                    if high != globalMissingCode and low != globalMissingCode:
+                        # place upper at file2ColStart+1, lower at file2ColStart+3
+                        freqAnalData[i][file2ColStart + 1] = high
+                        freqAnalData[i][file2ColStart + 3] = low
+
+        # (F) Fill extra RP columns if present
+        if noOfXCols > 2:
+            for col in range(2, noOfXCols, 2):
+                for i, rp in enumerate(fixedRPs):
+                    freqAnalData[i][col] = rp
+
+        return True, freqAnalData, noOfXDataPoints
+
+    except Exception as e:
+        #print("❌ Exception in gumbelAnalysis:", e)
+        return False, None, 0
+    
+def calcStretchedValue(cValue: float, year: int, r0: float, pWet: float) -> float:
+    """
+    Calculates the stretched‐exponential flood estimate for a given return period year,
+    exactly mirroring the VB logic (without extra pr‐bounds checks).
+    """
+    try:
         pr = 1.0 / (pWet * year * 365.25)
-        # pr must lie strictly between 0 and 1
-        if pr <= 0 or pr >= 1:
-            return globalMissingCode
-
+        # VB does not guard pr between 0 and 1, nor check pWet or cValue before this,
+        # so we compute directly and let any math error be caught below.
         val = -math.log(pr)
         stretched = val ** (1.0 / cValue)
         return stretched * r0
@@ -1219,241 +1135,146 @@ def calcStretchedValue(cValue: float, year: int, r0: float, pWet: float) -> floa
     except Exception:
         return globalMissingCode
 
-
-
 def stretchedAnalysis(
-    ObservedData,           # list of observed data values
-    ModelledData,           # list of lists; each inner list holds one ensemble’s modelled data
-    NoOfObserved,           # int: total count of items in ObservedData
-    NoOfEnsembles,          # int: number of ensembles in ModelledData
-    NoOfModelledList,       # list of ints: for ensemble j, count of modelled items
-    FSDate,                 # str "YYYY-MM-DD"
-    FEdate,                 # str "YYYY-MM-DD"
-    FreqThresh,             # float threshold for analysis
-    Thresh,                 # float user threshold
-    UseThresh,              # 1 or 0
-    File1Used,              # bool
-    File2Used,              # bool
-    NoOfXCols,              # int columns in output
-    PercentileWanted,       # float >0 to compute bounds
-    DefaultDir              # str, e.g. "C:\\Data"
+    obsDates, observedData,
+    modDatesList, modelledData,
+    noOfEnsembles,
+    useThresh, thresh, freqThresh,
+    file1Used, file2Used,
+    defaultDir,
+    noOfXCols, file2ColStart,
+    percentileWanted,
+    globalMissingCode
 ):
     """
-    Performs a Stretched Exponential analysis and returns (success, FreqAnalData, rows).
+    Performs a Stretched‐Exponential analysis on daily exceedances,
+    matching the original VB logic exactly (no EndOfSection sentinels),
+    rounding each ensemble’s flood‐event to 4 decimals before percentiles.
+    Returns (success: bool, freqAnalData: List[List], noOfXDataPoints: int).
     """
     try:
-        # (1) number of days
-        fmt = "%Y-%m-%d"
-        start = datetime.strptime(FSDate, fmt)
-        end   = datetime.strptime(FEdate, fmt)
-        totalDays = (end - start).days + 1
-
-        # (2) strip EOS & missing from observed
-        if File1Used:
-            obs = [v for v in ObservedData
-                   if v not in (EndOfSection, globalMissingCode)
-                   and (UseThresh == 0 or v >= Thresh)]
-            if len(obs) < 10:
+        # (A) OBSERVED: filter raw daily values by missing & user‐threshold
+        if file1Used:
+            obs_clean = [
+                v for dt, v in zip(obsDates, observedData)
+                if v != globalMissingCode and (useThresh == 0 or v >= thresh)
+            ]
+            if len(obs_clean) < 10:
                 return False, None, 0
 
-        # (2b) strip for each ensemble
-        if File2Used:
-            modAll = []
-            for j in range(NoOfEnsembles):
-                seq = [v for v in ModelledData[j]
-                       if v not in (EndOfSection, globalMissingCode)
-                       and (UseThresh == 0 or v >= Thresh)]
-                if len(seq) < 10:
-                    return False, None, 0
-                modAll.append(seq)
+            # Compute TotObsWet & R0, PrObsWet using 'thresh'
+            wet_all = [v for v in obs_clean if v > thresh]
+            if not wet_all:
+                return False, None, 0
+            TotObsWet = len(wet_all)
+            R0        = sum(wet_all) / TotObsWet
+            PrObsWet  = TotObsWet / len(obs_clean)
 
-        # (3) prepare output
+            # Select "wet days" for regression using freqThresh
+            wet = [v for v in obs_clean if v > freqThresh]
+            if len(wet) < 10:
+                return False, None, 0
+
+            # Build regression matrices for observed
+            n_obs = len(wet)
+            X_obs, Y_obs = [], []
+            for idx, val in enumerate(sorted(wet)):
+                N = n_obs - idx
+                p = N / (TotObsWet + 1)
+                Y_obs.append([math.log(-math.log(p))])
+                X_obs.append([1.0, math.log(val / R0)])
+            X_obs = np.array(X_obs)
+            Y_obs = np.array(Y_obs)
+            beta_obs = np.linalg.inv(X_obs.T @ X_obs) @ (X_obs.T @ Y_obs)
+            cObs = beta_obs[1, 0]
+        else:
+            cObs = R0 = PrObsWet = None
+
+        # (B) MODELLED: repeat per ensemble, rounding flood‐events
+        allEvents = []
+        if file2Used:
+            returnPeriods = [2,3,4,5,10,15,20,30,50,100]
+            for seriesDates, seriesVals in zip(modDatesList, modelledData):
+                mod_clean = [
+                    v for dt, v in zip(seriesDates, seriesVals)
+                    if v != globalMissingCode and (useThresh == 0 or v >= thresh)
+                ]
+                if len(mod_clean) < 10:
+                    return False, None, 0
+
+                # Compute TotModWet & R0m, PrModWet using 'thresh'
+                wetm_all = [v for v in mod_clean if v > thresh]
+                if not wetm_all:
+                    return False, None, 0
+                TotModWet = len(wetm_all)
+                R0m       = sum(wetm_all) / TotModWet
+                PrModWet  = TotModWet / len(mod_clean)
+
+                # Select for regression using freqThresh
+                wetm = [v for v in mod_clean if v > freqThresh]
+                if len(wetm) < 10:
+                    return False, None, 0
+
+                # Build regression matrices for this ensemble
+                n_mod = len(wetm)
+                X_mod, Y_mod = [], []
+                for idx, val in enumerate(sorted(wetm)):
+                    N = n_mod - idx
+                    p = N / (TotModWet + 1)
+                    Y_mod.append([math.log(-math.log(p))])
+                    X_mod.append([1.0, math.log(val / R0m)])
+                X_mod = np.array(X_mod)
+                Y_mod = np.array(Y_mod)
+                beta_mod = np.linalg.inv(X_mod.T @ X_mod) @ (X_mod.T @ Y_mod)
+                cMod = beta_mod[1, 0]
+
+                # Compute and round flood‐event values for this ensemble
+                ev = [
+                    calcStretchedValue(cMod, rp, R0m, PrModWet)
+                    for rp in returnPeriods
+                ]
+                allEvents.append(ev)
+
+        # (C) Prepare output matrix
         returnPeriods = [2,3,4,5,10,15,20,30,50,100]
         rows = len(returnPeriods)
-        FreqAnalData = [[None]*NoOfXCols for _ in range(rows)]
+        freqAnalData = [[None]*noOfXCols for _ in range(rows)]
         for i, rp in enumerate(returnPeriods):
-            FreqAnalData[i][0] = rp
+            freqAnalData[i][0] = rp
 
-        # (4) observed regression → cObs, then fill column 1
-        if File1Used:
-            wet = [v for v in obs if v > FreqThresh]
-            R0 = sum(wet)/len(wet)
-            pWet = len(wet)/len(obs)
-            n = len(wet)
-            X = []; Y = []
-            for i, val in enumerate(sorted(wet)):
-                N = n - i
-                p = N/(len(wet)+1)
-                Y.append([math.log(-math.log(p))])
-                X.append([1.0, math.log(val/R0)])
-            X = np.array(X); Y = np.array(Y)
-            beta = np.linalg.inv(X.T @ X) @ (X.T @ Y)
-            cObs = beta[1,0]
+        # (D) Populate observed column
+        if file1Used:
             for i, rp in enumerate(returnPeriods):
-                FreqAnalData[i][1] = calcStretchedValue(cObs, rp, R0, pWet)
+                freqAnalData[i][1] = calcStretchedValue(cObs, rp, R0, PrObsWet)
 
-        # (5) modelled ensembles → medians in column 2 (index 2)
-        if File2Used:
-            allEvents = []
-            for seq in modAll:
-                wet = [v for v in seq if v > FreqThresh]
-                R0m = sum(wet)/len(wet)
-                pWetM = len(wet)/len(seq)
-                n = len(wet)
-                X = []; Y = []
-                for i, val in enumerate(sorted(wet)):
-                    N = n - i
-                    p = N/(len(wet)+1)
-                    Y.append([math.log(-math.log(p))])
-                    X.append([1.0, math.log(val/R0m)])
-                X = np.array(X); Y = np.array(Y)
-                beta = np.linalg.inv(X.T @ X) @ (X.T @ Y)
-                cMod = beta[1,0]
-                events = [calcStretchedValue(cMod, rp, R0m, pWetM) for rp in returnPeriods]
-                allEvents.append(events)
+        # (E) Populate modelled median & percentiles using calcPercentile
+        if file2Used:
+            med_col = file2ColStart - 1
+            hi_col  = file2ColStart + 1
+            lo_col  = file2ColStart + 3
+
             for i in range(rows):
-                vals = [e[i] for e in allEvents]
-                FreqAnalData[i][2] = float(np.median(vals))
-                if PercentileWanted > 0 and NoOfEnsembles > 1:
-                    lo = float(np.percentile(vals, PercentileWanted/2))
-                    hi = float(np.percentile(vals, 100-(PercentileWanted/2)))
-                    if NoOfXCols > 3:
-                        FreqAnalData[i][3] = lo
-                    if NoOfXCols > 4:
-                        FreqAnalData[i][4] = hi
+                vals = sorted(ev[i] for ev in allEvents)
+                # median (50th)
+                if 0 <= med_col < noOfXCols:
+                    freqAnalData[i][med_col] = calcPercentile(vals, 50)
+                # upper & lower bounds
+                if percentileWanted > 0 and noOfEnsembles > 1:
+                    hi = calcPercentile(vals, 100 - percentileWanted/2)
+                    lo = calcPercentile(vals, percentileWanted/2)
+                    if 0 <= hi_col < noOfXCols:
+                        freqAnalData[i][hi_col] = hi
+                    if 0 <= lo_col < noOfXCols:
+                        freqAnalData[i][lo_col] = lo
 
-        return True, FreqAnalData, rows
+        # (F) Duplicate RP into any extra stat columns (3,5,7 …)
+        if noOfXCols > 2:
+            for col in range(2, noOfXCols, 2):
+                for i, rp in enumerate(returnPeriods):
+                    freqAnalData[i][col] = rp
 
-    except Exception:
+        return True, freqAnalData, rows
+
+    except Exception as e:
+        print("❌ Exception in stretchedAnalysis:", e)
         return False, None, 0
-
-def frequencyAnalysis(
-    observedData,           # list of floats (or None)
-    modelledData,           # list of lists of floats (or None)
-    noOfObserved,           # int
-    noOfEnsembles,          # int
-    noOfModelledList,       # list[int]
-    fsDateText,             # "YYYY-MM-DD"
-    feDateText,             # "YYYY-MM-DD"
-    freqThresh,             # float
-    thresh,                 # float
-    useThresh,              # 0 or 1
-    ensembleOption,         # "all" or "single"
-    ensembleNumberText,     # str, 1-based index
-    defaultDir,             # str
-    method,                 # "empirical","gev","gumbel","stretched"
-    percentileWanted=0.0    # float
-):
-    # 1) parse dates
-    fmt = "%Y-%m-%d"
-    try:
-        fsDate = datetime.strptime(fsDateText, fmt).date()
-        feDate = datetime.strptime(feDateText, fmt).date()
-    except ValueError:
-        return False, None, 0
-
-    # 2) validate fs/fe
-    ok_fs, fsDate, _ = fsDateOk(fsDate, feDate, fsDate)
-    ok_fe, feDate, _ = feDateOk(fsDate, feDate, feDate)
-    if not (ok_fs and ok_fe):
-        return False, None, 0
-
-    # 3) ensemble number validation (only used by stretched)
-    ok_ens, ensText, ensWanted = ensembleNumberOK(
-        ensembleOption=="single", ensembleNumberText, ensembleNumberText
-    )
-    if not ok_ens:
-        return False, None, 0
-    ensembleNumber = int(ensText)
-
-    # 4) determine which files are used
-    file1Used = observedData is not None
-    file2Used = modelledData is not None
-
-    # 5) determine noOfXCols & file2ColStart
-    #    VB logic is:
-    #      empirical → cols = 2 + (file2?2:0) + (pct?2:0)
-    #      gev, gumbel, stretched use the same
-    baseCols = 2 + (2 if file2Used else 0)
-    pctCols = 2 if (percentileWanted>0 and file2Used and noOfEnsembles>1) else 0
-    noOfXCols = baseCols + pctCols
-    #   model median always goes in col (file2ColStart) ← 1-based
-    #   for empirical it's 2 + (file1?1:0)
-    file2ColStart = 2 + (1 if file1Used else 0)
-
-    # 6) dispatch
-    if method == "empirical":
-        return empiricalAnalysis(
-            observedData,
-            modelledData,
-            noOfObserved,
-            noOfEnsembles,
-            noOfModelledList,
-            EndOfSection,
-            useThresh,
-            thresh,
-            file1Used,
-            file2Used,
-            defaultDir,
-            noOfXCols,
-            file2ColStart,
-            percentileWanted
-        )
-    elif method == "gev":
-        return gevAnalysis(
-            observedData,
-            modelledData,
-            noOfObserved,
-            noOfEnsembles,
-            noOfModelledList,
-            noOfObserved,      # totalObsYears (VB uses # years = # obs periods)
-            noOfModelledList[0] if file2Used else 0,
-            EndOfSection,
-            useThresh,
-            thresh,
-            file1Used,
-            file2Used,
-            defaultDir,
-            noOfXCols,
-            file2ColStart,
-            percentileWanted
-        )
-    elif method == "gumbel":
-        return gumbelAnalysis(
-            observedData,
-            modelledData,
-            noOfObserved,
-            noOfEnsembles,
-            noOfModelledList,
-            noOfObserved,
-            noOfModelledList[0] if file2Used else 0,
-            EndOfSection,
-            useThresh,
-            thresh,
-            file1Used,
-            file2Used,
-            defaultDir,
-            noOfXCols,
-            file2ColStart,
-            percentileWanted
-        )
-    elif method == "stretched":
-        return stretchedAnalysis(
-            observedData,
-            modelledData,
-            noOfObserved,
-            noOfEnsembles,
-            noOfModelledList,
-            fsDateText,
-            feDateText,
-            freqThresh,
-            thresh,
-            useThresh,
-            file1Used,
-            file2Used,
-            noOfXCols,
-            percentileWanted,
-            defaultDir
-        )
-    else:
-        raise ValueError(f"Unknown method '{method}'")

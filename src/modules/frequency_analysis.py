@@ -344,6 +344,7 @@ class ContentWidget(QWidget):
         self.idfTabButton.setStyleSheet("background-color: #4681f4; color: white; font-weight: bold")
         self.resetButton = QPushButton(" 🔄 Reset Values")
         self.resetButton.setStyleSheet("background-color: #ED0800; color: white; font-weight: bold;")
+        self.resetButton.clicked.connect(self.resetValues)
         
         tabButtonsLayout.addWidget(self.faTabButton)
         tabButtonsLayout.addWidget(self.idfPlotButton)
@@ -371,6 +372,37 @@ class ContentWidget(QWidget):
         self.endDate.setDate(q_end_date)
 
         return super().showEvent(event)
+    
+    def resetValues(self):
+        # ── Clear file selections ──
+        self.obsDataFile = None
+        self.modDataFile = None
+        self.obsDataLabel.setText("File: Not selected")
+        self.modDataLabel.setText("File: Not selected")
+        self.saveLabel.setText("File: Not selected")
+
+        # ── Reset dates to the global settings ──
+        py_start = settingsAsArrays["globalsdate"][0]
+        py_end   = settingsAsArrays["globaledate"][0]
+        self.startDate.setDate(QDate(py_start.year, py_start.month, py_start.day))
+        self.endDate  .setDate(QDate(py_end.year,   py_end.month,   py_end.day))
+
+        # ── Frequency‐analysis inputs ──
+        self.confidenceInput.setValue(5)     # 5% default
+        self.thresholdInput .setValue(10)    # 10 default
+        self.pdfSpinBox     .setValue(20)    # 20 bins
+        self.dataPeriodCombo.setCurrentIndex(0)  # “All Data”
+        self.applyThresholdCheckbox.setChecked(False)
+
+        # ── Ensemble default ──
+        self.allMembersRadio.setChecked(True)
+
+        # ── IDF settings ──
+        self.methodMomentsRadio   .setChecked(True)
+        self.parameterPowerRadio  .setChecked(False)
+        self.parameterLinearRadio .setChecked(False)
+        self.runningSumInput      .setValue(2)
+
     
     def saveResults(self):
         # Use the default directory from your configuration (assuming it's in settingsAsArrays)

@@ -194,22 +194,26 @@ class ContentWidget(QWidget):
         mainLayout.addWidget(wetDayGroupBox)
 
         # Reset button
-        resetBtn = QPushButton("Reset")
+        resetBtn = QPushButton("🔄 Reset Settings")
+        resetBtn.setStyleSheet("background-color: #ED0800; color: white; font-weight: bold;")
         resetBtn.clicked.connect(self.resetSettings)
         mainLayout.addWidget(resetBtn)
 
         # Export / Save / Load buttons
         btnLayout = QHBoxLayout()
 
-        exportBtn = QPushButton("Export Settings")
+        exportBtn = QPushButton("📤 Export Settings")
+        exportBtn.setStyleSheet("background-color: #1FC7F5; color: white; font-weight: bold;")
         exportBtn.clicked.connect(self.saveSettingsFromUi)
         btnLayout.addWidget(exportBtn)
 
-        saveBtn = QPushButton("Save Settings")
+        saveBtn = QPushButton("💾 Save Settings")
+        saveBtn.setStyleSheet("background-color: #4CAF50; color: white; font-weight: bold;")
         saveBtn.clicked.connect(self.saveSettingsDefault)
         btnLayout.addWidget(saveBtn)
 
-        loadBtn = QPushButton("Load Settings")
+        loadBtn = QPushButton("📂 Load Settings")
+        loadBtn.setStyleSheet("background-color: #F57F0C; color: white; font-weight: bold;")
         loadBtn.clicked.connect(self.loadSettingsFromUi)
         btnLayout.addWidget(loadBtn)
 
@@ -397,7 +401,7 @@ class ContentWidget(QWidget):
         conditionalSelection    = self.get_conditional_selection()
         months                  = [int(e.text()) for e in self.wetDayEdits]
 
-        self.saveSettings(iniFile=defaultIniFile, silent=True)
+        self.saveSettings(iniFile=defaultIniFile, silent=False)
 
     def loadSettingsFromUi(self):
         iniFile, _ = QFileDialog.getOpenFileName(

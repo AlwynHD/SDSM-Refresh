@@ -289,20 +289,33 @@ def run_idf(
         # Step 6: Perform Scaling
         # -------------------------------------
         print("📈 Scaling AMS to IDF table...")
-        sdsm_scaled_table_obs = None
-        sdsm_scaled_table_mod = None
+        sdsm_scaled_table_obs = {}
+        sdsm_scaled_table_mod = {}
         
         if idf_method == "Intensity":
 
-            sdsm_scaled_table_obs, sdsm_scaled_table_mod = intensity_scaling(
-                file1_used, file2_used,
-                idf_years_to_model,
-                idf_hours_array,
-                obs_ams_by_window=obs_ams,
-                ret_per_obs_by_window=ret_per_obs_for_intensity,
-                mod_ams_by_window=mod_ams_by_window,
-                ret_per_mod_by_window=ret_per_mod_by_window
-            )
+            
+            if file1_used:
+                sdsm_scaled_table_obs, _ = intensity_scaling(
+                    file1_used=True, file2_used=False,
+                    idf_years_to_model=idf_years_to_model,
+                    idf_hours_array=idf_hours_array,
+                    obs_ams_by_window=obs_ams,
+                    ret_per_obs_by_window=ret_per_obs_for_intensity,
+                    mod_ams_by_window=None,
+                    ret_per_mod_by_window=None
+                )
+        
+            if file2_used:
+                _, sdsm_scaled_table_mod = intensity_scaling(
+                    file1_used=False, file2_used=True,
+                    idf_years_to_model=idf_years_to_model,
+                    idf_hours_array=idf_hours_array,
+                    obs_ams_by_window=None,
+                    ret_per_obs_by_window=None,
+                    mod_ams_by_window=mod_ams_by_window,
+                    ret_per_mod_by_window=ret_per_mod_by_window
+                )
             print(sdsm_scaled_table_obs)
         
         elif idf_method == "Power":
@@ -996,83 +1009,53 @@ def compute_ensemble_mean_ams(ams_lists):
     transposed = zip(*ams_lists)
     return [sum(year) / len(year) for year in transposed]
 
-##1. Intensity Scaling
 def intensity_scaling(
-    file1_used, file2_used,
-    idf_years_to_model,              # e.g. [1, 2, 5, 10, 20]
-    idf_hours_array,                 # e.g. [0.25, 0.5, 1, 2, ..., 360]
-    obs_ams_by_window,               # {window: [max values]}
-    ret_per_obs_by_window,          # {window: [(ret_period, value)]}
-    mod_ams_by_window,         # same as obs, optional
-    ret_per_mod_by_window      # same as obs, optional
+    file1_used=False,
+    file2_used=False,
+    idf_years_to_model=[],
+    idf_hours_array=[],
+    obs_ams_by_window=None,
+    ret_per_obs_by_window=None,
+    mod_ams_by_window=None,
+    ret_per_mod_by_window=None
 ):
-    print(idf_years_to_model)
-    print(obs_ams_by_window)
-              # {window: [(ret_period, value)]}
-    print(ret_per_obs_by_window)
     """
-    Performs intensity scaling analysis and builds final IDF tables.
+    Performs intensity scaling for observed and/or modelled datasets.
+    Returns: (SDSMScaledTableObs, SDSMScaledTableMod)
     """
     try:
-        # ===== OBSERVED SCALING =====
-        if file1_used:
-            # Step 1: Build ObsScalings table
-            obs_scalings = set_obs_scalings(obs_ams_by_window, ret_per_obs_by_window, idf_years_to_model)
-        
-            print("\n🔍 Checking return period coverage:")
-            for window, rp_vals in ret_per_obs_by_window.items():
-                rps = [round(x[0]) for x in rp_vals]
-                print(f"Window {window}: Return Periods = {rps}")
-        
-            print("\n🔍 Debugging Intensity Scaling Setup")
-            for rp in idf_years_to_model:
-                print(f"\n🎯 Return Period: {rp} years")
-                print("Window | RP Matched | Type      | Value | Intensity (mm/hr)")
-                for window in sorted(obs_scalings[rp].keys()):
-                    intensity = obs_scalings[rp][window]
-                    rp_list = ret_per_obs_by_window[window]
-                    exact_matches = [x for x in rp_list if round(x[0]) == rp]
-                    if exact_matches:
-                        matched = exact_matches[0]
-                        match_type = "Exact"
-                    else:
-                        matched = min(rp_list, key=lambda x: abs(x[0] - rp))
-                        match_type = "Closest"
-                    print(f"{window:>6} | {matched[0]:>10.2f} | {match_type:<9} | {matched[1]:>6.2f} | {intensity:>8.2f}")
-        
-            # Step 2: Fit regression for each return period
-            obs_idf_params = {}
-            for rp in idf_years_to_model:
-                a, b = calc_obs_scalings_linear_regression(obs_scalings[rp])
-                print(f"\n📈 Regression for RP={rp}: Intercept a={a:.6f}, Slope b={b:.6f}")
-                obs_idf_params[rp] = (a, b)
-        
-            # Step 3: Build final SDSMScaledTable
-            SDSMScaledTableObs = calc_sdsm_scaled_table(idf_years_to_model, idf_hours_array, obs_idf_params)
-        else:
-            SDSMScaledTableObs = {}
+        SDSMScaledTableObs = {}
+        SDSMScaledTableMod = {}
 
-    # ===== MODELLED SCALING =====
+        # ===== OBSERVED SCALING =====
+        if file1_used and obs_ams_by_window and ret_per_obs_by_window:
+            obs_scalings = set_obs_scalings(obs_ams_by_window, ret_per_obs_by_window, idf_years_to_model)
+
+            obs_idf_params = {
+                rp: calc_obs_scalings_linear_regression(obs_scalings[rp])
+                for rp in idf_years_to_model
+            }
+
+            SDSMScaledTableObs = calc_sdsm_scaled_table(idf_years_to_model, idf_hours_array, obs_idf_params)
+
+        # ===== MODELLED SCALING =====
         if file2_used and mod_ams_by_window and ret_per_mod_by_window:
-           mod_scalings = set_obs_scalings(mod_ams_by_window, ret_per_mod_by_window, idf_years_to_model)
-           
-           mod_idf_params = {
-               rp: calc_obs_scalings_linear_regression(mod_scalings[rp])
-               for rp in idf_years_to_model
-           }
-       
-           SDSMScaledTableMod = calc_sdsm_scaled_table(idf_years_to_model, idf_hours_array, mod_idf_params)
-        else:
-            SDSMScaledTableMod = {}
-        
+            mod_scalings = set_obs_scalings(mod_ams_by_window, ret_per_mod_by_window, idf_years_to_model)
+
+            mod_idf_params = {
+                rp: calc_obs_scalings_linear_regression(mod_scalings[rp])
+                for rp in idf_years_to_model
+            }
+
+            SDSMScaledTableMod = calc_sdsm_scaled_table(idf_years_to_model, idf_hours_array, mod_idf_params)
+
         print("✅ Intensity scaling completed.")
         return SDSMScaledTableObs, SDSMScaledTableMod
-    
+
     except Exception as e:
         handle_error(e)
         mini_reset()
         return {}, {}
-
 
 def build_year_array(observed_data, start_date, END_OF_SECTION, timestep_hours=1):
     """

@@ -75,6 +75,16 @@ def reloadGlobals():
     else:
         debugMsg("[Error]: Invalid Optimisation choice. Using 'Ordinary Least Squares' option")
         _globalSettings['optAlg'] = 0
+
+    criteria = _globalSettings['criteriatype']
+    if criteria == 'AIC Criteria':
+        _globalSettings['aicWanted'] = True
+    elif criteria == 'BIC Criteria':
+        _globalSettings['aicWanted'] = False
+    else:
+        debugMsg("[Error]: Invalid Stepwise Criteria choice. Using 'AIC' option")
+        _globalSettings['aicWanted'] = True
+        
         
 def debugRun():
     calibrateModelDefaultExperience()
@@ -100,18 +110,18 @@ def calibrateModelDefaultExperience(modelType):
     #feDate = date(1997, 12, 31)
     #feDate = date(2015, 12, 31)
     #modelType = 0 #0
-    parmOpt = True  ## Whether Conditional or Unconditional. True = Cond, False = Uncond. 
+    parmOpt = False  ## Whether Conditional or Unconditional. True = Cond, False = Uncond. 
     ##ParmOpt(1) = Uncond = False
     ##ParmOpt(0) = Cond = True
     autoRegression = False ## Replaces AutoRegressionCheck -> Might be mutually exclusive with parmOpt - will check later...
     includeChow = False
     detrendOption = 0 #0, 1 or 2...
-    doCrossValidation = True
+    doCrossValidation = False
     crossValFolds = 2
 
     ##Edit Settings for Testing
     #_globalSettings['modelTrans'] = 5 #Model transformation; 1=none, 2=4root, 3=ln, 4=Inv Normal, 5=box cox
-    _globalSettings['stepwiseregression'] = False
+    _globalSettings['stepwiseregression'] = True
 
     print(f"Testing with 'modelTrans' == {_globalSettings['modelTrans']}")
 
@@ -127,7 +137,8 @@ def calibrateModelDefaultExperience(modelType):
     #    "p8_f", "p8_z", "p8_v", "p8_u","p8th", 
     #    "p8zh", "shum", "dswr", 
     #    "lftx", #"pottmp", "pr_wtr",
-        "p__f", "p__u", "p__v", "p__z"
+        "p__f", "p__u", "p__v", "p__z",
+        "p_th", "p_zh"
     #"p5th"
     ] #note - ncep_prec.dat is absent - nice round number of 30
     for i in range(len(fileList)):
@@ -239,7 +250,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
         doCrossValidation -> Cross Validation Tickbox
         crossValFolds -> Number of folds for CrossValidation
         ----------------------------------------
-        CalibrateModel (will in the future) also reads the following from the Global Setings:
+        CalibrateModel also reads the following from the Global Setings:
         > globalStartDate & globalEndDate -> "Standard" start / end date
         > thresh -> Event Threshold
         > globalMissingCode -> "Missing Data Identifier"
@@ -294,7 +305,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
     #chowStat = 0
     #fRatio = 0
     parameterResultsArray = np.zeros((24,50))
-    biasCorrection = np.zeros(12)
+    biasCorrection = np.ones(12)
     #CondPropCorrect = 5
 
     seasonMonths = [ ##Necesary for Season Month Lookups
@@ -321,10 +332,12 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
         raise ValueError("You must select a predictand")
     elif len(fileList) < 2:
         raise ValueError("You must select at least one predictor")
+    elif applyStepwise and NPredictors > 8:
+        raise ValueError("You cannot select more than 8 predictors for the stepwise approach")
     elif applyStepwise and doCrossValidation:
         raise ValueError("You cannot perform a cross validation with the stepwise approach")
     elif applyStepwise and modelType != 2:
-        raise ValueError("You can only select an annual model for the stepwise approac")
+        raise ValueError("You can only select an annual model for the stepwise approach")
     elif applyStepwise and parmOpt:
         raise ValueError("You can only select an unconditional model for the stepwise approach")
     elif PARfilePath == "":
@@ -363,24 +376,6 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
         ## FileList is the selected files from 
         loadedFiles = loadFilesIntoMemory(fileList) 
 
-        """
-                                            'Open selected files
-        Open PTandRoot For Input As #1      'Predictand file
- 
-        Do Until FileList.ListCount = 0      'Remove any predictors from FileList just in case
-            FileList.RemoveItem 0
-        Loop
-        predictorfileNo = 2                 'File # of predictor file starts at 2
-        For subloop = 0 To File2.ListCount - 1  'Check for selected files
-            If File2.Selected(subloop) Then     'If file is selected
-                FileList.AddItem File2.List(subloop)    'Add to list of selected files
-                Open File2.Path & "\" & File2.List(subloop) For Input As #predictorfileNo
-                predictorfileNo = predictorfileNo + 1
-            End If
-        Next subloop
-        outputFileNo = NPredictors + 2  '# for output file set
-        """
-
         ## Season Code thingy
         ## Move and calculate in the widget later
         if modelType == 0:
@@ -416,10 +411,6 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                 fsDateBaseline[getSeason(workingDate.month)] += 1
             else: ##Assume seasonCode = 12:
                 fsDateBaseline[workingDate.month -1] += 1
-
-            ##########################################
-            ## What is "DoEvents"?
-            ##########################################
 
             #for i in range(NPredictors + 1):
                 ##Load in files?
@@ -657,7 +648,9 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
 
                 if (detrendOption != 0 and not parmOpt):
                     ##call detrendData(periodWorkingOn, False)
-                    betaTrend[periodWorkingOn] = detrendData(yMatrix, yMatrixAboveThreshPos, detrendOption, fsDateBaseline[periodWorkingOn], False)
+                    dResults = detrendData(yMatrix, yMatrixAboveThreshPos, detrendOption, fsDateBaseline[periodWorkingOn], False)
+                    yMatrix = dResults["yMatrix"]
+                    betaTrend[periodWorkingOn] = dResults["betaValues"]
 
                 savedYMatrix = deepcopy(yMatrix)
 
@@ -683,20 +676,24 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
 
                 if applyStepwise:
                     ##call stepwise_regression(parmOpt)
-                    stepWiseRegression() ##very wise #betamatrix defined here
+                    stepAdjust = stepWiseRegression(xMatrix, yMatrix, NPredictors) ##very wise
+                    newFileList = [fileList[0]] 
+                    for i in stepAdjust['newFileList']:
+                        newFileList += [fileList[i]]
+                    fileList = newFileList
+                    NPredictors = stepAdjust['NPredictors']
+                    xMatrix = stepAdjust['xMatrix']
+                    params = calculateParameters(xMatrix, yMatrix, NPredictors, includeChow, conditionalPart, parmOpt, not parmOpt, residualArray) #betamatrix defined here
+
                 else:
                     ##call CalculateParameters(parmOpt)
                     params = calculateParameters(xMatrix, yMatrix, NPredictors, includeChow, conditionalPart, parmOpt, not parmOpt, residualArray)   #betamatrix defined here
                 ##endif
 
-                if processTerminated:
-                    ##call mini_reset
-                    do_nothing()
-
                 yMatrix = savedYMatrix
 
                 for i in range(12):  ## 0-11 inclusive
-                    for j in range(NPredictors): ## 0-NPred inclusive
+                    for j in range(NPredictors + 1): ## 0-NPred inclusive
                         parameterResultsArray[i, j] = params["betaMatrix"][j]
                     ##next
                     ##Dim ParameterResultsArray(1 To 24, 1 To 50) As Double   'stores beta parmeters etc from calulations as going along - printed to file in the end
@@ -739,6 +736,8 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                         if yMatrix[i] <= thresh:
                             ## NEW AND IMPROVED RESIZE CODE HERE:
                             rejectedIndex.append(i)
+                        else:
+                            yMatrixAboveThreshPos[i] = i+1
                         #End If
                     #Next i
                     xMatrix = np.delete(xMatrix, rejectedIndex, 0)
@@ -773,7 +772,10 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
 
                     if detrendOption != 0:
                         ##call DetrendData
-                        betaTrend[periodWorkingOn] = detrendData(yMatrix, yMatrixAboveThreshPos, detrendOption, periodWorkingOn, True)
+                        dResults = detrendData(yMatrix, yMatrixAboveThreshPos, detrendOption, periodWorkingOn, True)
+                        yMatrix = dResults["yMatrix"]
+                        betaTrend[periodWorkingOn] = dResults["betaValues"]
+
 
 
                     if modelTrans == 5:
@@ -796,7 +798,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                             biasCorrection[i] = biasCorrect
                     
                     for i in range(12, 24):
-                        for j in range(NPredictors):
+                        for j in range(NPredictors + 1):
                             parameterResultsArray[i, j] = params["betaMatrix"][j]
                         ##next
                         parameterResultsArray[i, NPredictors + 1] = params["SE"]
@@ -834,7 +836,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                     if not autoRegression:
                         xMatrix = np.ndarray((sizeOfDataArray[periodWorkingOn], NPredictors + 1))
                         yMatrix = np.ndarray((sizeOfDataArray[periodWorkingOn]))
-                        yMatrixAboveThreshPos = np.ndarray((sizeOfDataArray[0]))
+                        yMatrixAboveThreshPos = np.ndarray((sizeOfDataArray[periodWorkingOn]))
                         for i in range(sizeOfDataArray[periodWorkingOn]):
                             yMatrix[i] = dataReadIn[periodWorkingOn, 0, i]
                             xMatrix[i, 0] = 1
@@ -888,7 +890,10 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
 
                     if (detrendOption != 0 and not parmOpt):
                         ##call detrendData(periodWorkingOn, False)
-                        betaTrend[periodWorkingOn] = detrendData(yMatrix, yMatrixAboveThreshPos, detrendOption, periodWorkingOn, False)
+                        dResults = detrendData(yMatrix, yMatrixAboveThreshPos, detrendOption, periodWorkingOn, False)
+                        yMatrix = dResults["yMatrix"]
+                        betaTrend[periodWorkingOn] = dResults["betaValues"]
+
                        
                     savedYMatrix = deepcopy(yMatrix)
 
@@ -928,7 +933,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
 
                     if seasonCode == 4:
                         for i in range(3):
-                            for j in range(NPredictors):
+                            for j in range(NPredictors + 1):
                                parameterResultsArray[seasonMonths[periodWorkingOn][i], j] = params["betaMatrix"][j]
                             ##next j
                             parameterResultsArray[seasonMonths[periodWorkingOn][i], NPredictors + 1] = params["SE"]
@@ -939,7 +944,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                             statsSummary[seasonMonths[periodWorkingOn][i], 4] = params["fRatio"]
                         ##next i
                     else: ##Monthly?
-                        for i in range(NPredictors):
+                        for i in range(NPredictors + 1):
                             parameterResultsArray[periodWorkingOn, i] = params["betaMatrix"][i]
                         ##next
                         parameterResultsArray[periodWorkingOn, NPredictors + 1] = params["SE"]
@@ -978,12 +983,15 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
 
                         ### propogateConditional Code ###
 
+                        print(f"Len yMat: {len(yMatrix)}")
+                        print(f"Len yMatAbove: {len(yMatrixAboveThreshPos)}")
                         rejectedIndex = []
                         for i in range(len(yMatrix)):
                             if yMatrix[i] <= thresh:
                                 ## NEW AND IMPROVED RESIZE CODE HERE:
                                 rejectedIndex.append(i)
-                                #yMatrixAboveThreshPos
+                            else:
+                                yMatrixAboveThreshPos[i] = i+1
                             #End If
                         #Next i
                         xMatrix = np.delete(xMatrix, rejectedIndex, 0)
@@ -1022,7 +1030,10 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
 
                         if detrendOption != 0:
                             ##call DetrendData
-                            betaTrend[periodWorkingOn] = detrendData(yMatrix, yMatrixAboveThreshPos, detrendOption, periodWorkingOn, True)
+                            dResults = detrendData(yMatrix, yMatrixAboveThreshPos, detrendOption, periodWorkingOn, True)
+                            yMatrix = dResults["yMatrix"]
+                            betaTrend[periodWorkingOn] = dResults["betaValues"]
+
 
                         if modelTrans == 5:
                             if seasonCode == 4:
@@ -1055,7 +1066,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
 
                         if seasonCode == 4:
                             for i in range(3): ##???
-                                for j in range(NPredictors):
+                                for j in range(NPredictors + 1):
                                     parameterResultsArray[seasonMonths[periodWorkingOn][i] + 12, j] = params["betaMatrix"][j]
                                 ##next j
                                 parameterResultsArray[seasonMonths[periodWorkingOn][i] + 12, NPredictors + 1] = params["SE"]
@@ -1066,7 +1077,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                                 statsSummary[seasonMonths[periodWorkingOn][i] + 12, 4] = params["fRatio"]
                             ##next i
                         else:
-                            for j in range(NPredictors):
+                            for j in range(NPredictors + 1):
                                 parameterResultsArray[periodWorkingOn + 12, j] = params["betaMatrix"][j]
                             ##next j
                             parameterResultsArray[periodWorkingOn + 12, NPredictors + 1] = params["SE"]
@@ -1130,36 +1141,6 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
             #----- SECTION #6.0 ----- PARfile Output
             #------------------------
 
-            ##what is PARROOT FOR OUTPUT???
-
-            ##this might be the certified export parameters moment...
-            tempNPred = 0
-            if detrendOption != 0:
-                #print NPredictors
-                tempNPRed = NPredictors
-            else:
-                #print -Npredictors -> what
-                tempNPred = -NPredictors
-            #endif
-            #print seasonCode
-            #print yearIndicator
-            #print globalSDate
-            #print nDaysR
-            #print FSDate.text(?)
-            #print noOfDays2Fit
-            #write parmOpt
-            #write modelTrans
-            #print 1
-            #if autoRegression: ##Less than worthless
-                #print True
-            #else:
-                #print False
-            #endif
-            #for subloop in range(NPredictors): ##may remove in favour of the approach below...
-                #print FileList.List(subloop) ##No clue on this one...
-
-            #next subloop
-
             ##Vars "Written" to PAR file:
             print("GlobalSettings:")
             for i in _globalSettings:
@@ -1172,17 +1153,19 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                 f"{nDaysR}", #"Record Length": 
                 f"{fsDate}", #"Fit start date": 
                 f"{noOfDays2Fit}", #"No of days in fit": 
-                f"{int(parmOpt)}", #"Set Rainfall Parameter": ?
+                #f"{int(parmOpt)}", #"Set Rainfall Parameter": ?
+                f"{parmOpt}",
                 f"{modelTrans}", #"Model Transformation option": 
                 "1", #"Ensemble size set to 1":#Idk what to do with this
-                f"{int(autoRegression)}", #"Autoregression": 
+                #f"{int(autoRegression)}", #"Autoregression": 
+                f"{autoRegression}",
             ]
             for file in fileList:    
                 PARfileOutput.append(file) #Save predictand & predictor file names
             PARfileOutput = "\n".join(PARfileOutput) + "\n"
 
             #call PrintResults
-            PARfileOutput += printResults(parameterResultsArray, NPredictors, parmOpt, biasCorrection, autoRegression, modelTrans, tResults)
+            PARfileOutput += printResults(parameterResultsArray, NPredictors, parmOpt, biasCorrection, autoRegression, modelTrans, lamdaArray)
  
             #print PTandRoot
             if detrendOption != 0:   ##Will need to double check and standardise this parameter
@@ -1194,7 +1177,6 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
             with open(PARfilePath, "w") as f:
                 print(PARfileOutput, file=f)
                 f.close()
-            
 
             #------------------------
             #----- SECTION #6.1 ----- Results Screen output
@@ -1207,13 +1189,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
             output['Predictors'] = fileList[1:]
             for subloop in range(1, NPredictors + 1):
                 output[f"Predictor#{subloop}"] = fileList[subloop]
-            #for i in range(1, 13):
-            #    output[months[i]] = {} # Initialize month associative array / dict
-            #    output[months[i]]["RSquared"] = statsSummary[i,0]
-            #    output[months[i]]["SE"] = statsSummary[i,1]
-            #    output[months[i]]["FRatio"] = statsSummary[i,4]
-            #    output[months[i]]["D-Watson"] = statsSummary[i,2]
-            #    output[months[i]]["Chow"] = None ##Coming soon!
+
             u = "Unconditional"
             c = "Conditional"
 
@@ -1319,6 +1295,8 @@ def detrendData(yMatrix: np.array, yMatrixAboveThreshPos: np.array, detrendOptio
     # 'for power function (y=ax^b;log y = log a + b log x ) 1=a, 2=b , 3=minimum applied before logs could be applied
 
 
+    print(f"Len yMat: {len(yMatrix)}")
+    print(f"Len YABOVE: {len(yMatrixAboveThreshPos)}")
 
     debugMsg(yMatrix)
     xValues = np.ndarray((len(yMatrix), 2))
@@ -1342,22 +1320,17 @@ def detrendData(yMatrix: np.array, yMatrixAboveThreshPos: np.array, detrendOptio
         xTransY = np.matmul(xValues.transpose(), yMatrix)
         xTransXInv = np.linalg.inv(np.matmul(xValues.transpose(), xValues))
         betaValues = np.matmul(xTransXInv, xTransY)
-        #betaTrend[period, 0] = betaValues[0] #,0]
-        #betaTrend[period, 1] = betaValues[1] #,0]
 
         for i in range(len(yMatrix)):
             yMatrix[i] -= (xValues[i,1] * betaValues[1]) #,0])
         ##next i
 
-        return [betaValues[0], betaValues[1]]
+        return {"betaValues": [betaValues[0], betaValues[1]],
+                "yMatrix": yMatrix}
 
     elif detrendOption == 2: #Power function
         xLogged = deepcopy(xValues)
-        #minY = 99999
-        #for i in range(len(yMatrix)):
-        #    if yMatrix[i] < minY:
-        #        minY = yMatrix[i]
-        ##next
+
         minY = np.min(yMatrix)
         if minY > 0: minY = 0
         for i in range(len(yMatrix)):
@@ -1365,24 +1338,21 @@ def detrendData(yMatrix: np.array, yMatrixAboveThreshPos: np.array, detrendOptio
 
         for i in range(len(yMatrix)):
             tempYMatrix[i] = np.log(tempYMatrix[i])
-            xLogged[i] = np.log(xValues[i, 1])
+            xLogged[i, 1] = np.log(xValues[i, 1])
 
-        #tempMatrix1 = xLogged.transpose
-        xTransY = np.matmul(xLogged.transpose(), yMatrix)
+        xTransY = np.matmul(xLogged.transpose(), tempYMatrix)
         xTransXInv = np.linalg.inv(np.matmul(xLogged.transpose(), xLogged))
         betaValues = np.matmul(xTransXInv, xTransY)
-        betaValues[0] = np.exp(betaValues[0]) #,0] = np.exp(betaBalues(0,0))
-        #betaTrend[period, 0] = betaValues[0]
-        #betaTrend[period, 1] = betaValues[1]
-        #betaTrend[period, 2] = minY
+        betaValues[0] = np.exp(betaValues[0]) 
 
         for i in range(len(yMatrix)):
             yMatrix[i] -= (betaValues[0] * (xValues[i][1] ** betaValues[1])) - np.abs(minY) - 0.001
 
-        return [betaValues[0], betaValues[1], minY]
+        return {"betaValues": [betaValues[0], betaValues[1], minY],
+                "yMatrix": yMatrix}
         
     else:
-        debugMsg("[Error]: Invalid Detrend Option")
+        raise ValueError("Invalid Detrend Option")
 
 def propogateUnconditional(yMatrix: np.array, thresh):
     """Propogate: Unconditional Function v1.0
@@ -1426,8 +1396,6 @@ def propogateConditional(xMatrix: np.ndarray, yMatrix: np.ndarray, yMatrixAboveT
 def xValidation(xMatrix: np.ndarray, yMatrix: np.ndarray, noOfFolds, parmOpt, conditionalPart=False):
     """
     Cross Validation - Combined Function
-    Currently has a minor issue in Section #1, leading to innacuracy after 3dp for all values
-    - Error may be larger for more data
     """
 
     ### GOLBALS ###
@@ -1608,7 +1576,7 @@ def xValidation(xMatrix: np.ndarray, yMatrix: np.ndarray, noOfFolds, parmOpt, co
     else: #Lo Data, Crash now...
         if conditionalPart:
             #else: Sorry - an error has occurred in the cross validation.  Not all cross validation metrics can be calculated as insufficient data can be inverse transformed.", 0 + vbCritical, "Error Message"
-            print("Error: Not enough data for the conditional part of xValidation")
+            #print("Error: Not enough data for the conditional part of xValidation")
             raise ArithmeticError("Not all cross validation metrics can be calculated as insufficient data can be inverse transformed")
         else:
             #if uncond: Sorry - an error has occurred in the cross validation.  Not all cross validation metrics can be calculated
@@ -1685,113 +1653,95 @@ def calcDW(residualMatrix: np.ndarray):
     #Next i   
 
 ##Stepwise Regression + Helper Functions
-def stepWiseRegression(xMatrix: np.ndarray, yMatrix: np.ndarray, NPredictors: int, includeChow: bool, conditionalPart: bool, parmOpt: bool, propResiduals:bool, residualArray:np.ndarray):
+def stepWiseRegression(xMatrix: np.ndarray, yMatrix: np.ndarray, NPredictors: int):
     """
     Stepwise Regression function
-    -- Currently a placeholder
     """
+    globalMissingCode = _globalSettings['globalmissingcode']
+    aicWanted = _globalSettings['aicWanted']
+    jMatrix = np.ones((len(yMatrix), len(yMatrix)))
 
-    aicWanted = False
-    jMatrix = np.ones((len(yMatrix, len(yMatrix))))
-
-    determinePermutations(NPredictors)
-
+    results = determinePermutations(NPredictors)
+    permArray = results
+    totalPerms = len(results) 
+    permErrors = np.zeros((totalPerms))
+    
     for i in range(totalPerms):
         ##Update ProgressBar
 
-        ##DoEvents
-
-        noOfCols = 1
-        for j in range(9):
-            if permArray[i, j] > 0:
-                noOfCols += 1
-            #endif
-        #next j
+        noOfCols = len(permArray[i]) + 1
+        
 
         newXMatrix = np.ones((len(yMatrix), noOfCols))
-        for j in range(1, noOfCols - 1):
-            for k in range(len(yMatrix) - 1):
-                newXMatrix[k, j] = xMatrix[k, permArray[i, j]]
+
+        for j in range(1, noOfCols):
+            for k in range(len(yMatrix)):
+                newXMatrix[k][j] = xMatrix[k][int(permArray[i][j - 1])]
             #next k
         #next j
 
-        results = calculateParameters2(newXMatrix, newYMatrix, optimisatinonChoice, NPredictors)
-
-        #if not terminated
-
-        SSR = np.matmul(results["betaMatrix"].transpose(), np.matmul(newXMatrix.transpose(), newYMatrix))[0,0]
-        SSRMinus = np.matmul(newYMatrix.transpose(), np.matmul(jMatrix, newYMatrix))[0,0]
-        RMSE = np.sqrt(SSR / len(newYMatrix))
-        if aicWanted:
-            PermErrors[i] = (newXMatrix.shape[0] * np.log(RMSE)) + ((newXMatrix.shape[1] - 1) * 2)
+        try:
+            results = calculateParameters2(newXMatrix, yMatrix, NPredictors)
+        except: #'if we couldn't calc parms then ignore this permutation
+            return globalMissingCode
         else:
-            PermErrors[i] = (newXMatrix.shape[0] * np.log(RMSE)) + ((newXMatrix.shape[1] - 1) * np.log(newXMatrix.shape[0]))
+            #if not terminated
+            SSR = np.matmul(results["betaMatrix"].transpose(), np.matmul(newXMatrix.transpose(), yMatrix))
+            SSRMinus = np.matmul(yMatrix.transpose(), np.matmul(jMatrix, yMatrix))
+            RMSE = np.sqrt(SSR / len(yMatrix))
+            if aicWanted:
+                permErrors[i] = (newXMatrix.shape[0] * np.log(RMSE)) + ((newXMatrix.shape[1] - 1) * 2)
+            else:
+                permErrors[i] = (newXMatrix.shape[0] * np.log(RMSE)) + ((newXMatrix.shape[1] - 1) * np.log(newXMatrix.shape[0]))
+            #endif
+        #end try
 
         ##Stop using newXMatrix now
-
-        maxError = -99999
-        maxLocation = 1
-        for i in range(totalPerms):
-            pass
-        
-def determinePermutations(numbers):
-    """
-    Returns totalPerms, permArray, and Numbers?
-    """
-    permArray = np.zeros((500, 9))
-    totalPerms = numbers #0
-    for i in range(numbers):
-        #totalPerms += 1
-        permArray[i, 0] = i
     #next i
-    if numbers > 1:
-        totalPerms += 1
-        for i in range(numbers):
-            permArray[totalPerms, i] = i #seems like a fair bit of redundancy imo
-        #next i
-    #endif
+
+    maxError = -99999
+    maxLocation = 1
+    for i in range(totalPerms):
+        if permErrors[i] > maxError:
+            maxError = permErrors[i]
+            maxLocation = i
+        #endif
+    #next i
+
+    if maxError == -99999:
+        RuntimeError("Unable to determine an optimum set of predictors from those selected. Please try an alternative")
+
+    noOfCols = len(permArray[maxLocation]) + 1
     
-    ##The following looks like loop hell
-    ##Must be a more efficient way of doing things
-    ##Also, how is this not going to overflow
-    if numbers > 2:
-        for i in range(1, numbers - 1):
-            generateIfromN(i, numbers, "")
+    NPredictors = noOfCols - 1
+    newXMatrix = np.ones((len(yMatrix), noOfCols))
 
-    return {
-        "TotalPerms": totalPerms,
-        "permArray": permArray
-        }
+    for j in range(1, noOfCols):
+        for k in range(len(yMatrix)):
+            newXMatrix[k][j] = xMatrix[k][int(permArray[maxLocation][j - 1])]
+        #next k
+    #next j
 
-def generateIfromN(sizeToPermute, numbers, appendString, totalPerms, permArray):
-    """
-    Curious Description
-    Genuinely not sure what this is supposed to do...
-    """
-    #what the fuck
-    valueString = ""
-    if sizeToPermute == numbers:
-        for i in range(numbers):
-            valueString += str(i+1) ## Trying to stay true to the original code
-        #next i
-        valueString += appendString.strip()
-        totalPerms += 1
-        for i in range(len(valueString)):
-            permArray[totalPerms, i] = int(valueString[i])
-        #next i
-    elif sizeToPermute == 1:
-        for i in range(numbers):
-            totalPerms += 1
-            valueString = (str(i) + appendString).strip()
-            for j in range(len(valueString)):
-                permArray[totalPerms, j] = int(valueString[j])
-            #next j
-        #next i
-    elif sizeToPermute > 1:
-        generateIfromN(sizeToPermute, numbers - 1, appendString, totalPerms, permArray)
-        valueString = (str(numbers) + appendString)
-        generateIfromN(sizeToPermute - 1, numbers - 1, valueString, totalPerms, permArray)
-    #endif
+    newFileList = []
+    for j in range(noOfCols - 1):
+        newFileList.append(int(permArray[maxLocation][j]))
+        print(f"ADDED FILE {permArray[maxLocation][j]}")
+
+
+    return {"newFileList": newFileList,
+            "noOfCols": noOfCols,
+            "NPredictors":NPredictors,
+            "xMatrix":newXMatrix
+    }
+        
+def determinePermutations(n: int):
+    from itertools import combinations
+    THE_LIST = []
+    #THE_LIST_JR = np.array(range(n))
+    for i in range(n):
+        THE_LIST += list(combinations(range(1, n+1), i+1))
+
+    return THE_LIST
 
 def calculateParameters(xMatrix: np.ndarray, yMatrix: np.ndarray, NPredictors: int, includeChow: bool, conditionalPart: bool, parmOpt: bool, propResiduals: bool, residualArray: np.ndarray, lamdaValues = []):
     """
@@ -2453,6 +2403,9 @@ def untransformData(matricies: np.ndarray, tResults):
     #endif
 
 def translator(passedValue: float, limit: float, totalArea: float, reSampleMatrix) -> float:
+    """
+    Untransform Data: Inverse Normal helper function
+    """
 
     ### GLOBALS ###
     globalMissingCode = _globalSettings['globalmissingcode']
@@ -2486,25 +2439,29 @@ def translator(passedValue: float, limit: float, totalArea: float, reSampleMatri
             return reSampleMatrix[locateValue]
 
 def printResults(parameterResultsArray: np.ndarray, NPredictors: int, parmOpt: bool, biasCorrection, autoRegression: bool, modelTrans: int, tResults: list):
+    """
+    Collects data from output arrays and merges it into
+     string form, ready to be written to the PARfile
+    """
     #We want: parmOpt, parameterResultsArray, nPredictors, autoregrssion, lamdaArray, modelTrans, biascorrection
     giga_array = ""
     if parmOpt:
         for i in range(12):
-            parameterResultsArray[i, NPredictors + 2 + int(autoRegression)] = 0
+            parameterResultsArray[i, NPredictors + 1 + int(autoRegression)] = 0
     for i in range(12):
         for j in range(NPredictors + 3 + int(autoRegression)):
             giga_array += f"{parameterResultsArray[i, j]:.3f}\t"
         #next j
         if modelTrans == 5:
             #tResults is the LamdaArray
-            giga_array += f"{tResults[i,0]:.3f}\t"
-            giga_array += f"{tResults[i,1]:.3f}"
+            giga_array += f"{tResults[i, 0]:.3f}\t"
+            giga_array += f"{tResults[i, 1]:.3f}"
         #endif
         giga_array += "\n"
     #next i
     if parmOpt:
-        for i in range(13, 24):
-            giga_array += f"{parameterResultsArray[i, 1]:.3f}\t"
+        for i in range(12, 24):
+            giga_array += f"{parameterResultsArray[i, 0]:.3f}\t"
             giga_array += f"{biasCorrection[i - 12]:.3f}\t"
             for j in range(1, NPredictors + 3):
                 giga_array += f"{parameterResultsArray[i, j]:.3f}\t"
@@ -2521,6 +2478,11 @@ def printResults(parameterResultsArray: np.ndarray, NPredictors: int, parmOpt: b
     #    f.close()
 
 def printTrendParms(detrendOption: int, betaTrend, seasonCode: int):
+    """
+    Collects data from the betaTrend array and returns it
+     in string form, ready to be written to the PARfile
+    """
+
     giga_array = ""
     if detrendOption == 1:
         giga_array += "1\n"
@@ -2534,9 +2496,9 @@ def printTrendParms(detrendOption: int, betaTrend, seasonCode: int):
     #        giga_array += f"\t{betaTrend[0,2]}\n"
     #    else:
     for i in range(seasonCode):
-        giga_array += f"{betaTrend[i,0]}\t{betaTrend[i,1]}"
+        giga_array += f"{betaTrend[i][0]}\t{betaTrend[i][1]}"
         if detrendOption == 2:
-            giga_array += f"\t{betaTrend[0,2]}"
+            giga_array += f"\t{betaTrend[i][2]}"
         giga_array += "\n"
     
     return giga_array
@@ -2588,6 +2550,86 @@ def plotScatter(residualArray):
     ]
     scatter.addPoints(spots)
     plot.addItem(scatter)
+
+def plotHistogram(residualArray, noOfHistCats):
+
+    minVal = np.min(residualArray['residual'])
+    maxVal = np.max(residualArray['residual'])
+    sizeOfCategories = (maxVal - minVal) / noOfHistCats
+    
+    for i in range(noOfHistCats):
+        #???
+        catMin = minVal + (i * sizeOfCategories)
+        catMax = catMin + sizeOfCategories
+        for j in range(residualArray['noOfResiduals']):
+            if residualArray['residual'][j] >= catMin and residualArray['residual'] < catMax:
+                ##residualHistData[i][2] + 1
+                pass
+        #next j
+    #next i
+
+    ##formatting....
+
+    #residualHistData[1][1] = str(minVal:.3f)
+    #residualHistData[noOfHistCats][1] = str(maxVal:.3f)
+
+    #intermediate labels?
+    #for i in range(1, noOfHistCats):
+    #   catMin = minVal + (i * sizeOfCategories)
+    #   residualHistData[i, 1] = str(catMin:.3f)
+        
+    
+
+    """
+    Private Sub PlotHistogram()       'plots a histogram of residuals
+    On Error GoTo ErrorHandler
+    ReDim ResidualHistogramData(1 To NoOfHistogramCats, 1 To 2)        'x=labels and data, y= data
+    Dim MaxValue As Double, MinValue As Double, SizeOfCategories As Double
+    Dim CatMin As Double, CatMax As Double
+    MaxValue = -999          'calculate max and min in observed data
+    MinValue = 999
+    For i = 1 To NoOfResiduals
+        If ResidualArray(2, i) > MaxValue Then MaxValue = ResidualArray(2, i)
+        If ResidualArray(2, i) < MinValue Then MinValue = ResidualArray(2, i)
+    Next i
+    SizeOfCategories = (MaxValue - MinValue) / NoOfHistogramCats
+                      
+    For i = 1 To NoOfHistogramCats
+        ResidualHistogramData(i, 2) = 0 'propogate column 2; col 1 for legend lables
+    Next i
+    
+    For i = 1 To NoOfHistogramCats  'calculate number of points in each category
+        CatMin = MinValue + ((i - 1) * SizeOfCategories)
+        CatMax = CatMin + SizeOfCategories
+        For j = 1 To NoOfResiduals
+            If ((ResidualArray(2, j) >= CatMin) And (ResidualArray(2, j) < CatMax)) Then
+                ResidualHistogramData(i, 2) = ResidualHistogramData(i, 2) + 1
+            End If
+        Next j
+    Next i
+
+    tempz = Format(MinValue, "####0.000")
+    ResidualHistogramData(1, 1) = Str(tempz)
+    tempz = Format(MaxValue, "####0.000")
+    ResidualHistogramData(NoOfHistogramCats, 1) = Str(tempz)
+
+    For i = 2 To NoOfHistogramCats - 1      'set up intermediate labels
+        CatMin = MinValue + ((i - 1) * SizeOfCategories)
+        tempz = Format(CatMin, "####0.000")
+        ResidualHistogramData(i, 1) = Str(tempz)
+    Next i
+
+    SeriesDataFirstValue = ResidualHistogramData(1, 1) 'save first value in time series array
+    Load HistogramFrm
+    HistogramFrm.Reset_All
+    HistogramFrm.Show
+    Exit Sub
+ErrorHandler:
+    Call HandleError(Err.Number)
+    Call Mini_Reset
+    Exit Sub
+End Sub
+    """
 
 ##Helper Functions:
 

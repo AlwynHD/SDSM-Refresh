@@ -43,7 +43,7 @@ class ContentWidget(QWidget):
         self.save_root = ""
 
         # ---default dates---
-        self.global_start_date = "01/01/1948"
+        self.global_start_date = "01/01/1878"
         self.global_end_date = "31/12/2017"
         self.global_n_days = "25567"
 
@@ -361,7 +361,10 @@ class ContentWidget(QWidget):
             "Standard Precipitation Index", "Peaks Over Threshold",
             "Nth largest", "Largest N-day total", "Mean dry spell", "Mean wet spell",
             "Median dry spell", "Median wet spell",
-            "SD dry spell", "SD wet spell", "Spell length correlation"
+            "SD dry spell", "SD wet spell", "Spell length correlation",
+            "%Prec > annual %ile",  # Added as separate option
+            "% All precip from events > long-term %ile",  # Added as separate option
+            "No. of events > long-term %ile"
         ]
 
         # Create radio buttons instead of checkboxes
@@ -375,14 +378,10 @@ class ContentWidget(QWidget):
             # Add to button group
             self.statsButtonGroup.addButton(radio, i)
             
-            # Add to layout - 3 columns
-            # For first 14 options, use a 3-column layout
-            if i < 14:
-                statsLayout.addWidget(radio, i // 3, i % 3)
-            # For spell duration options, add to a 4th column
-            else:
-                spell_idx = i - 14
-                statsLayout.addWidget(radio, spell_idx, 3)
+            # Add to layout - use 4 columns, evenly distributed
+            row = i // 4
+            col = i % 4
+            statsLayout.addWidget(radio, row, col)
             
             self.statRadioButtons.append(radio)
 
@@ -474,7 +473,7 @@ class ContentWidget(QWidget):
         pdsLayout.addWidget(QLabel("Threshold value:"), 0, 0)
         pdsLayout.addWidget(self.pdsThreshInput, 0, 1)
 
-        # 7. Annual Percentile parameters (existing UI)
+        # 7. %Prec > annual %ile parameters
         self.annualPercentileParams = QWidget()
         annualPercentileLayout = QGridLayout(self.annualPercentileParams)
         annualPercentileLayout.setContentsMargins(0, 0, 0, 0)
@@ -486,19 +485,30 @@ class ContentWidget(QWidget):
         annualPercentileLayout.addWidget(QLabel("%Prec > annual %ile:"), 0, 0)
         annualPercentileLayout.addWidget(self.annualPercentileInput, 0, 1)
 
+        # 8. % All precip from events > long-term %ile:
+
+        self.precipevents = QWidget()
+        precipeventsLayout = QGridLayout(self.precipevents)
+        precipeventsLayout.setContentsMargins(0, 0, 0, 0)
+
         self.precipLongTermInput = QLineEdit()
         self.precipLongTermInput.setPlaceholderText("90")
         self.precipLongTermInput.setText("90")
         self.precipLongTermInput.setFixedHeight(25)
-        annualPercentileLayout.addWidget(QLabel("% All precip from events > long-term %ile:"), 1, 0)
-        annualPercentileLayout.addWidget(self.precipLongTermInput, 1, 1)
+        precipeventsLayout.addWidget(QLabel("% All precip from events > long-term %ile:"), 1, 0)
+        precipeventsLayout.addWidget(self.precipLongTermInput, 1, 1)
 
+        # 9. No. of events > long-term %ile:
+
+        self.NoEvents = QWidget()
+        NoEventsLayout = QGridLayout(self.NoEvents)
+        NoEventsLayout.setContentsMargins(0, 0, 0, 0)
         self.numEventsInput = QLineEdit()
         self.numEventsInput.setPlaceholderText("90")
         self.numEventsInput.setText("90")
         self.numEventsInput.setFixedHeight(25)
-        annualPercentileLayout.addWidget(QLabel("No. of events > long-term %ile:"), 2, 0)
-        annualPercentileLayout.addWidget(self.numEventsInput, 2, 1)
+        NoEventsLayout.addWidget(QLabel("No. of events > long-term %ile:"), 2, 0)
+        NoEventsLayout.addWidget(self.numEventsInput, 2, 1)
 
         # Add all parameter widgets to the params layout
         # Initially only show the default one (Sum has no parameters)
@@ -509,6 +519,8 @@ class ContentWidget(QWidget):
         paramsLayout.addWidget(self.largestNDayParams, 4, 0)
         paramsLayout.addWidget(self.pdsParams, 5, 0)
         paramsLayout.addWidget(self.annualPercentileParams, 6, 0)
+        paramsLayout.addWidget(self.precipevents, 7, 0)
+        paramsLayout.addWidget(self.NoEvents, 8, 0)
 
         # Hide all parameter sets initially
         self.percentileParams.hide()
@@ -518,6 +530,8 @@ class ContentWidget(QWidget):
         self.largestNDayParams.hide()
         self.pdsParams.hide()
         self.annualPercentileParams.hide()
+        self.precipevents.hide()
+        self.NoEvents.hide()
 
         statsGroup.setLayout(statsLayout)
         mainLayout.addWidget(statsGroup)
@@ -553,7 +567,6 @@ class ContentWidget(QWidget):
         self.progress_bar.setVisible(False)
         mainLayout.addWidget(self.progress_bar)
 
-
     def onStatOptionChanged(self, button):
         """Handler for when a statistic option is changed"""
         # Hide all parameter sets first
@@ -564,6 +577,8 @@ class ContentWidget(QWidget):
         self.largestNDayParams.hide()
         self.pdsParams.hide()
         self.annualPercentileParams.hide()
+        self.precipevents.hide()
+        self.NoEvents.hide()
         
         # Show parameters based on which statistic is selected
         selected_id = self.statsButtonGroup.id(button)
@@ -583,8 +598,16 @@ class ContentWidget(QWidget):
             self.nthLargestParams.show()
         elif selected_id == 13:  # Largest N-day total
             self.largestNDayParams.show()
-        elif selected_id == 14:  # %Prec > annual %ile
+        # elif selected_id == 14:  # %Prec > annual %ile
+        #     self.annualPercentileParams.show()
+        elif selected_id == 21:  # %Prec > annual %ile
             self.annualPercentileParams.show()
+        elif selected_id == 22:  # % All precip from events > long-term %ile
+            # This needs the precipLongTermInput parameter
+            self.precipevents.show()
+        elif selected_id == 23:  # No. of events > long-term %ile
+            # This needs the numEventsInput parameter
+            self.NoEvents.show()
 
     def CreateFileSelectionGroup(self, title):
         """
@@ -1009,8 +1032,7 @@ class ContentWidget(QWidget):
             return True
         except ValueError:
             return False
-
-    
+  
     def PlotData(self):
         try:
             # Initialize variables
@@ -1153,6 +1175,7 @@ class ContentWidget(QWidget):
                     self.spi_value = int(self.spiValueInput.text())
                     ok_to_plot = self.GenerateSPI()
                 elif self.DatesCombo.currentIndex() == 0:
+                    print("stat_info['id']:", stat_info["id"])
                     # Raw data selected
                     ok_to_plot = self.RawData()
                 elif stat_info["id"] == 14:  # %Precip > annual %ile
@@ -1181,6 +1204,15 @@ class ContentWidget(QWidget):
                     ok_to_plot = self.GenerateData()
                 
                 if ok_to_plot:
+
+                    if hasattr(self, 'TimeSeriesData') and len(self.TimeSeriesData) > 0 and len(self.TimeSeriesData[0]) > 0:
+                        series_data_first_value = self.TimeSeriesData[0][0]
+                    else:
+                        # Handle the empty case
+                        QMessageBox.critical(self, "Error Message", "No data available to plot. Please check your data selection.")
+                        self.setCursor(Qt.ArrowCursor)  # Reset cursor
+                        self.progress_bar.setVisible(False)  # Hide progress bar
+                        return
                     # Save first value in time series array
                     series_data_first_value = self.TimeSeriesData[0][0]
                     
@@ -1218,6 +1250,7 @@ class ContentWidget(QWidget):
     def getSelectedStatistic(self):
         """Returns information about the selected statistic"""
         selected_id = self.statsButtonGroup.checkedId()
+        print(f"Radio button selection ID: {selected_id}")
         if selected_id == -1:
             return None
         
@@ -1226,33 +1259,6 @@ class ContentWidget(QWidget):
             "name": self.statsOptions[selected_id]
         }
         
-        # Map to the old checkbox indexes for compatibility with existing chart functions
-        # This helps during transition to the new system
-        stat_map = stat_map = {
-            0: 0,   # Sum
-            1: 1,   # Mean
-            2: 2,   # Maximum
-            3: 6,   # Winter/Summer ratio
-            4: 10,  # Maximum dry spell
-            5: 11,  # Maximum wet spell
-            6: 19,  # Dry day persistence
-            7: 20,  # Wet day persistence
-            8: 5,   # Partial Duration Series
-            9: 3,   # Percentile
-            10: 4,  # Standard Precipitation Index
-            11: 7,  # Peaks Over Threshold
-            12: 8,  # Nth largest
-            13: 9,  # Largest N-day total
-            14: 12, # Mean dry spell
-            15: 13, # Mean wet spell
-            16: 15, # Median dry spell
-            17: 16, # Median wet spell
-            18: 17, # SD dry spell
-            19: 18, # SD wet spell
-            20: 21  # Spell length correlation
-        }
-        
-        stat_info["old_id"] = stat_map.get(selected_id, -1)
         return stat_info
 
     def close_open_files(self):
@@ -1365,11 +1371,10 @@ class ContentWidget(QWidget):
                 y_label = "Number of Events>Long Term Percentile"
                 
             # Get selected spell type if needed
+            # Remove the spellButtonGroup check and use the statistic name directly
             if stat_info["name"] in ["Mean dry spell", "Mean wet spell", "Median dry spell", 
                                 "Median wet spell", "SD dry spell", "SD wet spell"]:
-                selected_spell = self.spellButtonGroup.checkedButton()
-                if selected_spell:
-                    y_label = selected_spell.text()
+                y_label = stat_info["name"]
             
             # Set chart title based on selected time period
             if stat_info["id"] == 10:  # SPI
@@ -1406,6 +1411,9 @@ class ContentWidget(QWidget):
             colors = ['blue', 'red', 'green', 'purple', 'orange']
             markers = ['o', 's', '^', 'D', 'x']
             
+            # Flag to track if any lines were plotted with labels
+            has_labeled_lines = False
+            
             # Plot each time series
             for i in range(1, self.total_time_series_files + 1):
                 # Extract x and y values, filter out None/Empty values
@@ -1434,6 +1442,13 @@ class ContentWidget(QWidget):
                     color_idx = (i-1) % len(colors)
                     marker_idx = (i-1) % len(markers)
                     
+                    # Set a valid label
+                    label = ""
+                    if i-1 < len(self.AllFilesList):
+                        label = self.AllFilesList[i-1]
+                    else:
+                        label = f"Series {i}"
+                    
                     if self.DatesCombo.currentIndex() == 0:  # Raw data - use line plot
                         line, = ax.plot(x_values, y_values, 
                                     color=colors[color_idx],
@@ -1441,7 +1456,7 @@ class ContentWidget(QWidget):
                                     markersize=4,
                                     linestyle='-',
                                     linewidth=1,
-                                    label=self.AllFilesList[i-1])
+                                    label=label)
                     else:  # Other data - connect points with lines
                         line, = ax.plot(x_values, y_values, 
                                     color=colors[color_idx],
@@ -1449,7 +1464,9 @@ class ContentWidget(QWidget):
                                     markersize=6,
                                     linestyle='-',
                                     linewidth=1.5,
-                                    label=self.AllFilesList[i-1])
+                                    label=label)
+                    
+                    has_labeled_lines = True
             
             # Customize x-axis based on data type
             if self.DatesCombo.currentIndex() != 0:  # Not raw data
@@ -1471,8 +1488,8 @@ class ContentWidget(QWidget):
             # Add grid
             ax.grid(True, linestyle='--', alpha=0.7)
             
-            # Add legend if there's more than one time series
-            if self.total_time_series_files > 1:
+            # Add legend if there's more than one time series and there are labeled lines
+            if self.total_time_series_files > 1 and has_labeled_lines:
                 ax.legend(loc='best', frameon=True, framealpha=0.8, fontsize='small')
             
             # Add data range information in the corner
@@ -1706,166 +1723,87 @@ class ContentWidget(QWidget):
                 self.progress_bar.setVisible(True)
                 self.progress_bar.setValue(0)
                 self.progress_bar.setMaximum(100)
+                self.progress_bar.setFormat("Reading Data")
             
             # Initialize variables 
             any_missing = False  # Track if any data points are missing
             
-            # Set current date to global start date
-            current_day = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").day)
-            current_month = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").month)
-            current_year = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").year)
-            self.CurrentDay = current_day
-            self.CurrentMonth = current_month
-            self.CurrentYear = current_year
-            total_numbers = 0
-            
-            # Skip unwanted data at the start of the file
-            date_start = datetime(self.CurrentYear, self.CurrentMonth, self.CurrentDay)
-            date_target = datetime.strptime(self.FSDate, "%y/%m/%d")
-            
-            # Loop until we reach the start date for analysis
-            while date_start < date_target:
-                # Check if user wants to exit
-                if self.ExitAnalysis():
-                    self.Mini_Reset()
-                    return False
+            # Read all values from each file
+            all_values = []
+            for i, file in enumerate(self.open_files):
+                # Read the entire file content
+                file_content = file.read()
+                file.seek(0)  # Reset file pointer for other operations if needed
                 
-                # Skip data from all files
-                for i in range(len(self.open_files)):
-                    file = self.open_files[i]
-                    
-                    if self.EnsembleFile[i]:
-                        # Handle multi-column file (ensemble)
-                        line = file.readline()
-                        if not line:  # EOF
-                            break
-                    else:
-                        # Handle single-column file
-                        line = file.readline()
-                        if not line:  # EOF
-                            break
+                # Split into individual values
+                values = []
+                for line in file_content.strip().split('\n'):
+                    # Split each line by whitespace and add values to the list
+                    line_values = line.strip().split()
+                    for val in line_values:
+                        if val.strip():  # Skip empty strings
+                            try:
+                                value = float(val.strip())
+                                values.append(value if value != self.global_missing_code else None)
+                            except ValueError:
+                                # Skip non-numeric values
+                                values.append(None)
+                                any_missing = True
                 
-                total_numbers += 1
-                self.IncreaseDate()
-                date_start = datetime(self.CurrentDay, self.CurrentMonth, self.CurrentYear)
-                
-                # Update progress bar
-                progress_value = int((total_numbers / total_to_read_in) * 100)
-                self.progress_bar.setValue(progress_value)
-                self.progress_bar.setFormat("Skipping Unnecessary Data")
+                all_values.append(values)
+                print(f"Read {len(values)} data points from file {i+1}")
             
-            # Now read in the data we want to analyze
-            total_numbers = 0
-            total_to_read_in = (datetime.strptime(self.FEdate, "%y/%m/%d") - 
-                            datetime.strptime(self.FSDate, "%y/%m/%d")).days + 1
+            # Calculate minimum length to ensure all arrays have same number of elements
+            min_length = min([len(values) for values in all_values])
+            if min_length == 0:
+                print("No valid data found in files")
+                return False
             
-            self.progress_bar.setVisible(True)
-            self.progress_bar.setValue(0)
-            self.progress_bar.setMaximum(100)
-            self.progress_bar.setFormat("Reading Time Series Data")
+            # Skip unwanted data at the beginning
+            skip_count = min(total_to_read_in, min_length)
             
-            # Set current date to start date for analysis
-            self.CurrentDay = int(datetime.strptime(self.FSDate, "%y/%m/%d").day)
-            self.CurrentMonth = int(datetime.strptime(self.FSDate, "%y/%m/%d").month)
-            self.CurrentYear = int(datetime.strptime(self.FSDate, "%y/%m/%d").year)
+            # Calculate days to read
+            days_to_read = min(
+                min_length - skip_count, 
+                (datetime.strptime(self.FEdate, "%d/%m/%Y") - 
+                datetime.strptime(self.FSDate, "%d/%m/%Y")).days + 1
+            )
             
-            # Create a temporary array for the time series data
-            time_series_data2 = [[None for _ in range(self.total_time_series_files + 1)] 
-                            for _ in range(total_to_read_in + 1)]
-            
-            # Read in the data
-            date_current = datetime(self.CurrentDay, self.CurrentMonth,self.CurrentYear)
-            date_end = datetime.strptime(self.FEdate, "%y/%m/%d")
-            
-            while date_current <= date_end:
-                # Check if user wants to exit
-                if self.ExitAnalysis():
-                    self.Mini_Reset()
-                    return False
-                
-                total_numbers += 1
-                
-                # Read data for the current day from each file
-                for i, file in enumerate(self.open_files):
-                    try:
-                        if self.EnsembleFile[i]:
-                            # Handle multi-column file (ensemble)
-                            line = file.readline()
-                            if not line:  # EOF
-                                break
-                            # Extract first value from the line (comma or space separated)
-                            parts = line.strip().split()
-                            if len(parts) > 0:
-                                if ',' in parts[0]:
-                                    values = parts[0].split(',')
-                                    temp_double = float(values[0]) if values[0].strip() else self.global_missing_code
-                                else:
-                                    temp_double = float(parts[0]) if parts[0].strip() else self.global_missing_code
-                            else:
-                                temp_double = self.global_missing_code
-                        else:
-                            # Handle single-column file
-                            line = file.readline()
-                            if not line:  # EOF
-                                break
-                            line = line.strip()
-                            if line:
-                                temp_double = float(line)
-                            else:
-                                temp_double = self.global_missing_code
-                        
-                        # Store the value in the time series array
-                        if temp_double == self.global_missing_code:
-                            any_missing = True
-                            time_series_data2[total_numbers-1][i+1] = None  # Empty value for missing data
-                        else:
-                            time_series_data2[total_numbers-1][i+1] = temp_double
-                    except ValueError:
-                        # Handle conversion errors (e.g., non-numeric data)
-                        any_missing = True
-                        time_series_data2[total_numbers-1][i+1] = None
-                
-                # Set category label (day number for x-axis)
-                time_series_data2[total_numbers-1][0] = str(total_numbers)
-                
-                # Increase date for next iteration
-                self.IncreaseDate()
-                date_current = datetime(self.CurrentYear, self.CurrentMonth, self.CurrentDay)
-                
-                # Update progress bar
-                progress_value = int((total_numbers / total_to_read_in) * 100)
-                self.progress_bar.setValue(progress_value)
-                self.progress_bar.setFormat("Reading Time Series Data")
-            
-            # Set time series length
-            self.TimeSeriesLength = total_numbers
-            
-            # Transfer data to TimeSeriesData array
+            # Create time series data
+            self.TimeSeriesLength = days_to_read
             self.TimeSeriesData = [[None for _ in range(self.total_time_series_files + 1)] 
-                                for _ in range(total_numbers)]
+                                for _ in range(days_to_read)]
             
-            for i in range(total_numbers):
-                for j in range(self.total_time_series_files + 1):
-                    self.TimeSeriesData[i][j] = time_series_data2[i][j]
+            # Fill the array with data
+            for i in range(days_to_read):
+                # Set day number as X-axis label
+                self.TimeSeriesData[i][0] = str(i + 1)
+                
+                # Add each file's data
+                for j in range(self.total_time_series_files):
+                    if skip_count + i < len(all_values[j]):
+                        self.TimeSeriesData[i][j + 1] = all_values[j][skip_count + i]
             
             # Make sure no "1" appears on x-axis to begin with
-            self.TimeSeriesData[0][0] = " "
+            if self.TimeSeriesLength > 0:
+                self.TimeSeriesData[0][0] = " "
             
             if any_missing:
                 print("Warning - some of the data were missing and will not be plotted.")
             
             return True
-            
+                
         except Exception as e:
             print(f"Error in RawData: {str(e)}")
+            traceback.print_exc()  # Print full traceback for debugging
             self.Mini_Reset()
             return False
 
     def GenerateData(self):
         try:
             # Calculate days to skip at the beginning
-            total_to_read_in = (datetime.strptime(self.FSDate, "%y/%m/%dY") - 
-                            datetime.strptime(self.global_start_date, "%y/%m/%d")).days
+            total_to_read_in = (datetime.strptime(self.FSDate, "%d/%m/%Y") - 
+                            datetime.strptime(self.global_start_date, "%d/%m/%Y")).days
             
             if total_to_read_in > 0:
                 # Show progress bar
@@ -1875,16 +1813,16 @@ class ContentWidget(QWidget):
                 self.progress_bar.setFormat("Skipping Unnecessary Data")
             
             # Set current date to global start date
-            self.CurrentDay = int(datetime.strptime(self.global_start_date, "%y/%m/%d").day)
-            self.CurrentMonth = int(datetime.strptime(self.global_start_date, "%y/%m/%d").month)
-            self.CurrentYear = int(datetime.strptime(self.global_start_date, "%y/%m/%d").year)
+            self.CurrentDay = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").day)
+            self.CurrentMonth = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").month)
+            self.CurrentYear = int(datetime.strptime(self.global_start_date, "%d/%m/%Y").year)
             self.CurrentSeason = self.GetSeason(self.CurrentMonth)
             self.CurrentWaterYear = self.GetWaterYear(self.CurrentMonth, self.CurrentYear)
             total_numbers = 0
             
             # Skip unwanted data at the start of the file
-            date_start = datetime(self.CurrentDay,self.CurrentMonth, self.CurrentYear)
-            date_target = datetime.strptime(self.FSDate, "%y/%m/%d")
+            date_start = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
+            date_target = datetime.strptime(self.FSDate, "%d/%m/%Y")
             
             # Loop until we reach the start date for analysis
             while date_start < date_target:
@@ -1921,8 +1859,8 @@ class ContentWidget(QWidget):
             
             # Now read in the data we want to analyze
             total_numbers = 0
-            total_to_read_in = (datetime.strptime(self.FEdate, "%y/%m/%d") - 
-                            datetime.strptime(self.FSDate, "%y/%m/%d")).days + 1
+            total_to_read_in = (datetime.strptime(self.FEdate, "%d/%m/%Y") - 
+                            datetime.strptime(self.FSDate, "%d/%m/%Y")).days + 1
             
             self.progress_bar.setVisible(True)
             self.progress_bar.setValue(0)
@@ -1930,9 +1868,9 @@ class ContentWidget(QWidget):
             self.progress_bar.setFormat("Reading in data for plot")
             
             # Reset current date to start date for analysis
-            self.CurrentDay = int(datetime.strptime(self.FSDate, "%y/%m/%d").day)
-            self.CurrentMonth = int(datetime.strptime(self.FSDate, "%y/%m/%d").month)
-            self.CurrentYear = int(datetime.strptime(self.FSDate, "%y/%m/%d").year)
+            self.CurrentDay = int(datetime.strptime(self.FSDate, "%d/%m/%Y").day)
+            self.CurrentMonth = int(datetime.strptime(self.FSDate, "%d/%m/%Y").month)
+            self.CurrentYear = int(datetime.strptime(self.FSDate, "%d/%m/%Y").year)
             self.CurrentSeason = self.GetSeason(self.CurrentMonth)
             self.CurrentWaterYear = self.GetWaterYear(self.CurrentMonth, self.CurrentYear)
             
@@ -1945,16 +1883,16 @@ class ContentWidget(QWidget):
             count = 0
             
             # Set up period tracking variables
-            this_month = self.CurrentMonth
-            this_year = self.CurrentYear
-            this_season = self.CurrentSeason
-            this_water_year = self.CurrentWaterYear
+            self.ThisMonth = self.CurrentMonth
+            self.ThisYear = self.CurrentYear
+            self.ThisSeason = self.CurrentSeason
+            self.ThisWaterYear = self.CurrentWaterYear
             
             year_index = 1
             
             # Read in data and process by period
-            date_current = datetime(self.CurrentYear,self.CurrentMonth,self.CurrentDay)
-            date_end = datetime.strptime(self.FEdate, "%y/%m/%d")
+            date_current = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
+            date_end = datetime.strptime(self.FEdate, "%d/%m/%Y")
             
             while date_current <= date_end:
                 # Check if user wants to exit
@@ -1964,19 +1902,19 @@ class ContentWidget(QWidget):
                 
                 # Check if we've reached the end of the current period
                 if self.FinishedCurrentPeriod():
-                    year_index = this_year - int(datetime.strptime(self.FSDate, "%y/%m/%d").year) + 1
+                    year_index = self.ThisYear - int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + 1
                     
                     # For each file, update summary array with period's statistics
                     for i in range(1, self.total_time_series_files + 1):
                         # Determine array position based on period type
                         if self.DatesCombo.currentIndex() >= 1 and self.DatesCombo.currentIndex() <= 12:
-                            array_position = this_month
+                            array_position = self.ThisMonth
                         elif self.DatesCombo.currentIndex() >= 13 and self.DatesCombo.currentIndex() <= 16:
-                            array_position = this_season + 12
+                            array_position = self.ThisSeason + 12
                         elif self.DatesCombo.currentIndex() == 17:
                             array_position = 17  # Annual
-                        elif self.statCheckboxes[6].isChecked():
-                            array_position = this_season + 12  # Winter/summer ratio
+                        elif self.statsButtonGroup.checkedId() == 3:
+                            array_position = self.ThisSeason + 12  # Winter/summer ratio
                         else:
                             array_position = 18  # Water year
                         
@@ -1987,11 +1925,18 @@ class ContentWidget(QWidget):
                                 self.summaryArray[i][year_index][array_position][j] = self.global_missing_code
                         else:
                             # Calculate and store statistics
+                            print(f"Storing data for file {i}, year {year_index}, period {array_position}")
+                            # print(f"  Sum: {sum_vals[i]}")
+                            # print(f"  Max: {max_value[i]}")
                             self.summaryArray[i][year_index][array_position][1] = sum_vals[i]
                             self.summaryArray[i][year_index][array_position][2] = max_value[i]
                             self.summaryArray[i][year_index][array_position][3] = count - total_missing[i]
                             self.summaryArray[i][year_index][array_position][4] = self.PercentilePeriodArray(i, count, self.percentile)
-                            self.summaryArray[i][year_index][array_position][5] = sum_vals[i] / (count - total_missing[i])
+                            if count - total_missing[i] > 0:
+                                print("this")
+                                self.summaryArray[i][year_index][array_position][5] = sum_vals[i] / (count - total_missing[i])
+                            else:
+                                self.summaryArray[i][year_index][array_position][5] = self.global_missing_code
                             self.summaryArray[i][year_index][array_position][6] = pds[i]
                             self.summaryArray[i][year_index][array_position][7] = pot_count[i]
                             self.summaryArray[i][year_index][array_position][8] = self.FindNthLargest(i, count)
@@ -2004,10 +1949,10 @@ class ContentWidget(QWidget):
                             self.summaryArray[i][year_index][array_position][16] = self.FindMedianWetSpell(i, count)
                             self.summaryArray[i][year_index][array_position][17] = self.FindSDDrySpell(i, count)
                             self.summaryArray[i][year_index][array_position][18] = self.FindSDWetSpell(i, count)
-                            self.summaryArray[i][year_index][array_position][19] = self.FindDDPersistence(i, count)
-                            self.summaryArray[i][year_index][array_position][20] = self.FindWDPersistence(i, count)
+                            self.summaryArray[i][year_index][array_position][19] = self.FindDryDayPersistence(i, count)
+                            self.summaryArray[i][year_index][array_position][20] = self.FindWetDayPersistence(i, count)
                             self.summaryArray[i][year_index][array_position][21] = self.FindSpellLengthCorrelation(i, count)
-                    
+                            print("here are the stored stats:", self.summaryArray[i][year_index][array_position])
                     # Reset statistics for next period
                     for i in range(1, self.total_time_series_files + 1):
                         sum_vals[i] = 0
@@ -2051,6 +1996,11 @@ class ContentWidget(QWidget):
                         
                         # Store value in period array
                         self.periodArray[file_idx][count] = value
+
+                        # Check if value is missing
+                        if value != self.global_missing_code:
+                            season_name = ["Unknown", "Winter", "Spring", "Summer", "Autumn"][self.CurrentSeason]
+                            print(f"Read value {value} on {self.CurrentDay}/{self.CurrentMonth}/{self.CurrentYear} - {season_name} season for file {file_idx}")
                         
                         # Update statistics
                         if value == self.global_missing_code:
@@ -2064,6 +2014,32 @@ class ContentWidget(QWidget):
                             # For Peaks Over Threshold
                             if value > self.pot_value:
                                 pot_count[file_idx] += 1
+
+                            if self.statsButtonGroup.checkedId() == 3:
+                                # Calculate current year index
+                                current_year_idx = self.CurrentYear - int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + 1
+                                
+                                # Store winter data (December, January, February)
+                                if self.CurrentMonth in [12, 1, 2]:
+                                    winter_pos = 13  # Winter season index
+                                    # If this is the first winter value, initialize it
+                                    if self.summaryArray[file_idx][current_year_idx][winter_pos][1] == self.global_missing_code:
+                                        self.summaryArray[file_idx][current_year_idx][winter_pos][1] = value
+                                    else:
+                                        self.summaryArray[file_idx][current_year_idx][winter_pos][1] += value
+                                    
+                                    print(f"Added {value} to winter total, now: {self.summaryArray[file_idx][current_year_idx][winter_pos][1]}")
+                                
+                                # Store summer data (June, July, August)
+                                elif self.CurrentMonth in [6, 7, 8]:
+                                    summer_pos = 15  # Summer season index
+                                    # If this is the first summer value, initialize it
+                                    if self.summaryArray[file_idx][current_year_idx][summer_pos][1] == self.global_missing_code:
+                                        self.summaryArray[file_idx][current_year_idx][summer_pos][1] = value
+                                    else:
+                                        self.summaryArray[file_idx][current_year_idx][summer_pos][1] += value
+                                    
+                                    print(f"Added {value} to summer total, now: {self.summaryArray[file_idx][current_year_idx][summer_pos][1]}")
                     
                     except Exception as e:
                         print(f"Error processing file {i} on day {count}: {str(e)}")
@@ -2071,14 +2047,14 @@ class ContentWidget(QWidget):
                         total_missing[i+1] += 1
                 
                 # Save current period values
-                this_month = self.CurrentMonth
-                this_year = self.CurrentYear
-                this_season = self.CurrentSeason
-                this_water_year = self.CurrentWaterYear
+                self.ThisMonth = self.CurrentMonth
+                self.ThisYear = self.CurrentYear
+                self.ThisSeason = self.CurrentSeason
+                self.ThisWaterYear = self.CurrentWaterYear
                 
                 # Increase date for next iteration
                 self.IncreaseDate()
-                date_current = datetime(self.CurrentYear, self.CurrentMonth, self.CurrentDay)
+                date_current = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
                 
                 # Update progress bar
                 progress_value = int((total_numbers / total_to_read_in) * 100)
@@ -2086,24 +2062,24 @@ class ContentWidget(QWidget):
                 self.progress_bar.setFormat("Generating Time Series Plot")
             
             # Process the last period's data
-            year_index = this_year - int(datetime.strptime(self.FSDate, "%y/%m/%d").year) + 1
+            year_index = self.ThisYear - int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + 1
             
             # Determine array position for last period
-            if self.statCheckboxes[6].isChecked():  # Winter/summer ratio
-                array_position = this_season + 12
-                if this_season == 1 and int(datetime.strptime(self.FEdate, "%y/%m/%d").month) == 12:
+            if self.statsButtonGroup.checkedId() == 3: # Winter/summer ratio
+                array_position = self.ThisSeason + 12
+                if self.ThisSeason == 1 and int(datetime.strptime(self.FEdate, "%d/%m/%Y").month) == 12:
                     year_index += 1  # Adjust for winter spanning year boundary
             elif self.DatesCombo.currentIndex() >= 1 and self.DatesCombo.currentIndex() <= 12:
-                array_position = this_month
+                array_position = self.ThisMonth
             elif self.DatesCombo.currentIndex() >= 13 and self.DatesCombo.currentIndex() <= 16:
-                array_position = this_season + 12
-                if this_season == 1 and int(datetime.strptime(self.FEdate, "%y/%m/%d").month) == 12:
+                array_position = self.ThisSeason + 12
+                if self.ThisSeason == 1 and int(datetime.strptime(self.FEdate, "%d/%m/%Y").month) == 12:
                     year_index += 1  # Adjust for winter spanning year boundary
             elif self.DatesCombo.currentIndex() == 17:
                 array_position = 17  # Annual
             else:
                 array_position = 18  # Water year
-                if this_month >= 10:
+                if self.ThisMonth >= 10:
                     year_index += 1  # Adjust for water year boundary
             
             # Update summary array with the last period's statistics
@@ -2132,8 +2108,8 @@ class ContentWidget(QWidget):
                     self.summaryArray[i][year_index][array_position][16] = self.FindMedianWetSpell(i, count)
                     self.summaryArray[i][year_index][array_position][17] = self.FindSDDrySpell(i, count)
                     self.summaryArray[i][year_index][array_position][18] = self.FindSDWetSpell(i, count)
-                    self.summaryArray[i][year_index][array_position][19] = self.FindDDPersistence(i, count)
-                    self.summaryArray[i][year_index][array_position][20] = self.FindWDPersistence(i, count)
+                    self.summaryArray[i][year_index][array_position][19] = self.FindDryDayPersistence(i, count)
+                    self.summaryArray[i][year_index][array_position][20] = self.FindWetDayPersistence(i, count)
                     self.summaryArray[i][year_index][array_position][21] = self.FindSpellLengthCorrelation(i, count)
             
             # Determine start and end years for output
@@ -2141,24 +2117,24 @@ class ContentWidget(QWidget):
             end_year = year_index
             
             # Adjust start and end years based on selected period and available data
-            if self.statCheckboxes[6].isChecked():  # Winter/summer ratio
-                if int(datetime.strptime(self.FEdate, "%y/%m/%d").month) == 12:
+            if self.statsButtonGroup.checkedId() == 3:  # Winter/summer ratio
+                if int(datetime.strptime(self.FEdate, "%d/%m/%Y").month) == 12:
                     end_year -= 1  # Don't have following year's ratio
-                if int(datetime.strptime(self.FEdate, "%y/%m/%d").month) < 6:
+                if int(datetime.strptime(self.FEdate, "%d/%m/%Y").month) < 6:
                     end_year -= 1  # Don't have a summer to divide by
-                if int(datetime.strptime(self.FSDate, "%y/%m/%d").month) > 2:
+                if int(datetime.strptime(self.FSDate, "%d/%m/%Y").month) > 2:
                     start_year = 2  # Don't have a start winter in first year
             elif self.DatesCombo.currentIndex() >= 1 and self.DatesCombo.currentIndex() <= 12:  # Month
-                if self.DatesCombo.currentIndex() < int(datetime.strptime(self.FSDate, "%y/%m/%d").month):
+                if self.DatesCombo.currentIndex() < int(datetime.strptime(self.FSDate, "%d/%m/%Y").month):
                     start_year = 2  # This month is before fit start date
-                if self.DatesCombo.currentIndex() > int(datetime.strptime(self.FEdate, "%y/%m/%d").month):
+                if self.DatesCombo.currentIndex() > int(datetime.strptime(self.FEdate, "%d/%m/%Y").month):
                     end_year -= 1  # This month is after fit end date
             elif self.DatesCombo.currentIndex() >= 13 and self.DatesCombo.currentIndex() <= 16:  # Season
                 selected_season = self.DatesCombo.currentIndex() - 12
-                if selected_season < self.GetSeason(int(datetime.strptime(self.FSDate, "%y/%m/%d").month)):
+                if selected_season < self.GetSeason(int(datetime.strptime(self.FSDate, "%d/%m/%Y").month)):
                     start_year = 2  # Season comes before fit start date
                 if (int(datetime.strptime(self.FEdate, "%d/%m/%Y").month) != 12 and 
-                    selected_season > self.GetSeason(int(datetime.strptime(self.FEdate, "%y/%m/%d").month))):
+                    selected_season > self.GetSeason(int(datetime.strptime(self.FEdate, "%d/%m/%Y").month))):
                     end_year -= 1  # Season comes after fit end date
                 if (int(datetime.strptime(self.FEdate, "%d/%m/%Y").month) == 12 and 
                     self.DatesCombo.currentIndex() != 13):  # Not winter
@@ -2174,170 +2150,202 @@ class ContentWidget(QWidget):
                             for _ in range(self.TimeSeriesLength)]
             
             any_missing = False
+
+            for i in range(1, self.total_time_series_files + 1):
+                print(f"File {i} statistics for year 1:")
+                print(f"  Sum: {self.summaryArray[i][1][self.DatesCombo.currentIndex()][1]}")
+                print(f"  Mean: {self.summaryArray[i][1][self.DatesCombo.currentIndex()][5]}")
+                print(f"  Maximum: {self.summaryArray[i][1][self.DatesCombo.currentIndex()][2]}")
+                print(f"  Percentile: {self.summaryArray[i][1][self.DatesCombo.currentIndex()][4]}")
+                print(f"  Partial Duration Series: {self.summaryArray[i][1][self.DatesCombo.currentIndex()][6]}")
+                print(f"  Peaks Over Threshold: {self.summaryArray[i][1][self.DatesCombo.currentIndex()][7]}")
+                print(f"  Nth Largest: {self.summaryArray[i][1][self.DatesCombo.currentIndex()][8]}")
+                print(f"  Largest N day total: {self.summaryArray[i][1][self.DatesCombo.currentIndex()][9]}")
+                print(f"  Max dry spell: {self.summaryArray[i][1][self.DatesCombo.currentIndex()][10]}")
+                print(f"  Max wet spell: {self.summaryArray[i][1][self.DatesCombo.currentIndex()][11]}")
+                print(f"  Mean dry spell: {self.summaryArray[i][1][self.DatesCombo.currentIndex()][12]}")
+                print(f"  Mean wet spell: {self.summaryArray[i][1][self.DatesCombo.currentIndex()][13]}")
+                print(f"  Max consecutive dry days: {self.summaryArray[i][1][self.DatesCombo.currentIndex()][14]}")
+                print(f"  Max consecutive wet days: {self.summaryArray[i][1][self.DatesCombo.currentIndex()][15]}")
             
             # Fill TimeSeriesData array based on selected statistic
             for i in range(1, self.total_time_series_files + 1):
                 for j in range(1, self.TimeSeriesLength + 1):
                     idx = j + start_year - 1  # Adjusted index into summary array
                     
+                    # Get selected statistic ID from button group
+                    selected_stat = self.statsButtonGroup.checkedId()
+                    
                     # Determine value based on selected statistic
-                    if self.statCheckboxes[0].isChecked():  # Sum
+                    if selected_stat == 0:  # Sum
                         if self.summaryArray[i][idx][self.DatesCombo.currentIndex()][1] == self.global_missing_code:
                             self.TimeSeriesData[j-1][i] = None
                             any_missing = True
                         else:
                             self.TimeSeriesData[j-1][i] = self.summaryArray[i][idx][self.DatesCombo.currentIndex()][1]
                     
-                    elif self.statCheckboxes[1].isChecked():  # Mean
+                    elif selected_stat == 1:  # Mean
                         if self.summaryArray[i][idx][self.DatesCombo.currentIndex()][5] == self.global_missing_code:
                             self.TimeSeriesData[j-1][i] = None
                             any_missing = True
                         else:
                             self.TimeSeriesData[j-1][i] = self.summaryArray[i][idx][self.DatesCombo.currentIndex()][5]
                     
-                    elif self.statCheckboxes[2].isChecked():  # Maximum
+                    elif selected_stat == 2:  # Maximum
                         if self.summaryArray[i][idx][self.DatesCombo.currentIndex()][2] == self.global_missing_code:
                             self.TimeSeriesData[j-1][i] = None
                             any_missing = True
                         else:
                             self.TimeSeriesData[j-1][i] = self.summaryArray[i][idx][self.DatesCombo.currentIndex()][2]
                     
-                    elif self.statCheckboxes[3].isChecked():  # Percentile
+                    elif selected_stat == 9:  # Percentile
                         if self.summaryArray[i][idx][self.DatesCombo.currentIndex()][4] == self.global_missing_code:
                             self.TimeSeriesData[j-1][i] = None
                             any_missing = True
                         else:
                             self.TimeSeriesData[j-1][i] = self.summaryArray[i][idx][self.DatesCombo.currentIndex()][4]
                     
-                    elif self.statCheckboxes[5].isChecked():  # Partial Duration Series
+                    elif selected_stat == 8:  # Partial Duration Series
                         if self.summaryArray[i][idx][self.DatesCombo.currentIndex()][6] == self.global_missing_code:
                             self.TimeSeriesData[j-1][i] = None
                             any_missing = True
                         else:
                             self.TimeSeriesData[j-1][i] = self.summaryArray[i][idx][self.DatesCombo.currentIndex()][6]
                     
-                    elif self.statCheckboxes[6].isChecked():  # Winter/Summer ratio
+                    elif selected_stat == 3:  # Winter/Summer ratio
+                        
+                        winter_val = self.summaryArray[i][idx][13][1]  # Winter = season 1 + 12 = 13
+                        summer_val = self.summaryArray[i][idx][15][1]  # Summer = season 3 + 12 = 15
+                        
+                        print(f"Winter sum for file {i}, year {idx}: {winter_val}")
+                        print(f"Summer sum for file {i}, year {idx}: {summer_val}")
+
                         if (self.summaryArray[i][idx][13][1] == self.global_missing_code or 
                             self.summaryArray[i][idx][15][1] == self.global_missing_code or 
                             self.summaryArray[i][idx][15][1] == 0):
                             self.TimeSeriesData[j-1][i] = None
                             any_missing = True
+                            print("this shits missing")
                         else:
-                            self.TimeSeriesData[j-1][i] = self.summaryArray[i][idx][13][1] / self.summaryArray[i][idx][15][1]
+                            print("this shits not missing")
+                            winter_sum = self.summaryArray[i][idx][13][1]
+                            summer_sum = self.summaryArray[i][idx][15][1]
+                            self.TimeSeriesData[j-1][i] = winter_sum / summer_sum
                     
-                    elif self.statCheckboxes[7].isChecked():  # Peaks Over Threshold
+                    elif selected_stat == 11:  # Peaks Over Threshold
                         if self.summaryArray[i][idx][self.DatesCombo.currentIndex()][7] == self.global_missing_code:
                             self.TimeSeriesData[j-1][i] = None
                             any_missing = True
                         else:
                             self.TimeSeriesData[j-1][i] = self.summaryArray[i][idx][self.DatesCombo.currentIndex()][7]
                     
-                    elif self.statCheckboxes[8].isChecked():  # Nth Largest
+                    elif selected_stat == 12:  # Nth Largest
                         if self.summaryArray[i][idx][self.DatesCombo.currentIndex()][8] == self.global_missing_code:
                             self.TimeSeriesData[j-1][i] = None
                             any_missing = True
                         else:
                             self.TimeSeriesData[j-1][i] = self.summaryArray[i][idx][self.DatesCombo.currentIndex()][8]
                     
-                    elif self.statCheckboxes[9].isChecked():  # Largest N day total
+                    elif selected_stat == 13:  # Largest N day total
                         if self.summaryArray[i][idx][self.DatesCombo.currentIndex()][9] == self.global_missing_code:
                             self.TimeSeriesData[j-1][i] = None
                             any_missing = True
                         else:
                             self.TimeSeriesData[j-1][i] = self.summaryArray[i][idx][self.DatesCombo.currentIndex()][9]
                     
-                    elif self.statCheckboxes[10].isChecked():  # Max dry spell
+                    elif selected_stat == 4:  # Max dry spell
                         if self.summaryArray[i][idx][self.DatesCombo.currentIndex()][10] == self.global_missing_code:
                             self.TimeSeriesData[j-1][i] = None
                             any_missing = True
                         else:
                             self.TimeSeriesData[j-1][i] = self.summaryArray[i][idx][self.DatesCombo.currentIndex()][10]
                     
-                    elif self.statCheckboxes[11].isChecked():  # Max wet spell
+                    elif selected_stat == 5:  # Max wet spell
                         if self.summaryArray[i][idx][self.DatesCombo.currentIndex()][11] == self.global_missing_code:
                             self.TimeSeriesData[j-1][i] = None
                             any_missing = True
                         else:
                             self.TimeSeriesData[j-1][i] = self.summaryArray[i][idx][self.DatesCombo.currentIndex()][11]
                     
-                    elif self.statCheckboxes[12].isChecked():  # Mean dry spell
+                    elif selected_stat == 14:  # Mean dry spell
                         if self.summaryArray[i][idx][self.DatesCombo.currentIndex()][12] == self.global_missing_code:
                             self.TimeSeriesData[j-1][i] = None
                             any_missing = True
                         else:
                             self.TimeSeriesData[j-1][i] = self.summaryArray[i][idx][self.DatesCombo.currentIndex()][12]
                     
-                    elif self.statCheckboxes[13].isChecked():  # Mean wet spell
+                    elif selected_stat == 15:  # Mean wet spell
                         if self.summaryArray[i][idx][self.DatesCombo.currentIndex()][13] == self.global_missing_code:
                             self.TimeSeriesData[j-1][i] = None
                             any_missing = True
                         else:
                             self.TimeSeriesData[j-1][i] = self.summaryArray[i][idx][self.DatesCombo.currentIndex()][13]
                     
-                    elif self.statCheckboxes[15].isChecked():  # Median dry spell
+                    elif selected_stat == 16:  # Median dry spell
                         if self.summaryArray[i][idx][self.DatesCombo.currentIndex()][15] == self.global_missing_code:
                             self.TimeSeriesData[j-1][i] = None
                             any_missing = True
                         else:
                             self.TimeSeriesData[j-1][i] = self.summaryArray[i][idx][self.DatesCombo.currentIndex()][15]
                     
-                    elif self.statCheckboxes[16].isChecked():  # Median wet spell
+                    elif selected_stat == 17:  # Median wet spell
                         if self.summaryArray[i][idx][self.DatesCombo.currentIndex()][16] == self.global_missing_code:
                             self.TimeSeriesData[j-1][i] = None
                             any_missing = True
                         else:
                             self.TimeSeriesData[j-1][i] = self.summaryArray[i][idx][self.DatesCombo.currentIndex()][16]
                     
-                    elif self.statCheckboxes[17].isChecked():  # SD dry spell
+                    elif selected_stat == 18:  # SD dry spell
                         if self.summaryArray[i][idx][self.DatesCombo.currentIndex()][17] == self.global_missing_code:
                             self.TimeSeriesData[j-1][i] = None
                             any_missing = True
                         else:
                             self.TimeSeriesData[j-1][i] = self.summaryArray[i][idx][self.DatesCombo.currentIndex()][17]
                     
-                    elif self.statCheckboxes[18].isChecked():  # SD wet spell
+                    elif selected_stat == 19:  # SD wet spel
                         if self.summaryArray[i][idx][self.DatesCombo.currentIndex()][18] == self.global_missing_code:
                             self.TimeSeriesData[j-1][i] = None
                             any_missing = True
                         else:
                             self.TimeSeriesData[j-1][i] = self.summaryArray[i][idx][self.DatesCombo.currentIndex()][18]
                     
-                    elif self.statCheckboxes[19].isChecked():  # Dry day persistence
+                    elif selected_stat == 6:  # Dry day persistenc
                         if self.summaryArray[i][idx][self.DatesCombo.currentIndex()][19] == self.global_missing_code:
                             self.TimeSeriesData[j-1][i] = None
                             any_missing = True
                         else:
                             self.TimeSeriesData[j-1][i] = self.summaryArray[i][idx][self.DatesCombo.currentIndex()][19]
                     
-                    elif self.statCheckboxes[20].isChecked():  # Wet day persistence
+                    elif selected_stat == 7:  # Wet day persistence
                         if self.summaryArray[i][idx][self.DatesCombo.currentIndex()][20] == self.global_missing_code:
                             self.TimeSeriesData[j-1][i] = None
                             any_missing = True
                         else:
                             self.TimeSeriesData[j-1][i] = self.summaryArray[i][idx][self.DatesCombo.currentIndex()][20]
                     
-                    elif self.statCheckboxes[21].isChecked():  # Spell length correlation
+                    elif selected_stat == 20:  # Spell length correlation
                         if self.summaryArray[i][idx][self.DatesCombo.currentIndex()][21] == self.global_missing_code:
                             self.TimeSeriesData[j-1][i] = None
                             any_missing = True
                         else:
                             self.TimeSeriesData[j-1][i] = self.summaryArray[i][idx][self.DatesCombo.currentIndex()][21]
                     
-                    # Set year label for x-axis
-                    if self.DatesCombo.currentIndex() == 18:  # Water year
-                        self.TimeSeriesData[j-1][0] = str(int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + j + start_year - 3)
-                    else:
-                        self.TimeSeriesData[j-1][0] = str(int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + start_year + j - 2)
-            
-            if any_missing:
-                print("Warning - some of the data were missing and will not be plotted.")
-            
-            return True
+                    elif selected_stat == 21:  # Wet spell length correlation
+                        # Set year label for x-axis
+                        if self.DatesCombo.currentIndex() == 18:  # Water year
+                            self.TimeSeriesData[j-1][0] = str(int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + j + start_year - 3)
+                        else:
+                            self.TimeSeriesData[j-1][0] = str(int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + start_year + j - 2)
+                
+                if any_missing:
+                    print("Warning - some of the data is missing and will not be plotted.")
+                
+                return True
         
         except Exception as e:
             print(f"Error in GenerateData: {str(e)}")
             self.Mini_Reset()
-            return False  
+            return False
 
     def GenerateSPI(self):
         try:
@@ -2415,9 +2423,9 @@ class ContentWidget(QWidget):
             total_missing = [0] * (self.total_time_series_files + 1)
             count = 0
             
-            this_month = self.CurrentMonth
-            this_year = self.CurrentYear
-            year_index = this_year - int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + 1
+            self.ThisMonth = self.CurrentMonth
+            self.ThisYear = self.CurrentYear
+            year_index = self.ThisYear - int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + 1
             
             # Read in data and calculate monthly sums
             date_current = datetime(day=self.CurrentDay, month=self.CurrentMonth, year=self.CurrentYear)
@@ -2430,15 +2438,15 @@ class ContentWidget(QWidget):
                     return False
                 
                 # Check if we've reached the end of a month
-                if this_month != self.CurrentMonth:
-                    year_index = this_year - int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + 1
+                if self.ThisYear != self.CurrentMonth:
+                    year_index = self.ThisYear - int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + 1
                     
                     # Save monthly sums to summaryArray
                     for i in range(1, self.total_time_series_files + 1):
                         if total_missing[i] == count:  # All values were missing
-                            self.summaryArray[i][year_index][this_month][1] = self.global_missing_code
+                            self.summaryArray[i][year_index][self.ThisMonth][1] = self.global_missing_code
                         else:
-                            self.summaryArray[i][year_index][this_month][1] = sum_vals[i]
+                            self.summaryArray[i][year_index][self.ThisMonth][1] = sum_vals[i]
                     
                     self.TotalMonths += 1  # Increment total months counter
                     
@@ -2491,9 +2499,9 @@ class ContentWidget(QWidget):
                         print(f"Error processing file {i} on day {count}: {str(e)}")
                         total_missing[i+1] += 1
                 
-                # Update this_month and this_year
-                this_month = self.CurrentMonth
-                this_year = self.CurrentYear
+                # Update ThisMonth and ThisYear
+                self.ThisMonth = self.CurrentMonth
+                self.ThisYear = self.CurrentYear
                 
                 # Increase date for next iteration
                 self.IncreaseDate()
@@ -2505,13 +2513,15 @@ class ContentWidget(QWidget):
                 self.progress_bar.setFormat("Reading Data for SPI")
             
             # Process the last month's data
-            year_index = this_year - int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + 1
+            year_index = self.ThisYear - int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + 1
             
             for i in range(1, self.total_time_series_files + 1):
                 if total_missing[i] == count:  # All values were missing
-                    self.summaryArray[i][year_index][this_month][1] = self.global_missing_code
+                    self.summaryArray[i][year_index][self.ThisMonth][1] = self.global_missing_code
+                    print("global missing code")
                 else:
-                    self.summaryArray[i][year_index][this_month][1] = sum_vals[i]
+                    self.summaryArray[i][year_index][self.ThisMonth][1] = sum_vals[i]
+                    print("sumvals added")
             
             self.TotalMonths += 1
             
@@ -2759,7 +2769,7 @@ class ContentWidget(QWidget):
             # Initialize count array - tracks valid data points per file
             count = [0] * 6
             
-            this_year = self.CurrentYear
+            self.ThisYear = self.CurrentYear
             year_index = 1
             
             # Read data for annual percentile calculations
@@ -2773,8 +2783,8 @@ class ContentWidget(QWidget):
                     return False
                 
                 # Check if we've reached end of year
-                if this_year != self.CurrentYear:
-                    year_index = this_year - int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + 1
+                if self.ThisYear != self.CurrentYear:
+                    year_index = self.ThisYear - int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + 1
                     
                     # Calculate percentiles for each file for this year
                     for i in range(1, self.total_time_series_files + 1):
@@ -2823,7 +2833,7 @@ class ContentWidget(QWidget):
                     except Exception as e:
                         print(f"Error processing file {i} on day {total_numbers}: {str(e)}")
                 
-                this_year = self.CurrentYear
+                self.ThisYear = self.CurrentYear
                 
                 # Increment date
                 self.IncreaseDate()
@@ -2834,7 +2844,7 @@ class ContentWidget(QWidget):
                 self.progress_bar.setValue(progress_value)
             
             # Process the last year's data
-            year_index = this_year - int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + 1
+            year_index = self.ThisYear - int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + 1
             
             for i in range(1, self.total_time_series_files + 1):
                 if count[i] == 0:  # No valid data
@@ -2854,9 +2864,9 @@ class ContentWidget(QWidget):
                     # Find the full path
                     full_path = ""
                     if i < self.left_files_count:
-                        full_path = os.path.join(self.fileSelectionLeft.file_list.path, file_path)
+                        full_path = os.path.join(self.northFileList.file_list.path, file_path)
                     else:
-                        full_path = os.path.join(self.fileSelectionRight.file_list.path, file_path)
+                        full_path = os.path.join(self.southFileList.file_list.path, file_path)
                     
                     # Open the file
                     input_file = open(full_path, 'r')
@@ -2904,10 +2914,10 @@ class ContentWidget(QWidget):
             self.CurrentSeason = self.GetSeason(self.CurrentMonth)
             self.CurrentWaterYear = self.GetWaterYear(self.CurrentMonth, self.CurrentYear)
             
-            this_month = self.CurrentMonth
-            this_year = self.CurrentYear
-            this_season = self.CurrentSeason
-            this_water_year = self.CurrentWaterYear
+            self.ThisMonth = self.CurrentMonth
+            self.ThisYear = self.CurrentYear
+            self.ThisSeason = self.CurrentSeason
+            self.ThisWaterYear = self.CurrentWaterYear
             
             year_index = 1
             
@@ -2928,11 +2938,11 @@ class ContentWidget(QWidget):
                 
                 # Check if we've reached end of period
                 if self.FinishedCurrentPeriod():
-                    year_index = this_year - int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + 1
+                    year_index = self.ThisYear - int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + 1
                     
                     # Only calculate if this is the selected period
-                    if (this_month == self.DatesCombo.currentIndex() or 
-                        (this_season + 12) == self.DatesCombo.currentIndex()):
+                    if (self.ThisMonth == self.DatesCombo.currentIndex() or 
+                        (self.ThisSeason + 12) == self.DatesCombo.currentIndex()):
                         
                         for i in range(1, self.total_time_series_files + 1):
                             if count[i] == 0:  # No valid data
@@ -2984,10 +2994,10 @@ class ContentWidget(QWidget):
                         print(f"Error processing file {i} on day {total_numbers}: {str(e)}")
                 
                 # Save current period values
-                this_month = self.CurrentMonth
-                this_year = self.CurrentYear
-                this_season = self.CurrentSeason
-                this_water_year = self.CurrentWaterYear
+                self.ThisMonth = self.CurrentMonth
+                self.ThisYear = self.CurrentYear
+                self.ThisSeason = self.CurrentSeason
+                self.ThisWaterYear = self.CurrentWaterYear
                 
                 # Increment date
                 self.IncreaseDate()
@@ -2998,10 +3008,10 @@ class ContentWidget(QWidget):
                 self.progress_bar.setValue(progress_value)
             
             # Process the last period's data
-            year_index = this_year - int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + 1
+            year_index = self.ThisYear - int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + 1
             
-            if (this_month == self.DatesCombo.currentIndex() or 
-                (this_season + 12) == self.DatesCombo.currentIndex()):
+            if (self.ThisMonth == self.DatesCombo.currentIndex() or 
+                (self.ThisSeason + 12) == self.DatesCombo.currentIndex()):
                 
                 for i in range(1, self.total_time_series_files + 1):
                     if count[i] == 0:  # No valid data
@@ -3216,7 +3226,7 @@ class ContentWidget(QWidget):
                 self.progress_bar.setFormat("Reading All Data")
             
             # Get the correct percentile value based on selected statistic
-            if self.statCheckboxes[22].isChecked():  # pfl90 selected
+            if self.statsButtonGroup.checkedId() == 15:  # pfl90 selected
                 ptile = self.pfl90_percentile
             else:  # pnl90 selected
                 ptile = self.pnl90_percentile
@@ -3237,9 +3247,9 @@ class ContentWidget(QWidget):
                 try:
                     # Find the full path based on whether the file is in left or right list
                     if i < self.left_files_count:
-                        full_path = os.path.join(self.fileSelectionLeft.findChild(QListWidget).path, file_path)
+                        full_path = os.path.join(self.northFileList.findChild(QListWidget).path, file_path)
                     else:
-                        full_path = os.path.join(self.fileSelectionRight.findChild(QListWidget).path, file_path)
+                        full_path = os.path.join(self.southFileList.findChild(QListWidget).path, file_path)
                     
                     # Check if this is an ensemble file
                     with open(full_path, 'r') as f:
@@ -3298,10 +3308,10 @@ class ContentWidget(QWidget):
             count_of_events_above_percentile = [0] * 6
             count = [0] * 6
             
-            this_month = self.CurrentMonth
-            this_year = self.CurrentYear
-            this_season = self.CurrentSeason
-            this_water_year = self.CurrentWaterYear
+            self.ThisMonth = self.CurrentMonth
+            self.ThisYear = self.CurrentYear
+            self.ThisSeason = self.CurrentSeason
+            self.ThisWaterYear = self.CurrentWaterYear
             
             year_index = 1
             
@@ -3317,17 +3327,17 @@ class ContentWidget(QWidget):
                 
                 # Check if we've reached the end of the selected period
                 if self.FinishedCurrentPeriod():
-                    year_index = this_year - int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + 1
+                    year_index = self.CurrentYear - int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + 1
                     
                     # Only calculate if this period is the one selected by user
-                    if (this_month == self.DatesCombo.currentIndex() or 
-                        (this_season + 12) == self.DatesCombo.currentIndex()):
+                    if (self.ThisMonth == self.DatesCombo.currentIndex() or 
+                        (self.ThisSeason + 12) == self.DatesCombo.currentIndex()):
                         
                         for i in range(1, self.total_time_series_files + 1):
                             if count[i] == 0:  # No valid data
                                 self.LongTermResults[i-1][year_index] = self.global_missing_code
                             else:
-                                if self.statCheckboxes[22].isChecked():  # pfl90 selected
+                                if self.statsButtonGroup.checkedId() == 15:  # pfl90 selected
                                     # Calculate percentage of rainfall from events above long-term percentile
                                     if total_rainfall_in_period[i] > 0:
                                         self.LongTermResults[i-1][year_index] = (rainfall_above_percentile[i] / 
@@ -3390,10 +3400,10 @@ class ContentWidget(QWidget):
                         print(f"Error processing file {i} on day {total_numbers}: {str(e)}")
                 
                 # Save current period values
-                this_month = self.CurrentMonth
-                this_year = self.CurrentYear
-                this_season = self.CurrentSeason
-                this_water_year = self.CurrentWaterYear
+                self.ThisMonth = self.CurrentMonth
+                self.ThisYear = self.CurrentYear
+                self.ThisSeason = self.CurrentSeason
+                self.ThisWaterYear = self.CurrentWaterYear
                 
                 # Increase date for next iteration
                 self.IncreaseDate()
@@ -3405,16 +3415,16 @@ class ContentWidget(QWidget):
                 self.progress_bar.setFormat("Calculating Long-Term Statistics")
             
             # Process the last period's data
-            year_index = this_year - int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + 1
+            year_index = self.ThisYear - int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + 1
             
-            if (this_month == self.DatesCombo.currentIndex() or 
-                (this_season + 12) == self.DatesCombo.currentIndex()):
+            if (self.ThisMonth == self.DatesCombo.currentIndex() or 
+                (self.ThisSeason + 12) == self.DatesCombo.currentIndex()):
                 
                 for i in range(1, self.total_time_series_files + 1):
                     if count[i] == 0:  # No valid data
                         self.LongTermResults[i-1][year_index] = self.global_missing_code
                     else:
-                        if self.statCheckboxes[22].isChecked():  # pfl90 selected
+                        if self.statsButtonGroup.checkedId() == 15:  # pfl90 selected
                             # Calculate percentage of rainfall from events above long-term percentile
                             if total_rainfall_in_period[i] > 0:
                                 self.LongTermResults[i-1][year_index] = (rainfall_above_percentile[i] / 
@@ -3519,16 +3529,31 @@ class ContentWidget(QWidget):
             return self.global_missing_code
 
     def FinishedCurrentPeriod(self):
+        """
+        Determines if the current data point represents the end of a period (month, season, year, etc.)
+        Returns True only when moving from one period to another.
+        """
         result = False
-        if self.StatOptions[4]:  # SPI chosen so need months
+        selected_stat = self.statsButtonGroup.checkedId()
+        
+        # If ThisMonth, etc. haven't been initialized yet, initialize them
+        if not hasattr(self, 'ThisMonth') or self.ThisMonth is None:
+            self.ThisMonth = self.CurrentMonth
+            self.ThisYear = self.CurrentYear
+            self.ThisSeason = self.CurrentSeason
+            self.ThisWaterYear = self.CurrentWaterYear
+            return False  # First point is never the end of a period
+        
+        # Check if the period has changed based on selected statistics and time period
+        if selected_stat == 10:  # SPI chosen so need months
             if self.ThisMonth != self.CurrentMonth:
                 result = True
-        elif self.StatOptions[6]:  # Winter/summer ratio selected
+        elif selected_stat == 3:  # Winter/summer ratio selected
             if self.ThisSeason != self.CurrentSeason:
                 result = True
         elif self.DatesCombo.currentIndex() >= 1 and self.DatesCombo.currentIndex() <= 12:  # Month selected
             if self.ThisMonth != self.CurrentMonth:
-                result = True        
+                result = True
         elif self.DatesCombo.currentIndex() >= 13 and self.DatesCombo.currentIndex() <= 16:  # Season selected
             if self.ThisSeason != self.CurrentSeason:
                 result = True
@@ -3540,7 +3565,6 @@ class ContentWidget(QWidget):
                 result = True
         
         return result
-
 
     def GetWaterYear(self,month, year):
         if month >= 10:  # October, November, December
@@ -3673,7 +3697,6 @@ class ContentWidget(QWidget):
             self.Mini_Reset()
             return 0
 
-
     def FindMaxWetSpell(self, file_no, size_of):
         try:
             # Create wet spell array first
@@ -3759,7 +3782,6 @@ class ContentWidget(QWidget):
             traceback.print_exc()  # Print full traceback for debugging
             self.Mini_Reset()
 
-
     def CreateDrySpellArray(self, file_no, size_of):
         try:
             # Initialize counters
@@ -3823,7 +3845,6 @@ class ContentWidget(QWidget):
             print(f"Error in CreateDrySpellArray: {str(e)}")
             traceback.print_exc()  # Print full traceback for debugging
             self.Mini_Reset()
-
 
     def FindMeanDrySpell(self, file_no, size_of):
         try:
@@ -3981,7 +4002,6 @@ class ContentWidget(QWidget):
             self.Mini_Reset()
             return 0
 
-
     def FindDryDayPersistence(self, file_no, size_of):
         try:
             # Create the dry spell array first
@@ -4008,7 +4028,7 @@ class ContentWidget(QWidget):
             return dry_day_persistence
     
         except Exception as e:
-            print(f"Error in FindDDPersistence: {str(e)}")
+            print(f"Error in FindDryDayPersistence: {str(e)}")
             traceback.print_exc()  # Print full traceback for debugging
             self.Mini_Reset()
             return 0
@@ -4039,7 +4059,7 @@ class ContentWidget(QWidget):
             return wet_day_persistence
         
         except Exception as e:
-            print(f"Error in FindWDPersistence: {str(e)}")
+            print(f"Error in FindWetDayPersistence: {str(e)}")
             traceback.print_exc()  # Print full traceback for debugging
             self.Mini_Reset()
             return 0
@@ -4055,12 +4075,6 @@ class ContentWidget(QWidget):
             return 0
 
         #Utility Functions
-
-    def CreateDrySpellArray():
-        pass
-
-    def CreateWetSpellArray():
-        pass
 
     def IncreaseDate(self):
         days_in_month = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
@@ -4111,7 +4125,6 @@ class ContentWidget(QWidget):
         else:  # months 9, 10, 11
             return 4  # Autumn
 
-
     def ExitAnalysis(self):
         try:
         # Check if the global cancel flag has been set
@@ -4138,7 +4151,7 @@ class ContentWidget(QWidget):
                 writer = csv.writer(csv_file)
                 
                 # Handle different saving modes based on selected options
-                if self.statCheckboxes[4].isChecked():  # SPI chosen
+                if self.statsButtonGroup.checkedId() == 10:  # SPI chosen
                     # Write header row with file names
                     header = ["Date"]
                     for i in range(self.total_time_series_files):
@@ -4164,7 +4177,7 @@ class ContentWidget(QWidget):
                                 row.append("")
                         writer.writerow(row)
                         
-                elif self.statCheckboxes[14].isChecked():  # % precip > annual percentile
+                elif self.statsButtonGroup.checkedId() == 14:  # % precip > annual percentile
                     # Write header row
                     header = ["Year"]
                     for i in range(self.total_time_series_files):
@@ -4187,7 +4200,7 @@ class ContentWidget(QWidget):
                                 row.append("")
                         writer.writerow(row)
                 
-                elif self.statCheckboxes[22].isChecked():  # pfl90 statistic
+                elif self.statsButtonGroup.checkedId() == 15:  # pfl90 statistic
                     # Write header row
                     header = ["Year"]
                     for i in range(self.total_time_series_files):
@@ -4210,7 +4223,7 @@ class ContentWidget(QWidget):
                                 row.append("")
                         writer.writerow(row)
                 
-                elif self.statCheckboxes[23].isChecked():  # pnl90 statistic
+                elif self.statsButtonGroup.checkedId() == 16: # pnl90 statistic
                     # Write header row
                     header = ["Year"]
                     for i in range(self.total_time_series_files):
@@ -4233,7 +4246,7 @@ class ContentWidget(QWidget):
                                 row.append("")
                         writer.writerow(row)
                 
-                elif self.statCheckboxes[6].isChecked():  # Winter/summer ratio
+                elif self.statsButtonGroup.checkedId() == 3: # Winter/summer ratio
                     # Write header row
                     header = ["Year"]
                     for i in range(self.total_time_series_files):
@@ -4369,7 +4382,6 @@ class ContentWidget(QWidget):
             traceback.print_exc()  # Print full traceback for debugging
             self.Mini_Reset()
         
-
     def Help_Needed(self, help_context):
         """
         Displays help information based on the context provided
@@ -4732,35 +4744,3 @@ class ContentWidget(QWidget):
         
         self.annual_percentile = int(value)
         self.annualPercentileInput.setText(str(self.annual_percentile))
-
-    def getSelectedStatistic(self):
-        """Returns information about the selected statistic"""
-        selected_id = self.statsButtonGroup.checkedId()
-        if selected_id == -1:
-            return None
-        
-        stat_info = {
-            "id": selected_id,
-            "name": self.statsOptions[selected_id]
-        }
-        
-        # Map to the old checkbox indexes for compatibility
-        stat_map = {
-            0: 0,   # Sum
-            1: 1,   # Mean
-            2: 2,   # Maximum
-            3: 6,   # Winter/Summer ratio
-            4: 10,  # Maximum dry spell
-            5: 11,  # Maximum wet spell
-            6: 19,  # Dry day persistence
-            7: 20,  # Wet day persistence
-            8: 5,   # Partial Duration Series
-            9: 3,   # Percentile
-            10: 4,  # Standard Precipitation Index
-            11: 7,  # Peaks Over Threshold
-            12: 8,  # Nth largest
-            13: 9   # Largest N-day total
-        }
-        
-        stat_info["old_id"] = stat_map.get(selected_id, -1)
-        return stat_info

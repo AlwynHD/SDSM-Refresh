@@ -236,8 +236,8 @@ def frequency_analysis(
                 mask_pct = (lower != globalMissingCode) & (upper != globalMissingCode)
                 low_pct = percentileWanted/2
                 high_pct = 100 - low_pct
-                ax.plot(x[mask_pct], lower[mask_pct], marker='^', linestyle=':', label=f'Low {low_pct:.0f}%')
-                ax.plot(x[mask_pct], upper[mask_pct], marker='v', linestyle=':', label=f'High {high_pct:.0f}%')
+                ax.plot(x[mask_pct], lower[mask_pct], marker='^', linestyle=':', label=f'Low {low_pct}%')
+                ax.plot(x[mask_pct], upper[mask_pct], marker='v', linestyle=':', label=f'High {high_pct}%')
 
         ax.set_xlabel('Return period (years)')
         ax.set_ylabel('Value')

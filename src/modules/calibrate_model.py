@@ -87,27 +87,6 @@ class ContentWidget(QWidget):
 
         # --- Content Area ---
         # Frame for the contentArea
-        """
-        titleFrame = QFrame()
-        titleFrame.setFrameShape(QFrame.NoFrame)  # No border around the frame
-
-        # Layout for the contentArea frame
-        titleLayout = QVBoxLayout()
-        titleLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
-        titleLayout.setSpacing(0)  # No spacing between elements
-        titleFrame.setLayout(titleLayout)  # Apply the layout to the frame
-
-        # Set a light gray background color for the contentArea
-        titleFrame.setStyleSheet("background-color: #F0F0F0;")
-
-        # Add the contentArea frame to the main layout
-        mainLayout.addWidget(titleFrame)
-        """
-        # --- Center Label (Placeholder) ---
-        # Label to display the name of the module (Calibrate Model)
-        """moduleLabel = QLabel(moduleName, self)
-        moduleLabel.setStyleSheet("font-size: 24px; color: black;")  # Style the label text
-        titleLayout.addWidget(moduleLabel)  # Add the label to the contentArea layout"""
 
         contentAreaFrame = QFrame()
         contentAreaFrame.setFrameStyle(QFrame.NoFrame)  # No border around the frame

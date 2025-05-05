@@ -1,6 +1,7 @@
 import math
+import matplotlib.pyplot as plt
 import configparser
-from PyQt5.QtWidgets import QWidget,QMessageBox, QVBoxLayout, QTableWidget, QTableWidgetItem, QLabel, QTextEdit
+from PyQt5.QtWidgets import QWidget,QMessageBox, QVBoxLayout, QTableWidget, QTableWidgetItem, QLabel, QTextEdit,QApplication, QHeaderView,QTabWidget
 from datetime import timedelta
 from datetime import datetime
 from typing import Tuple
@@ -31,8 +32,7 @@ def run_idf(
     print(running_sum_length)
     print(ensemble_option)
     print(ensemble_index)
-    ensemble_index=ensemble_index -1
-    print(ensemble_index)
+    
     print(use_threshold)
     print(data_period_choice)
     parent=None
@@ -100,7 +100,9 @@ def run_idf(
         if not is_ensemble_number_valid(ensemble_option, ensemble_index, num_ensembles,parent):
             print("❌ Invalid ensemble member selected. Exiting.")
             return
-        
+        if ensemble_option == "Single Member":
+            ensemble_index=ensemble_index-1
+            print(ensemble_index)
         print("✔ Input files valid. Proceeding...")
     
         # -------------------------------------
@@ -445,7 +447,10 @@ def run_idf(
         )
         
         else:
-            present_results_as_graph()
+            present_results_as_graph(idf_hours_array,
+        idf_years_to_model,
+        sdsm_scaled_table_obs,
+        sdsm_scaled_table_mod)
         
         print("✅ IDF Analysis Complete.")
 
@@ -533,7 +538,9 @@ def is_ensemble_number_valid(ensemble_option, ensemble_index, num_ensembles, par
     - True if valid or not needed; False if invalid and error shown.
     """
     if ensemble_option == "Single Member":
+        
         if not isinstance(ensemble_index, int):
+            
             QMessageBox.critical(
                 parent,
                 "Invalid Input",
@@ -970,18 +977,6 @@ def compute_return_periods(ams_series):
     return ret_periods
 
             
-            # 2. Extract AMS
-def extract_ams_modelled(all_sums_by_ensemble, END_OF_SECTION,missing_code):
-    """
-    Extract AMS from each ensemble's running sum time series.
-    Returns: List of lists (AMS per ensemble)
-    """
-    return [
-        extract_ams_by_year(series, END_OF_SECTION, missing_code)
-        for series in all_sums_by_ensemble
-    ]
-
-            
             # 3. Compute RP per ensemble
 def compute_return_periods_modelled(ams_lists):
     """
@@ -1078,46 +1073,6 @@ def intensity_scaling(
         mini_reset()
         return {}, {}
 
-def debug_intensity_regression(obs_scalings, rp_target):
-    print("\n🔬 Debugging Intensity Scaling Regression")
-    print(f"🎯 Return Period: {rp_target} years")
-    print("Window | Hours | AMS Intensity | log10(Hours) | log10(Intensity)")
-
-    X = []
-    Y = []
-
-    for window, intensity in obs_scalings[rp_target].items():
-        hours = window * 24
-        if intensity <= 0:
-            continue
-
-        x_val = round(math.log10(hours), 14)
-        y_val = round(math.log10(intensity), 14)
-
-        X.append(x_val)
-        Y.append(y_val)
-
-        print(f"{window:>6} | {hours:>5}h | {intensity:>13.4f} | {x_val:>13.8f} | {y_val:>15.8f}")
-
-    # Do regression again for comparison
-    n = len(X)
-    sum_x = sum(X)
-    sum_y = sum(Y)
-    sum_xx = sum(x**2 for x in X)
-    sum_xy = sum(x*y for x, y in zip(X, Y))
-
-    slope = (n * sum_xy - sum_x * sum_y) / (n * sum_xx - sum_x**2)
-    intercept = (sum_y - slope * sum_x) / n
-
-    print(f"\n📈 Recomputed Regression:")
-    print(f"  Intercept (a): {intercept:.10f}")
-    print(f"  Slope     (b): {slope:.10f}")
-
-    # Show final intensities from the formula
-    print("\n📊 Final Intensities (10^a * D^b):")
-    for duration in [0.25, 0.5, 1, 2, 3, 6, 24, 48, 120, 240, 360]:
-        pred = (10 ** intercept) * (duration ** slope)
-        print(f"  {duration:>6.2f}h: {pred:.2f} mm/h")   
 
 def build_year_array(observed_data, start_date, END_OF_SECTION, timestep_hours=1):
     """
@@ -1556,59 +1511,85 @@ def parameter_linear_scaling_final(
 
 
 def present_results_as_table(hours_array, return_periods, sdsm_scaled_table_obs=None,sdsm_scaled_table_mod=None):
-    output = "Rainfall Intensities (mm/h) for Return Periods and Durations\n\n"
-    
-    # === Observed Table ===
-    if sdsm_scaled_table_obs:
-        output += "📊 Observed\n"
-        output += f"{'Duration (Hours)':<15}" + "".join([f"{rp:<8}" for rp in return_periods]) + "\n"
-        for duration in hours_array:
-            row = f"{duration:<15.2f}"
-            for rp in return_periods:
-                try:
-                    value = sdsm_scaled_table_obs[rp][duration]
-                    temp = "NA" if value < 0 else f"{value:.1f}"
-                except:
-                    temp = "NA"
-                row += f"{temp:<8}"
-            output += row + "\n"
-        output += "\n"
+   
+    def create_table(data: dict, title: str):
+        table = QTableWidget()
+        table.setColumnCount(len(return_periods) + 1)
+        table.setRowCount(len(hours_array))
+        headers = ["Duration (h)"] + [f"{rp} yr" for rp in return_periods]
+        table.setHorizontalHeaderLabels(headers)
 
-    # === Modelled Table ===
-    if sdsm_scaled_table_mod:
-        output += "📊 Modelled\n"
-        output += f"{'Duration (Hours)':<15}" + "".join([f"{rp:<8}" for rp in return_periods]) + "\n"
-        for duration in hours_array:
-            row = f"{duration:<15.2f}"
-            for rp in return_periods:
+        for row_idx, duration in enumerate(hours_array):
+            # Set duration in first column
+            table.setItem(row_idx, 0, QTableWidgetItem(f"{duration:.2f}"))
+            for col_idx, rp in enumerate(return_periods, start=1):
                 try:
-                    value = sdsm_scaled_table_mod[rp][duration]
-                    temp = "NA" if value < 0 else f"{value:.1f}"
+                    val = data[rp][duration]
+                    item = QTableWidgetItem(f"{val:.1f}" if val >= 0 else "NA")
                 except:
-                    temp = "NA"
-                row += f"{temp:<8}"
-            output += row + "\n"
-        print(sdsm_scaled_table_mod)
-    if not sdsm_scaled_table_obs and not sdsm_scaled_table_mod:
-        output += "⚠️ No intensity data available to display.\n"
+                    item = QTableWidgetItem("NA")
+                table.setItem(row_idx, col_idx, item)
 
-    # === Show in PyQt Window ===
+        table.setEditTriggers(QTableWidget.NoEditTriggers)
+        table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        table.verticalHeader().setVisible(False)
+        return table
+
     window = QWidget()
-    window.setWindowTitle("IDF Intensity Table")
+    window.setWindowTitle("IDF Intensity Tables")
     layout = QVBoxLayout()
-    label = QLabel("📊 Final Results")
-    text_edit = QTextEdit()
-    text_edit.setPlainText(output)
-    text_edit.setReadOnly(True)
+    label = QLabel("📊 Rainfall Intensities (mm/h) for Return Periods and Durations")
     layout.addWidget(label)
-    layout.addWidget(text_edit)
-    window.setLayout(layout)
-    window.resize(700, 600)
-    window.show()
+ 
+    tabs = QTabWidget()
+    has_data = False
 
-    
+    if sdsm_scaled_table_obs:
+        tabs.addTab(create_table(sdsm_scaled_table_obs, "Observed"), "Observed")
+        has_data = True
+    if sdsm_scaled_table_mod:
+        tabs.addTab(create_table(sdsm_scaled_table_mod, "Modelled"), "Modelled")
+        has_data = True
+    if not has_data:
+        layout.addWidget(QLabel("⚠️ No intensity data available to display."))
+    else:
+        layout.addWidget(tabs)
+
+    window.setLayout(layout)
+    window.resize(800, 600)
+    window.show()
+     
     active_windows.append(window)
     
+def present_results_as_graph(hours_array, return_periods, sdsm_scaled_table_obs=None,sdsm_scaled_table_mod=None):
+    
+    """
+    Replicates VBA's log-log plot for IDF data using matplotlib.
+    - hours_array: list of durations (e.g., [0.25, 0.5, 1, 2, ..., 360])
+    - return_periods: list of return periods (e.g., [1, 2, 5, 10, 20])
+    - sdsm_scaled_table_obs/mod: dict[rp][hours] = value
+    """
+    fig, ax = plt.subplots()
+
+    # Skip the first two hours (0.25 and 0.5), starting at index 2
+    for rp in return_periods:
+        if sdsm_scaled_table_obs:
+            x_obs = [math.log10(h) for h in hours_array[2:] if h > 0]
+            y_obs = [math.log10(sdsm_scaled_table_obs[rp][h]) for h in hours_array[2:] if sdsm_scaled_table_obs[rp][h] > 0]
+            ax.plot(x_obs, y_obs, label=f'Obs {rp} yr', linewidth=2)
+
+        if sdsm_scaled_table_mod:
+            x_mod = [math.log10(h) for h in hours_array[2:] if h > 0]
+            y_mod = [math.log10(sdsm_scaled_table_mod[rp][h]) for h in hours_array[2:] if sdsm_scaled_table_mod[rp][h] > 0]
+            ax.plot(x_mod, y_mod, linestyle='--', label=f'Mod {rp} yr', linewidth=2)
+
+    ax.set_title("Log-Log IDF Plot")
+    ax.set_xlabel("Log Hours")
+    ax.set_ylabel("Log Intensity (mm/hr)")
+    ax.legend()
+    ax.grid(True)
+    plt.show()
+
 
 # Dummy placeholders for functions you may already have or need to define
 def mini_reset():

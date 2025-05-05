@@ -4,8 +4,11 @@ from PyQt5.QtWidgets import (QApplication, QCheckBox, QPushButton, QComboBox, QF
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFontMetrics
 import sys
+from src.lib.FrequencyAnalysis.QQ import qqPlot
+from src.lib.FrequencyAnalysis.PDF import pdfPlot
+from src.lib.FrequencyAnalysis.Line import linePlot
 from src.lib.FrequencyAnalysis.IDF import run_idf
-#from src.lib.FrequencyAnalysis.FA import frequency_analysis
+from src.lib.FrequencyAnalysis.FA import frequency_analysis
 import configparser
 from PyQt5.QtCore import QDate
 from datetime import datetime

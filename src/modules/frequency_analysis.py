@@ -3,9 +3,8 @@ from PyQt5.QtWidgets import (QApplication, QCheckBox, QPushButton, QComboBox, QF
                              QRadioButton, QGroupBox, QSpinBox, QLineEdit, QDateEdit, QFileDialog)
 from PyQt5.QtCore import Qt
 import sys
-from src.lib.FrequencyAnalysis import IDFTabular
 from src.lib.FrequencyAnalysis.IDF import run_idf
-from src.lib.FrequencyAnalysis.FA import frequency_analysis
+#from src.lib.FrequencyAnalysis.FA import frequency_analysis
 import configparser
 from PyQt5.QtCore import QDate
 from datetime import datetime
@@ -407,8 +406,12 @@ class ContentWidget(QWidget):
        if self.ensembleMemberRadio.isChecked():
            ensemble_option = "Single Member"
            ensemble_index = self.ensembleMemberSpinBox.value()
+
+       elif self.allMembersRadio.isChecked():
+           ensemble_option ="All Members"
+           ensemble_index = 0
        else:
-           ensemble_option = "All Members"
+           ensemble_option = "All Members + Mean"
            ensemble_index = 0
 
        print(f"🔍 Calling run_idf with: {presentation_type}, {idf_method}, files: {file1_name}, {file2_name}")

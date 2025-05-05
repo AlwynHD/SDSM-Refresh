@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import configparser
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem, QHeaderView, QLabel
 import math
 from datetime import date
 import os
@@ -15,7 +16,7 @@ from src.lib.FrequencyAnalysis.frequency_analysis_functions import (
     convertValue,
     stripMissing
 )
-
+active_windows = []
 def frequency_analysis(
     presentation: str,
     observedFilePath: str,
@@ -255,32 +256,73 @@ def frequency_analysis(
         plt.show()
 
     else:
+                # --- Build headers ---
         headers = ['Return Period']
         if file1Used:
             headers.append('Obs')
         if file2Used:
             headers.append('Mod')
             if ensembleIndex == 0 and no_of_ensembles > 1 and percentileWanted > 0:
-                low_pct = percentileWanted/2
+                low_pct = percentileWanted / 2
                 high_pct = 100 - low_pct
                 headers.extend([f'Low {low_pct}%', f'High {high_pct}%'])
-        print("  ".join(f"{h:>12}" for h in headers))
-
-        for idx in range(noOfXDataPoints - 1, -1, -1):
-            row = freqAnalData[idx]
-            out = []
-            rp = row[0]
-            out.append(f"{rp:12.1f}")
+        
+        # --- Create table ---
+        num_cols = len(headers)
+        num_rows = noOfXDataPoints
+        
+        table = QTableWidget()
+        table.setColumnCount(num_cols)
+        table.setRowCount(num_rows)
+        table.setHorizontalHeaderLabels(headers)
+        
+        # --- Fill table ---
+        for row_idx in range(noOfXDataPoints - 1, -1, -1):
+            row_data = freqAnalData[row_idx]
+            col = 0
+            actual_row = noOfXDataPoints - 1 - row_idx
+        
+            # Return period
+            table.setItem(actual_row, col, QTableWidgetItem(f"{row_data[0]:.1f}"))
+            col += 1
+        
+            # Observed
             if file1Used:
-                v = row[1]
-                out.append(f"{v:12.3f}" if (v is not None and v != globalMissingCode) else f"{'-':>12}")
+                val = row_data[1]
+                text = f"{val:.3f}" if val is not None and val != globalMissingCode else "-"
+                table.setItem(actual_row, col, QTableWidgetItem(text))
+                col += 1
+        
+            # Modelled
             if file2Used:
-                m = row[file2ColStart - 1]
-                out.append(f"{m:12.3f}" if (m is not None and m != globalMissingCode) else f"{'-':>12}")
+                mod = row_data[file2ColStart - 1]
+                text = f"{mod:.3f}" if mod is not None and mod != globalMissingCode else "-"
+                table.setItem(actual_row, col, QTableWidgetItem(text))
+                col += 1
+        
                 if ensembleIndex == 0 and no_of_ensembles > 1 and percentileWanted > 0:
-                    lo, up = row[file2ColStart+3], row[file2ColStart+1]
-                    out.append(f"{lo:12.3f}" if (lo is not None and lo != globalMissingCode) else f"{'-':>12}")
-                    out.append(f"{up:12.3f}" if (up is not None and up != globalMissingCode) else f"{'-':>12}")
-            print("  ".join(out))
-
+                    lo = row_data[file2ColStart + 3]
+                    hi = row_data[file2ColStart + 1]
+                    lo_text = f"{lo:.3f}" if lo is not None and lo != globalMissingCode else "-"
+                    hi_text = f"{hi:.3f}" if hi is not None and hi != globalMissingCode else "-"
+                    table.setItem(actual_row, col, QTableWidgetItem(lo_text))
+                    col += 1
+                    table.setItem(actual_row, col, QTableWidgetItem(hi_text))
+        
+        # --- Table settings ---
+        table.setEditTriggers(QTableWidget.NoEditTriggers)
+        table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        table.verticalHeader().setVisible(False)
+        
+        # --- Show in a new PyQt window ---
+        window = QWidget()
+        window.setWindowTitle("Frequency Analysis Table")
+        layout = QVBoxLayout()
+        layout.addWidget(QLabel("📊 Frequency Analysis Results"))
+        layout.addWidget(table)
+        window.setLayout(layout)
+        window.resize(700, 500)
+        window.show()
+        active_windows.append(window)
+        
     return True

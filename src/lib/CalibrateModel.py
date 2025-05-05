@@ -683,12 +683,10 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                     fileList = newFileList
                     NPredictors = stepAdjust['NPredictors']
                     xMatrix = stepAdjust['xMatrix']
-                    params = calculateParameters(xMatrix, yMatrix, NPredictors, includeChow, conditionalPart, parmOpt, not parmOpt, residualArray) #betamatrix defined here
-
-                else:
-                    ##call CalculateParameters(parmOpt)
-                    params = calculateParameters(xMatrix, yMatrix, NPredictors, includeChow, conditionalPart, parmOpt, not parmOpt, residualArray)   #betamatrix defined here
                 ##endif
+                
+                ##call CalculateParameters(parmOpt)
+                params = calculateParameters(xMatrix, yMatrix, NPredictors, includeChow, conditionalPart, parmOpt, not parmOpt, residualArray)   #betamatrix defined here
 
                 yMatrix = savedYMatrix
 

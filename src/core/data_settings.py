@@ -70,15 +70,9 @@ class ContentWidget(QWidget):
         mainLayout.setSpacing(20)
         self.setLayout(mainLayout)
 
-        # Dark blue background
-        palette = QPalette()
-        palette.setColor(QPalette.Window, QColor(10, 10, 55))
-        self.setAutoFillBackground(True)
-        self.setPalette(palette)
-
         # === Data Group ===
         dataGroupBox = QGroupBox("Data")
-        dataGroupBox.setStyleSheet("color: white;")
+        dataGroupBox.setStyleSheet("color: black;")
         dataLayout = QVBoxLayout()
         dataGroupBox.setLayout(dataLayout)
 
@@ -102,7 +96,7 @@ class ContentWidget(QWidget):
 
         # === Miscellaneous Group ===
         miscGroupBox = QGroupBox("Miscellaneous")
-        miscGroupBox.setStyleSheet("color: white;")
+        miscGroupBox.setStyleSheet("color: black;")
         miscLayout = QVBoxLayout()
         miscGroupBox.setLayout(miscLayout)
 
@@ -122,7 +116,7 @@ class ContentWidget(QWidget):
 
         # === Default Directory Group ===
         dirGroupBox = QGroupBox("Default Directory")
-        dirGroupBox.setStyleSheet("color: white;")
+        dirGroupBox.setStyleSheet("color: black;")
         dirLayout = QVBoxLayout()
         dirGroupBox.setLayout(dirLayout)
 

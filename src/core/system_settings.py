@@ -70,15 +70,9 @@ class ContentWidget(QWidget):
         mainLayout.setSpacing(10)
         self.setLayout(mainLayout)
 
-        # Dark-blue background
-        palette = QPalette()
-        palette.setColor(QPalette.Window, QColor(10, 10, 55))
-        self.setAutoFillBackground(True)
-        self.setPalette(palette)
-
         # Model Transformation
         modelTransGroupBox = QGroupBox("Model Transformation")
-        modelTransGroupBox.setStyleSheet("color: white;")
+        modelTransGroupBox.setStyleSheet("color: black;")
         modelTransLayout = QHBoxLayout()
         modelTransLayout.setSpacing(5)
         modelTransLayout.setContentsMargins(5, 0, 5, 0)
@@ -103,7 +97,7 @@ class ContentWidget(QWidget):
         groupContainer = QHBoxLayout()
 
         varianceInflationGroup = QGroupBox("Variance Inflation")
-        varianceInflationGroup.setStyleSheet("color: white;")
+        varianceInflationGroup.setStyleSheet("color: black;")
         varLayout = QHBoxLayout()
         varianceInflationGroup.setLayout(varLayout)
         varLayout.addWidget(QLabel("Value:"))
@@ -113,7 +107,7 @@ class ContentWidget(QWidget):
         groupContainer.addWidget(varianceInflationGroup)
 
         biasCorrectionGroup = QGroupBox("Bias Correction")
-        biasCorrectionGroup.setStyleSheet("color: white;")
+        biasCorrectionGroup.setStyleSheet("color: black;")
         biasLayout = QHBoxLayout()
         biasCorrectionGroup.setLayout(biasLayout)
         biasLayout.addWidget(QLabel("Value:"))
@@ -123,7 +117,7 @@ class ContentWidget(QWidget):
         groupContainer.addWidget(biasCorrectionGroup)
 
         conditionalGroupBox = QGroupBox("Conditional Selection")
-        conditionalGroupBox.setStyleSheet("color: white;")
+        conditionalGroupBox.setStyleSheet("color: black;")
         condLayout = QHBoxLayout()
         conditionalGroupBox.setLayout(condLayout)
         self.conditionalStochastic = QRadioButton("Stochastic")
@@ -140,7 +134,7 @@ class ContentWidget(QWidget):
 
         # Optimization Algorithm & Criteria
         optimGroupBox = QGroupBox("Optimization Algorithm")
-        optimGroupBox.setStyleSheet("color: white;")
+        optimGroupBox.setStyleSheet("color: black;")
         optimLayout = QVBoxLayout()
         optimGroupBox.setLayout(optimLayout)
 
@@ -171,7 +165,7 @@ class ContentWidget(QWidget):
 
         # Wet Day Percentage (months)
         wetDayGroupBox = QGroupBox("Wet Day Percentage Profile")
-        wetDayGroupBox.setStyleSheet("color: white;")
+        wetDayGroupBox.setStyleSheet("color: black;")
         wetDayLayout = QHBoxLayout()
         wetDayGroupBox.setLayout(wetDayLayout)
 

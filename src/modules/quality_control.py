@@ -52,6 +52,8 @@ class resultsQFrame(QFrame):
 
         self.resultsLayout.addWidget(self.standardLabel)
         self.resultsLayout.addWidget(self.contentLabel)
+    def setText(self,text):
+        self.contentLabel.setText(text)
 
 
 class ContentWidget(QWidget):
@@ -261,20 +263,20 @@ class ContentWidget(QWidget):
 
         selectFileButton.clicked.connect(self.selectFile)
         selectFileLayout.addWidget(selectFileButton)
-        self.selectedFileLabel = QLabel("No file selected")
+        self.selectedFileLabel = QLabel("No File Selected")
         selectFileLayout.addWidget(self.selectedFileLabel)
 
         #Pettitt Test input elements
 
         pettittLabel = QLabel("Minimum annual data threshold (%)")
         pettittLayout.addWidget(pettittLabel)
-        pettittInput = QLineEdit("90")
-        pettittLayout.addWidget(pettittInput)
+        self.pettittInput = QLineEdit("90")
+        pettittLayout.addWidget(self.pettittInput)
 
         #Threshold elements
 
-        thresholdCheckBox = QCheckBox("Apply Threshold")
-        thresholdLayout.addWidget(thresholdCheckBox)
+        self.thresholdCheckBox = QCheckBox("Apply Threshold")
+        thresholdLayout.addWidget(self.thresholdCheckBox)
 
         #Outliers elements
 
@@ -293,14 +295,14 @@ class ContentWidget(QWidget):
 
         standardDeviationLabel = QLabel("Standard Deviations: ")
         standardDeviationLayout.addWidget(standardDeviationLabel)
-        standardDeviationInput = QLineEdit("0")
-        standardDeviationLayout.addWidget(standardDeviationInput)
+        self.standardDeviationInput = QLineEdit("0")
+        standardDeviationLayout.addWidget(self.standardDeviationInput)
 
         selectOutlierFileButton = QPushButton("📂 Select File")
         selectOutlierFileButton.clicked.connect(self.selectFile)
         selectOutlierFileButton.setObjectName("outlier file")
         outliersLayout.addWidget(selectOutlierFileButton)
-        self.selectedOutlierLabel = QLabel("No file selected")
+        self.selectedOutlierLabel = QLabel("No File Selected")
         outliersLayout.addWidget(self.selectedOutlierLabel)
 
         #Results elements, just a lot of labels that need to be referenced from functions
@@ -364,6 +366,10 @@ class ContentWidget(QWidget):
         self.outliersButton.setStyleSheet("background-color: #F57F0C; color: white; font-weight: bold")
         buttonLayout.addWidget(self.outliersButton)
 
+        resetButton = QPushButton("🔄 Reset")
+        resetButton.setStyleSheet("background-color: #F44336; color: white; font-weight: bold;")
+        resetButton.clicked.connect(self.resetAll)
+        buttonLayout.addWidget(resetButton)
         
 
 
@@ -372,6 +378,32 @@ class ContentWidget(QWidget):
         # Add a spacer to ensure content is properly spaced
         #titleLayout.addStretch()
         #contentAreaLayout.addStretch()
+
+    def resetAll(self):
+        #Reset files and labels for files
+        self.selectedFile = ""
+        self.selectedOutlier =""
+        self.selectedFileLabel.setText("No File Selected")
+        self.selectedOutlierLabel.setText("No File Selected")
+        #Reset check boxes and line edit fields
+        self.pettittInput.setText("90")
+        self.thresholdCheckBox.setChecked(False)
+        self.standardDeviationInput.setText("0")
+        #Reset results frames
+        self.minimumFrame.setText("")
+        self.maximumFrame.setText("")
+        self.meanFrame.setText("")
+        self.numOfValuesFrame.setText("")
+        self.missingFrame.setText("")
+        self.numOfOKValuesFrame.setText("")
+        self.maximumDifferenceFrame.setText("")
+        self.maximumDifferenceValOneFrame.setText("")
+        self.maximumDifferenceValTwoFrame.setText("")
+        self.valueOverThreshFrame.setText("")
+        self.pettittSigFrame.setText("")
+        self.pettittMaxFrame.setText("")
+        self.missingValCodeFrame.setText("")
+        self.eventThreshFrame.setText("")
 
     def selectFile(self):
         #Don't know which files it needs to get, will figure out later
@@ -398,33 +430,43 @@ class ContentWidget(QWidget):
         from src.lib.QualityControl import qualityCheck
         print("https://www.youtube.com/watch?v=QY4KKG4TBFo") #Are easter eggs allowed?
         try:
-            min, max, count, missing, mean, maxDiff,maxDiff1, maxDiff2,threshCount, pettitt, pettitMaxPos, globalMissingCount, thresh = qualityCheck(self.selectedFile)
-            self.minimumFrame.contentLabel.setText(min)
-            self.maximumFrame.contentLabel.setText(max)
-            self.meanFrame.contentLabel.setText(mean)
-            self.numOfValuesFrame.contentLabel.setText(count+missing)
-            self.missingFrame.contentLabel.setText(missing)
-            self.numOfOKValuesFrame.contentLabel.setText(count)
-            self.maximumDifferenceFrame.contentLabel.setText(maxDiff)
-            self.maximumDifferenceValOneFrame.contentLabel.setText(maxDiff1)
-            self.maximumDifferenceValTwoFrame.contentLabel.setText(maxDiff2)
-            self.valueOverThreshFrame.contentLabel.setText(threshCount)
-            self.pettittSigFrame.contentLabel.setText(pettitt)
-            self.pettittMaxFrame.contentLabel.setText(pettitMaxPos)
-            self.missingValCodeFrame.contentLabel.setText(globalMissingCount)
-            self.eventThreshFrame.contentLabel.setText(thresh)
+            print(self.selectedFile)
+            min, max,  mean,totalCount, missing,count, maxDiff,maxDiff1, maxDiff2,threshCount, pettitt, pettitMaxPos, globalMissingCount, thresh = qualityCheck([self.selectedFile],self.thresholdCheckBox.isChecked(),int(self.pettittInput.text()))
+            self.minimumFrame.contentLabel.setText(str(min))
+            self.maximumFrame.contentLabel.setText(str(max))
+            self.meanFrame.contentLabel.setText(str(mean))
+            self.numOfValuesFrame.contentLabel.setText(str(totalCount))
+            self.missingFrame.contentLabel.setText(str(missing))
+            self.numOfOKValuesFrame.contentLabel.setText(str(count))
+            self.maximumDifferenceFrame.contentLabel.setText(str(maxDiff))
+            self.maximumDifferenceValOneFrame.contentLabel.setText(str(maxDiff1))
+            self.maximumDifferenceValTwoFrame.contentLabel.setText(str(maxDiff2))
+            self.valueOverThreshFrame.contentLabel.setText(str(threshCount))
+            self.pettittSigFrame.contentLabel.setText(str(pettitt))
+            self.pettittMaxFrame.contentLabel.setText(str(pettitMaxPos))
+            self.missingValCodeFrame.contentLabel.setText(str(globalMissingCount))
+            self.eventThreshFrame.contentLabel.setText(str(thresh))
             
         except FileNotFoundError:
             displayBox("File Error", "Please ensure a predictand file is selected and exists.","Error", isError=True)
 
     def getDailyStats(self):
-        from src.lib.QualityControl import dailyMeans
+        from src.lib.QualityControl import dailyMeans as dailyMeansNew
         try:
-            stats = dailyMeans(self.selectedFile)
+            print(self.selectedFile)
+            stats = dailyMeansNew([self.selectedFile],self.thresholdCheckBox.isChecked())
             displayBox("Daily Stats:", stats, "Daily Results")
         except FileNotFoundError:
             displayBox("File Error", "Please ensure a predictand file is selected and exists.", "Error", isError=True)
     def doOutliers(self):
+        #Try to open both files to see if they exist
+        try:
+            predictand = open(self.selectedFile,"r")
+            outlier = open(self.selectedOutlier,"r")
+            predictand.close()
+            outlier.close()
+        except FileNotFoundError:
+            return displayBox("File Error", "Please ensure predictand and outlier files are selected.","Error",isError=True)
         proc = ThreadWithReturnValue(target=self.checkOutliers)
         proc.daemon = True
         proc.start()
@@ -432,9 +474,9 @@ class ContentWidget(QWidget):
 
     def checkOutliers(self):
         self.outliersButton.setText("Calculating")
-        from src.lib.QualityControl import outliersID
+        from src.lib.QualityControl import getOutliers as getOutliersNew
         try:
-            message= outliersID(self.selectedFile, self.selectedOutlier)
+            message= getOutliersNew([self.selectedFile],self.selectedOutlier,int(self.standardDeviationInput.text()) , self.thresholdCheckBox.isChecked())
             self.outliersButton.setText("Outliers")
             print("message in checkOutliers=",message)
             #proc = threading.Thread(target=displayBox, args=("Outliers Identified", message, "Outlier Results"))
@@ -446,6 +488,7 @@ class ContentWidget(QWidget):
             self.outliersButton.setText("Outliers")
 
         except FileNotFoundError:
+            displayBox("File Error", "Please ensure an outlier file is selected and exists.","Error", isError=True)
             self.outliersButton.setText("Outliers")
     
 

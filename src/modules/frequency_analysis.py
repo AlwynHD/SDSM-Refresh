@@ -1,7 +1,8 @@
 from PyQt5.QtWidgets import (QApplication, QCheckBox, QPushButton, QComboBox, QFrame, QWidget, 
                              QVBoxLayout, QHBoxLayout, QTextEdit, QLabel, QTableWidget, QTableWidgetItem, 
-                             QRadioButton, QGroupBox, QSpinBox, QLineEdit, QDateEdit, QFileDialog)
+                             QRadioButton, QGroupBox, QSpinBox, QLineEdit, QDateEdit, QFileDialog, QMessageBox)
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QFontMetrics
 import sys
 from src.lib.FrequencyAnalysis.IDF import run_idf
 #from src.lib.FrequencyAnalysis.FA import frequency_analysis
@@ -89,7 +90,8 @@ def load_settings(config_path="src/lib/settings.ini"):
             - settingsAsArrays: A dictionary with each setting's value ensured to be a list.
     """
     config = configparser.ConfigParser()
-    config.read(config_path)
+    with open(config_path, 'r') as f:
+        config.read_file(f)
 
     # Fetch and convert all settings from the 'Settings' section.
     settings = {}
@@ -106,6 +108,8 @@ def load_settings(config_path="src/lib/settings.ini"):
 
 # Integrate the settings into your existing code without changing variable names.
 settings, settingsAsArrays = load_settings()
+
+globalSDate = settings["globalsdate"]
 
 moduleName = "Frequency Analysis"
 
@@ -309,12 +313,16 @@ class ContentWidget(QWidget):
         graphButtonsLayout = QHBoxLayout()
         self.qqPlotButton = QPushButton("Q-Q Plot")
         self.qqPlotButton.setStyleSheet("background-color: #4CAF50; color: white; font-weight: bold;")
+        self.qqPlotButton.clicked.connect(self.qqPlotButtonClicked)
         self.pdfPlotButton = QPushButton("PDF Plot")
         self.pdfPlotButton.setStyleSheet("background-color: #1FC7F5; color: white; font-weight: bold")
+        self.pdfPlotButton.clicked.connect(self.pdfPlotButtonClicked)
         self.linePlotButton = QPushButton("Line Plot")
         self.linePlotButton.setStyleSheet("background-color: #F57F0C; color: white; font-weight: bold")
+        self.linePlotButton.clicked.connect(self.linePlotButtonClicked)
         self.faGraphicalButton = QPushButton("FA Graphical")
         self.faGraphicalButton.setStyleSheet("background-color: #5adbb5; color: white; font-weight: bold;")
+        self.faGraphicalButton.clicked.connect(lambda: self.faButtonClicked("Graphical"))
         
         graphButtonsLayout.addWidget(self.qqPlotButton)
         graphButtonsLayout.addWidget(self.pdfPlotButton)
@@ -325,15 +333,16 @@ class ContentWidget(QWidget):
         tabButtonsLayout = QHBoxLayout()
         self.faTabButton = QPushButton("FA Tabular")
         self.faTabButton.setStyleSheet("background-color: #ffbd03; color: white; font-weight: bold;")
-        self.faTabButton.clicked.connect(self.faTabButtonClicked)
+        self.faTabButton.clicked.connect(lambda: self.faButtonClicked("Tabular"))
         self.idfPlotButton = QPushButton("IDF Plot")
         self.idfPlotButton.setStyleSheet("background-color: #dd7973; color: white; font-weight: bold")
-        self.idfPlotButton.clicked.connect(lambda: self.run_idf_analysis("Graphical"))
+        #self.idfPlotButton.clicked.connect(lambda: self.run_idf_analysis("Graphical"))
         self.idfTabButton = QPushButton("IDF Tabular")
-        self.idfTabButton.clicked.connect(lambda: self.run_idf_analysis("Tabular"))
+        #self.idfTabButton.clicked.connect(lambda: self.run_idf_analysis("Tabular"))
         self.idfTabButton.setStyleSheet("background-color: #4681f4; color: white; font-weight: bold")
         self.resetButton = QPushButton(" 🔄 Reset Values")
         self.resetButton.setStyleSheet("background-color: #ED0800; color: white; font-weight: bold;")
+        self.resetButton.clicked.connect(self.resetValues)
         
         tabButtonsLayout.addWidget(self.faTabButton)
         tabButtonsLayout.addWidget(self.idfPlotButton)
@@ -342,24 +351,78 @@ class ContentWidget(QWidget):
         layout.addLayout(tabButtonsLayout)
         
         self.setLayout(layout)
+
+    def showEvent(self, event):
+        global globalSDate 
+        settings, settingsAsArrays = load_settings()
+        globalSDate = settings["globalsdate"]
+
+        # Extract the first (and only) element from the array for both start and end dates
+        py_start_date = settingsAsArrays["globalsdate"][0]
+        py_end_date = settingsAsArrays["globaledate"][0]
+
+        # Convert Python date objects to QDate objects
+        q_start_date = QDate(py_start_date.year, py_start_date.month, py_start_date.day)
+        q_end_date = QDate(py_end_date.year, py_end_date.month, py_end_date.day)
+
+        # Set the QDate values into your QDate widgets
+        self.startDate.setDate(q_start_date)
+        self.endDate.setDate(q_end_date)
+
+        return super().showEvent(event)
+    
+    def resetValues(self):
+        # ── Clear file selections ──
+        self.obsDataFile = None
+        self.modDataFile = None
+        self.obsDataLabel.setText("File: Not selected")
+        self.modDataLabel.setText("File: Not selected")
+        self.saveLabel.setText("File: Not selected")
+
+        # ── Reset dates to the global settings ──
+        py_start = settingsAsArrays["globalsdate"][0]
+        py_end   = settingsAsArrays["globaledate"][0]
+        self.startDate.setDate(QDate(py_start.year, py_start.month, py_start.day))
+        self.endDate  .setDate(QDate(py_end.year,   py_end.month,   py_end.day))
+
+        # ── Frequency‐analysis inputs ──
+        self.confidenceInput.setValue(5)     # 5% default
+        self.thresholdInput .setValue(10)    # 10 default
+        self.pdfSpinBox     .setValue(20)    # 20 bins
+        self.dataPeriodCombo.setCurrentIndex(0)  # “All Data”
+        self.applyThresholdCheckbox.setChecked(False)
+
+        # ── Ensemble default ──
+        self.allMembersRadio.setChecked(True)
+
+        # ── IDF settings ──
+        self.methodMomentsRadio   .setChecked(True)
+        self.parameterPowerRadio  .setChecked(False)
+        self.parameterLinearRadio .setChecked(False)
+        self.runningSumInput      .setValue(2)
+
     
     def saveResults(self):
         # Use the default directory from your configuration (assuming it's in settingsAsArrays)
         default_dir = settingsAsArrays["defaultdir"][0]
         fileName, _ = QFileDialog.getSaveFileName(self, "Save Results File", default_dir)
         if fileName:
-            self.saveLabel.setText(f"File: {fileName}")
+            fm = QFontMetrics(self.saveLabel.font())
+            elided = fm.elidedText(fileName, Qt.ElideMiddle, self.saveLabel.width())
+            self.saveLabel.setText(elided)
 
     def selectObservedData(self):
         # Use the default directory for open dialogs as well
         default_dir = settingsAsArrays["defaultdir"][0]
         filter_str = (
-        "OUT Files (*.OUT);;DAT Files (*.DAT);;TXT Files (*.TXT);;All Files (*.*)"
+        "TXT Files (*.TXT);;OUT Files (*.OUT);;DAT Files (*.DAT);;All Files (*.*)"
          )
         fileName, _ = QFileDialog.getOpenFileName(self, "Select Observed Data File", default_dir,filter_str)
         if fileName:
             self.obsDataFile = fileName
-            self.obsDataLabel.setText(f"File: {fileName}")
+            fm = QFontMetrics(self.obsDataLabel.font())
+            elided = fm.elidedText(fileName, Qt.ElideMiddle, self.obsDataLabel.width())
+            self.obsDataLabel.setText(elided)
 
     def selectModelledData(self):
         # Same default starting directory is used here
@@ -370,8 +433,185 @@ class ContentWidget(QWidget):
         fileName, _ = QFileDialog.getOpenFileName(self, "Select Modelled Data File", default_dir,filter_str)
         if fileName:
             self.modDataFile = fileName
-            self.modDataLabel.setText(f"File: {fileName}")
+            fm = QFontMetrics(self.modDataLabel.font())
+            elided = fm.elidedText(fileName, Qt.ElideMiddle, self.modDataLabel.width())
+            self.modDataLabel.setText(elided)
 
+    def pdfPlotButtonClicked(self):
+        # 1) file paths
+        obsPath = getattr(self, "obsDataFile", None)
+        modPath = getattr(self, "modDataFile", None)
+
+        # 2) global start date from settings
+        globalSDate = settingsAsArrays["globalsdate"][0]
+
+        # 3) analysis dates
+        fsDate = self.startDate.date().toPyDate()
+        feDate = self.endDate.date().toPyDate()
+
+        # 4) ensemble option
+        if self.allMembersRadio.isChecked():
+            ensembleMode  = 'allMembers'
+            ensembleIndex = None
+        elif self.ensembleMeanRadio.isChecked():
+            ensembleMode  = 'ensembleMean'
+            ensembleIndex = None
+        elif self.ensembleMemberRadio.isChecked():
+            ensembleMode  = 'ensembleMember'
+            ensembleIndex = self.ensembleMemberSpinBox.value()
+        else:
+            ensembleMode  = 'allPlusMean'
+            ensembleIndex = None
+
+        # 5) number of PDF bins
+        numPdfCategories = self.pdfSpinBox.value()
+
+        dataPeriod = self.dataPeriodCombo.currentIndex()
+
+        # 6) threshold
+        applyThreshold = self.applyThresholdCheckbox.isChecked()
+        threshold = self.thresholdInput.value()
+
+        # 7) missing‐code
+        globalMissingCode = settings["globalmissingcode"]
+
+        #try:
+        pdfPlot(
+            observedFile      = obsPath,
+            modelledFile      = modPath,
+            fsDate            = fsDate,
+            feDate            = feDate,
+            globalStartDate   = globalSDate,
+            ensembleOption    = ensembleMode,
+            ensembleWanted    = ensembleIndex,
+            numPdfCategories  = numPdfCategories,
+            dataPeriod        = dataPeriod,
+            applyThreshold    = applyThreshold,
+            threshold         = threshold,
+            missingCode       = globalMissingCode,
+            exitAnalyses      = lambda: False
+        )
+        #except Exception as e:
+        #    QMessageBox.critical(self, "PDF Plot Error", str(e))
+    
+    def linePlotButtonClicked(self):
+        # 1) file paths (None if not selected)
+        obsPath = getattr(self, "obsDataFile", None)
+        modPath = getattr(self, "modDataFile", None)
+
+        # 2) dates
+        startDate = self.startDate.date().toPyDate()
+        endDate   = self.endDate.date().toPyDate()
+
+        # ─── VALIDATION: must be exactly 10 years apart ───
+        yearDiff = endDate.year - startDate.year
+        if yearDiff > 10:
+            QMessageBox.warning(
+                self,
+                "Invalid Date Range",
+                "For a line plot, start and end dates must be less than 10 years apart."
+            )
+            return
+
+        # 3) ensemble mode + index
+        if self.allMembersRadio.isChecked():
+            ensembleMode  = 'allMembers'
+            ensembleIndex = None
+        elif self.ensembleMeanRadio.isChecked():
+            ensembleMode  = 'ensembleMean'
+            ensembleIndex = None
+        elif self.ensembleMemberRadio.isChecked():
+            ensembleMode  = 'ensembleMember'
+            ensembleIndex = self.ensembleMemberSpinBox.value()
+        else:
+            ensembleMode  = 'allPlusMean'
+            ensembleIndex = None
+
+        # 4) data period
+        dataPeriod = self.dataPeriodCombo.currentIndex()
+
+        # 5) threshold toggles
+        applyThreshold  = self.applyThresholdCheckbox.isChecked()
+        thresholdValue  = self.thresholdInput.value()
+
+        #try:
+        linePlot(
+                observedFilePath  = obsPath,
+                modelledFilePath  = modPath,
+                analysisStartDate = startDate,
+                analysisEndDate   = endDate,
+                globalStartDate   = globalSDate,
+                ensembleMode      = ensembleMode,
+                ensembleIndex     = ensembleIndex,
+                dataPeriod        = dataPeriod,
+                applyThreshold    = applyThreshold,
+                thresholdValue    = thresholdValue,
+                globalMissingCode = settings["globalmissingcode"],
+                exitAnalysesFunc  = lambda: False
+            )
+        #except Exception as e:
+        #    print("Line Plot Error")
+
+    
+    def qqPlotButtonClicked(self):
+        # 1) files
+        if not hasattr(self, "obsDataFile") or not hasattr(self, "modDataFile"):
+            QMessageBox.warning(self, "Input Required",
+                                "Please select both Observed and Modelled data files.")
+            return
+        obsPath = self.obsDataFile
+        modPath = self.modDataFile
+
+        # 2) dates
+        fsDate = self.startDate.date().toPyDate()
+        feDate = self.endDate.date().toPyDate()
+        if fsDate >= feDate:
+            QMessageBox.critical(self, "Error", "Start date must be before end date.")
+            return
+
+        # 3) ensemble settings
+        if self.allMembersRadio.isChecked():
+            ensembleMode  = 'allMembers'
+            ensembleIndex = None
+        elif self.ensembleMeanRadio.isChecked():
+            ensembleMode  = 'ensembleMean'
+            ensembleIndex = None
+        elif self.ensembleMemberRadio.isChecked():
+            ensembleMode  = 'ensembleMember'
+            ensembleIndex = self.ensembleMemberSpinBox.value()
+        else:
+            ensembleMode  = 'allPlusMean'
+            ensembleIndex = None
+
+        # 4) numeric period index (matches your QQ.py _in_period)
+        dataPeriodIndex = self.dataPeriodCombo.currentIndex()
+
+        # 5) threshold
+        applyThresh = self.applyThresholdCheckbox.isChecked()
+        threshValue = self.thresholdInput.value()
+
+        # 6) call QQ routine with error‐handling
+        try:
+            qqPlot(
+                observedFilePath   = obsPath,
+                modelledFilePath   = modPath,
+                analysisStartDate  = fsDate,
+                analysisEndDate    = feDate,
+                globalStartDate    = globalSDate,
+                ensembleMode       = ensembleMode,
+                ensembleIndex      = ensembleIndex,
+                dataPeriod         = dataPeriodIndex,
+                applyThreshold     = applyThresh,
+                thresholdValue     = threshValue,
+                exitAnalysesFunc   = lambda: False
+            )
+
+        except IOError as ioe:
+            QMessageBox.critical(self, "Q-Q Plot Error", str(ioe))
+        except ValueError as ve:
+            QMessageBox.critical(self, "Q-Q Plot Error", str(ve))
+    
+    
     def run_idf_analysis(self, presentation_type):
     # Fetch file paths
        file1_used = hasattr(self, "obsDataFile") and bool(self.obsDataFile)
@@ -433,16 +673,22 @@ class ContentWidget(QWidget):
            data_period_choice = data_period_choice
        )
        
-    def faTabButtonClicked(self):
-        if not hasattr(self, "obsDataFile") or not hasattr(self, "modDataFile"):
-            print("Please select both Observed and Modelled data files.")
+    def faButtonClicked(self, type):
+        if not hasattr(self, "obsDataFile"):
+            QMessageBox.warning(self, "Input Required",
+                                "Please select at least the Observed File.")
             return
+        
+        if not hasattr(self, "modDataFile"):
+            modDataFile = None
+        else:
+            modDataFile = self.modDataFile
 
         fsDate = self.startDate.date().toPyDate()
         feDate = self.endDate.date().toPyDate()
         applyThresh = self.applyThresholdCheckbox.isChecked()
         threshValue = self.thresholdInput.value()
-        dataPeriodChoice = self.dataPeriodCombo.currentText()
+        dataPeriodChoice = self.dataPeriodCombo.currentIndex()
 
         # Determine the frequency model based on the selected radio button in faLayout
         if self.empiricalRadio.isChecked():
@@ -454,23 +700,31 @@ class ContentWidget(QWidget):
         elif self.stretchedExpRadio.isChecked():
             freqModel = 3
         else:
-            freqModel = "Empirical"  # Fallback default
+            freqModel = 0 # Fallback default
 
         # Use the durations as given in the VB example
         durations = [1.0, 1.1, 1.2, 1.3, 1.5, 2.0, 2.5, 3.0, 3.5]
 
+        # Determine which ensemble to pass in (0=all, >0 specific)
+        if self.ensembleMemberRadio.isChecked():
+            ensembleIndex = self.ensembleMemberSpinBox.value()
+        else:
+            ensembleIndex = 0
+
+        # 6) Call the new Tabular FA
         frequency_analysis(
-            "Tabular",
-            observedFilePath=self.obsDataFile,
-            modelledFilePath=self.modDataFile,
-            fsDate=fsDate,
-            feDate=feDate,
-            dataPeriodChoice=dataPeriodChoice,
-            applyThreshold=applyThresh,
-            thresholdValue=threshValue,
-            durations=durations,
-            ensembleIndex=0,
-            freqModel=freqModel
+            type,
+            self.obsDataFile,
+            modDataFile,
+            fsDate,
+            feDate,
+            dataPeriodChoice,
+            applyThresh,
+            threshValue,
+            durations,
+            self.confidenceInput.value(),
+            ensembleIndex,
+            freqModel
         )
 
         # Optionally, load results into a QTableWidget for GUI display.

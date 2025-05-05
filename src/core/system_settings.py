@@ -1,7 +1,11 @@
-from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, QRadioButton, QLineEdit, QLabel, QGroupBox, QPushButton, QCheckBox, QFileDialog, QButtonGroup, QMessageBox)
+from PyQt5.QtWidgets import (
+    QApplication, QWidget, QVBoxLayout, QHBoxLayout,
+    QRadioButton, QLineEdit, QLabel, QGroupBox,
+    QPushButton, QCheckBox, QFileDialog, QButtonGroup,
+    QMessageBox
+)
 from PyQt5.QtGui import QPalette, QColor
-from PyQt5.QtCore import Qt,QDir
-
+from PyQt5.QtCore import Qt
 import configparser
 import os
 import sys
@@ -53,7 +57,8 @@ optimizationAlgorithm = defaultValues['optimizationAlgorithm']
 criteriaType = defaultValues['criteriaType']
 stepwiseRegression = defaultValues['stepwiseRegression']
 conditionalSelection = defaultValues['conditionalSelection']
-months = defaultValues['months']
+months = defaultValues['months'][:]
+
 
 class ContentWidget(QWidget):
     def __init__(self):
@@ -61,27 +66,18 @@ class ContentWidget(QWidget):
 
         # Main content layout
         mainLayout = QVBoxLayout()
-        mainLayout.setContentsMargins(10, 10, 10, 10)  # Set margins to create some padding
-        mainLayout.setSpacing(10)  # Set spacing between elements to minimize space
+        mainLayout.setContentsMargins(10, 10, 10, 10)
+        mainLayout.setSpacing(10)
         self.setLayout(mainLayout)
 
-        # Set the background color to dark blue
-        palette = QPalette()
-        palette.setColor(QPalette.Window, QColor(10, 10, 55))  # Dark Blue background
-        self.setAutoFillBackground(True)
-        self.setPalette(palette)
-
-        # Model Transformation Group Box
+        # Model Transformation
         modelTransGroupBox = QGroupBox("Model Transformation")
-        modelTransGroupBox.setStyleSheet("color: white;")
+        modelTransGroupBox.setStyleSheet("color: black;")
         modelTransLayout = QHBoxLayout()
-        modelTransGroupBox.setLayout(modelTransLayout)
-        
-        # Reduce unnecessary space
-        modelTransLayout.setSpacing(5)  # Adjust spacing between buttons
+        modelTransLayout.setSpacing(5)
         modelTransLayout.setContentsMargins(5, 0, 5, 0)
-        
-        # Create radio buttons
+        modelTransGroupBox.setLayout(modelTransLayout)
+
         self.transNone = QRadioButton("None")
         self.transFourthRoot = QRadioButton("Fourth root")
         self.transNaturalLog = QRadioButton("Natural log")
@@ -89,160 +85,154 @@ class ContentWidget(QWidget):
         self.transBoxCox = QRadioButton("Box Cox")
         self.transNone.setChecked(True)
 
-        modelTransLayout.addWidget(self.transNone)
-        modelTransLayout.addWidget(self.transFourthRoot)
-        modelTransLayout.addWidget(self.transNaturalLog)
-        modelTransLayout.addWidget(self.transInverseNormal)
-        modelTransLayout.addWidget(self.transBoxCox)
+        for btn in (
+            self.transNone, self.transFourthRoot, self.transNaturalLog,
+            self.transInverseNormal, self.transBoxCox
+        ):
+            modelTransLayout.addWidget(btn)
 
         mainLayout.addWidget(modelTransGroupBox)
-        
-        # Parent layout to hold all three group boxes horizontally
+
+        # Variance / Bias / Conditional row
         groupContainer = QHBoxLayout()
-        
-        # Variance Inflation Group
+
         varianceInflationGroup = QGroupBox("Variance Inflation")
-        varianceInflationGroup.setStyleSheet("color: white;")
-        varianceInflationLayout = QHBoxLayout()
-        varianceInflationGroup.setLayout(varianceInflationLayout)
-        
-        varianceInflationLayout.addWidget(QLabel("Value:"))
+        varianceInflationGroup.setStyleSheet("color: black;")
+        varLayout = QHBoxLayout()
+        varianceInflationGroup.setLayout(varLayout)
+        varLayout.addWidget(QLabel("Value:"))
         self.varianceInflationEdit = QLineEdit()
         self.varianceInflationEdit.setFixedWidth(60)
-        varianceInflationLayout.addWidget(self.varianceInflationEdit)
-        
+        varLayout.addWidget(self.varianceInflationEdit)
         groupContainer.addWidget(varianceInflationGroup)
-        
-        # Bias Correction Group
+
         biasCorrectionGroup = QGroupBox("Bias Correction")
-        biasCorrectionGroup.setStyleSheet("color: white;")
-        biasCorrectionLayout = QHBoxLayout()
-        biasCorrectionGroup.setLayout(biasCorrectionLayout)
-        
-        biasCorrectionLayout.addWidget(QLabel("Value:"))
+        biasCorrectionGroup.setStyleSheet("color: black;")
+        biasLayout = QHBoxLayout()
+        biasCorrectionGroup.setLayout(biasLayout)
+        biasLayout.addWidget(QLabel("Value:"))
         self.biasCorrectionEdit = QLineEdit()
         self.biasCorrectionEdit.setFixedWidth(60)
-        biasCorrectionLayout.addWidget(self.biasCorrectionEdit)
-        
+        biasLayout.addWidget(self.biasCorrectionEdit)
         groupContainer.addWidget(biasCorrectionGroup)
-        
-        # Conditional Selection Group Box
+
         conditionalGroupBox = QGroupBox("Conditional Selection")
-        conditionalGroupBox.setStyleSheet("color: white;")
-        conditionalLayout = QHBoxLayout()
-        conditionalGroupBox.setLayout(conditionalLayout)
-        
+        conditionalGroupBox.setStyleSheet("color: black;")
+        condLayout = QHBoxLayout()
+        conditionalGroupBox.setLayout(condLayout)
         self.conditionalStochastic = QRadioButton("Stochastic")
         self.conditionalFixedThreshold = QRadioButton("Fixed Threshold:")
         self.fixedThresholdEdit = QLineEdit()
         self.fixedThresholdEdit.setFixedWidth(50)
-        
-        conditionalLayout.addWidget(self.conditionalStochastic)
-        conditionalLayout.addWidget(self.conditionalFixedThreshold)
-        conditionalLayout.addWidget(self.fixedThresholdEdit)
-        
+        condLayout.addWidget(self.conditionalStochastic)
+        condLayout.addWidget(self.conditionalFixedThreshold)
+        condLayout.addWidget(self.fixedThresholdEdit)
         self.conditionalStochastic.setChecked(True)
-        
         groupContainer.addWidget(conditionalGroupBox)
-        
-        # Add the entire horizontal row to the main layout
+
         mainLayout.addLayout(groupContainer)
 
-        # Optimization Algorithm Group Box
+        # Optimization Algorithm & Criteria
         optimGroupBox = QGroupBox("Optimization Algorithm")
-        optimGroupBox.setStyleSheet("color: white;")
+        optimGroupBox.setStyleSheet("color: black;")
         optimLayout = QVBoxLayout()
         optimGroupBox.setLayout(optimLayout)
 
-        # Radio buttons for optimization algorithms
         self.optimOrdinaryLeastSquares = QRadioButton("Ordinary Least Squares")
         self.optimDualSimplex = QRadioButton("Dual Simplex")
         self.stepwiseRegressionCheck = QCheckBox("Stepwise Regression")
         self.aicCriterion = QRadioButton("AIC Criteria")
-        self.aicCriterion.setChecked(True)
         self.bicCriterion = QRadioButton("BIC Criteria")
 
         self.optimOrdinaryLeastSquares.setChecked(True)
+        self.aicCriterion.setChecked(True)
 
-        # Group OLS and Dual Simplex into a button group
-        optimButtonGroup = QButtonGroup(self)
-        optimButtonGroup.addButton(self.optimOrdinaryLeastSquares)
-        optimButtonGroup.addButton(self.optimDualSimplex)
+        optimButtons = QButtonGroup(self)
+        optimButtons.addButton(self.optimOrdinaryLeastSquares)
+        optimButtons.addButton(self.optimDualSimplex)
 
-        # Group AIC and BIC into a separate button group
-        criteriaButtonGroup = QButtonGroup(self)
-        criteriaButtonGroup.addButton(self.aicCriterion)
-        criteriaButtonGroup.addButton(self.bicCriterion)
+        criteriaButtons = QButtonGroup(self)
+        criteriaButtons.addButton(self.aicCriterion)
+        criteriaButtons.addButton(self.bicCriterion)
 
-        optimLayout.addWidget(self.optimOrdinaryLeastSquares)
-        optimLayout.addWidget(self.optimDualSimplex)
-        optimLayout.addWidget(self.stepwiseRegressionCheck)
-        optimLayout.addWidget(self.aicCriterion)
-        optimLayout.addWidget(self.bicCriterion)
+        for w in (
+            self.optimOrdinaryLeastSquares, self.optimDualSimplex,
+            self.stepwiseRegressionCheck, self.aicCriterion, self.bicCriterion
+        ):
+            optimLayout.addWidget(w)
 
         mainLayout.addWidget(optimGroupBox)
 
-        # Wet Day Percentage Profile Group Box
+        # Wet Day Percentage (months)
         wetDayGroupBox = QGroupBox("Wet Day Percentage Profile")
-        wetDayGroupBox.setStyleSheet("color: white;")
-        wetDayLayout = QHBoxLayout()  # Horizontal layout for all months
+        wetDayGroupBox.setStyleSheet("color: black;")
+        wetDayLayout = QHBoxLayout()
         wetDayGroupBox.setLayout(wetDayLayout)
-        
+
         self.wetDayEdits = []
-        
-        for month in ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]:
-            monthLayout = QVBoxLayout()  # Vertical layout for label & textbox
-            
-            monthLabel = QLabel(month)
-            monthLabel.setAlignment(Qt.AlignCenter)  # Center text for better alignment
-            
-            monthEdit = QLineEdit()
-            monthEdit.setFixedWidth(40)
-            monthEdit.setAlignment(Qt.AlignCenter)  # Center text inside input box
-            
-            self.wetDayEdits.append(monthEdit)
-            
-            monthLayout.addWidget(monthLabel)
-            monthLayout.addWidget(monthEdit)
-            
-            wetDayLayout.addLayout(monthLayout)  # Add vertical layout to horizontal layout
-        
+        for month in [
+            "Jan","Feb","Mar","Apr","May","Jun",
+            "Jul","Aug","Sep","Oct","Nov","Dec"
+        ]:
+            mLayout = QVBoxLayout()
+            mLabel = QLabel(month)
+            mLabel.setAlignment(Qt.AlignCenter)
+            mEdit = QLineEdit()
+            mEdit.setFixedWidth(40)
+            mEdit.setAlignment(Qt.AlignCenter)
+            self.wetDayEdits.append(mEdit)
+            mLayout.addWidget(mLabel)
+            mLayout.addWidget(mEdit)
+            wetDayLayout.addLayout(mLayout)
+
         mainLayout.addWidget(wetDayGroupBox)
 
-        # Reset Button
-        resetButton = QPushButton("Reset")
-        resetButton.clicked.connect(self.resetSettings)
-        mainLayout.addWidget(resetButton)
+        # Reset button
+        resetBtn = QPushButton("🔄 Reset Settings")
+        resetBtn.setStyleSheet("background-color: #ED0800; color: white; font-weight: bold;")
+        resetBtn.clicked.connect(self.resetSettings)
+        mainLayout.addWidget(resetBtn)
 
-        # Save and Load buttons
-        buttonLayout = QHBoxLayout()
-        saveButton = QPushButton("Save Settings")
-        saveButton.clicked.connect(self.saveSettingsFromUi)
-        loadButton = QPushButton("Load Settings")
-        loadButton.clicked.connect(self.loadSettingsFromUi)
-        buttonLayout.addWidget(saveButton)
-        buttonLayout.addWidget(loadButton)
-        mainLayout.addLayout(buttonLayout)
+        # Export / Save / Load buttons
+        btnLayout = QHBoxLayout()
 
-        # Set input fields color
+        exportBtn = QPushButton("📤 Export Settings")
+        exportBtn.setStyleSheet("background-color: #1FC7F5; color: white; font-weight: bold;")
+        exportBtn.clicked.connect(self.saveSettingsFromUi)
+        btnLayout.addWidget(exportBtn)
+
+        saveBtn = QPushButton("💾 Save Settings")
+        saveBtn.setStyleSheet("background-color: #4CAF50; color: white; font-weight: bold;")
+        saveBtn.clicked.connect(self.saveSettingsDefault)
+        btnLayout.addWidget(saveBtn)
+
+        loadBtn = QPushButton("📂 Load Settings")
+        loadBtn.setStyleSheet("background-color: #F57F0C; color: white; font-weight: bold;")
+        loadBtn.clicked.connect(self.loadSettingsFromUi)
+        btnLayout.addWidget(loadBtn)
+
+        mainLayout.addLayout(btnLayout)
+
+        # Input colors
         self.varianceInflationEdit.setStyleSheet("color: black;")
         self.biasCorrectionEdit.setStyleSheet("color: black;")
         self.fixedThresholdEdit.setStyleSheet("color: black;")
-        for edit in self.wetDayEdits:
-            edit.setStyleSheet("color: black;")
+        for e in self.wetDayEdits:
+            e.setStyleSheet("color: black;")
 
-        # Set window properties
+        # Window setup
         self.setWindowTitle("Settings")
         self.resize(800, 600)
 
-        # Load the default settings into the UI upon startup
+        # Initial load
         self.loadSettings()
         self.loadSettingsIntoUi()
 
     def resetSettings(self):
-        global varianceInflation, biasCorrection, fixedThreshold, modelTransformation, optimizationAlgorithm, criteriaType, stepwiseRegression, conditionalSelection, months
+        global varianceInflation, biasCorrection, fixedThreshold
+        global modelTransformation, optimizationAlgorithm, criteriaType
+        global stepwiseRegression, conditionalSelection, months
 
-        # Reset all global variables to their default values
         varianceInflation = defaultValues['varianceInflation']
         biasCorrection = defaultValues['biasCorrection']
         fixedThreshold = defaultValues['fixedThreshold']
@@ -251,9 +241,8 @@ class ContentWidget(QWidget):
         criteriaType = defaultValues['criteriaType']
         stepwiseRegression = defaultValues['stepwiseRegression']
         conditionalSelection = defaultValues['conditionalSelection']
-        months = defaultValues['months']
+        months = defaultValues['months'][:]
 
-        # Load default values into UI
         self.loadSettingsIntoUi()
 
     def loadSettingsIntoUi(self):
@@ -265,200 +254,216 @@ class ContentWidget(QWidget):
         self.transNaturalLog.setChecked(modelTransformation == 'Natural log')
         self.transInverseNormal.setChecked(modelTransformation == 'Inverse Normal')
         self.transBoxCox.setChecked(modelTransformation == 'Box Cox')
-        self.optimOrdinaryLeastSquares.setChecked(optimizationAlgorithm == 'Ordinary Least Squares')
-        self.optimDualSimplex.setChecked(optimizationAlgorithm == 'Dual Simplex')
+        self.optimOrdinaryLeastSquares.setChecked(
+            optimizationAlgorithm == 'Ordinary Least Squares'
+        )
+        self.optimDualSimplex.setChecked(
+            optimizationAlgorithm == 'Dual Simplex'
+        )
         self.aicCriterion.setChecked(criteriaType == 'AIC Criteria')
         self.bicCriterion.setChecked(criteriaType == 'BIC Criteria')
-        self.conditionalStochastic.setChecked(conditionalSelection == 'Stochastic')
-        self.conditionalFixedThreshold.setChecked(conditionalSelection == 'Fixed Threshold')
+        self.conditionalStochastic.setChecked(
+            conditionalSelection == 'Stochastic'
+        )
+        self.conditionalFixedThreshold.setChecked(
+            conditionalSelection == 'Fixed Threshold'
+        )
         self.stepwiseRegressionCheck.setChecked(stepwiseRegression)
         for i, edit in enumerate(self.wetDayEdits):
             edit.setText(str(months[i]))
 
     def loadSettings(self, iniFile=defaultIniFile):
-        global leapValue, yearLength, yearIndicator, globalSDate, globalEDate, globalNDays, allowNeg, randomSeed, thresh, defaultDir, globalMissingCode
-        global varianceInflation, biasCorrection, fixedThreshold, modelTransformation, optimizationAlgorithm, criteriaType, stepwiseRegression, conditionalSelection, months
+        global varianceInflation, biasCorrection, fixedThreshold
+        global modelTransformation, optimizationAlgorithm, criteriaType
+        global stepwiseRegression, conditionalSelection, months
 
         if not os.path.exists(iniFile):
             return
 
-        config = configparser.ConfigParser()
-        config.read(iniFile)
+        cfg = configparser.ConfigParser()
+        cfg.read(iniFile)
 
-        try:
-            yearIndicator = self.safeGetInt(config, 'Settings', 'YearIndicator', defaultValues['yearIndicator'])
-            globalSDate = config.get('Settings', 'GlobalSDate', fallback=defaultValues['globalSDate'])
-            globalEDate = config.get('Settings', 'GlobalEDate', fallback=defaultValues['globalEDate'])
-            allowNeg = config.getboolean('Settings', 'AllowNeg', fallback=defaultValues['allowNeg'])
-            randomSeed = config.getboolean('Settings', 'RandomSeed', fallback=defaultValues['randomSeed'])
-            thresh = self.safeGetFloat(config, 'Settings', 'Thresh', defaultValues['thresh'])
-            globalMissingCode = self.safeGetInt(config, 'Settings', 'GlobalMissingCode', defaultValues['globalMissingCode'])
-            defaultDir = config.get('Settings', 'DefaultDir', fallback=defaultValues['defaultDir'])
-            varianceInflation = self.safeGetInt(config, 'Settings', 'VarianceInflation', defaultValues['varianceInflation'])
-            biasCorrection = self.safeGetInt(config, 'Settings', 'BiasCorrection', defaultValues['biasCorrection'])
-            fixedThreshold = self.safeGetFloat(config, 'Settings', 'FixedThreshold', defaultValues['fixedThreshold'])
-            modelTransformation = config.get('Settings', 'ModelTransformation', fallback=defaultValues['modelTransformation'])
-            optimizationAlgorithm = config.get('Settings', 'OptimizationAlgorithm', fallback=defaultValues['optimizationAlgorithm'])
-            criteriaType = config.get('Settings', 'CriteriaType', fallback=defaultValues['criteriaType'])
-            stepwiseRegression = config.getboolean('Settings', 'StepwiseRegression', fallback=defaultValues['stepwiseRegression'])
-            conditionalSelection = config.get('Settings', 'ConditionalSelection', fallback=defaultValues['conditionalSelection'])
-            months = [int(x) for x in config.get('Settings', 'Months', fallback=','.join(map(str, defaultValues['months']))).split(',')]
-
-        except configparser.Error as e:
-            QMessageBox.critical(self, "Error", f"Error loading settings: {e}")
-
-    def safeGetInt(self, config, section, option, fallback):
-        try:
-            return config.getint(section, option, fallback=fallback)
-        except ValueError:
-            return fallback
-
-    def safeGetFloat(self, config, section, option, fallback):
-        try:
-            return config.getfloat(section, option, fallback=fallback)
-        except ValueError:
-            return fallback
+        # use safeGetInt / safeGetFloat so "12.0" falls back cleanly
+        varianceInflation = self.safeGetInt(
+            cfg, 'Settings', 'VarianceInflation', defaultValues['varianceInflation']
+        )
+        biasCorrection = self.safeGetInt(
+            cfg, 'Settings', 'BiasCorrection', defaultValues['biasCorrection']
+        )
+        fixedThreshold = self.safeGetFloat(
+            cfg, 'Settings', 'FixedThreshold', defaultValues['fixedThreshold']
+        )
+        modelTransformation = cfg.get(
+            'Settings', 'ModelTransformation',
+            fallback=defaultValues['modelTransformation']
+        )
+        optimizationAlgorithm = cfg.get(
+            'Settings', 'OptimizationAlgorithm',
+            fallback=defaultValues['optimizationAlgorithm']
+        )
+        criteriaType = cfg.get(
+            'Settings', 'CriteriaType',
+            fallback=defaultValues['criteriaType']
+        )
+        stepwiseRegression = cfg.getboolean(
+            'Settings', 'StepwiseRegression',
+            fallback=defaultValues['stepwiseRegression']
+        )
+        conditionalSelection = cfg.get(
+            'Settings', 'ConditionalSelection',
+            fallback=defaultValues['conditionalSelection']
+        )
+        months = [
+            int(x) for x in cfg.get(
+                'Settings', 'Months',
+                fallback=','.join(map(str, defaultValues['months']))
+            ).split(',')
+        ]
 
     def saveSettings(self, iniFile=None, silent=False):
-        global yearIndicator, globalSDate, globalEDate, allowNeg, randomSeed, thresh, globalMissingCode, defaultDir
-        global varianceInflation, biasCorrection, fixedThreshold, modelTransformation, optimizationAlgorithm, criteriaType, stepwiseRegression, conditionalSelection, months
+        global varianceInflation, biasCorrection, fixedThreshold
+        global modelTransformation, optimizationAlgorithm, criteriaType
+        global stepwiseRegression, conditionalSelection, months
 
+        # determine target INI path
         if iniFile is None:
-            iniFile = QFileDialog.getExistingDirectory(None, "Select Directory to Save Settings", defaultDir)
-            if not iniFile:
+            iniDir = QFileDialog.getExistingDirectory(
+                self, "Select Directory to Save Settings", defaultDir
+            )
+            if not iniDir:
                 return
-            iniFile = os.path.join(iniFile, 'settings.ini')
+            iniFile = os.path.join(iniDir, 'settings.ini')
 
-        config = configparser.ConfigParser()
-        config['Settings'] = {
-            'YearIndicator': str(yearIndicator),
-            'GlobalSDate': globalSDate,
-            'GlobalEDate': globalEDate,
-            'AllowNeg': str(allowNeg),
-            'RandomSeed': str(randomSeed),
-            'Thresh': str(thresh),
-            'GlobalMissingCode': str(int(globalMissingCode)),
-            'DefaultDir': defaultDir,
-            'VarianceInflation': str(varianceInflation),
-            'BiasCorrection': str(biasCorrection),
-            'FixedThreshold': str(fixedThreshold),
-            'ModelTransformation': modelTransformation,
-            'OptimizationAlgorithm': optimizationAlgorithm,
-            'CriteriaType': criteriaType,
-            'StepwiseRegression': str(stepwiseRegression),
-            'ConditionalSelection': conditionalSelection,
-            'Months': ','.join(map(str, months))
-        }
+        # load existing so we preserve every key
+        cfg = configparser.ConfigParser()
+        if os.path.exists(iniFile):
+            cfg.read(iniFile)
+        if 'Settings' not in cfg:
+            cfg['Settings'] = {}
 
+        # now overwrite only our system‐settings keys
+        cfg['Settings']['VarianceInflation']      = str(varianceInflation)
+        cfg['Settings']['BiasCorrection']         = str(biasCorrection)
+        cfg['Settings']['FixedThreshold']         = str(fixedThreshold)
+        cfg['Settings']['ModelTransformation']    = modelTransformation
+        cfg['Settings']['OptimizationAlgorithm']  = optimizationAlgorithm
+        cfg['Settings']['CriteriaType']           = criteriaType
+        cfg['Settings']['StepwiseRegression']     = str(stepwiseRegression)
+        cfg['Settings']['ConditionalSelection']   = conditionalSelection
+        cfg['Settings']['Months']                 = ','.join(map(str, months))
+
+        # write it all back
         try:
-            with open(iniFile, 'w') as configfile:
-                config.write(configfile)
+            with open(iniFile, 'w') as f:
+                cfg.write(f)
             if not silent:
-                QMessageBox.information(self, "Info", f"Settings saved to '{iniFile}'")
+                QMessageBox.information(
+                    self, "Info", f"Settings written to '{iniFile}'"
+                )
         except OSError as e:
-            QMessageBox.critical(self, "Error", f"Error: Could not save settings to '{iniFile}'. Reason: {e}")
-    
+            QMessageBox.critical(self, "Error", f"Could not write settings: {e}")
+
     def saveSettingsFromUi(self):
-        global varianceInflation, biasCorrection, fixedThreshold, modelTransformation, optimizationAlgorithm, criteriaType, stepwiseRegression, conditionalSelection, months
+        """Export (old Save)"""
+        self._gatherUiValues()
+        self.saveSettings(iniFile=None, silent=False)
 
-        varianceInflation =  self.varianceInflationEdit.text()
-        biasCorrection = self.biasCorrectionEdit.text()
-        fixedThreshold = self.fixedThresholdEdit.text()
-        modelTransformation =  self.get_model_transformation()
-        optimizationAlgorithm = self.get_optimization_algorithm()
-        stepwiseRegression = str(self.stepwiseRegressionCheck.isChecked())
-        criteriaType = self.get_criteria_type()
-        conditionalSelection = self.get_conditional_selection()
+    def saveSettingsDefault(self):
+        """Save to default INI on “Save Settings” button"""
+        # validate
+        try:
+            vi = int(float(self.varianceInflationEdit.text()))
+            bc = int(float(self.biasCorrectionEdit.text()))
+            ft = float(self.fixedThresholdEdit.text())
+        except ValueError:
+            QMessageBox.critical(
+                self, "Error", "Variance/Bias/Threshold must be numeric."
+            )
+            return
 
-        months = [self.wetDayEdits[i].text() for i in range(12)]
+        global varianceInflation, biasCorrection, fixedThreshold
+        global modelTransformation, optimizationAlgorithm, criteriaType
+        global stepwiseRegression, conditionalSelection, months
 
-        # If all validations pass, proceed with saving settings
-        self.saveSettings()
+        varianceInflation       = vi
+        biasCorrection          = bc
+        fixedThreshold          = ft
+        modelTransformation     = self.get_model_transformation()
+        optimizationAlgorithm   = self.get_optimization_algorithm()
+        criteriaType            = self.get_criteria_type()
+        stepwiseRegression      = self.stepwiseRegressionCheck.isChecked()
+        conditionalSelection    = self.get_conditional_selection()
+        months                  = [int(e.text()) for e in self.wetDayEdits]
+
+        self.saveSettings(iniFile=defaultIniFile, silent=False)
 
     def loadSettingsFromUi(self):
-        iniFile = QFileDialog.getOpenFileName(self, "Open Settings File", defaultDir, "INI Files (*.ini)")[0]
-        if iniFile and os.path.isfile(iniFile):
+        iniFile, _ = QFileDialog.getOpenFileName(
+            self, "Open Settings File", defaultDir, "INI Files (*.ini)"
+        )
+        if iniFile:
             self.loadSettings(iniFile)
             self.loadSettingsIntoUi()
 
+    def _gatherUiValues(self):
+        global varianceInflation, biasCorrection, fixedThreshold
+        global modelTransformation, optimizationAlgorithm, criteriaType
+        global stepwiseRegression, conditionalSelection, months
+
+        varianceInflation       = int(float(self.varianceInflationEdit.text()))
+        biasCorrection          = int(float(self.biasCorrectionEdit.text()))
+        fixedThreshold          = float(self.fixedThresholdEdit.text())
+        modelTransformation     = self.get_model_transformation()
+        optimizationAlgorithm   = self.get_optimization_algorithm()
+        criteriaType            = self.get_criteria_type()
+        stepwiseRegression      = self.stepwiseRegressionCheck.isChecked()
+        conditionalSelection    = self.get_conditional_selection()
+        months                  = [int(e.text()) for e in self.wetDayEdits]
+
+    def safeGetInt(self, cfg, section, option, fallback):
+        try:
+            return cfg.getint(section, option, fallback=fallback)
+        except ValueError:
+            return fallback
+
+    def safeGetFloat(self, cfg, section, option, fallback):
+        try:
+            return cfg.getfloat(section, option, fallback=fallback)
+        except ValueError:
+            return fallback
+
     def get_model_transformation(self):
-        if self.transNone.isChecked():
-            return "None"
-        elif self.transFourthRoot.isChecked():
-            return "Fourth root"
-        elif self.transNaturalLog.isChecked():
-            return "Natural log"
-        elif self.transInverseNormal.isChecked():
-            return "Inverse Normal"
-        elif self.transBoxCox.isChecked():
-            return "Box Cox"
+        if self.transNone.isChecked(): return "None"
+        if self.transFourthRoot.isChecked(): return "Fourth root"
+        if self.transNaturalLog.isChecked(): return "Natural log"
+        if self.transInverseNormal.isChecked(): return "Inverse Normal"
+        if self.transBoxCox.isChecked(): return "Box Cox"
 
     def get_optimization_algorithm(self):
-        return "Ordinary Least Squares" if self.optimOrdinaryLeastSquares.isChecked() else "Dual Simplex"
+        return (
+            "Ordinary Least Squares"
+            if self.optimOrdinaryLeastSquares.isChecked()
+            else "Dual Simplex"
+        )
 
     def get_criteria_type(self):
         return "AIC Criteria" if self.aicCriterion.isChecked() else "BIC Criteria"
 
     def get_conditional_selection(self):
-        return "Stochastic" if self.conditionalStochastic.isChecked() else "Fixed Threshold"
-    
-    def hideEvent(self, event):
-        """
-        Upon hiding the window, update UI values (with validation) and silently save them 
-        to the default INI file without prompting for a directory or showing a confirmation.
-        """
-        global varianceInflation, biasCorrection, fixedThreshold, modelTransformation, optimizationAlgorithm, criteriaType, stepwiseRegression, conditionalSelection, months
+        return (
+            "Stochastic"
+            if self.conditionalStochastic.isChecked()
+            else "Fixed Threshold"
+        )
 
-        # Validate Variance Inflation (should be numeric)
-        vi = self.varianceInflationEdit.text()
-        try:
-            float(vi)
-        except ValueError:
-            QMessageBox.critical(self, "Error", "Error: Variance Inflation value must be numeric.")
-            event.ignore()
-            return
 
-        # Validate Bias Correction (should be numeric)
-        bc = self.biasCorrectionEdit.text()
-        try:
-            float(bc)
-        except ValueError:
-            QMessageBox.critical(self, "Error", "Error: Bias Correction value must be numeric.")
-            event.ignore()
-            return
-
-        # Validate Fixed Threshold (should be numeric)
-        ft = self.fixedThresholdEdit.text()
-        try:
-            float(ft)
-        except ValueError:
-            QMessageBox.critical(self, "Error", "Error: Fixed Threshold value must be numeric.")
-            event.ignore()
-            return
-
-        # Update global variables from the UI values
-        varianceInflation = vi
-        biasCorrection = bc
-        fixedThreshold = ft
-        modelTransformation = self.get_model_transformation()
-        optimizationAlgorithm = self.get_optimization_algorithm()
-        stepwiseRegression = str(self.stepwiseRegressionCheck.isChecked())
-        criteriaType = self.get_criteria_type()
-        conditionalSelection = self.get_conditional_selection()
-        months = [edit.text() for edit in self.wetDayEdits]
-
-        # Save settings silently to the default ini file (no file dialog or confirmation prompt)
-        self.saveSettings(defaultIniFile, silent=True)
-        event.accept()
-
-# Main function for testing the UI
+# Main for standalone testing
 def main():
     app = QApplication(sys.argv)
-    window = ContentWidget()
-    window.setWindowTitle("SDSM Wireframe")
-    window.resize(800, 600)
-    window.show()
+    w = ContentWidget()
+    w.show()
     sys.exit(app.exec_())
+
 
 if __name__ == "__main__":
     main()

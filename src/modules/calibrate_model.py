@@ -273,13 +273,13 @@ class ContentWidget(QWidget):
 
         #Layout for selectPredictors frame
         autoregressionLayout = QHBoxLayout()
-        autoregressionLayout.setContentsMargins(25,25,25,25) #Pad 10 pixels each way
+        autoregressionLayout.setContentsMargins(25,25,25,25) #Pad 25 pixels each way
         autoregressionLayout.setSpacing(0)  # No spacing between elements
         autoregressionFrame.setLayout(autoregressionLayout)
         
         autoregressionResidualLayout.addWidget(autoregressionFrame)
 
-        residualFrame = borderedQGroupBox("Residual")
+        residualFrame = borderedQGroupBox("Residual Analysis")
         residualFrame.setBaseSize(200,100)
 
         #Layout for selectPredictors frame
@@ -373,7 +373,7 @@ class ContentWidget(QWidget):
         selectPredictandButton.clicked.connect(self.selectPredictandButtonClicked)
         selectPredictandFileLayout.addWidget(selectPredictandButton)
 
-        self.selectPredictandLabel = QLabel("No predictand selected.")
+        self.selectPredictandLabel = QLabel("No Predictand Selected")
         selectPredictandFileLayout.addWidget(self.selectPredictandLabel)
 
         
@@ -382,7 +382,7 @@ class ContentWidget(QWidget):
         selectOutputButton.clicked.connect(self.selectOutputButtonClicked)
         selectOutputFileLayout.addWidget(selectOutputButton)
 
-        self.selectOutputLabel = QLabel("No output selected.")
+        self.selectOutputLabel = QLabel("No Output Selected")
         selectOutputFileLayout.addWidget(self.selectOutputLabel)
 
         #Create a date edit box in the fitStart frame to choose start fit date
@@ -418,128 +418,217 @@ class ContentWidget(QWidget):
         #predictorsScrollFrame.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Fixed)
 
 
-        predictorsScrollLayout = QVBoxLayout()
-        predictorsScrollLayout.setContentsMargins(0, 0, 0, 0) #Pad 10 pixels each way
-        predictorsScrollLayout.setSpacing(0)  # No spacing between elements
-        predictorsScrollLayout.setAlignment(Qt.AlignHCenter)
-        predictorsScrollFrame.setLayout(predictorsScrollLayout)  # Apply the layout to the frame
+        self.predictorsScrollLayout = QVBoxLayout()
+        self.predictorsScrollLayout.setContentsMargins(0, 0, 0, 0)  # Remove padding from the layout
+        self.predictorsScrollLayout.setSpacing(0)  # No spacing between elements
+        self.predictorsScrollLayout.setAlignment(Qt.AlignHCenter)
+        predictorsScrollFrame.setLayout(self.predictorsScrollLayout)  # Apply the layout to the frame
 
 
         selectPredictorsLayout.addWidget(predictorsScrollArea)
 
         #Get all predictors and populate scroll frame
-
-        for predictor in listdir(self.predictorPath):
-            #These are functionally labels, but QLabels do not have an onclick function that emits a sender signal,
-            #so QPushButtons are used instead
-            predictorScrollLabelButton = QPushButton(predictor)
-            predictorScrollLabelButton.setFlat = True
-            predictorScrollLabelButton.setStyleSheet("color: black; background-color: #F0F0F0")
-            predictorScrollLabelButton.clicked.connect(self.predictorLabelClicked)
-            predictorScrollLabelButton.setBaseSize(200, 20)
-            predictorScrollLabelButton.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-            predictorsScrollLayout.addWidget(predictorScrollLabelButton) 
+        self.writePredictors()
         
         predictorsScrollArea.setWidget(predictorsScrollFrame)
+
+        selectPredictorPathButton = QPushButton("📂 Select Predictor Path")
+        selectPredictorPathButton.clicked.connect(self.updatePredictors)
+        selectPredictorPathButton.setContentsMargins(0,25,0,25)
+        selectPredictorsLayout.addWidget(selectPredictorPathButton)
 
         #Radio buttons for model type
 
         #Process radio buttons
-        modelRadioButtonGroup = QButtonGroup()
-        modelRadioButtonGroup.setExclusive(True)
-        monthlyRadioButton = QRadioButton("Monthly")
-        monthlyRadioButton.setChecked(True)
+        self.modelRadioButtonGroup = QButtonGroup()
+        self.modelRadioButtonGroup.setExclusive(True)
+        self.monthlyRadioButton = QRadioButton("Monthly")
+        self.monthlyRadioButton.setChecked(True)
+        self.monthlyRadioButton.setObjectName("0")
         seasonalRadioButton = QRadioButton("Seasonal")
+        seasonalRadioButton.setObjectName("1")
         annualRadioButton = QRadioButton("Annual")
-        modelRadioButtonGroup.addButton(monthlyRadioButton)
-        modelRadioButtonGroup.addButton(seasonalRadioButton)
-        modelRadioButtonGroup.addButton(annualRadioButton)
+        annualRadioButton.setObjectName("2")
+        self.modelRadioButtonGroup.addButton(self.monthlyRadioButton)
+        self.modelRadioButtonGroup.addButton(seasonalRadioButton)
+        self.modelRadioButtonGroup.addButton(annualRadioButton)
 
-        modelTypeLayout.addWidget(monthlyRadioButton)
+        modelTypeLayout.addWidget(self.monthlyRadioButton)
         modelTypeLayout.addWidget(seasonalRadioButton)
         modelTypeLayout.addWidget(annualRadioButton)
 
         #Process radio buttons
-        processRadioButtonGroup = QButtonGroup()
-        processRadioButtonGroup.setExclusive(True)
-        unconditionalRadioButton = QRadioButton("Unconditional")
-        unconditionalRadioButton.setChecked(True)
+        self.processRadioButtonGroup = QButtonGroup()
+        self.processRadioButtonGroup.setExclusive(True)
+        self.unconditionalRadioButton = QRadioButton("Unconditional")
+        self.unconditionalRadioButton.setObjectName("0")
+        self.unconditionalRadioButton.setChecked(True)
         conditionalRadioButton = QRadioButton("Conditional")
-        processRadioButtonGroup.addButton(unconditionalRadioButton)
-        processRadioButtonGroup.addButton(conditionalRadioButton)
+        conditionalRadioButton.setObjectName("1")
+        self.processRadioButtonGroup.addButton(self.unconditionalRadioButton)
+        self.processRadioButtonGroup.addButton(conditionalRadioButton)
 
-        processLayout.addWidget(unconditionalRadioButton)
+        processLayout.addWidget(self.unconditionalRadioButton)
         processLayout.addWidget(conditionalRadioButton)
 
         #Autoregression check box
-        autoregressionCheck = QCheckBox("Include Autoregression")
-        autoregressionLayout.addWidget(autoregressionCheck)
+        self.autoregressionCheck = QCheckBox("Include Autoregression")
+        autoregressionLayout.addWidget(self.autoregressionCheck)
 
         #Residual Analysis radio buttons
-        residualRadioButtonGroup = QButtonGroup()
-        residualRadioButtonGroup.setExclusive(True)
-        noneRadioButton = QRadioButton("None")
-        noneRadioButton.setChecked(True)
+        self.residualRadioButtonGroup = QButtonGroup()
+        self.residualRadioButtonGroup.setExclusive(True)
+        self.noneRadioButton = QRadioButton("None")
+        self.noneRadioButton.setChecked(True)
         scatterRadioButton = QRadioButton("Scatter Plot")
         histogramRadioButton = QRadioButton("Histogram")
-        residualRadioButtonGroup.addButton(noneRadioButton)
-        residualRadioButtonGroup.addButton(scatterRadioButton)
-        residualRadioButtonGroup.addButton(histogramRadioButton)
+        self.residualRadioButtonGroup.addButton(self.noneRadioButton)
+        self.residualRadioButtonGroup.addButton(scatterRadioButton)
+        self.residualRadioButtonGroup.addButton(histogramRadioButton)
 
-        residualLayout.addWidget(noneRadioButton)
+        residualLayout.addWidget(self.noneRadioButton)
         residualLayout.addWidget(scatterRadioButton)
         residualLayout.addWidget(histogramRadioButton)
 
         #Chow Test CheckBox
-        chowCheck = QCheckBox("Calculate Chow Test")
-        chowTestLayout.addWidget(chowCheck)
+        self.chowCheck = QCheckBox("Calculate Chow Test")
+        chowTestLayout.addWidget(self.chowCheck)
 
         #Histogram Input
 
         histogramLabel = QLabel("No. of categories")
         histogramLayout.addWidget(histogramLabel)
 
-        histogramInput = QLineEdit("14")
-        histogramInput.setMaximumWidth(50)
+        self.histogramInput = QLineEdit("14")
+        self.histogramInput.setMaximumWidth(50)
 
-        histogramLayout.addWidget(histogramInput)
+        histogramLayout.addWidget(self.histogramInput)
 
         #De Trend Radio Buttons
 
-        deTrendRadioButtonGroup = QButtonGroup()
-        deTrendRadioButtonGroup.setExclusive(True)
-        noneTrendRadioButton = QRadioButton("None")
-        noneTrendRadioButton.setChecked(True)
+        self.deTrendRadioButtonGroup = QButtonGroup()
+        self.deTrendRadioButtonGroup.setExclusive(True)
+        self.noneTrendRadioButton = QRadioButton("None")
+        self.noneTrendRadioButton.setChecked(True)
+        self.noneTrendRadioButton.setObjectName("0")
         linearRadioButton = QRadioButton("Linear")
+        linearRadioButton.setObjectName("1")
         powerRadioButton = QRadioButton("Power Function")
-        deTrendRadioButtonGroup.addButton(noneTrendRadioButton)
-        deTrendRadioButtonGroup.addButton(linearRadioButton)
-        deTrendRadioButtonGroup.addButton(powerRadioButton)
+        powerRadioButton.setObjectName("2")
+        self.deTrendRadioButtonGroup.addButton(self.noneTrendRadioButton)
+        self.deTrendRadioButtonGroup.addButton(linearRadioButton)
+        self.deTrendRadioButtonGroup.addButton(powerRadioButton)
 
-        deTrendLayout.addWidget(noneTrendRadioButton)
+        deTrendLayout.addWidget(self.noneTrendRadioButton)
         deTrendLayout.addWidget(linearRadioButton)
         deTrendLayout.addWidget(powerRadioButton)
 
         #Cross Validation COntent
         
-        crossValCalcCheck = QCheckBox("Calculate")
-        crossValLayout.addWidget(crossValCalcCheck)
+        self.crossValCalcCheck = QCheckBox("Calculate")
+        crossValLayout.addWidget(self.crossValCalcCheck)
 
         crossValLabel = QLabel("No. of folds: ")
         crossValLayout.addWidget(crossValLabel)
 
-        crossValInput = QLineEdit("2")
-        crossValInput.setMaximumWidth(50)
-        crossValLayout.addWidget(crossValInput) 
+        self.crossValInput = QLineEdit("2")
+        self.crossValInput.setMaximumWidth(50)
+        crossValLayout.addWidget(self.crossValInput) 
 
         cailbrateButton = QPushButton("Calibrate")
-        #correlationButton.clicked.connect(self.doCorrelation)
+        cailbrateButton.clicked.connect(self.doCalibration)
         cailbrateButton.setStyleSheet("background-color: #4CAF50; color: white; font-weight: bold;")
 
         buttonLayout.addWidget(cailbrateButton)
 
-        # Add a spacer to ensure content is properly spaced
-        #titleLayout.addStretch()
+        resetButton = QPushButton("🔄 Reset")
+        resetButton.clicked.connect(self.resetAll)
+        resetButton.setStyleSheet("background-color: #F44336; color: white; font-weight: bold;")
+        buttonLayout.addWidget(resetButton)
+
+    def doCalibration(self):
+        from src.lib.CalibrateModel import calibrateModel
+        print(self.predictandSelected)
+        fitStartDate = self.QDateEditToDateTime(self.fitStartDateChooser)
+        fitEndDate = self.QDateEditToDateTime(self.fitEndDateChooser)
+        modelType = int(self.modelRadioButtonGroup.checkedButton().objectName())
+        parmOpt = bool(int(self.processRadioButtonGroup.checkedButton().objectName()))
+        deTrend = int(self.deTrendRadioButtonGroup.checkedButton().objectName())
+        fileList = [] #Copy predictors to a new list so when calibrateModel messes with it it doesnt break absolutely everything
+        for predictor in self.predictorsSelected:
+            fileList.append(predictor)
+        data = calibrateModel([self.predictandSelected],fileList,fitStartDate,fitEndDate,
+                              modelType,parmOpt,self.autoregressionCheck.isChecked(), self.chowCheck.isChecked(),deTrend, self.crossValCalcCheck.isChecked())
+        print(data)
+
+    def resetAll(self):
+        #Reset file and path variables and labels
+        self.predictorPath = 'predictor files'
+        self.predictandSelected = ""
+        self.outputSelected = ""
+        self.predictorsSelected = []
+        self.selectPredictandLabel.setText("No Predictand Selected")
+        self.selectOutputLabel.setText("No Output Selected")
+        #Remove all clicked predictors and reset to default predictors
+        self.resetPredictors()
+        #Reset dates
+        self.fitStartDateChooser.setDate(QDate(1948,1,1))
+        self.fitEndDateChooser.setDate(QDate(2015,12,31))
+        #Uncheck all checkboxes and return radios to default
+        self.monthlyRadioButton.setChecked(True)
+        self.unconditionalRadioButton.setChecked(True)
+        self.autoregressionCheck.setChecked(False)
+        self.noneRadioButton.setChecked(True)
+        self.chowCheck.setChecked(False)
+        self.noneTrendRadioButton.setChecked(True)
+        self.crossValCalcCheck.setChecked(False)
+        #Reset all line edit values to default
+        self.histogramInput.setText("14")
+        self.crossValInput.setText("2")
+
+    def QDateEditToDateTime(self, dateEdit):
+        rawStartDate = dateEdit.date()
+        dateTime = rawStartDate.toPyDate()
+        return dateTime
+
+    def writePredictors(self):
+        for predictor in listdir(self.predictorPath):
+            #These are functionally labels, but QLabels do not have an onclick function that emits a sender signal,
+            #so QPushButtons are used instead
+            predictor = predictor.lower()
+            if predictor.split(".")[-1] == "dat":
+                predictorScrollLabelButton = QPushButton(predictor)
+                predictorScrollLabelButton.setFlat = True
+            
+                predictorScrollLabelButton.clicked.connect(self.predictorLabelClicked)
+                predictorScrollLabelButton.setBaseSize(200, 20)
+                predictorScrollLabelButton.setStyleSheet("color: black; background-color: #F0F0F0")
+                predictorScrollLabelButton.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+                self.predictorsScrollLayout.addWidget(predictorScrollLabelButton) 
+    def updatePredictors(self):
+        self.predictorsSelected = []
+        pathName = QFileDialog.getExistingDirectory(self)
+        self.predictorPath = pathName
+        while self.predictorsScrollLayout.count():
+            item = self.predictorsScrollLayout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.setParent(None)
+        if(self.predictorPath != ""):
+            self.writePredictors()
+        else:
+            self.predictorPath = "predictor files"
+            self.writePredictors()
+    def resetPredictors(self):
+        self.predictorsSelected = []
+        self.predictorPath = "predictor files"
+        while self.predictorsScrollLayout.count():
+            item = self.predictorsScrollLayout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.setParent(None)
+        self.writePredictors()
+      
     def selectPredictandButtonClicked(self):
         #Will have to be changed soon, as it relies on known file "predictand files"
         fileName = QFileDialog.getOpenFileName(self, "Select predictand file", 'predictand files', "DAT Files (*.DAT)") 
@@ -557,10 +646,10 @@ class ContentWidget(QWidget):
         print(fileName)
         if fileName[0] != '':
             self.outputSelected = fileName[0]
-            self.selectPredictandLabel.setText("File: "+self.outputSelected.split("/")[-1]) #Only show the name of the file, not the whole path
+            self.selectOutputLabel.setText("File: "+self.outputSelected.split("/")[-1]) #Only show the name of the file, not the whole path
         else:
             self.outputSelected = None
-            self.outputSelected.setText("No output file selected.")
+            self.selectOutputLabel.setText("No Output Selected.")
 
     def predictorLabelClicked(self,*args):
         button = self.sender() #Get the buttonLabel that was clicked

@@ -176,8 +176,7 @@ class ContentWidget(QWidget):
         global defaultDir
         d = QFileDialog.getExistingDirectory(self, "Select Default Directory", defaultDir)
         if d:
-            defaultDir = d
-            self.defaultDirDisplay.setText(defaultDir)
+            self.defaultDirDisplay.setText(d)
 
     def validateDate(self, s):
         try:
@@ -409,6 +408,8 @@ class ContentWidget(QWidget):
         randomSeed = self.randomSeedCheckBox.isChecked()
 
         # Write to defaultIniFile
+        global defaultDir
+        defaultDir = self.defaultDirDisplay.text()
         self.saveSettings(iniFile=defaultIniFile, silent=False)
 
     def loadSettingsFromUi(self):

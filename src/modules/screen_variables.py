@@ -709,6 +709,15 @@ class ContentWidget(QWidget):
 
         fitStartDate = self.QDateEditToDateTime(self.fitStartDateChooser)
         fitEndDate = self.QDateEditToDateTime(self.fitEndDateChooser)
+        try:
+            sigLevel = float(self.significanceInput.text())
+        except ValueError:
+            return displayBox(
+                "Significance Error",
+                "Significance level must be a number.",
+                "Error",
+                isError=True,
+            )
 
         userInput = {
             "fSDate": self.QDateEditToDateTime(self.fitStartDateChooser),
@@ -716,7 +725,7 @@ class ContentWidget(QWidget):
             "analysisPeriodChosen": 0,
             "conditional": self.conditionalRadioButton.isChecked(),
             "autoRegressionTick": self.autoregressionCheckBox.isChecked(),
-            "sigLevelInput": 0.05,  # todo check whether this would be a correct input
+            "sigLevelInput": sigLevel,  # todo check whether this would be a correct input
         }
 
         if fitEndDate <= fitStartDate:
@@ -746,12 +755,16 @@ class ContentWidget(QWidget):
                 isError=True,
             )
         plot = pg.plot()
+        
         scatter = pg.ScatterPlotItem(size=10, brush=pg.mkBrush(255, 255, 255, 120))
+        
 
         outputData = data["Data"]
         spots = [
             {"pos": [outputData[1, i], outputData[0, i]]}
             for i in range(int(outputData.size / 2))
         ]
+        plot.getPlotItem().setLabel("left",self.predictandSelected.split("/")[-1])
+        plot.getPlotItem().setLabel("bottom",self.predictorsSelected[0].split("/")[-1])
         scatter.addPoints(spots)
         plot.addItem(scatter)

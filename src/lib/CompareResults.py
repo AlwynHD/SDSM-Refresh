@@ -1,10 +1,5 @@
 import numpy as np
-import datetime as dt
 import matplotlib.pyplot as plt
-try:
-    from src.lib.utils import getSettings
-except ModuleNotFoundError:
-    from utils import getSettings
 
 def readSumStatsFile(path):
     """ Reads in a file produced by the the summary statistics screen.

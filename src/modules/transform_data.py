@@ -630,8 +630,9 @@ class ContentWidget(QWidget):
                 )
         if self.ensembleCheckBox.isChecked():
             returnedData, returnedInfo = extractEnsemble(loadData([self.inputSelected]), int(self.ensembleInput.text()))
-            writeToFile(returnedData, self.outputSelected)
-            return displayBox("Column Extracted", returnedInfo, "Extraction Success")
+            for val in returnedData:
+                outputFile.write(str(val) + "\n")
+            return displayBox("Extract Ensemble", returnedInfo, "Extraction Performed")
 
 
         applyThresh = self.thresholdCheckBox.isChecked()

@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import configparser
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem, QHeaderView, QLabel
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem, QHeaderView, QLabel, QMessageBox
 import math
 from datetime import date
 import os
@@ -157,7 +157,7 @@ def frequency_analysis(
             globalMissingCode
         )
     elif freqModel == 1:
-        success, freqAnalData, noOfXDataPoints = gevAnalysis(
+        success, freqAnalData, noOfXDataPoints, beta, eta, kay = gevAnalysis(
             observed_dates, observed_data,
             mod_dates_list, modelled_data,
             no_of_ensembles,
@@ -199,6 +199,33 @@ def frequency_analysis(
     # --- compute obsYears & modYears for stripMissing ---
     obsYearsAvailable = len({d.year for d in observed_dates})
     modYearsAvailable = len({d.year for d in mod_dates_list[0]}) if file2Used else 0
+
+    # --- output mean aboslute error (MAE) ---
+    if success and file1Used and file2Used:
+        # collect only valid (non‐missing) obs/mod pairs
+        errors = []
+        for i in range(noOfXDataPoints):
+            obs = freqAnalData[i][1]    # column 2 in VB
+            mod = freqAnalData[i][3]    # column 4 in VB
+            if obs != globalMissingCode and mod != globalMissingCode:
+                errors.append(abs(obs - mod))
+
+        if errors:
+            mae = sum(errors) / len(errors)
+            mae_str = f"{mae:.3f}"
+            QMessageBox.information(
+                None,
+                "Information",
+                f"MAE:  {mae_str}"
+            )
+
+    # --- output beta, eta and kay ---
+    if success and freqModel == 1:
+        QMessageBox.information(
+            None,
+            "GEV Parameters",
+            f"β = {beta:.3f}\nη = {eta:.3f}\nk = {kay:.3f}"
+        )
 
     # --- VB-style StripMissing for empirical/tabular ---
     if freqModel == 0 and file1Used and file2Used:

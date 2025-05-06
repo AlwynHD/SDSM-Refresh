@@ -884,7 +884,7 @@ def gevAnalysis(
             obsMaxSeries = [val for val in byYear.values() if val != globalMissingCode]
             obsYearsAvailable = len(obsMaxSeries)
             if obsYearsAvailable < 3:
-                return False, None, 0
+                return False, None, 0, None, None, None
         else:
             obsYearsAvailable = 0
 
@@ -904,7 +904,7 @@ def gevAnalysis(
                 count = len(series)
                 MinModAvailable = min(MinModAvailable, count)
                 if count < 3:
-                    return False, None, 0
+                    return False, None, 0, None, None, None
 
             noOfXDataPoints = 10 + (2 if MinModAvailable > 100 else 0)
         else:
@@ -925,7 +925,7 @@ def gevAnalysis(
             LM2 = lMoment(obsMaxSeries, 2)
             LM3 = lMoment(obsMaxSeries, 3)
             if 0 in (LM1, LM2, LM3):
-                return False, None, 0
+                return False, None, 0, None, None, None
 
             zed = 3 + (LM3/LM2)
             zed = 2/zed - (math.log(2)/math.log(3))
@@ -934,7 +934,7 @@ def gevAnalysis(
             if abs(kay) > 0.005:
                 gammaVal = gamma(1 + kay)
                 if gammaVal in (0, globalMissingCode):
-                    return False, None, 0
+                    return False, None, 0, None, None, None
                 beta = (LM2*kay)/((1 - 2**(-kay))*gammaVal)
                 eta  = beta*(gammaVal - 1)/kay + LM1
                 for idx, rp in enumerate(returnPeriods):
@@ -963,7 +963,7 @@ def gevAnalysis(
                 if abs(kay) > 0.005:
                     gammaVal = gamma(1 + kay)
                     if gammaVal in (0, globalMissingCode):
-                        return False, None, 0
+                        return False, None, 0, None, None, None
                     beta = (LM2*kay)/((1 - 2**(-kay))*gammaVal)
                     eta  = beta*(gammaVal - 1)/kay + LM1
                     for idx, rp in enumerate(returnPeriods):
@@ -992,7 +992,7 @@ def gevAnalysis(
                 for i, rp in enumerate(returnPeriods):
                     freqAnalData[i][col] = rp
 
-        return True, freqAnalData, noOfXDataPoints
+        return True, freqAnalData, noOfXDataPoints, beta, eta, kay
 
     except Exception:
         return False, None, 0

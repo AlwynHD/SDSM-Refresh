@@ -223,13 +223,13 @@ def frequency_analysis(
         if file1Used:
             obs_vals = arr[:, 1]
             mask_obs = obs_vals != globalMissingCode
-            ax.plot(x[mask_obs], obs_vals[mask_obs], marker='o', linestyle='-', label=obs_label)
+            ax.plot(x[mask_obs], obs_vals[mask_obs], marker='o', linestyle='-', label=obs_label, color='darkblue')
 
         # Modeled series
         if file2Used:
             mod_vals = arr[:, file2ColStart - 1]
             mask_mod = mod_vals != globalMissingCode
-            ax.plot(x[mask_mod], mod_vals[mask_mod], marker='s', linestyle='--', label=mod_label)
+            ax.plot(x[mask_mod], mod_vals[mask_mod], marker='s', linestyle='--', label=mod_label, color='lightgreen')
             # Confidence bounds only for all ensembles
             if ensembleIndex == 0 and no_of_ensembles > 1 and percentileWanted > 0:
                 lower = arr[:, file2ColStart + 3]
@@ -237,8 +237,8 @@ def frequency_analysis(
                 mask_pct = (lower != globalMissingCode) & (upper != globalMissingCode)
                 low_pct = percentileWanted/2
                 high_pct = 100 - low_pct
-                ax.plot(x[mask_pct], lower[mask_pct], marker='^', linestyle=':', label=f'Low {low_pct}%')
-                ax.plot(x[mask_pct], upper[mask_pct], marker='v', linestyle=':', label=f'High {high_pct}%')
+                ax.plot(x[mask_pct], lower[mask_pct], marker='^', linestyle=':', label=f'Low {low_pct}%', color='red')
+                ax.plot(x[mask_pct], upper[mask_pct], marker='v', linestyle=':', label=f'High {high_pct}%', color='red')
 
         ax.set_xlabel('Return period (years)')
         ax.set_ylabel('Value')
@@ -251,7 +251,19 @@ def frequency_analysis(
         chart_max = x.max() if freqModel == 0 else 100
         ax.set_xlim(0, chart_max)
 
-        ax.legend()
+        # Reorder legend: Observed, Modelled, High %, Low %
+        handles, labels = ax.get_legend_handles_labels()
+        desired_order = [
+            obs_label if obs_label else 'Observed',
+            mod_label if mod_label else 'Modelled',
+            f'High {100 - percentileWanted/2}%',
+            f'Low {percentileWanted/2}%'
+        ]
+        label_to_handle = dict(zip(labels, handles))
+        ordered_handles = [label_to_handle[lbl] for lbl in desired_order if lbl in label_to_handle]
+        ordered_labels = [lbl for lbl in desired_order if lbl in label_to_handle]
+        ax.legend(ordered_handles, ordered_labels)
+
         plt.tight_layout()
         plt.show()
 

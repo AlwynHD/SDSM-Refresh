@@ -604,8 +604,10 @@ class ContentWidget(QWidget):
             createOut,
             writeToFile,
             extractEnsemble,
+            log,
+            ln
         )
-        from numpy import log, log10, ndim, empty, longdouble
+        from numpy import   ndim, empty, longdouble
 
         # print("https://www.youtube.com/watch?v=7F2QE8O-Y1g")
 
@@ -656,8 +658,8 @@ class ContentWidget(QWidget):
                 isError=True,
             )
         transformations = [
-            ["Ln", log],
-            ["Log", log10],
+            ["Ln", ln],
+            ["Log", log],
             ["x²", square],
             ["x³", cube],
             ["x⁴", powFour],

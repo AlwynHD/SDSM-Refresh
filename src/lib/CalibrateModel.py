@@ -87,7 +87,7 @@ def reloadGlobals():
         
         
 def debugRun():
-    calibrateModelDefaultExperience()
+    calibrateModelDefaultExperience(0)
 
 def calibrateModelDefaultExperience(modelType):
     """
@@ -121,7 +121,9 @@ def calibrateModelDefaultExperience(modelType):
 
     ##Edit Settings for Testing
     #_globalSettings['modelTrans'] = 5 #Model transformation; 1=none, 2=4root, 3=ln, 4=Inv Normal, 5=box cox
-    _globalSettings['stepwiseregression'] = True
+    #_globalSettings['stepwiseregression'] = True
+
+    _globalSettings['optAlg'] = 1
 
     print(f"Testing with 'modelTrans' == {_globalSettings['modelTrans']}")
 
@@ -1870,40 +1872,42 @@ def calculateParameters2(xMatrix: np.ndarray, yMatrix: np.ndarray, NPredictors: 
         raise RuntimeError("Unfortunately, Dual Simplex is deprecated in this version. Please switch the optimisation algorithm to 'Ordinary Least Squares' in the 'System Settings'")
         #Dual Simplex Approach
         ## INITIALISATION
-        IMAX = xMatrix.shape[0] #+1
-        JMAX = NPredictors #+1
-        KPN = IMAX + JMAX
+        IMAX = xMatrix.shape[0] +1
+        JMAX = NPredictors +1
+        KPN = NPredictors + xMatrix.shape[0]
         KP1 = JMAX
         A = np.zeros((IMAX + 1, JMAX + 1))
-        B = np.zeros((20))
-        C = np.zeros((KPN))
-        xBar = np.zeros((20))
+        B = np.zeros((20 + 1))
+        C = np.zeros((KPN + 1))
+        xBar = np.zeros((20 + 1))
         ISS = np.zeros((IMAX + 1), int)
-        NB = np.array(range(JMAX + 1))
+        NB = np.zeros((JMAX + 1)) #np.array(range(JMAX + 1))
         TOL = 0.00000001
 
-        for i in range(KP1, KPN):
+        for i in range(KP1 - 1, KPN + 1):
             C[i] = 2
         xSum = np.sum(xMatrix, 0)
-        for j in range(NPredictors):
+        for j in range(1, NPredictors + 1):
             #I THINK
-            xBar[j] = xSum[j] / len(xSum) ##My math senses tell me something's wrong here...
-            for i in range(xMatrix.shape[0]):
-                A[i + 1, j] = xMatrix[i, j] - xBar[j]
+            NB[j] = j
+            xBar[j] = np.sum(xMatrix[j]) / xMatrix.shape[0] ##My math senses tell me something's wrong here...
+            for i in range(1, xMatrix.shape[0]  + 1):
+                A[i + 1, j] = xMatrix[i - 1, j] - xBar[j]
         
-        for i in range(len(xSum)):
-            ISS[i+ 1] = i + NPredictors
-            A[i + 1, JMAX] = yMatrix[i] - yBar
+        for i in range(1, xMatrix.shape[0] + 1):
+            ISS[i + 1] = i + NPredictors
+            #print(f"SETTING ISS[{i+1} TO {i + NPredictors}]")
+            A[i + 1, JMAX] = yMatrix[i - 1] - yBar
 
         ##END OF INIT
 
-        done = True
+        done = False
         while done != True: ##Condition irrelevant - loop exits via 'break' statement
             while True:
                 H = -TOL
                 ICAND = 0
                 done = True
-                for i in range(1, IMAX): 
+                for i in range(2, IMAX + 1): 
                     if A[i, JMAX] < H:
                         done = False
                         H = A[i, JMAX]
@@ -1915,11 +1919,11 @@ def calculateParameters2(xMatrix: np.ndarray, yMatrix: np.ndarray, NPredictors: 
                 else:
                     JCAND = 0
                     RATIO = -10000000000
-                    for j in range(NPredictors):
+                    for j in range(1, NPredictors + 1):
                         IONE = 1
                         aa = A[ICAND, j]
                         if np.abs(aa) >= TOL:
-                            RCOST = A[0, j]
+                            RCOST = A[1, j]
                             if aa >= -TOL:
                                 IONE = -1
                                 if np.abs(NB[j]) > NPredictors:
@@ -1942,8 +1946,10 @@ def calculateParameters2(xMatrix: np.ndarray, yMatrix: np.ndarray, NPredictors: 
                         break
                     else:
                         ISS[ICAND] *= -1 #Make -ve or vice versa
-                        for j in range(JMAX):
-                            A[0, j] += CJ * A[ICAND, j] * -1
+                        #print(f"INVERTING ISS[{ICAND} TO {ISS[ICAND]}]")
+                        for j in range(1, JMAX + 1):
+                            A[1, j] += CJ * A[ICAND, j]
+                            A[ICAND, j] *= -1
                             #A[]
                         #j
                     #endif
@@ -1958,16 +1964,16 @@ def calculateParameters2(xMatrix: np.ndarray, yMatrix: np.ndarray, NPredictors: 
                 JCAND *= -1
                 NB[JCAND] *= -1
                 oneFlipper = -1
-                A[0, JCAND] = RSAVE
+                A[1, JCAND] = RSAVE
             pivot = A[ICAND, JCAND] * oneFlipper
-            for j in range(JMAX):
+            for j in range(1, JMAX + 1):
                 A[ICAND, j] /= pivot
             #next j
-            for i in range(IMAX):
+            for i in range(1, IMAX + 1):
                 if i != ICAND:
                     AIJ = A[i, JCAND] * oneFlipper
                     if AIJ != 0:
-                        for j in range(JMAX):
+                        for j in range(1, JMAX + 1):
                             A[i, j] -= A[ICAND, j] * AIJ
                         #next j
                         A[i, JCAND] = -AIJ / pivot
@@ -1976,28 +1982,36 @@ def calculateParameters2(xMatrix: np.ndarray, yMatrix: np.ndarray, NPredictors: 
             #next i
             A[ICAND, JCAND] = 1 / pivot
             ISS[ICAND] = NB[JCAND]
+            #print(f"RENEWING ISS[{ICAND}] TO NB:{NB[JCAND]}")
             NB[JCAND] = IT
 
         #endwhile
 
         ALPHA = yBar
-        for i in range(1, IMAX):
+        for i in range(2, IMAX + 1):
             oneFlipper = 1
             II = ISS[i]
+            #if i < 100:
+                #print(f"LOADING ISS[{i}] = {ISS[i]}")
             if np.abs(II) <= NPredictors:
                 if II <= 0:
                     II *= -1
                     oneFlipper = -1
                 #endif
                 B[II] = oneFlipper * A[i, JMAX]
+                #if II != 0:
+                    #print(f"SETTING BAE {II} TO {B[II]}")
                 ALPHA -= xBar[II] * B[II]
             #endif
         #next i
 
-        betaMatrix = np.zeros((NPredictors))
+        betaMatrix = np.zeros((NPredictors + 1))
         betaMatrix[0] = ALPHA
-        for i in range(NPredictors):
+        #print(f"LEN BETA: {len(betaMatrix)}, LEN B: {len(B)}")
+        for i in range(1, NPredictors + 1):
             betaMatrix[i] = B[i]
+            #print(f"BAETA {i}: {betaMatrix[i]}")
+
         #next i
         xTransY = np.matmul(xMatrix.transpose(), yMatrix)
 
@@ -2009,6 +2023,7 @@ def calculateParameters2(xMatrix: np.ndarray, yMatrix: np.ndarray, NPredictors: 
 
         if dependencies and not dependMsg:
             ##Warning error
+            print("[WARNING]: Linear dependencies between predictors")
             pass
         #endif
     #endif

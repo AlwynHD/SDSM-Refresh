@@ -541,7 +541,6 @@ class ContentWidget(QWidget):
     def doCalibration(self):
         from src.lib.CalibrateModel import calibrateModel, CalibrateAnalysisApp, displayError
 
-        print(self.predictandSelected)
         fitStartDate = self.QDateEditToDateTime(self.fitStartDateChooser)
         fitEndDate = self.QDateEditToDateTime(self.fitEndDateChooser)
         modelType = int(self.modelRadioButtonGroup.checkedButton().objectName())
@@ -654,7 +653,6 @@ class ContentWidget(QWidget):
         fileName = QFileDialog.getOpenFileName(
             self, "Select predictand file", "predictand files", "DAT Files (*.DAT)"
         )
-        print(fileName)
         if fileName[0] != "":
             self.predictandSelected = fileName[0]
             self.selectPredictandLabel.setText(
@@ -669,7 +667,6 @@ class ContentWidget(QWidget):
         fileName = QFileDialog.getOpenFileName(
             self, "Select output file", "SDSM-REFRESH", "PAR Files (*.PAR)"
         )
-        print(fileName)
         if fileName[0] != "":
             self.outputSelected = fileName[0]
             self.selectOutputLabel.setText(
@@ -691,9 +688,4 @@ class ContentWidget(QWidget):
             self.predictorsSelected.remove(self.predictorPath + "/" + predictor)
             button.setStyleSheet("color: black; background-color: #F0F0F0")
 
-    def handleMenuButtonClicks(self):
-        button = self.sender().text()
-        if button == "Correlation":
-            print("nope, that aint right")
-        else:
-            print("work in progress, pardon our dust")
+

@@ -560,7 +560,6 @@ class ContentWidget(QWidget):
         fileName = QFileDialog.getOpenFileName(
             self, "Select input file", "predictand files", "All Files ();;DAT Files (*.DAT);;PAR Files (*.PAR);;SIM Files (*.SIM);;OUT Files (*.OUT);;TXT Files (*.TXT)"
         )
-        print(fileName)
         if fileName[0] != "":
             self.inputSelected = fileName[0]
             self.selectInputLabel.setText(
@@ -575,7 +574,6 @@ class ContentWidget(QWidget):
         fileName = QFileDialog.getOpenFileName(
             self, "Select output file", "SDSM Refresh", "All Files ();;DAT Files (*.DAT);;PAR Files (*.PAR);;SIM Files (*.SIM);;OUT Files (*.OUT);;TXT Files (*.TXT)"
         )
-        print(fileName)
         if fileName[0] != "":
             self.outputSelected = fileName[0]
             self.selectOutputLabel.setText(

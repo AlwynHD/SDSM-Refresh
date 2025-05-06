@@ -598,8 +598,6 @@ class ContentWidget(QWidget):
             self.nthLargestParams.show()
         elif selected_id == 13:  # Largest N-day total
             self.largestNDayParams.show()
-        # elif selected_id == 14:  # %Prec > annual %ile
-        #     self.annualPercentileParams.show()
         elif selected_id == 21:  # %Prec > annual %ile
             self.annualPercentileParams.show()
         elif selected_id == 22:  # % All precip from events > long-term %ile
@@ -1083,7 +1081,7 @@ class ContentWidget(QWidget):
                 QMessageBox.critical(self, "Error Message", 
                                 "Maximum number of years you can work with is 150. Please try again.")
                 return
-            elif (stat_info["id"] == 14 and self.DatesCombo.currentIndex() > 16):  # %Prec > annual %ile
+            elif (stat_info["id"] == 21 and self.DatesCombo.currentIndex() > 16):  # %Prec > annual %ile
                 QMessageBox.critical(self, "Error Message", 
                                 "You can only calculate Percentage Precipitation>Annual Percentile for monthly or seasonal data. Please try again.")
                 return
@@ -1178,15 +1176,25 @@ class ContentWidget(QWidget):
                     print("stat_info['id']:", stat_info["id"])
                     # Raw data selected
                     ok_to_plot = self.RawData()
-                elif stat_info["id"] == 14:  # %Precip > annual %ile
+                elif stat_info["id"] == 14:  # Mean Dry Spell
+                    ok_to_plot = self.GenerateData()
+                elif stat_info["id"] == 15:  # Mean Dry Spell
+                    ok_to_plot = self.GenerateData()
+                elif stat_info["id"] == 16: #Median Dry Spell
+                    ok_to_plot = self.GenerateData()
+                elif stat_info["id"] == 21:  # %Prec > annual %ile
                     # Update annual percentile from input field
                     self.annual_percentile = int(self.annualPercentileInput.text())
                     ok_to_plot = self.GeneratePrecipAnnualMax()
-                elif stat_info["id"] == 15 or stat_info["id"] == 16:  # pfl90 or pnl90
+                elif stat_info["id"] == 22:  # % All precip 
                     # Update percentiles from input fields
                     self.pfl90_percentile = float(self.precipLongTermInput.text())
+                    ok_to_plot = self.LongTermStats()
+                
+                elif stat_info["id"] == 23: #No. events > long-term %ile
                     self.pnl90_percentile = float(self.numEventsInput.text())
                     ok_to_plot = self.LongTermStats()
+
                 else:
                     # Update parameters based on selected statistic
                     if stat_info["id"] == 8:  # PDS
@@ -1366,12 +1374,11 @@ class ContentWidget(QWidget):
             elif stat_info["id"] == 14:  # %Prec > annual %ile
                 y_label = "Percentage"
             elif stat_info["id"] == 15:  # pfl90
-                y_label = "Percentage Precip>Long Term Percentile"
+                y_label = "Mean Wet Spell"
             elif stat_info["id"] == 16:  # pnl90
                 y_label = "Number of Events>Long Term Percentile"
                 
             # Get selected spell type if needed
-            # Remove the spellButtonGroup check and use the statistic name directly
             if stat_info["name"] in ["Mean dry spell", "Mean wet spell", "Median dry spell", 
                                 "Median wet spell", "SD dry spell", "SD wet spell"]:
                 y_label = stat_info["name"]
@@ -1952,6 +1959,7 @@ class ContentWidget(QWidget):
                             self.summaryArray[i][year_index][array_position][19] = self.FindDryDayPersistence(i, count)
                             self.summaryArray[i][year_index][array_position][20] = self.FindWetDayPersistence(i, count)
                             self.summaryArray[i][year_index][array_position][21] = self.FindSpellLengthCorrelation(i, count)
+
                             print("here are the stored stats:", self.summaryArray[i][year_index][array_position])
                     # Reset statistics for next period
                     for i in range(1, self.total_time_series_files + 1):
@@ -2278,6 +2286,7 @@ class ContentWidget(QWidget):
                         if self.summaryArray[i][idx][self.DatesCombo.currentIndex()][13] == self.global_missing_code:
                             self.TimeSeriesData[j-1][i] = None
                             any_missing = True
+                            print("mean set spell missing")
                         else:
                             self.TimeSeriesData[j-1][i] = self.summaryArray[i][idx][self.DatesCombo.currentIndex()][13]
                     
@@ -2864,9 +2873,9 @@ class ContentWidget(QWidget):
                     # Find the full path
                     full_path = ""
                     if i < self.left_files_count:
-                        full_path = os.path.join(self.northFileList.file_list.path, file_path)
+                        full_path = os.path.join(self.northFileList.path, file_path)
                     else:
-                        full_path = os.path.join(self.southFileList.file_list.path, file_path)
+                        full_path = os.path.join(self.southFileList.path, file_path)
                     
                     # Open the file
                     input_file = open(full_path, 'r')
@@ -3226,7 +3235,7 @@ class ContentWidget(QWidget):
                 self.progress_bar.setFormat("Reading All Data")
             
             # Get the correct percentile value based on selected statistic
-            if self.statsButtonGroup.checkedId() == 15:  # pfl90 selected
+            if self.statsButtonGroup.checkedId() == 22:  # pfl90 selected
                 ptile = self.pfl90_percentile
             else:  # pnl90 selected
                 ptile = self.pnl90_percentile
@@ -3247,9 +3256,9 @@ class ContentWidget(QWidget):
                 try:
                     # Find the full path based on whether the file is in left or right list
                     if i < self.left_files_count:
-                        full_path = os.path.join(self.northFileList.findChild(QListWidget).path, file_path)
+                        full_path = os.path.join(self.northFileList.path, file_path)
                     else:
-                        full_path = os.path.join(self.southFileList.findChild(QListWidget).path, file_path)
+                        full_path = os.path.join(self.southFileList.path, file_path)
                     
                     # Check if this is an ensemble file
                     with open(full_path, 'r') as f:
@@ -3337,7 +3346,7 @@ class ContentWidget(QWidget):
                             if count[i] == 0:  # No valid data
                                 self.LongTermResults[i-1][year_index] = self.global_missing_code
                             else:
-                                if self.statsButtonGroup.checkedId() == 15:  # pfl90 selected
+                                if self.statsButtonGroup.checkedId() == 22:  # pfl90 selected
                                     # Calculate percentage of rainfall from events above long-term percentile
                                     if total_rainfall_in_period[i] > 0:
                                         self.LongTermResults[i-1][year_index] = (rainfall_above_percentile[i] / 
@@ -3424,7 +3433,7 @@ class ContentWidget(QWidget):
                     if count[i] == 0:  # No valid data
                         self.LongTermResults[i-1][year_index] = self.global_missing_code
                     else:
-                        if self.statsButtonGroup.checkedId() == 15:  # pfl90 selected
+                        if self.statsButtonGroup.checkedId() == 23:  # pfl90 selected
                             # Calculate percentage of rainfall from events above long-term percentile
                             if total_rainfall_in_period[i] > 0:
                                 self.LongTermResults[i-1][year_index] = (rainfall_above_percentile[i] / 
@@ -4177,7 +4186,7 @@ class ContentWidget(QWidget):
                                 row.append("")
                         writer.writerow(row)
                         
-                elif self.statsButtonGroup.checkedId() == 14:  # % precip > annual percentile
+                elif self.statsButtonGroup.checkedId() == 21:  # % precip > annual percentile
                     # Write header row
                     header = ["Year"]
                     for i in range(self.total_time_series_files):

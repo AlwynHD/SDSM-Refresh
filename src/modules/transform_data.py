@@ -626,7 +626,12 @@ class ContentWidget(QWidget):
                     "Error",
                     isError=True,
                 )
-        
+        if self.ensembleCheckBox.isChecked():
+            returnedData, returnedInfo = extractEnsemble(loadData([self.inputSelected]), int(self.ensembleInput.text()))
+            writeToFile(returnedData, self.outputSelected)
+            return displayBox("Column Extracted", returnedInfo, "Extraction Success")
+
+
         applyThresh = self.thresholdCheckBox.isChecked()
         if self.outputCheckBox.isChecked():
             if self.inputSelected.lower().endswith(".csv"):
@@ -670,11 +675,7 @@ class ContentWidget(QWidget):
                 self.QDateEditToDateTime(self.startDateEdit),
                 self.QDateEditToDateTime(self.endDateEdit),
             )
-        if self.ensembleCheckBox.isChecked():
-            returnedData, returnedInfo = extractEnsemble(self.inputSelected, int(self.ensembleInput.text()))
-
-            return displayBox("Column Extracted", returnedInfo, "Extraction Success")
-
+        
         genericTrans = False
         for i in transformations:
             if i[0] == trans:

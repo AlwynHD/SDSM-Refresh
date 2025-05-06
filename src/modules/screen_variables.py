@@ -520,7 +520,6 @@ class ContentWidget(QWidget):
             [predictor for predictor in self.predictorsSelected],
             userInput,
         )
-        # todo error handling
         # print(data)
 
         if data["error"] != None:

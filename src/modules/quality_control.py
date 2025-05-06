@@ -423,8 +423,6 @@ class ContentWidget(QWidget):
         self.eventThreshFrame.setText("")
 
     def selectFile(self):
-        # Don't know which files it needs to get, will figure out later
-
         # Update correct label depending on button pressed
         if self.sender().objectName() == "check file":
             fileName = QFileDialog.getOpenFileName(
@@ -452,9 +450,8 @@ class ContentWidget(QWidget):
         # https://www.youtube.com/watch?v=QY4KKG4TBFo im keeping this in the comments
         from src.lib.QualityControl import qualityCheck
 
-        print("https://www.youtube.com/watch?v=QY4KKG4TBFo")  # Are easter eggs allowed?
+        #print("https://www.youtube.com/watch?v=QY4KKG4TBFo")  # Are easter eggs allowed?
         try:
-            print(self.selectedFile)
             (
                 min,
                 max,
@@ -502,7 +499,6 @@ class ContentWidget(QWidget):
         from src.lib.QualityControl import dailyMeans as dailyMeansNew
 
         try:
-            print(self.selectedFile)
             stats = dailyMeansNew(
                 [self.selectedFile], self.thresholdCheckBox.isChecked()
             )
@@ -545,7 +541,6 @@ class ContentWidget(QWidget):
                 self.thresholdCheckBox.isChecked(),
             )
             self.outliersButton.setText("Outliers")
-            print("message in checkOutliers=", message)
             # proc = threading.Thread(target=displayBox, args=("Outliers Identified", message, "Outlier Results"))
             # proc.start()
             # displayBox("Outliers Identified", message, "Outlier Results")

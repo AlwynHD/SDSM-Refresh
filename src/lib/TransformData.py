@@ -28,9 +28,13 @@ def loadData(file):
 def valueIsValid(value, applyThresh, missingCode, thresh):
     return value != missingCode and (not applyThresh or value > thresh)
 
-def genericTransform(data, func, applyThresh, missingCode, thresh):
+def genericTransform(data, func, applyThresh):
     """ Takes all transformations which require a single function and applies them to all values in all columns.
         Specific transformations used are listed below."""
+    
+    settings = getSettings()
+    missingCode = settings["globalmissingcode"]
+    thresh = settings["fixedthreshold"]
     
     returnData = np.empty_like(data)
     success = 0
@@ -71,8 +75,12 @@ def powThird(n, missingCode): return np.float_power(n, 1/3) if n <= 1e308 else m
 def powQuarter(n, missingCode): return np.float_power(n, 1/4) if n <= 1e308 else missingCode
 def returnSelf(n): return n
 
-def backwardsChange(data, applyThresh, missingCode, thresh):
+def backwardsChange(data, applyThresh):
     """Returns the difference between each value in a column and the previous value in that column"""
+
+    settings = getSettings()
+    missingCode = settings["globalmissingcode"]
+    thresh = settings["fixedthreshold"]
 
     returnData = np.empty_like(data)
     success = 0
@@ -118,8 +126,12 @@ def lag(data, n, wrap, missingCode):
 
     return returnData, infoString
 
-def binomial(data, binomial, applyThresh, missingCode, thresh):
+def binomial(data, binomial, applyThresh):
     """ For every value in every column, return 1 if above binomial value else return 0"""
+
+    settings = getSettings()
+    missingCode = settings["globalmissingcode"]
+    thresh = settings["fixedthreshold"]
 
     returnData = np.empty_like(data)
     success = 0
@@ -144,16 +156,27 @@ def extractEnsemble(data, column):
     """Select a column"""
     return data[:, column - 1]
 
-def padData(data, dataSDate, dataEDate, globalSDate, globalEDate, missingCode):
+def padData(data, dataSDate, dataEDate):
     """ Adds the global missing code based on the difference between dates.
         For every day the dataSDate is ahead of the globalSDate, one line of global missing code is written at the start of the file.
         For every day the dataEDate is behind the globalEDate, one line of global missing code is written at the end of the file."""
+    
+    settings = getSettings()
+    missingCode = settings["globalmissingcode"]
+    globalSDate = settings["globalsdate"]
+    globalEDate = settings["globaledate"]
+    
     startDiff = dataSDate - globalSDate
     endDiff = globalEDate - dataEDate
     return np.pad(data, [(startDiff.days, endDiff.days), (0, 0)], mode='constant', constant_values=missingCode)
 
-def removeOutliers(data, sdFilterValue, applyThresh, missingCode, thresh):
+def removeOutliers(data, sdFilterValue, applyThresh):
     """Identifies outliers and removes them from the file"""
+
+    settings = getSettings()
+    missingCode = settings["globalmissingcode"]
+    thresh = settings["fixedthreshold"]
+    
     returnData = np.empty_like(data)
     remained = 0
     removed = 0
@@ -189,9 +212,13 @@ def removeOutliers(data, sdFilterValue, applyThresh, missingCode, thresh):
 
     return returnData, infoString
 
-def boxCox(data, applyThresh, missingCode, thresh):
+def boxCox(data, applyThresh):
     """Performs the boxcox transformation on a set of data."""
-    #todo get back from Chris of whether he wants his lamda or the package's lamda
+
+    settings = getSettings()
+    missingCode = settings["globalmissingcode"]
+    thresh = settings["fixedthreshold"]
+
     returnData = np.empty_like(data)
     success = 0
 
@@ -225,8 +252,13 @@ def boxCox(data, applyThresh, missingCode, thresh):
     
     return returnData, infoString
 
-def unBoxCox(data, lamda, leftShift, applyThresh, missingCode, thresh):
+def unBoxCox(data, lamda, leftShift, applyThresh):
     """Reverse a box cox transformation. Requires a value for lamda and left shift."""
+
+    settings = getSettings()
+    missingCode = settings["globalmissingcode"]
+    thresh = settings["fixedthreshold"]
+
     returnData = np.empty_like(data)
     success = 0
 
@@ -259,33 +291,30 @@ def unBoxCox(data, lamda, leftShift, applyThresh, missingCode, thresh):
     return returnData, infoString
 
 def createOut(filepath):
-    if filepath.lower().endswith(".csv"):
-        #Read from .csv
-        file = csv.reader(open(filepath))
-        data = [row for row in file]
-        data = np.asarray(data)
+    #Read from .csv
+    file = csv.reader(open(filepath))
+    data = [row for row in file]
+    data = np.asarray(data)
         
-        #Get .out filepath
-        outPath = filepath[:-4]
-        outPath += ".out"
+    #Get .out filepath
+    outPath = filepath[:-4]
+    outPath += ".out"
 
-        #Get longest lengths to format columns
-        longestLengths = []
-        for column in data.T:
-            longestLengths.append(len(max(column, key=len)))
+    #Get longest lengths to format columns
+    longestLengths = []
+    for column in data.T:
+        longestLengths.append(len(max(column, key=len)))
 
-        #Write to .out
-        file = open(outPath, "w")
-        for r in range(len(data)):
-            for c in range(len(data[r])):
-                extraWhitespace = longestLengths[c] - len(data[r][c])
-                file.write(data[r][c] + " " * (5 + extraWhitespace))
-            file.write("\n")
-        file.close()
+    #Write to .out
+    file = open(outPath, "w")
+    for r in range(len(data)):
+        for c in range(len(data[r])):
+            extraWhitespace = longestLengths[c] - len(data[r][c])
+            file.write(data[r][c] + " " * (5 + extraWhitespace))
+        file.write("\n")
+    file.close()
 
-        return "Converted .csv to .out, saved as " + outPath
-    else:
-        return "Please provide a .csv file"
+    return outPath
 
 if __name__ == "__main__":
     """Variables that are gotten from the screen."""
@@ -337,4 +366,4 @@ if __name__ == "__main__":
 
     #boxCox(data, applyThresh, missingCode, thresh))
     #unBoxCox(data, lamda, leftShift, applyThresh, missingCode, thresh)
-    #createOut(r"C:\Users\ajs25\Downloads\csvTest.csv")
+    createOut(r"C:\Users\ajs25\Downloads\csvTest.csv")

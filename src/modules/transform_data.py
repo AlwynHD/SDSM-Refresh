@@ -694,7 +694,7 @@ class ContentWidget(QWidget):
                 except ValueError:
                     return displayBox(
                         "Value error",
-                        "Lamda and left shift values must be integers",
+                        "Lamda and left shift values must be numerical",
                         "Error",
                         isError=True,
                     )

@@ -1431,17 +1431,16 @@ class ContentWidget(QWidget):
                     if j < len(self.TimeSeriesData) and i < len(self.TimeSeriesData[j]):
                         if self.TimeSeriesData[j][i] is not None:
                             # Use actual x-axis values if available
-                            if self.TimeSeriesData[j][0] and self.TimeSeriesData[j][0].strip():
-                                try:
-                                    # Try to convert to numeric x-value if possible
-                                    x_val = float(self.TimeSeriesData[j][0])
-                                except (ValueError, TypeError):
-                                    # If not numeric, use the index
-                                    x_val = j
+                            if self.DatesCombo.currentIndex() != 0:  # Not raw data
+                                x_values.append(j)  # Use index position for plotting
                             else:
-                                x_val = j
-                                
-                            x_values.append(x_val)
+                                # For raw data, try to use the actual value
+                                try:
+                                    x_val = float(self.TimeSeriesData[j][0])
+                                except:
+                                    x_val = j
+                                x_values.append(x_val)
+                            
                             y_values.append(self.TimeSeriesData[j][i])
                 
                 if len(x_values) > 0:
@@ -2344,7 +2343,8 @@ class ContentWidget(QWidget):
                         if self.DatesCombo.currentIndex() == 18:  # Water year
                             self.TimeSeriesData[j-1][0] = str(int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + j + start_year - 3)
                         else:
-                            self.TimeSeriesData[j-1][0] = str(int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + start_year + j - 2)
+                            year_value = int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + start_year + j - 2
+                            self.TimeSeriesData[j-1][0] = str(year_value)
                 
                 if any_missing:
                     print("Warning - some of the data is missing and will not be plotted.")

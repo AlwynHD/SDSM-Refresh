@@ -539,7 +539,7 @@ class ContentWidget(QWidget):
         buttonLayout.addWidget(resetButton)
 
     def doCalibration(self):
-        from src.lib.CalibrateModel import calibrateModel, CalibrateAnalysisApp, displayError, plotScatter
+        from src.lib.CalibrateModel import calibrateModel, CalibrateAnalysisApp, displayError, plotScatter, plotHistogram
 
         fitStartDate = self.QDateEditToDateTime(self.fitStartDateChooser)
         fitEndDate = self.QDateEditToDateTime(self.fitEndDateChooser)
@@ -573,8 +573,10 @@ class ContentWidget(QWidget):
             self.newWindow = CalibrateAnalysisApp()
             self.newWindow.loadResults(data)
             self.newWindow.show()
-        if self.scatterRadioButton.isChecked():
-            plotScatter(data['residualArray'])
+            if self.scatterRadioButton.isChecked():
+                plotScatter(data['residualArray'])
+            elif self.histogramRadioButton.isChecked():
+                plotHistogram(data['residualArray'], int(self.histogramInput.text()))
 
         
 

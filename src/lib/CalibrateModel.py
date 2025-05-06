@@ -2507,27 +2507,6 @@ def plotScatter(residualArray):
     #mimicked from ScreenVariables
     import pyqtgraph as pg
 
-    """
-    On Error GoTo ErrorHandler
-    Dim i As Long
-    Load ScatterChartFrm
-    ScatterChartFrm.HiddenXTitleText.Text = "Predicted Value (Y')"    'X axis label
-    ScatterChartFrm.HiddenYTitleText.Text = "Residual"       'Y axis label
-    ScatterChartFrm.Chart1.Plot.Axis(VtChAxisIdY).AxisTitle.Text = "Residual"
-    ScatterChartFrm.Chart1.Plot.Axis(VtChAxisIdX).AxisTitle.Text = "Predicted Value (Y')"
-    ScatterChartFrm.Chart1.ColumnCount = 2
-    ScatterChartFrm.Chart1.rowCount = NoOfResiduals         'Maximum possible data to display
-    
-    For i = 1 To NoOfResiduals
-        ScatterChartFrm.Chart1.DataGrid.SetData i, 2, ResidualArray(2, i), 0    'Insert the residual into this row - Y axis
-        ScatterChartFrm.Chart1.DataGrid.SetData i, 1, ResidualArray(1, i), 0    'Insert Y' value onto X axis
-    Next i
-    ScatterChartFrm.Chart1.DataGrid.SetSize 0, 0, NoOfResiduals, 2   'Resize data grid to only show data wanted
-    
-    ScatterChartFrm.Chart1.Title = "Residual Plot"
-    ScatterChartFrm.HiddenTitleText = "Residual Plot"
-    ScatterChartFrm.Show   
-    """
     #ResidualArray(1,i) is equivalent to residualArray['predicted'][i], and should go on the X axis
     #ResidualArray(2,i) is equivalent to residualArray['residual'][i], and should go on the Y axis
     #NoOfResiduals is equivalent to residualArray['noOfResiduals'] and should contain the length of the array
@@ -2546,84 +2525,52 @@ def plotScatter(residualArray):
     plot.addItem(scatter)
 
 def plotHistogram(residualArray, noOfHistCats):
+    """
+    Plots residual data onto a PyQtGraph Histogram
+    """
 
-    minVal = np.min(residualArray['residual'])
-    maxVal = np.max(residualArray['residual'])
+    import pyqtgraph as pg
+
+    residuals = residualArray['residual']
+
+    minVal = np.min(residuals)
+    maxVal = np.max(residuals)
     sizeOfCategories = (maxVal - minVal) / noOfHistCats
     
+    residualHistOccurances = np.zeros(noOfHistCats, dtype=int)
     for i in range(noOfHistCats):
         #???
         catMin = minVal + (i * sizeOfCategories)
         catMax = catMin + sizeOfCategories
         for j in range(residualArray['noOfResiduals']):
-            if residualArray['residual'][j] >= catMin and residualArray['residual'] < catMax:
-                ##residualHistData[i][2] + 1
-                pass
+            #print(f"IS {residualArray['residual'][j]} BETWEEN {catMin} (min) AND {catMax} (max)?")
+            if residualArray['residual'][j] >= catMin and residualArray['residual'][j] < catMax:
+            #    print("YES")
+                residualHistOccurances[i] += 1
+            #input()
         #next j
     #next i
 
-    ##formatting....
-
-    #residualHistData[1][1] = str(minVal:.3f)
-    #residualHistData[noOfHistCats][1] = str(maxVal:.3f)
-
-    #intermediate labels?
-    #for i in range(1, noOfHistCats):
-    #   catMin = minVal + (i * sizeOfCategories)
-    #   residualHistData[i, 1] = str(catMin:.3f)
-        
     
-
-    """
-    Private Sub PlotHistogram()       'plots a histogram of residuals
-    On Error GoTo ErrorHandler
-    ReDim ResidualHistogramData(1 To NoOfHistogramCats, 1 To 2)        'x=labels and data, y= data
-    Dim MaxValue As Double, MinValue As Double, SizeOfCategories As Double
-    Dim CatMin As Double, CatMax As Double
-    MaxValue = -999          'calculate max and min in observed data
-    MinValue = 999
-    For i = 1 To NoOfResiduals
-        If ResidualArray(2, i) > MaxValue Then MaxValue = ResidualArray(2, i)
-        If ResidualArray(2, i) < MinValue Then MinValue = ResidualArray(2, i)
-    Next i
-    SizeOfCategories = (MaxValue - MinValue) / NoOfHistogramCats
-                      
-    For i = 1 To NoOfHistogramCats
-        ResidualHistogramData(i, 2) = 0 'propogate column 2; col 1 for legend lables
-    Next i
     
-    For i = 1 To NoOfHistogramCats  'calculate number of points in each category
-        CatMin = MinValue + ((i - 1) * SizeOfCategories)
-        CatMax = CatMin + SizeOfCategories
-        For j = 1 To NoOfResiduals
-            If ((ResidualArray(2, j) >= CatMin) And (ResidualArray(2, j) < CatMax)) Then
-                ResidualHistogramData(i, 2) = ResidualHistogramData(i, 2) + 1
-            End If
-        Next j
-    Next i
+    residualHistLabels = [minVal]
+    for i in range(1, noOfHistCats):
+        residualHistLabels.append((minVal + (i * sizeOfCategories)))
+    
+    residualHistLabels.append(maxVal)
 
-    tempz = Format(MinValue, "####0.000")
-    ResidualHistogramData(1, 1) = Str(tempz)
-    tempz = Format(MaxValue, "####0.000")
-    ResidualHistogramData(NoOfHistogramCats, 1) = Str(tempz)
-
-    For i = 2 To NoOfHistogramCats - 1      'set up intermediate labels
-        CatMin = MinValue + ((i - 1) * SizeOfCategories)
-        tempz = Format(CatMin, "####0.000")
-        ResidualHistogramData(i, 1) = Str(tempz)
-    Next i
-
-    SeriesDataFirstValue = ResidualHistogramData(1, 1) 'save first value in time series array
-    Load HistogramFrm
-    HistogramFrm.Reset_All
-    HistogramFrm.Show
-    Exit Sub
-ErrorHandler:
-    Call HandleError(Err.Number)
-    Call Mini_Reset
-    Exit Sub
-End Sub
-    """
+    plot = pg.plot()
+    bargraph = pg.PlotCurveItem(x = residualHistLabels, #range(noOfHistCats),
+                                y = residualHistOccurances, 
+                                stepMode=True,
+                                fillLevel=0,
+                                #brush ='g') 
+                                brush=pg.mkBrush(255, 255, 255, 120))
+    plot.setWindowTitle("SDSM Residual Histogram") 
+    plot.getPlotItem().setLabel("left","Frequency")
+    plot.getPlotItem().setLabel("bottom","Residual")
+    plot.addItem(bargraph)
+    
 
 ##Helper Functions:
 

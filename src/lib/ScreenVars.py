@@ -329,8 +329,6 @@ def analyseData(predictandSelected, predictorSelected, inputs):
     nVariables = len(predictorSelected) + 1
     
     # Add one more variable slot if autoregression is enabled
-    if autoRegressionTick:
-        nVariables += 1
 
     # Load files into memory
     try:
@@ -340,6 +338,9 @@ def analyseData(predictandSelected, predictorSelected, inputs):
     
     # Slice the loaded files starting from the file start date
     loadedFiles = [file[(fSDate - globalSDate).days:] for file in loadedFiles]
+    if autoRegressionTick:
+        nVariables += 1
+        predictorSelected.append("Autoregresion")
 
     # Initialize working date to file start date
     workingDate = fSDate
@@ -369,10 +370,13 @@ def analyseData(predictandSelected, predictorSelected, inputs):
         currentDay = np.array([[file[i] for file in loadedFiles]], dtype=float)
         
         # If using autoregression and not the first day, add previous day's value
-        if autoRegressionTick and i > 0:
-            # Add previous day's predictand value as an additional predictor
-            previousValue = np.array([[loadedFiles[0][i-1]]])
-            currentDay = np.concatenate((currentDay, previousValue), axis=1)
+        if autoRegressionTick:
+            if  i > 0:
+                # Add previous day's predictand value as an additional predictor
+                previousValue = np.array([[loadedFiles[0][i-1]]])
+                currentDay = np.concatenate((currentDay, previousValue), axis=1)
+            else:
+                currentDay = np.concatenate((currentDay, [[missingCode]]), axis=1)
         
         # Count missing values
         missingCount = np.count_nonzero(currentDay == missingCode)
@@ -392,7 +396,7 @@ def analyseData(predictandSelected, predictorSelected, inputs):
         for month in months:
             if len(month) > 0:  # Make sure month array is not empty
                 month[:, 0] = np.where(month[:, 0] > threshold, 1, np.where(month[:, 0] != missingCode, 0, missingCode))
-
+        
     # Initialize return data array
     returnData = np.zeros((12, 4, nVariables), dtype=float)  # Changed dimensions to store stats for each variable
     

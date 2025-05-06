@@ -687,10 +687,10 @@ class ContentWidget(QWidget):
             if trans == "Box Cox":
                 returnedData, returnedInfo = boxCox(data, applyThresh)
             elif trans == "Un-Box Cox":
-                if (
-                    not self.lambdaFrame.getLineEditVal().isdigit()
-                    or not self.shiftFrame.getLineEditVal().isdigit()
-                ):
+                try:
+                    float(self.lambdaFrame.getLineEditVal())
+                    float(self.shiftFrame.getLineEditVal())
+                except ValueError:
                     return displayBox(
                         "Value error",
                         "Lamda and left shift values must be integers",

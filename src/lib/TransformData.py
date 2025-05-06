@@ -323,6 +323,23 @@ def createOut(filepath):
 
     return outPath
 
+def writeToFile(data, path):
+    longestLengths = []
+    for column in data:
+        strColumn = [str(entry) for entry in column]
+        print(strColumn)
+        longestLengths.append(len(max(strColumn, key=len)))
+
+    print(longestLengths)
+
+    file = open(path, "w")
+    for r in range(len(data)):
+        for c in range(len(data[r])):
+            extraWhitespace = longestLengths[c] - len(str(data[r][c]))
+            file.write(str(data[r][c]) + " " * (5 + extraWhitespace))
+        file.write("\n")
+    file.close()
+
 if __name__ == "__main__":
     """Variables that are gotten from the screen."""
     applyThresh = False
@@ -341,7 +358,8 @@ if __name__ == "__main__":
 
     settings = getSettings()
 
-    #genericTransform(data, ln, applyThresh)
+    outData = genericTransform(data, ln, applyThresh)[0]
+    writeToFile(outData, r"C:\Users\ajs25\Downloads\Output.txt")
     #genericTransform(data, log, applyThresh)
     #genericTransform(data, square, applyThresh)[0])
     #genericTransform(data, cube, applyThresh)

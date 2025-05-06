@@ -27,7 +27,7 @@ def dailyMeans(filePath, applyThresh):
         if valueIsValid(value, applyThresh, missingCode, thresh):
             dailyStats[day][0] += value
             dailyStats[day][1] += 1
-            day = (day + 1) % 7
+        day = (day + 1) % 7
 
     for stat in dailyStats:
         stat[2] = stat[0] / stat[1] if stat[1] > 0 else missingCode
@@ -37,7 +37,7 @@ def dailyMeans(filePath, applyThresh):
     for value in data:
         if dailyStats[day][2] != missingCode and valueIsValid(value, applyThresh, missingCode, thresh):
             dailyStats[day][3] += (value - dailyStats[day][2]) ** 2
-            day = (day + 1) % 7
+        day = (day + 1) % 7
 
     for stat in dailyStats:
         stat[3] = math.sqrt(stat[3] / stat[1]) if stat[1] > 0 else missingCode
@@ -63,8 +63,7 @@ def getOutliers(filePath, outlierFile, sdFilterValue, applyThresh):
             mean = sum(workingData) / len(workingData)
             sd = 0
             for value in workingData:
-                if valueIsValid(value, applyThresh, missingCode, thresh):
-                    sd += np.power((value - mean), 2)
+                sd += np.power((value - mean), 2)
             sd = np.sqrt(sd / len(workingData))
             sdFilter = sd * sdFilterValue
 
@@ -203,7 +202,7 @@ def pettittCalc(data, startYear):
             if petMatrix[i, 3] == max(petMatrix[:, 3]):
                 maxPos = i
                 break
-        pettittMax = petMatrix[i, 0] + startYear
+        pettittMax = petMatrix[maxPos, 0] + startYear
 
     return pettittVal, pettittMax
 
@@ -215,7 +214,7 @@ if __name__ == '__main__':
 
     #print(dailyMeans(filePath, applyThresh))
     #print(getOutliers(filePath, r"C:\Users\ajs25\Downloads\outliers.dat", standardDeviations, applyThresh))
-    print(qualityCheck(filePath, applyThresh, 90))
+    #print(qualityCheck(filePath, applyThresh, 90))
 
     #data = [2, 3, 4, 5, 6, 7, 8, 9, 10, 100, 120, 145, 145, 555, 444, 333, 333, 333, 333, 333]
     #print(pettittCalc(data, 1948))

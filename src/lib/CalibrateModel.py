@@ -2546,6 +2546,8 @@ def plotScatter(residualArray):
         {"pos": [residualArray['predicted'][i], residualArray['residual'][i]]}
         for i in range(residualArray['noOfResiduals'])
     ]
+    plot.getPlotItem().setLabel("left","Residual")
+    plot.getPlotItem().setLabel("bottom","Predicted Value")
     scatter.addPoints(spots)
     plot.addItem(scatter)
 

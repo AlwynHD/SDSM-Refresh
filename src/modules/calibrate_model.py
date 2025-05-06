@@ -468,15 +468,15 @@ class ContentWidget(QWidget):
         self.residualRadioButtonGroup.setExclusive(True)
         self.noneRadioButton = QRadioButton("None")
         self.noneRadioButton.setChecked(True)
-        scatterRadioButton = QRadioButton("Scatter Plot")
-        histogramRadioButton = QRadioButton("Histogram")
+        self.scatterRadioButton = QRadioButton("Scatter Plot")
+        self.histogramRadioButton = QRadioButton("Histogram")
         self.residualRadioButtonGroup.addButton(self.noneRadioButton)
-        self.residualRadioButtonGroup.addButton(scatterRadioButton)
-        self.residualRadioButtonGroup.addButton(histogramRadioButton)
+        self.residualRadioButtonGroup.addButton(self.scatterRadioButton)
+        self.residualRadioButtonGroup.addButton(self.histogramRadioButton)
 
         residualLayout.addWidget(self.noneRadioButton)
-        residualLayout.addWidget(scatterRadioButton)
-        residualLayout.addWidget(histogramRadioButton)
+        residualLayout.addWidget(self.scatterRadioButton)
+        residualLayout.addWidget(self.histogramRadioButton)
 
         # Chow Test CheckBox
         self.chowCheck = QCheckBox("Calculate Chow Test")
@@ -539,7 +539,7 @@ class ContentWidget(QWidget):
         buttonLayout.addWidget(resetButton)
 
     def doCalibration(self):
-        from src.lib.CalibrateModel import calibrateModel, CalibrateAnalysisApp, displayError
+        from src.lib.CalibrateModel import calibrateModel, CalibrateAnalysisApp, displayError, plotScatter
 
         fitStartDate = self.QDateEditToDateTime(self.fitStartDateChooser)
         fitEndDate = self.QDateEditToDateTime(self.fitEndDateChooser)
@@ -567,12 +567,16 @@ class ContentWidget(QWidget):
                 int(self.crossValInput.text()),
             )   
         except Exception as e:
-            displayError(e)
+            return displayError(e)
         else:
             #print(data)
             self.newWindow = CalibrateAnalysisApp()
             self.newWindow.loadResults(data)
             self.newWindow.show()
+        if self.scatterRadioButton.isChecked():
+            plotScatter(data['residualArray'])
+
+        
 
     def resetAll(self):
         # Reset file and path variables and labels

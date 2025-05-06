@@ -768,4 +768,5 @@ class ContentWidget(QWidget):
         plot.getPlotItem().setLabel("bottom",self.predictorsSelected[0].split("/")[-1])
         scatter.addPoints(spots)
         plot.addItem(scatter)
-        self.predictorsSelected.remove("Autoregression")
+        if self.autoregressionCheckBox.isChecked():
+            self.predictorsSelected.remove("Autoregression")

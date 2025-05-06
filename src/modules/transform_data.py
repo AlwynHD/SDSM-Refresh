@@ -602,7 +602,8 @@ class ContentWidget(QWidget):
             boxCox,
             unBoxCox,
             createOut,
-            extractEnsemble
+            writeToFile,
+            extractEnsemble,
         )
         from numpy import log, log10, ndim, empty, longdouble
 
@@ -679,8 +680,6 @@ class ContentWidget(QWidget):
             if i[0] == trans:
                 genericTrans = True
                 returnedData, returnedInfo = genericTransform(data, i[1], applyThresh)
-                for j in returnedData:
-                    outputFile.write(str(j[0]) + "\n")
         if not genericTrans:
             if trans == "Box Cox":
                 returnedData, returnedInfo = boxCox(data, applyThresh)
@@ -737,12 +736,14 @@ class ContentWidget(QWidget):
                     data, int(self.standardDevFrame.getLineEditVal()), applyThresh
                 )
         
+        writeToFile(returnedData, self.outputSelected)
         outputFile.close()
-        if self.outputSelected != "" and self.outputCheckBox.isChecked():
+        #I believe we can get rid of the below but was too scared to.
+        """if self.outputSelected != "" and self.outputCheckBox.isChecked():
             transformedFile = open(self.outputSelected, "r")
             outputFile = open(
                 self.inputSelected.split("/")[-1] + " transformed.OUT", "w"
             )
             for line in transformedFile:
-                outputFile.write(line)
+                outputFile.write(line)"""
         return displayBox("Data Transformed", returnedInfo, "Transformation Success")

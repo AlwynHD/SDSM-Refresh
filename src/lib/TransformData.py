@@ -159,9 +159,9 @@ def extractEnsemble(data, column):
     """Select a column"""
     numOfCols = data.shape[1]
     if column < 1 or column > numOfCols:
-        return [[]], "Please select a column that is within the range of the data." 
+        return [], "Please select a column that is within the range of the data." 
     else:
-        return [data[:, column - 1]], "Extracted ensemble member at column " + str(column) + "."
+        return data[:, column - 1], "Extracted ensemble member at column " + str(column) + "."
 
 def padData(data, dataSDate, dataEDate):
     """ Adds the global missing code based on the difference between dates.
@@ -332,6 +332,7 @@ def writeToFile(data, path):
     file = open(path, "w")
     for r in range(len(data)):
         for c in range(len(data[r])):
+            
             extraWhitespace = longestLengths[c] - len(str(data[r][c]))
             file.write(str(data[r][c]) + " " * (20 + extraWhitespace) + " ")
         file.write("\n")
@@ -355,7 +356,6 @@ if __name__ == "__main__":
 
     settings = getSettings()
 
-    outData = genericTransform(data, ln, applyThresh)[0]
     #genericTransform(data, log, applyThresh)
     #genericTransform(data, square, applyThresh)[0])
     #genericTransform(data, cube, applyThresh)

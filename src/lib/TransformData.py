@@ -73,7 +73,7 @@ def tenToTheN(n, missingCode): return np.float_power(10, n) if n <= 308 else mis
 def powHalf(n, missingCode): return np.float_power(n, 1/2) if n <= 1e308 else missingCode
 def powThird(n, missingCode): return np.float_power(n, 1/3) if n <= 1e308 else missingCode
 def powQuarter(n, missingCode): return np.float_power(n, 1/4) if n <= 1e308 else missingCode
-def returnSelf(n): return n
+def returnSelf(n, missingCode): return n
 
 def backwardsChange(data, applyThresh):
     """Returns the difference between each value in a column and the previous value in that column"""
@@ -159,9 +159,9 @@ def extractEnsemble(data, column):
     """Select a column"""
     numOfCols = data.shape[1]
     if column < 1 or column > numOfCols:
-        return [], "Please select a column that is within the range of the data." 
+        return [[]], "Please select a column that is within the range of the data." 
     else:
-        return data[:, column - 1], "Extracted ensemble member at column " + str(column) + "."
+        return [data[:, column - 1]], "Extracted ensemble member at column " + str(column) + "."
 
 def padData(data, dataSDate, dataEDate):
     """ Adds the global missing code based on the difference between dates.
@@ -333,7 +333,7 @@ def writeToFile(data, path):
     for r in range(len(data)):
         for c in range(len(data[r])):
             extraWhitespace = longestLengths[c] - len(str(data[r][c]))
-            file.write(str(data[r][c]) + " " * (5 + extraWhitespace) + " ")
+            file.write(str(data[r][c]) + " " * (20 + extraWhitespace) + " ")
         file.write("\n")
     file.close()
 

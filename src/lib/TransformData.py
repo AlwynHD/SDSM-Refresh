@@ -104,10 +104,13 @@ def backwardsChange(data, applyThresh):
 
     return returnData, infoString
 
-def lag(data, n, wrap, missingCode):
+def lag(data, n, wrap):
     """ Rewrite data so it begins at position n.
         If wrap selected, values before n are written at the bottom of the file.
         Else, values before n are replaced with the global missing code."""
+
+    settings = getSettings()
+    missingCode = settings["globalmissingcode"]
 
     returnData = np.empty_like(data)
     processed = 0

@@ -1634,7 +1634,8 @@ def calcDW(residualMatrix: np.ndarray):
     Durbin Watson Shared Code for XValidation and CalibrateModel (Unconditional)
     - ASSUMES CLEAN DATA
     """
-
+    globalMissingCode = _globalSettings['globalmissingcode']
+    
     numerator = 0
     denom = 0
     for i in range(len(residualMatrix) - 1):
@@ -1866,6 +1867,7 @@ def calculateParameters2(xMatrix: np.ndarray, yMatrix: np.ndarray, NPredictors: 
         betaMatrix = np.matmul(xTransXInverse, xTransY)
 
     else:
+        raise RuntimeError("Unfortunately, Dual Simplex is deprecated in this version. Please switch the optimisation algorithm to 'Ordinary Least Squares' in the 'System Settings'")
         #Dual Simplex Approach
         ## INITIALISATION
         IMAX = xMatrix.shape[0] #+1
@@ -2232,16 +2234,8 @@ def findMinLamda(start: float, finish: float, stepSize: float, passedMatrix: np.
     #'tries lamda values from start to finish in steps of stepsize for passedMatrix
     #'passedMatrix has already been right shifted by shiftright to make sure it is all >=0
     #'returns either GlobalMissingCode if not found or minimum lamda value if it was
-    GlobalMissingCode = -999
+    globalMissingCode = _globalSettings['globalmissingcode']
     #bestLamdaSoFar As Double  #'Best Lamda so far
-    #Dim minResultSoFar As Double  #'Hinkley (1977) calculation for optimum lamda
-    #Dim Mean As Double      #'mean of transformed values
-    #Dim IQR As Double        #'Inter Quartile Range of transformed values
-    #Dim upper As Long: Dim Lower As Long #'position of IQR values
-    #Dim Median As Double    #'Median
-    #Dim d As Double         #'d as per Hinkley
-    #Dim tempMatrix As Matrix
-    #Dim counter As Integer, Missing As Integer  #'missing counts number we can't transform
     bestLamdaSoFar = start  #'set best lamda to first point to try
     minResultSoFar = 99999  #'set minimum d value to big number to start
 
@@ -2284,10 +2278,10 @@ def findMinLamda(start: float, finish: float, stepSize: float, passedMatrix: np.
             if IQR > 0:
                 d = (mean - median) / IQR
             else:
-                d = GlobalMissingCode
+                d = globalMissingCode
             #End If
             
-            if (d != GlobalMissingCode) and (np.abs(d) < minResultSoFar):
+            if (d != globalMissingCode) and (np.abs(d) < minResultSoFar):
                 minResultSoFar = np.abs(d) #'keep track of best values so far
                 bestLamdaSoFar = k
             #End If
@@ -2298,7 +2292,7 @@ def findMinLamda(start: float, finish: float, stepSize: float, passedMatrix: np.
     #Next k  'try for all values of k
     
     if minResultSoFar == 99999:  #'haven't found anything
-        return GlobalMissingCode
+        return globalMissingCode
     else:
         return bestLamdaSoFar   #'return bestLamdaSoFar as this has lowest d value
     #End If

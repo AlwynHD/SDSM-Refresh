@@ -590,12 +590,12 @@ def scatterPlot(predictandSelected, predictorSelected, inputs):
         # Append the new column to the original array
         inputData = np.hstack((inputData, newColumn.reshape(-1, 1)))
         
-        if inputData[totalNumbers - 1, 0] != missingCode and (not (inputData[totalNumbers - 1, 0] <= threshold) and conditional):
+        """if inputData[totalNumbers - 1, 0] != missingCode and (not (inputData[totalNumbers - 1, 0] <= threshold) and conditional):
             sumData = np.append(sumData, inputData[totalNumbers - 1, 0])
             
         else:
             sumData = np.append(sumData, sumData[0])
-            nameOfFiles.append("Autoregression")
+            nameOfFiles.append("Autoregression")"""
 
     return {"error": "NA", "Data": inputData.T}
 

@@ -702,7 +702,6 @@ class ContentWidget(QWidget):
         return dateTime
 
     def showScatterGraph(self):
-        print()  # todo remove
         import pyqtgraph as pg
         from src.lib.ScreenVars import scatterPlot
 
@@ -734,7 +733,6 @@ class ContentWidget(QWidget):
                 "Error",
                 isError=True,
             )
-
         data = scatterPlot(
             [self.predictandSelected], self.predictorsSelected, userInput
         )
@@ -753,6 +751,9 @@ class ContentWidget(QWidget):
                 "Error",
                 isError=True,
             )
+            
+        if self.autoregressionCheckBox.isChecked():
+            self.predictorsSelected.append("Autoregression")
         plot = pg.plot()
         
         scatter = pg.ScatterPlotItem(size=10, brush=pg.mkBrush(255, 255, 255, 120))

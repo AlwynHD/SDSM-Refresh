@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import (
     QFrame, QSplitter, QLabel, QStackedWidget, QAction, QSizePolicy, QMessageBox,
     QDialog, QTextBrowser
 )
-from PyQt5.QtCore import Qt, QUrl
+from PyQt5.QtCore import Qt, QUrl, QSize
 from PyQt5.QtGui import QIcon, QScreen, QDesktopServices  # Added QDesktopServices import
 from importlib import import_module
 
@@ -61,16 +61,28 @@ class SDSMWindow(QMainWindow):
         
         for index, (name, icon) in enumerate(zip(self.menuButtonNames, self.menuButtonIcons)):
             menuButton = QPushButton(name)
-            
-            menuButton.setIcon(QIcon(icon))
-            menuButton.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.MinimumExpanding)
+
+            if index < len(self.menuButtonNames) - 1:
+                arrow_icon = QIcon("src/images/arrow_down_thick.png")
+                menuButton.setIcon(arrow_icon)
+                menuButton.setIconSize(QSize(self.button_height // 2,
+                                            self.button_height // 2))
+
+                menuButton.setLayoutDirection(Qt.RightToLeft)
+            else:
+                menuButton.setLayoutDirection(Qt.LeftToRight)
+                menuButton.setIcon(QIcon())  
+
+            menuButton.setContentsMargins(0, 0, 0, 0)
+
+            menuButton.setSizePolicy(QSizePolicy.Expanding,
+                                    QSizePolicy.MinimumExpanding)
             menuButton.setMinimumHeight(self.button_height)
-            menuButton.setStyleSheet(
-                f"text-align: left; padding-left: 10px; border: 1px solid lightgray; font-size: {self.button_font_size}px;"
-            )
-            menuButton.clicked.connect(lambda checked, idx=index: self.loadContent(idx))
+            menuButton.clicked.connect(lambda _, idx=index: self.loadContent(idx))
+
             menuLayout.addWidget(menuButton)
             self.menuButtons.append(menuButton)
+
         
         # Menu Frame
         menuFrame = QFrame()

@@ -154,7 +154,11 @@ def binomial(data, binomial, applyThresh):
 
 def extractEnsemble(data, column):
     """Select a column"""
-    return data[:, column - 1]
+    numOfCols = data.shape[1]
+    if column < 1 or column > numOfCols:
+        return [], "Please select a column that is within the range of the data." 
+    else:
+        return data[:, column - 1], "Extracted ensemble member at column " + str(column) + "."
 
 def padData(data, dataSDate, dataEDate):
     """ Adds the global missing code based on the difference between dates.
@@ -334,36 +338,30 @@ if __name__ == "__main__":
 
     settings = getSettings()
 
-    missingCode = settings["globalmissingcode"]
-    thresh = settings["fixedthreshold"]
-    globalSDate = settings["globalsdate"]
-    globalEDate = settings["globaledate"]
+    #genericTransform(data, ln, applyThresh)
+    #genericTransform(data, log, applyThresh)
+    #genericTransform(data, square, applyThresh)[0])
+    #genericTransform(data, cube, applyThresh)
+    #genericTransform(data, powFour, applyThresh)
+    #genericTransform(data, powMinusOne, applyThresh)
 
+    #genericTransform(data, eToTheN, applyThresh)
+    #genericTransform(data, tenToTheN, applyThresh)
+    #genericTransform(data, powHalf, applyThresh)
+    #genericTransform(data, powThird, applyThresh)
+    #genericTransform(data, powQuarter, applyThresh)
+    #genericTransform(data, returnSelf, applyThresh)
 
-    #genericTransform(data, ln, applyThresh, missingCode, thresh)
-    #genericTransform(data, log, applyThresh, missingCode, thresh)
-    #genericTransform(data, square, applyThresh, missingCode, thresh)
-    #genericTransform(data, cube, applyThresh, missingCode, thresh)
-    #genericTransform(data, powFour, applyThresh, missingCode, thresh)
-    #genericTransform(data, powMinusOne, applyThresh, missingCode, thresh)
-
-    #genericTransform(data, eToTheN, applyThresh, missingCode, thresh)
-    #genericTransform(data, tenToTheN, applyThresh, missingCode, thresh)
-    #genericTransform(data, powHalf, applyThresh, missingCode, thresh)
-    #genericTransform(data, powThird, applyThresh, missingCode, thresh)
-    #genericTransform(data, powQuarter, applyThresh, missingCode, thresh)
-    #genericTransform(data, returnSelf, applyThresh, missingCode, thresh)
-
-    #backwardsChange(data, applyThresh, missingCode, thresh)
+    #backwardsChange(data, applyThresh)
     #lag(data, lagValue, wrap)
-    #binomial(data, binomialValue, applyThresh, missingCode, thresh)
+    #binomial(data, binomialValue, applyThresh)
 
-    #extractEnsemble(data, ensembleCol, missingCode, thresh)
+    #extractEnsemble(data, ensembleCol)
 
-    #padData(data, dataSDate, dataEDate, globalSDate, globalEDate, missingCode)
+    #padData(data, dataSDate, dataEDate)
 
-    #removeOutliers(data, sdFilter, applyThresh, missingCode, thresh)
+    #removeOutliers(data, sdFilter, applyThresh)
 
-    #boxCox(data, applyThresh, missingCode, thresh))
-    #unBoxCox(data, lamda, leftShift, applyThresh, missingCode, thresh)
-    createOut(r"C:\Users\ajs25\Downloads\csvTest.csv")
+    #boxCox(data, applyThresh)
+    #unBoxCox(data, lamda, leftShift, applyThresh)
+    #createOut(r"C:\Users\ajs25\Downloads\csvTest.csv")

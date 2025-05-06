@@ -202,7 +202,7 @@ def pettittCalc(data, startYear):
             if petMatrix[i, 3] == max(petMatrix[:, 3]):
                 maxPos = i
                 break
-        pettittMax = petMatrix[i, 0] + startYear
+        pettittMax = petMatrix[maxPos, 0] + startYear
 
     return pettittVal, pettittMax
 
@@ -212,7 +212,7 @@ if __name__ == '__main__':
     applyThresh = False
     standardDeviations = 5
 
-    print(dailyMeans(filePath, applyThresh))
+    #print(dailyMeans(filePath, applyThresh))
     #print(getOutliers(filePath, r"C:\Users\ajs25\Downloads\outliers.dat", standardDeviations, applyThresh))
     #print(qualityCheck(filePath, applyThresh, 90))
 

@@ -423,8 +423,6 @@ class ContentWidget(QWidget):
         self.eventThreshFrame.setText("")
 
     def selectFile(self):
-        # Don't know which files it needs to get, will figure out later
-
         # Update correct label depending on button pressed
         if self.sender().objectName() == "check file":
             fileName = QFileDialog.getOpenFileName(

@@ -1843,6 +1843,7 @@ def calculateParameters(xMatrix: np.ndarray, yMatrix: np.ndarray, NPredictors: i
             "chowStat":chowStat
             }
 
+
 def calculateParameters2(xMatrix: np.ndarray, yMatrix: np.ndarray, NPredictors: int):
     """
     Calculate Parameters #2 v1.1
@@ -1868,6 +1869,12 @@ def calculateParameters2(xMatrix: np.ndarray, yMatrix: np.ndarray, NPredictors: 
         xTransXInverse = np.linalg.inv(np.matmul(xMatrix.transpose(), xMatrix))
         betaMatrix = np.matmul(xTransXInverse, xTransY)
 
+    elif optimisationChoice == 1:
+        displayWarning("Unfortunately, Dual Simplex is deprecated in this version. Using 'Ordinary Least Squares' instead")
+        _globalSettings['optAlg'] = 0
+        xTransY = np.matmul(xMatrix.transpose(), yMatrix)
+        xTransXInverse = np.linalg.inv(np.matmul(xMatrix.transpose(), xMatrix))
+        betaMatrix = np.matmul(xTransXInverse, xTransY)
     else:
         raise RuntimeError("Unfortunately, Dual Simplex is deprecated in this version. Please switch the optimisation algorithm to 'Ordinary Least Squares' in the 'System Settings'")
         #Dual Simplex Approach
@@ -2515,7 +2522,13 @@ def printTrendParms(detrendOption: int, betaTrend, seasonCode: int):
     #    print(giga_array, file=f)
     #    f.close()
                 
-                
+
+def displayWarning(text):
+    messageBox = QMessageBox()
+    messageBox.setIcon(QMessageBox.Critical)
+    messageBox.setText(text)
+    messageBox.setWindowTitle("Warning")
+    messageBox.exec_()
 
 
 def plotScatter(residualArray):

@@ -139,7 +139,7 @@ def qqPlot(
         for q in ensemble_q:
             plt.scatter(q, obs_q, s=10, c='k')
     elif ensembleMode == 'ensembleMean':
-        plt.scatter(mean_q, obs_q, s=10, c='k')
+        plt.scatter(mean_q, obs_q, s=10, c='orange')
     elif ensembleMode == 'ensembleMember':
         if ensembleIndex is None or ensembleIndex < 1 or ensembleIndex > ens_count:
             raise ValueError(f"Invalid ensembleIndex {ensembleIndex!r}")
@@ -147,7 +147,7 @@ def qqPlot(
     else:  # allPlusMean
         for q in ensemble_q:
             plt.scatter(q, obs_q, s=10, c='k')
-        plt.scatter(mean_q, obs_q, s=10, c='k')
+        plt.scatter(mean_q, obs_q, s=10, c='orange')
 
     # 11) 1:1 line
     all_mod = [v for q in ensemble_q for v in q]

@@ -161,16 +161,6 @@ class ContentWidget(QWidget):
 
         selectICSETOLayout.addWidget(selectInputFileFrame)
 
-        columnFrame = borderedQGroupBox("Columns in Input File")
-        columnFrame.setBaseSize(200, 200)
-
-        columnLayout = QHBoxLayout()
-        columnLayout.setContentsMargins(25, 25, 25, 25)
-        columnLayout.setSpacing(0)
-
-        columnFrame.setLayout(columnLayout)
-
-        selectICSETOLayout.addWidget(columnFrame)
 
         simFrame = borderedQGroupBox("Create SIM File")
         simFrame.setBaseSize(200, 200)
@@ -312,9 +302,6 @@ class ContentWidget(QWidget):
 
         self.selectInputLabel = QLabel("File: Not Selected")
         selectInputFileLayout.addWidget(self.selectInputLabel)
-
-        self.columnInput = QLineEdit("1")
-        columnLayout.addWidget(self.columnInput)
 
         self.simCheckBox = QCheckBox("Create")
         simLayout.addWidget(self.simCheckBox)
@@ -615,8 +602,12 @@ class ContentWidget(QWidget):
             boxCox,
             unBoxCox,
             createOut,
+            writeToFile,
+            extractEnsemble,
+            log,
+            ln
         )
-        from numpy import log, log10, ndim, empty, longdouble
+        from numpy import   ndim, empty, longdouble
 
         # print("https://www.youtube.com/watch?v=7F2QE8O-Y1g")
 
@@ -637,7 +628,13 @@ class ContentWidget(QWidget):
                     "Error",
                     isError=True,
                 )
-        
+        if self.ensembleCheckBox.isChecked():
+            returnedData, returnedInfo = extractEnsemble(loadData([self.inputSelected]), int(self.ensembleInput.text()))
+            for val in returnedData:
+                outputFile.write(str(val) + "\n")
+            return displayBox("Extract Ensemble", returnedInfo, "Extraction Performed")
+
+
         applyThresh = self.thresholdCheckBox.isChecked()
         if self.outputCheckBox.isChecked():
             if self.inputSelected.lower().endswith(".csv"):
@@ -662,8 +659,8 @@ class ContentWidget(QWidget):
                 isError=True,
             )
         transformations = [
-            ["Ln", log],
-            ["Log", log10],
+            ["Ln", ln],
+            ["Log", log],
             ["x²", square],
             ["x³", cube],
             ["x⁴", powFour],
@@ -681,24 +678,23 @@ class ContentWidget(QWidget):
                 self.QDateEditToDateTime(self.startDateEdit),
                 self.QDateEditToDateTime(self.endDateEdit),
             )
+        
         genericTrans = False
         for i in transformations:
             if i[0] == trans:
                 genericTrans = True
                 returnedData, returnedInfo = genericTransform(data, i[1], applyThresh)
-                for i in returnedData:
-                    outputFile.write(str(i[0]) + "\n")
         if not genericTrans:
             if trans == "Box Cox":
                 returnedData, returnedInfo = boxCox(data, applyThresh)
             elif trans == "Un-Box Cox":
-                if (
-                    not self.lambdaFrame.getLineEditVal().isdigit()
-                    or not self.shiftFrame.getLineEditVal().isdigit()
-                ):
+                try:
+                    float(self.lambdaFrame.getLineEditVal())
+                    float(self.shiftFrame.getLineEditVal())
+                except ValueError:
                     return displayBox(
                         "Value error",
-                        "Lamda and left shift values must be integers",
+                        "Lamda and left shift values must be numerical",
                         "Error",
                         isError=True,
                     )
@@ -743,12 +739,15 @@ class ContentWidget(QWidget):
                 returnedData, returnedInfo = removeOutliers(
                     data, int(self.standardDevFrame.getLineEditVal()), applyThresh
                 )
+        
+        writeToFile(returnedData, self.outputSelected)
         outputFile.close()
-        if self.outputSelected != "" and self.outputCheckBox.isChecked():
+        #I believe we can get rid of the below but was too scared to.
+        """if self.outputSelected != "" and self.outputCheckBox.isChecked():
             transformedFile = open(self.outputSelected, "r")
             outputFile = open(
                 self.inputSelected.split("/")[-1] + " transformed.OUT", "w"
             )
             for line in transformedFile:
-                outputFile.write(line)
+                outputFile.write(line)"""
         return displayBox("Data Transformed", returnedInfo, "Transformation Success")

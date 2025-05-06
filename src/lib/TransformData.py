@@ -73,7 +73,7 @@ def tenToTheN(n, missingCode): return np.float_power(10, n) if n <= 308 else mis
 def powHalf(n, missingCode): return np.float_power(n, 1/2) if n <= 1e308 else missingCode
 def powThird(n, missingCode): return np.float_power(n, 1/3) if n <= 1e308 else missingCode
 def powQuarter(n, missingCode): return np.float_power(n, 1/4) if n <= 1e308 else missingCode
-def returnSelf(n): return n
+def returnSelf(n, missingCode): return n
 
 def backwardsChange(data, applyThresh):
     """Returns the difference between each value in a column and the previous value in that column"""
@@ -88,7 +88,7 @@ def backwardsChange(data, applyThresh):
 
     for c in range(len(data.T)):
         for r in range(len(data[:, c])):
-            if valueIsValid(data[r][c], applyThresh):
+            if valueIsValid(data[r][c], applyThresh, missingCode, thresh):
                 success += 1
                 if r == 0 or not valueIsValid(data[r - 1][c], applyThresh, missingCode, thresh):
                     returnData[r][c] = missingCode
@@ -104,10 +104,13 @@ def backwardsChange(data, applyThresh):
 
     return returnData, infoString
 
-def lag(data, n, wrap, missingCode):
+def lag(data, n, wrap):
     """ Rewrite data so it begins at position n.
         If wrap selected, values before n are written at the bottom of the file.
         Else, values before n are replaced with the global missing code."""
+
+    settings = getSettings()
+    missingCode = settings["globalmissingcode"]
 
     returnData = np.empty_like(data)
     processed = 0
@@ -154,7 +157,11 @@ def binomial(data, binomial, applyThresh):
 
 def extractEnsemble(data, column):
     """Select a column"""
-    return data[:, column - 1]
+    numOfCols = data.shape[1]
+    if column < 1 or column > numOfCols:
+        return [], "Please select a column that is within the range of the data." 
+    else:
+        return data[:, column - 1], "Extracted ensemble member at column " + str(column) + "."
 
 def padData(data, dataSDate, dataEDate):
     """ Adds the global missing code based on the difference between dates.
@@ -237,7 +244,7 @@ def boxCox(data, applyThresh):
 
         invalidCount = 0
         for r in range(len(data[:, c])):
-            if valueIsValid(data[r][c], applyThresh, missingCode, thresh) or data[r][c] == minVal:
+            if (valueIsValid(data[r][c], applyThresh, missingCode, thresh) or data[r][c] == minVal) and data[r][c] != 0:
                 returnData[r][c] = boxCoxData[0][r - invalidCount]
                 success += 1
             else:
@@ -264,15 +271,20 @@ def unBoxCox(data, lamda, leftShift, applyThresh):
 
     for c in range(len(data.T)):
         unBoxCoxData = [entry for entry in data[:, c] if valueIsValid(entry, applyThresh, missingCode, thresh)]
+        newType = type(unBoxCoxData)
 
         #Left shift data
         for i in range(len(unBoxCoxData)):
-            unBoxCoxData[i] += leftShift
+            unBoxCoxData[i] += newType(leftShift)
 
         #Reverse boxcox
-        unBoxCoxData = sci.special.inv_boxcox(unBoxCoxData, lamda)
+        try:
+            unBoxCoxData = sci.special.inv_boxcox(unBoxCoxData, lamda)
+        except:
+            return [], "Unable to perform unboxcox for this data."
+        
         for i in range(len(unBoxCoxData)):
-            unBoxCoxData[i] -= leftShift
+            unBoxCoxData[i] -= newType(leftShift)
 
         #Write back to column
         invalidCount = 0
@@ -316,6 +328,21 @@ def createOut(filepath):
 
     return outPath
 
+def writeToFile(data, path):
+    longestLengths = []
+    for column in data:
+        strColumn = [str(entry) for entry in column]
+        longestLengths.append(len(max(strColumn, key=len)))
+
+    file = open(path, "w")
+    for r in range(len(data)):
+        for c in range(len(data[r])):
+            
+            extraWhitespace = longestLengths[c] - len(str(data[r][c]))
+            file.write(str(data[r][c]) + " " * (20 + extraWhitespace) + " ")
+        file.write("\n")
+    file.close()
+
 if __name__ == "__main__":
     """Variables that are gotten from the screen."""
     applyThresh = False
@@ -334,36 +361,29 @@ if __name__ == "__main__":
 
     settings = getSettings()
 
-    missingCode = settings["globalmissingcode"]
-    thresh = settings["fixedthreshold"]
-    globalSDate = settings["globalsdate"]
-    globalEDate = settings["globaledate"]
+    #genericTransform(data, log, applyThresh)
+    #genericTransform(data, square, applyThresh)[0])
+    #genericTransform(data, cube, applyThresh)
+    #genericTransform(data, powFour, applyThresh)
+    #genericTransform(data, powMinusOne, applyThresh)
 
+    #genericTransform(data, eToTheN, applyThresh)
+    #genericTransform(data, tenToTheN, applyThresh)
+    #genericTransform(data, powHalf, applyThresh)
+    #genericTransform(data, powThird, applyThresh)
+    #genericTransform(data, powQuarter, applyThresh)
+    #genericTransform(data, returnSelf, applyThresh)
 
-    #genericTransform(data, ln, applyThresh, missingCode, thresh)
-    #genericTransform(data, log, applyThresh, missingCode, thresh)
-    #genericTransform(data, square, applyThresh, missingCode, thresh)
-    #genericTransform(data, cube, applyThresh, missingCode, thresh)
-    #genericTransform(data, powFour, applyThresh, missingCode, thresh)
-    #genericTransform(data, powMinusOne, applyThresh, missingCode, thresh)
-
-    #genericTransform(data, eToTheN, applyThresh, missingCode, thresh)
-    #genericTransform(data, tenToTheN, applyThresh, missingCode, thresh)
-    #genericTransform(data, powHalf, applyThresh, missingCode, thresh)
-    #genericTransform(data, powThird, applyThresh, missingCode, thresh)
-    #genericTransform(data, powQuarter, applyThresh, missingCode, thresh)
-    #genericTransform(data, returnSelf, applyThresh, missingCode, thresh)
-
-    #backwardsChange(data, applyThresh, missingCode, thresh)
+    #backwardsChange(data, applyThresh)
     #lag(data, lagValue, wrap)
-    #binomial(data, binomialValue, applyThresh, missingCode, thresh)
+    #binomial(data, binomialValue, applyThresh)
 
-    #extractEnsemble(data, ensembleCol, missingCode, thresh)
+    #extractEnsemble(data, ensembleCol)
 
-    #padData(data, dataSDate, dataEDate, globalSDate, globalEDate, missingCode)
+    #padData(data, dataSDate, dataEDate)
 
-    #removeOutliers(data, sdFilter, applyThresh, missingCode, thresh)
+    #removeOutliers(data, sdFilter, applyThresh)
 
-    #boxCox(data, applyThresh, missingCode, thresh))
-    #unBoxCox(data, lamda, leftShift, applyThresh, missingCode, thresh)
-    createOut(r"C:\Users\ajs25\Downloads\csvTest.csv")
+    #boxCox(data, applyThresh)
+    #unBoxCox(data, lamda, leftShift, applyThresh)
+    #createOut(r"C:\Users\ajs25\Downloads\csvTest.csv")

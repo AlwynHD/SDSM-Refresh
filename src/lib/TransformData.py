@@ -88,7 +88,7 @@ def backwardsChange(data, applyThresh):
 
     for c in range(len(data.T)):
         for r in range(len(data[:, c])):
-            if valueIsValid(data[r][c], applyThresh):
+            if valueIsValid(data[r][c], applyThresh, missingCode, thresh):
                 success += 1
                 if r == 0 or not valueIsValid(data[r - 1][c], applyThresh, missingCode, thresh):
                     returnData[r][c] = missingCode
@@ -244,7 +244,7 @@ def boxCox(data, applyThresh):
 
         invalidCount = 0
         for r in range(len(data[:, c])):
-            if valueIsValid(data[r][c], applyThresh, missingCode, thresh) or data[r][c] == minVal:
+            if (valueIsValid(data[r][c], applyThresh, missingCode, thresh) or data[r][c] == minVal) and data[r][c] != 0:
                 returnData[r][c] = boxCoxData[0][r - invalidCount]
                 success += 1
             else:
@@ -271,15 +271,16 @@ def unBoxCox(data, lamda, leftShift, applyThresh):
 
     for c in range(len(data.T)):
         unBoxCoxData = [entry for entry in data[:, c] if valueIsValid(entry, applyThresh, missingCode, thresh)]
+        newType = type(unBoxCoxData[0])
 
         #Left shift data
         for i in range(len(unBoxCoxData)):
-            unBoxCoxData[i] += leftShift
+            unBoxCoxData[i] += newType(leftShift)
 
         #Reverse boxcox
         unBoxCoxData = sci.special.inv_boxcox(unBoxCoxData, lamda)
         for i in range(len(unBoxCoxData)):
-            unBoxCoxData[i] -= leftShift
+            unBoxCoxData[i] -= newType(leftShift)
 
         #Write back to column
         invalidCount = 0
@@ -379,6 +380,6 @@ if __name__ == "__main__":
 
     #removeOutliers(data, sdFilter, applyThresh)
 
-    #boxCox(data, applyThresh)
-    #unBoxCox(data, lamda, leftShift, applyThresh)
+    boxCox(data, applyThresh)
+    unBoxCox(data, lamda, leftShift, applyThresh)
     #createOut(r"C:\Users\ajs25\Downloads\csvTest.csv")

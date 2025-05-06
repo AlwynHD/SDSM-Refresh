@@ -560,7 +560,6 @@ class ContentWidget(QWidget):
         fileName = QFileDialog.getOpenFileName(
             self, "Select input file", "predictand files", "All Files ();;DAT Files (*.DAT);;PAR Files (*.PAR);;SIM Files (*.SIM);;OUT Files (*.OUT);;TXT Files (*.TXT)"
         )
-        print(fileName)
         if fileName[0] != "":
             self.inputSelected = fileName[0]
             self.selectInputLabel.setText(
@@ -575,7 +574,6 @@ class ContentWidget(QWidget):
         fileName = QFileDialog.getOpenFileName(
             self, "Select output file", "SDSM Refresh", "All Files ();;DAT Files (*.DAT);;PAR Files (*.PAR);;SIM Files (*.SIM);;OUT Files (*.OUT);;TXT Files (*.TXT)"
         )
-        print(fileName)
         if fileName[0] != "":
             self.outputSelected = fileName[0]
             self.selectOutputLabel.setText(
@@ -607,8 +605,6 @@ class ContentWidget(QWidget):
             binomial,
             backwardsChange,
             removeOutliers,
-        )
-        from src.lib.TransformData import (
             powHalf,
             powThird,
             powQuarter,
@@ -618,6 +614,7 @@ class ContentWidget(QWidget):
             loadData,
             boxCox,
             unBoxCox,
+            createOut,
         )
         from numpy import log, log10, ndim, empty, longdouble
 
@@ -634,21 +631,27 @@ class ContentWidget(QWidget):
         try:  # Check if an output file is selected
             outputFile = open(self.outputSelected, "w")
         except (FileNotFoundError, TypeError) as e:
-            if (
-                not self.outputCheckBox.isChecked()
-            ):  # If an OUT file is not being generated
                 return displayBox(
                     "Output Error",
-                    "No output file selected, and you have not selected one to be generated.",
+                    "No output file selected.",
                     "Error",
                     isError=True,
                 )
-            else:
-                outputFile = open(
-                    self.inputSelected.split("/")[-1] + " transformed.OUT", "w"
-                )
+        
         applyThresh = self.thresholdCheckBox.isChecked()
-        data = loadData([self.inputSelected])
+        if self.outputCheckBox.isChecked():
+            if self.inputSelected.lower().endswith(".csv"):
+                outPath = createOut(self.inputSelected)
+                data = loadData([outPath])
+            else:
+                return displayBox(
+                    "Input Error",
+                    "When creating a .OUT file, you must provide a .csv file.",
+                    "Error",
+                    isError=True,
+                )
+        else:
+            data = loadData([self.inputSelected])
         try:  # Check if a transformation is selected
             trans = self.transformRadioGroup.checkedButton().text()
         except AttributeError:
@@ -740,7 +743,6 @@ class ContentWidget(QWidget):
                 returnedData, returnedInfo = removeOutliers(
                     data, int(self.standardDevFrame.getLineEditVal()), applyThresh
                 )
-
         outputFile.close()
         if self.outputSelected != "" and self.outputCheckBox.isChecked():
             transformedFile = open(self.outputSelected, "r")

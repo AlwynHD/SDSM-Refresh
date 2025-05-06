@@ -161,16 +161,6 @@ class ContentWidget(QWidget):
 
         selectICSETOLayout.addWidget(selectInputFileFrame)
 
-        columnFrame = borderedQGroupBox("Columns in Input File")
-        columnFrame.setBaseSize(200, 200)
-
-        columnLayout = QHBoxLayout()
-        columnLayout.setContentsMargins(25, 25, 25, 25)
-        columnLayout.setSpacing(0)
-
-        columnFrame.setLayout(columnLayout)
-
-        selectICSETOLayout.addWidget(columnFrame)
 
         simFrame = borderedQGroupBox("Create SIM File")
         simFrame.setBaseSize(200, 200)
@@ -312,9 +302,6 @@ class ContentWidget(QWidget):
 
         self.selectInputLabel = QLabel("File: Not Selected")
         selectInputFileLayout.addWidget(self.selectInputLabel)
-
-        self.columnInput = QLineEdit("1")
-        columnLayout.addWidget(self.columnInput)
 
         self.simCheckBox = QCheckBox("Create")
         simLayout.addWidget(self.simCheckBox)
@@ -615,6 +602,7 @@ class ContentWidget(QWidget):
             boxCox,
             unBoxCox,
             createOut,
+            extractEnsemble
         )
         from numpy import log, log10, ndim, empty, longdouble
 
@@ -681,13 +669,18 @@ class ContentWidget(QWidget):
                 self.QDateEditToDateTime(self.startDateEdit),
                 self.QDateEditToDateTime(self.endDateEdit),
             )
+        if self.ensembleCheckBox.isChecked():
+            returnedData, returnedInfo = extractEnsemble(self.inputSelected, int(self.ensembleInput.text()))
+
+            return displayBox("Column Extracted", returnedInfo, "Extraction Success")
+
         genericTrans = False
         for i in transformations:
             if i[0] == trans:
                 genericTrans = True
                 returnedData, returnedInfo = genericTransform(data, i[1], applyThresh)
-                for i in returnedData:
-                    outputFile.write(str(i[0]) + "\n")
+                for j in returnedData:
+                    outputFile.write(str(j[0]) + "\n")
         if not genericTrans:
             if trans == "Box Cox":
                 returnedData, returnedInfo = boxCox(data, applyThresh)
@@ -743,6 +736,7 @@ class ContentWidget(QWidget):
                 returnedData, returnedInfo = removeOutliers(
                     data, int(self.standardDevFrame.getLineEditVal()), applyThresh
                 )
+        
         outputFile.close()
         if self.outputSelected != "" and self.outputCheckBox.isChecked():
             transformedFile = open(self.outputSelected, "r")

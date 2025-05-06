@@ -271,14 +271,18 @@ def unBoxCox(data, lamda, leftShift, applyThresh):
 
     for c in range(len(data.T)):
         unBoxCoxData = [entry for entry in data[:, c] if valueIsValid(entry, applyThresh, missingCode, thresh)]
-        newType = type(unBoxCoxData[0])
+        newType = type(unBoxCoxData)
 
         #Left shift data
         for i in range(len(unBoxCoxData)):
             unBoxCoxData[i] += newType(leftShift)
 
         #Reverse boxcox
-        unBoxCoxData = sci.special.inv_boxcox(unBoxCoxData, lamda)
+        try:
+            unBoxCoxData = sci.special.inv_boxcox(unBoxCoxData, lamda)
+        except:
+            return [], "Unable to perform unboxcox for this data."
+        
         for i in range(len(unBoxCoxData)):
             unBoxCoxData[i] -= newType(leftShift)
 
@@ -380,6 +384,6 @@ if __name__ == "__main__":
 
     #removeOutliers(data, sdFilter, applyThresh)
 
-    boxCox(data, applyThresh)
-    unBoxCox(data, lamda, leftShift, applyThresh)
+    #boxCox(data, applyThresh)
+    #unBoxCox(data, lamda, leftShift, applyThresh)
     #createOut(r"C:\Users\ajs25\Downloads\csvTest.csv")

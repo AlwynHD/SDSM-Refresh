@@ -43,8 +43,8 @@ class ContentWidget(QWidget):
         self.save_root = ""
 
         # ---default dates---
-        self.global_start_date = "01/01/1878"
-        self.global_end_date = "31/12/2017"
+        self.global_start_date = "01/01/1948"
+        self.global_end_date = "31/12/2015"
         self.global_n_days = "25567"
 
         # Initialize FSDate and FEdate with global defaults
@@ -57,7 +57,7 @@ class ContentWidget(QWidget):
         # ---Default threshold values---
         self.percentile = 90
         self.spi_value = 3
-        self.thresh = 0.1
+        self.thresh = 0.0
         self.local_thresh = self.thresh
         self.pot_value = self.thresh
         self.nth_largest = 1
@@ -1424,6 +1424,7 @@ class ContentWidget(QWidget):
             # Plot each time series
             for i in range(1, self.total_time_series_files + 1):
                 # Extract x and y values, filter out None/Empty values
+                print(f"preparing to plot dataset {i}")
                 x_values = []
                 y_values = []
                 
@@ -1449,7 +1450,8 @@ class ContentWidget(QWidget):
                     marker_idx = (i-1) % len(markers)
                     
                     # Set a valid label
-                    label = ""
+                    label = self.AllFilesList[i-1] if i-1 < len(self.AllFilesList) else f"Series {i}"
+                    
                     if i-1 < len(self.AllFilesList):
                         label = self.AllFilesList[i-1]
                     else:
@@ -2155,6 +2157,8 @@ class ContentWidget(QWidget):
             # Create and initialize the TimeSeriesData array
             self.TimeSeriesData = [[None for _ in range(self.total_time_series_files + 1)] 
                             for _ in range(self.TimeSeriesLength)]
+            print(f"Created TimeSeriesData array with dimensions {self.TimeSeriesLength} x {self.total_time_series_files + 1}")
+
             
             any_missing = False
 
@@ -2177,7 +2181,11 @@ class ContentWidget(QWidget):
             
             # Fill TimeSeriesData array based on selected statistic
             for i in range(1, self.total_time_series_files + 1):
+                print(f"Processing file {i} of {self.total_time_series_files}")
                 for j in range(1, self.TimeSeriesLength + 1):
+
+                    print(f"  Setting TimeSeriesData[{j-1}][{i}] with data from summaryArray")
+
                     idx = j + start_year - 1  # Adjusted index into summary array
                     
                     # Get selected statistic ID from button group
@@ -2346,11 +2354,21 @@ class ContentWidget(QWidget):
                             year_value = int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + start_year + j - 2
                             self.TimeSeriesData[j-1][0] = str(year_value)
                 
-                if any_missing:
-                    print("Warning - some of the data is missing and will not be plotted.")
-                
-                return True
-        
+                    if i == 1:  # Only set labels once
+                        if self.DatesCombo.currentIndex() == 18:  # Water year
+                            self.TimeSeriesData[j-1][0] = str(int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + j + start_year - 3)
+                        else:
+                            self.TimeSeriesData[j-1][0] = str(int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + start_year + j - 2)
+
+
+
+            if any_missing:
+                print("Warning - some of the data is missing and will not be plotted.")
+            
+            return True
+            
+            #print(f"    Value set: {self.TimeSeriesData[j-1][i]}")
+
         except Exception as e:
             print(f"Error in GenerateData: {str(e)}")
             self.Mini_Reset()

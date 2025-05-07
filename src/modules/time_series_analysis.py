@@ -153,7 +153,7 @@ class ContentWidget(QWidget):
         leftSideLayout.setSpacing(10)
 
         # Create North File Selection Group
-        northGroupBox = QGroupBox("North File Selection")
+        northGroupBox = QGroupBox("File Selection 1")
         northLayout = QVBoxLayout()
 
         # Create file list widget for North files
@@ -195,7 +195,7 @@ class ContentWidget(QWidget):
         leftSideLayout.addWidget(northGroupBox)
 
         # Create South File Selection Group (similar to North)
-        southGroupBox = QGroupBox("South File Selection")
+        southGroupBox = QGroupBox("File Selection 2")
         southLayout = QVBoxLayout()
 
         # Create file list widget for South files

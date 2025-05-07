@@ -5,6 +5,8 @@ from PyQt5.QtWidgets import QWidget,QMessageBox, QVBoxLayout, QTableWidget, QTab
 from datetime import timedelta
 from datetime import datetime
 from typing import Tuple
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QFont
 
 from typing import List
 
@@ -45,7 +47,7 @@ def run_idf(
     # === Durations in hours ===
     idf_hours_array = [0.25, 0.5, 1, 2, 3, 6, 24, 48, 120, 240, 360]  # Length = 11
     IDF_SIZE_OF_HOURS_ARRAY = len(idf_hours_array)
-
+    
     """
     Main function to run the IDF analysis.
     presentation_type: "Tabular" or "Graphical"
@@ -100,9 +102,12 @@ def run_idf(
         if not is_ensemble_number_valid(ensemble_option, ensemble_index, num_ensembles,parent):
             print("❌ Invalid ensemble member selected. Exiting.")
             return
+        
         if ensemble_option == "Single Member":
-            ensemble_index=ensemble_index-1
-            print(ensemble_index)
+           ensemble_index=ensemble_index-1
+           print(ensemble_index)
+        else:
+            ensemble_index=None
         print("✔ Input files valid. Proceeding...")
     
         # -------------------------------------
@@ -1499,18 +1504,26 @@ def present_results_as_table(hours_array, return_periods, sdsm_scaled_table_obs=
         table = QTableWidget()
         table.setColumnCount(len(return_periods) + 1)
         table.setRowCount(len(hours_array))
-        headers = ["Duration (h)"] + [f"{rp} yr" for rp in return_periods]
+        headers = ["Duration (h) ⬇️/ Return Periods(yr)➡️"] + [f"{rp} yr" for rp in return_periods]
         table.setHorizontalHeaderLabels(headers)
-
+        font = QFont()
+        font.setBold(True)
+        for col in range(table.columnCount()):
+            header_item = table.horizontalHeaderItem(col)
+            if header_item:
+                header_item.setFont(font)
         for row_idx, duration in enumerate(hours_array):
             # Set duration in first column
             table.setItem(row_idx, 0, QTableWidgetItem(f"{duration:.2f}"))
+            table.item(row_idx, 0).setTextAlignment(Qt.AlignCenter) 
             for col_idx, rp in enumerate(return_periods, start=1):
                 try:
                     val = data[rp][duration]
                     item = QTableWidgetItem(f"{val:.1f}" if val >= 0 else "NA")
+                    item.setTextAlignment(Qt.AlignCenter)
                 except:
                     item = QTableWidgetItem("NA")
+                    item.setTextAlignment(Qt.AlignCenter)
                 table.setItem(row_idx, col_idx, item)
 
         table.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -1539,7 +1552,7 @@ def present_results_as_table(hours_array, return_periods, sdsm_scaled_table_obs=
         layout.addWidget(tabs)
 
     window.setLayout(layout)
-    window.resize(800, 600)
+    window.resize(1700, 600)
     window.show()
      
     active_windows.append(window)
@@ -1553,24 +1566,30 @@ def present_results_as_graph(hours_array, return_periods, sdsm_scaled_table_obs=
     - sdsm_scaled_table_obs/mod: dict[rp][hours] = value
     """
     fig, ax = plt.subplots()
-
+    
+    # Define 5 consistent colors (extendable if needed)
+    base_colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple']
+    
     # Skip the first two hours (0.25 and 0.5), starting at index 2
-    for rp in return_periods:
+    for i, rp in enumerate(return_periods):
+        color = base_colors[i % len(base_colors)]  # Ensure looping if more than 5 RPs
+
         if sdsm_scaled_table_obs:
             x_obs = [math.log10(h) for h in hours_array[2:] if h > 0]
             y_obs = [math.log10(sdsm_scaled_table_obs[rp][h]) for h in hours_array[2:] if sdsm_scaled_table_obs[rp][h] > 0]
-            ax.plot(x_obs, y_obs, label=f'Obs {rp} yr', linewidth=2)
+            ax.plot(x_obs, y_obs, label=f'Obs {rp} yr', linewidth=2, color=color, linestyle='-')
 
         if sdsm_scaled_table_mod:
             x_mod = [math.log10(h) for h in hours_array[2:] if h > 0]
             y_mod = [math.log10(sdsm_scaled_table_mod[rp][h]) for h in hours_array[2:] if sdsm_scaled_table_mod[rp][h] > 0]
-            ax.plot(x_mod, y_mod, linestyle='--', label=f'Mod {rp} yr', linewidth=2)
+            ax.plot(x_mod, y_mod, label=f'Mod {rp} yr', linewidth=2, color=color, linestyle='--')
 
     ax.set_title("Log-Log IDF Plot")
     ax.set_xlabel("Log Hours")
     ax.set_ylabel("Log Intensity (mm/hr)")
     ax.legend()
     ax.grid(True)
+    plt.tight_layout()
     plt.show()
 
 

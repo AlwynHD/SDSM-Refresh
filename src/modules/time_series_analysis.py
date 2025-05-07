@@ -568,7 +568,7 @@ class ContentWidget(QWidget):
         mainLayout.addWidget(self.progress_bar)
 
     def onStatOptionChanged(self, button):
-        """Handler for when a statistic option is changed"""
+        """This is a handler for when a statistic option is changed"""
         # Hide all parameter sets first
         self.percentileParams.hide()
         self.spiParams.hide()

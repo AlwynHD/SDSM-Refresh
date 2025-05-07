@@ -554,11 +554,11 @@ class ContentWidget(QWidget):
         self.resetButton.setFixedHeight(30)
         BottomButtonLayout.addWidget(self.resetButton)
 
-        self.helpButton = QPushButton("Help")
-        self.helpButton.setStyleSheet("background-color: #0000FF; color: white; font-size: 14px; padding: 8px;")
-        self.helpButton.clicked.connect(lambda: self.Help_Needed(1))
-        self.helpButton.setFixedHeight(30)
-        BottomButtonLayout.addWidget(self.helpButton)
+        # self.helpButton = QPushButton("Help")
+        # self.helpButton.setStyleSheet("background-color: #0000FF; color: white; font-size: 14px; padding: 8px;")
+        # self.helpButton.clicked.connect(lambda: self.Help_Needed(1))
+        # self.helpButton.setFixedHeight(30)
+        # BottomButtonLayout.addWidget(self.helpButton)
 
         mainLayout.addLayout(BottomButtonLayout)
 
@@ -794,9 +794,24 @@ class ContentWidget(QWidget):
     def SelectSaveFile(self):
         file_name, _ = QFileDialog.getSaveFileName(self, "Save To File", filter="CSV Files (*.csv)")
         if file_name:
-            self.saveFileLabel.setText(f"File: {file_name}")
+            if not file_name.lower().endswith('.csv'):
+                self.save_root = file_name + '.csv'
+            else:
+                self.save_root = file_name  # Add this line!
+                
+            # Update the UI
+            self.saveFileLabel.setText(f"File: {self.save_root}")
+            
+            # Provide user feedback
+            print(f"Save file path set: {self.save_root}")
+            
+            # Create a QMessageBox to confirm
+            QMessageBox.information(self, "Save Location Set",
+                                f"Results will be saved to:\n{self.save_root}\n\nFile will be created when you click Generate.\n\n to produce the file into the selected folder you must click clear after the file is created."
+                                )
 
     def ClearSaveFile(self):
+        self.save_root = ""
         self.saveFileLabel.setText("File: *.CSV")
 
     # Main functions

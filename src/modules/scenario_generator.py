@@ -4,9 +4,6 @@ import math
 import random
 import datetime
 import statistics  # For mean, stdev if needed, though manual calculation is often used here
-# Consider numpy for potentially faster array operations if performance becomes an issue,
-# but sticking to standard lists for closer VB translation initially.
-# import numpy as np
 
 from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
                              QLabel, QLineEdit, QGridLayout, QCheckBox, QRadioButton,
@@ -17,9 +14,17 @@ from PyQt5.QtCore import Qt, QTimer # QTimer for progress bar updates
 GLOBAL_MISSING_CODE = -999.0
 DEFAULT_THRESHOLD = 0.0
 DEFAULT_START_DATE = datetime.date(2000, 1, 1)
-# Assuming standard Gregorian calendar for YearIndicator/YearLength unless specified otherwise
-# The VB code implies YearIndicator might be 360, 365, or 366 based on context (not fully defined here)
 DEFAULT_YEAR_INDICATOR = 365
+
+# Simulate VB's Rnd() function
+def Rnd():
+    """Simulates VB's Rnd() function - returns float between 0 and 1"""
+    return random.random()
+
+# Global date variables to match VB's approach
+g_dd = 0
+g_mm = 0
+g_yyyy = 0
 
 ###############################################################################
 # 1. SDSMContext: Stores parameters and data for scenario generation.
@@ -41,6 +46,7 @@ class SDSMContext:
         self.ensemble_size = 1
         self.no_of_days = 0
         self.year_indicator = DEFAULT_YEAR_INDICATOR # From VB globals (adjust if needed)
+        self.year_length = 365 # To match VB's YearLength variable
 
         # Data array (List of lists: [ensemble][day])
         self.data_array = []
@@ -66,8 +72,8 @@ class SDSMContext:
 
         self.trend_check = False
         self.linear_trend = 0.0
-        self.exp_trend = 1 # VB code defaults ExpTrend to 1, but 0 makes more sense for 'no trend'
-        self.logistic_trend = 1 # VB code defaults LogisticTrend to 1, but 0 makes more sense
+        self.exp_trend = 1 # VB code defaults ExpTrend to 1
+        self.logistic_trend = 1 # VB code defaults LogisticTrend to 1
         self.trend_option = 0 # 0 = Linear, 1 = Exponential, 2 = Logistic (matching VB OptionButton index)
         self.add_exp_option = True # Derived from ExpTrend sign
 
@@ -77,14 +83,13 @@ class SDSMContext:
         self.error_occurred = False
         self.global_kop_out = False # Flag to stop processing (like VB Escape key)
 
-        # PAR/SIM file related (optional, kept from previous version)
+        # PAR-related (keeping some for potential use)
         self.num_predictors = 0
         self.num_months = 12
-        self.year_length = 365 # Often same as year_indicator
         self.monthly_coeffs = []
         self.predictor_files = []
         self.bias_correction = 0.8 # Default
-        self.zom = [0.0] * 12 # ZoM array for forced occurrence (needs UI input if used)
+        self.zom = [0.0] * 12 # ZoM array for forced occurrence
 
 ###############################################################################
 # 2. Helper Functions (Mirroring VB)
@@ -103,12 +108,27 @@ def days_in_month(year, month):
     else:
         return 31
 
-# Note: VB's IncreaseDate had complex Leap/Leapvalue logic tied to YearLength.
-# Using datetime.timedelta is generally more robust in Python.
-# If the specific VB logic is crucial, it needs the definitions of YearLength, Leapvalue etc.
-def increase_date(current_date):
-    """Increases date by one day."""
-    return current_date + datetime.timedelta(days=1)
+# VB-style date increment using global variables
+def increase_date(ctx=None):
+    """Increases date by one day using VB approach."""
+    global g_dd, g_mm, g_yyyy
+    
+    g_dd += 1
+    
+    # Get days in current month - match VB logic
+    if ctx and ctx.year_length == 1 and g_mm == 2 and is_leap(g_yyyy):
+        # VB checks YearLength = 1 for leap year adjustment
+        days_current_month = 29
+    else:
+        days_current_month = days_in_month(g_yyyy, g_mm)
+    
+    if g_dd > days_current_month:
+        g_mm += 1
+        g_dd = 1
+    
+    if g_mm == 13:
+        g_mm = 1
+        g_yyyy += 1
 
 def parse_value(str_val):
     """Parses a string to float, handling missing code."""
@@ -172,12 +192,6 @@ def check_settings(ctx: SDSMContext, parent_widget=None) -> bool:
     elif ctx.trend_check and ctx.trend_option == 2 and abs(ctx.logistic_trend) < 1e-9 :
         QMessageBox.critical(parent_widget, "Error", "Logistic trend is selected, but the value is zero.")
         all_ok = False
-    # Ensemble Size Check (from VB logic)
-    # -> Handled during file read now
-
-    # Add checks for other _OK functions if they were implemented and critical
-    # e.g., ThresholdText_OK, StartDate_OK, ESize_OK etc. are implicitly checked
-    # by ensuring the ctx values are valid before calling modify_data
 
     return all_ok
 
@@ -185,7 +199,6 @@ def mini_reset(ctx: SDSMContext):
     """Resets flags for a new operation or after error (simpler than VB)."""
     ctx.error_occurred = False
     ctx.global_kop_out = False
-    # Note: VB also closed files here, Python's 'with open' handles this better.
 
 ###############################################################################
 # 3. Core Scenario Generation Functions (Detailed Translation)
@@ -209,7 +222,6 @@ def read_input_file(ctx: SDSMContext, progress_callback=None):
     ctx.no_of_days = len(lines)
     if ctx.no_of_days > 75000: # VB limit check (approx 200 years)
          QMessageBox.warning(None, "Warning", f"Input file has {ctx.no_of_days} days, which exceeds the typical limit (around 75000). Processing will continue, but may be slow or unstable.")
-         # Allow processing, but warn user
 
     # Initialize data_array: list of lists [ensemble][day]
     ctx.data_array = [[] for _ in range(ctx.ensemble_size)]
@@ -246,6 +258,8 @@ def read_input_file(ctx: SDSMContext, progress_callback=None):
 
 def apply_occurrence(ctx: SDSMContext, progress_callback=None):
     """Apply an occurrence treatment (add/remove wet days). Mirrors VB logic."""
+    global g_dd, g_mm, g_yyyy
+    
     if not ctx.conditional_check: # Should have been caught by check_settings
         QMessageBox.critical(None, "Logic Error", "Occurrence treatment requires conditional process.")
         ctx.error_occurred = True
@@ -272,10 +286,13 @@ def apply_occurrence(ctx: SDSMContext, progress_callback=None):
         total_wet_count = 0
 
         # --- First Pass: Count wet/dry days per month and store indices ---
-        current_date = ctx.start_date
+        g_dd = ctx.start_date.day
+        g_mm = ctx.start_date.month
+        g_yyyy = ctx.start_date.year
+        
         for i in range(ctx.no_of_days):
             val = ctx.data_array[j][i]
-            m = current_date.month - 1 # 0-based month index
+            m = g_mm - 1 # 0-based month index
 
             if val != GLOBAL_MISSING_CODE:
                 day_count[m] += 1
@@ -288,13 +305,8 @@ def apply_occurrence(ctx: SDSMContext, progress_callback=None):
                     dry_count[m] += 1
                     dry_array[m].append(i) # Store the day index 'i'
 
-            # Increment date (handle potential errors if date logic is complex)
-            try:
-                current_date = increase_date(current_date)
-            except OverflowError:
-                 QMessageBox.critical(None, "Date Error", f"Date calculation overflow near day {i}. Check start date and number of days.")
-                 ctx.error_occurred = True
-                 return
+            # Increment date using VB-style approach
+            increase_date(ctx)
 
         original_wet_count = wet_count[:] # Keep original count for adding days logic
 
@@ -329,45 +341,56 @@ def apply_occurrence(ctx: SDSMContext, progress_callback=None):
 
                 # Build cumulative probability based on *dryness* (higher chance to remove from drier months)
                 # VB uses PropDryArray but excludes fully dry months
-                eligible_months = [m for m in range(12) if prop_dry_array[m] != GLOBAL_MISSING_CODE and prop_dry_array[m] < 1.0 and wet_count[m] > 0]
-                if not eligible_months: continue # Cannot remove if all months are fully wet or have no wet days
-
-                weights = [prop_dry_array[m] for m in eligible_months]
-                sum_weights = sum(weights)
-                if sum_weights <= 0: continue # Should not happen if eligible_months exist
-
-                normalized_weights = [w / sum_weights for w in weights]
+                cum_prop_sum = [0.0] * 12
+                if prop_dry_array[0] == GLOBAL_MISSING_CODE or prop_dry_array[0] == 1.0:
+                    cum_prop_sum[0] = 0.0
+                else:
+                    cum_prop_sum[0] = prop_dry_array[0]
+                
+                for i in range(1, 12):
+                    if prop_dry_array[i] == GLOBAL_MISSING_CODE or prop_dry_array[i] == 1.0:
+                        cum_prop_sum[i] = cum_prop_sum[i-1]
+                    else:
+                        cum_prop_sum[i] = cum_prop_sum[i-1] + prop_dry_array[i]
 
                 for _ in range(days_to_delete):
-                    if total_wet_count <= 0: break # Stop if somehow all wet days got removed
-
-                    # Select month based on dryness probability
-                    selected_month_index = random.choices(range(len(eligible_months)), weights=normalized_weights, k=1)[0]
-                    selected_month = eligible_months[selected_month_index]
-
-                    if wet_count[selected_month] <= 0: # Should not happen with current logic, but safety check
-                        # Recalculate eligible months and weights if a month runs out
-                        eligible_months = [m for m in range(12) if prop_dry_array[m] != GLOBAL_MISSING_CODE and prop_dry_array[m] < 1.0 and wet_count[m] > 0]
-                        if not eligible_months: break
-                        weights = [prop_dry_array[m] for m in eligible_months]
-                        sum_weights = sum(weights)
-                        if sum_weights <= 0: break
-                        normalized_weights = [w / sum_weights for w in weights]
-                        continue # Try again
-
-                    # Select a random wet day *index within wet_array* for that month
-                    wet_day_list_index = random.randrange(wet_count[selected_month])
-                    # Get the actual day index in the main data_array
+                    # VB-style random selection using cumulative probability
+                    selected_month = -1
+                    random_no = Rnd() * cum_prop_sum[11]
+                    
+                    for i in range(12):
+                        if random_no < cum_prop_sum[i]:
+                            selected_month = i
+                            break
+                    
+                    if selected_month == -1:
+                        selected_month = 11
+                    
+                    # Make sure we get a month with wet days
+                    attempts = 0
+                    while wet_count[selected_month] <= 0 and attempts < 12:
+                        random_no = Rnd() * cum_prop_sum[11]
+                        for i in range(12):
+                            if random_no < cum_prop_sum[i]:
+                                selected_month = i
+                                break
+                        attempts += 1
+                    
+                    if wet_count[selected_month] <= 0:
+                        continue # No wet days available
+                    
+                    # Select a random wet day for that month
+                    wet_day_list_index = int(Rnd() * wet_count[selected_month])
                     day_index_to_modify = wet_array[selected_month][wet_day_list_index]
 
                     # Set the day to dry (using local threshold)
                     ctx.data_array[j][day_index_to_modify] = ctx.local_thresh # Or 0.0 if threshold is 0
 
-                    # Remove the day index from wet_array and add to dry_array for consistency
-                    # Use the efficient VB method: swap with last, then pop
-                    last_wet_day_index = wet_array[selected_month].pop()
-                    if wet_day_list_index < wet_count[selected_month] -1: # If not the last element removed
-                        wet_array[selected_month][wet_day_list_index] = last_wet_day_index
+                    # Remove the day index from wet_array and add to dry_array
+                    if wet_day_list_index < wet_count[selected_month] - 1:
+                        wet_array[selected_month][wet_day_list_index] = wet_array[selected_month][-1]
+                    wet_array[selected_month].pop()
+                    
                     # Add to dry array
                     dry_array[selected_month].append(day_index_to_modify)
 
@@ -376,15 +399,12 @@ def apply_occurrence(ctx: SDSMContext, progress_callback=None):
                     dry_count[selected_month] += 1
                     total_wet_count -= 1
 
-                    # Update eligibility if month became fully dry (for removal) or fully wet (no longer eligible for removal)
-                    if wet_count[selected_month] == 0 or dry_count[selected_month] == 0:
-                        eligible_months = [m for m in range(12) if prop_dry_array[m] != GLOBAL_MISSING_CODE and prop_dry_array[m] < 1.0 and wet_count[m] > 0]
-                        if not eligible_months: break
-                        weights = [prop_dry_array[m] for m in eligible_months]
-                        sum_weights = sum(weights)
-                        if sum_weights <= 0: break
-                        normalized_weights = [w / sum_weights for w in weights]
-
+                    # Update cumulative probability if month became fully dry
+                    if wet_count[selected_month] == 0:
+                        if selected_month == 0:
+                            cum_prop_sum[0] = 0.0
+                        else:
+                            cum_prop_sum[selected_month] = cum_prop_sum[selected_month - 1]
 
             elif ctx.occurrence_factor_percent > 1.0:
                 # --- Add wet days ---
@@ -398,119 +418,96 @@ def apply_occurrence(ctx: SDSMContext, progress_callback=None):
                 if days_to_add <= 0: continue # No days to add
 
                 # Build cumulative probability based on *wetness* (higher chance to add to wetter months)
-                # VB uses PropWetArray but excludes fully wet months
-                eligible_months = [m for m in range(12) if prop_wet_array[m] != GLOBAL_MISSING_CODE and prop_wet_array[m] < 1.0 and dry_count[m] > 0]
-                if not eligible_months: continue # Cannot add if all months are fully wet or have no dry days
-
-                weights = [prop_wet_array[m] for m in eligible_months]
-                 # Handle case where all eligible months have 0 wetness (shouldn't happen if total_wet_count > 0)
-                sum_weights = sum(weights)
-                if sum_weights <= 0: # If happens, fallback to equal weights
-                    weights = [1.0] * len(eligible_months)
-                    sum_weights = len(eligible_months)
-
-                normalized_weights = [w / sum_weights for w in weights]
+                cum_prop_sum = [0.0] * 12
+                if prop_wet_array[0] == GLOBAL_MISSING_CODE or prop_wet_array[0] == 1.0:
+                    cum_prop_sum[0] = 0.0
+                else:
+                    cum_prop_sum[0] = prop_wet_array[0]
+                
+                for i in range(1, 12):
+                    if prop_wet_array[i] == GLOBAL_MISSING_CODE or prop_wet_array[i] == 1.0:
+                        cum_prop_sum[i] = cum_prop_sum[i-1]
+                    else:
+                        cum_prop_sum[i] = cum_prop_sum[i-1] + prop_wet_array[i]
 
                 for _ in range(days_to_add):
-                    if total_wet_count >= ctx.no_of_days: break # Stop if somehow all days became wet
-
-                    # Select month based on wetness probability
-                    selected_month_index = random.choices(range(len(eligible_months)), weights=normalized_weights, k=1)[0]
-                    selected_month = eligible_months[selected_month_index]
-
-                    if dry_count[selected_month] <= 0: # Safety check
-                        # Recalculate eligible months and weights
-                        eligible_months = [m for m in range(12) if prop_wet_array[m] != GLOBAL_MISSING_CODE and prop_wet_array[m] < 1.0 and dry_count[m] > 0]
-                        if not eligible_months: break
-                        weights = [prop_wet_array[m] for m in eligible_months]
-                        sum_weights = sum(weights)
-                        if sum_weights <= 0:
-                             weights = [1.0] * len(eligible_months)
-                             sum_weights = len(eligible_months)
-                        normalized_weights = [w / sum_weights for w in weights]
-                        continue # Try again
-
-                    # Select a random dry day *index within dry_array* for that month
-                    dry_day_list_index = random.randrange(dry_count[selected_month])
-                    # Get the actual day index in the main data_array
+                    # VB-style random selection using cumulative probability
+                    selected_month = -1
+                    random_no = Rnd() * cum_prop_sum[11]
+                    
+                    for i in range(12):
+                        if random_no < cum_prop_sum[i]:
+                            selected_month = i
+                            break
+                    
+                    if selected_month == -1:
+                        selected_month = 11
+                    
+                    # Make sure we get a month with dry days
+                    attempts = 0
+                    while dry_count[selected_month] <= 0 and attempts < 12:
+                        random_no = Rnd() * cum_prop_sum[11]
+                        for i in range(12):
+                            if random_no < cum_prop_sum[i]:
+                                selected_month = i
+                                break
+                        attempts += 1
+                    
+                    if dry_count[selected_month] <= 0:
+                        continue # No dry days available
+                    
+                    # Select a random dry day for that month
+                    dry_day_list_index = int(Rnd() * dry_count[selected_month])
                     day_index_to_modify = dry_array[selected_month][dry_day_list_index]
 
-                    # --- Select a wet day value to copy ---
+                    # --- Select a wet day value to copy using VB logic ---
                     source_wet_day_value = GLOBAL_MISSING_CODE
 
-                    # VB Logic: Prioritize using a wet day from the *same* month if available
+                    # VB Logic: Prioritize using a wet day from the *same* month if available (original count)
                     if original_wet_count[selected_month] > 0:
-                        # Need to use the *current* wet_array (which might include newly added days if run multiple times, though VB used OrigWetCount)
-                        # Let's stick closer to VB's likely intent: sample from originally wet days if possible
-                        # We need the original wet day indices for this month
-                        # Re-filter original data for this:
-                        original_wet_indices_this_month = []
-                        temp_date = ctx.start_date
-                        for day_idx in range(ctx.no_of_days):
-                             m_idx = temp_date.month -1
-                             if m_idx == selected_month:
-                                 # Check ORIGINAL value (need to read it again or store original data?)
-                                 # This is inefficient. Let's assume sampling from CURRENT wet days is acceptable approximation of VB.
-                                 if wet_count[selected_month] > 0:
-                                      source_wet_day_index_in_list = random.randrange(wet_count[selected_month])
-                                      source_day_index = wet_array[selected_month][source_wet_day_index_in_list]
-                                      source_wet_day_value = ctx.data_array[j][source_day_index]
-                                      break # Found one for this month
-                             temp_date = increase_date(temp_date)
-
-
-                    # If no wet day found in the selected month (originally or currently)
+                        # Use wet days from current month
+                        if wet_count[selected_month] > 0:
+                            source_wet_day_index_in_list = int(Rnd() * wet_count[selected_month])
+                            source_day_index = wet_array[selected_month][source_wet_day_index_in_list]
+                            source_wet_day_value = ctx.data_array[j][source_day_index]
+                    
+                    # If no wet day found in the selected month, find nearest month with a wet day
                     if source_wet_day_value == GLOBAL_MISSING_CODE:
-                        # VB Logic: Find nearest month with a wet day using SetRandomArray
-                        search_order = set_random_array(selected_month) # Get order like [5, 7, 4, 8, 3,...]
+                        search_order = set_random_array(selected_month)
                         for neighbor_month in search_order:
                             if wet_count[neighbor_month] > 0:
-                                source_wet_day_index_in_list = random.randrange(wet_count[neighbor_month])
+                                source_wet_day_index_in_list = int(Rnd() * wet_count[neighbor_month])
                                 source_day_index = wet_array[neighbor_month][source_wet_day_index_in_list]
                                 source_wet_day_value = ctx.data_array[j][source_day_index]
                                 break # Found wet day in neighbor
 
-                    # If still no wet day found anywhere (shouldn't happen if total_wet_count > 0)
-                    if source_wet_day_value == GLOBAL_MISSING_CODE:
-                         # Fallback: maybe use average wet day amount? Or skip? VB likely errored.
-                         # Let's skip adding this day if no source value found.
-                         print(f"Warning: Ensemble {j+1}, Day {day_index_to_modify}: Could not find a source wet day value to add.")
-                         continue
-
-
                     # Apply the selected wet day value
-                    ctx.data_array[j][day_index_to_modify] = source_wet_day_value
+                    if source_wet_day_value != GLOBAL_MISSING_CODE:
+                        ctx.data_array[j][day_index_to_modify] = source_wet_day_value
 
-                    # Remove the day index from dry_array and add to wet_array
-                    # Use efficient VB method: swap with last, then pop
-                    last_dry_day_index = dry_array[selected_month].pop()
-                    if dry_day_list_index < dry_count[selected_month] -1 : # If not the last element removed
-                         dry_array[selected_month][dry_day_list_index] = last_dry_day_index
-                    # Add to wet array
-                    wet_array[selected_month].append(day_index_to_modify)
+                        # Remove the day index from dry_array and add to wet_array
+                        if dry_day_list_index < dry_count[selected_month] - 1:
+                            dry_array[selected_month][dry_day_list_index] = dry_array[selected_month][-1]
+                        dry_array[selected_month].pop()
+                        
+                        # Add to wet array
+                        wet_array[selected_month].append(day_index_to_modify)
 
+                        # Update counts
+                        dry_count[selected_month] -= 1
+                        wet_count[selected_month] += 1
+                        total_wet_count += 1
 
-                    # Update counts
-                    dry_count[selected_month] -= 1
-                    wet_count[selected_month] += 1
-                    total_wet_count += 1
-
-                    # Update eligibility if month became fully wet
-                    if dry_count[selected_month] == 0:
-                        eligible_months = [m for m in range(12) if prop_wet_array[m] != GLOBAL_MISSING_CODE and prop_wet_array[m] < 1.0 and dry_count[m] > 0]
-                        if not eligible_months: break
-                        weights = [prop_wet_array[m] for m in eligible_months]
-                        sum_weights = sum(weights)
-                        if sum_weights <= 0:
-                             weights = [1.0] * len(eligible_months)
-                             sum_weights = len(eligible_months)
-                        normalized_weights = [w / sum_weights for w in weights]
+                        # Update cumulative probability if month became fully wet
+                        if dry_count[selected_month] == 0:
+                            if selected_month == 0:
+                                cum_prop_sum[0] = 0.0
+                            else:
+                                cum_prop_sum[selected_month] = cum_prop_sum[selected_month - 1]
 
         # Option 1: Forced Percentage (Not fully implemented in provided VB, assuming based on name)
-        # This requires a target percentage per month (ZoM array in VB vars)
-        # The ZoM array needs to be populated from the UI or config.
         elif ctx.occurrence_option == 1:
-             # This part needs ctx.zom to be set, e.g., ctx.zom = [10.0, 12.0, ...] %
+             # This requires ctx.zom to be set, e.g., ctx.zom = [10.0, 12.0, ...] %
              if not hasattr(ctx, 'zom') or len(ctx.zom) != 12:
                  QMessageBox.critical(None,"Error", "Forced occurrence requires target percentages (ZoM) for each month, which are not set.")
                  ctx.error_occurred = True
@@ -528,13 +525,13 @@ def apply_occurrence(ctx: SDSMContext, progress_callback=None):
                      days_to_delete = current_wet_count - target_wet_count
                      for _ in range(days_to_delete):
                           if wet_count[m] <= 0: break
-                          wet_day_list_index = random.randrange(wet_count[m])
+                          wet_day_list_index = int(Rnd() * wet_count[m])
                           day_index_to_modify = wet_array[m][wet_day_list_index]
                           ctx.data_array[j][day_index_to_modify] = ctx.local_thresh
 
-                          last_wet_day_index = wet_array[m].pop()
-                          if wet_day_list_index < wet_count[m] -1:
-                                wet_array[m][wet_day_list_index] = last_wet_day_index
+                          if wet_day_list_index < wet_count[m] - 1:
+                              wet_array[m][wet_day_list_index] = wet_array[m][-1]
+                          wet_array[m].pop()
                           dry_array[m].append(day_index_to_modify)
 
                           wet_count[m] -= 1
@@ -546,43 +543,36 @@ def apply_occurrence(ctx: SDSMContext, progress_callback=None):
                      days_to_add = target_wet_count - current_wet_count
                      for _ in range(days_to_add):
                          if dry_count[m] <= 0: break # No space left to add in this month
-                         if total_wet_count <= 0 and original_wet_count[m] == 0: # No source days anywhere?
-                              possible_wet_months = [idx for idx, count in enumerate(wet_count) if count > 0]
-                              if not possible_wet_months: break # Really no source days
-
-                         dry_day_list_index = random.randrange(dry_count[m])
+                         
+                         dry_day_list_index = int(Rnd() * dry_count[m])
                          day_index_to_modify = dry_array[m][dry_day_list_index]
 
                          # --- Select source wet day value (same logic as stochastic add) ---
                          source_wet_day_value = GLOBAL_MISSING_CODE
-                         if original_wet_count[m] > 0 and wet_count[m] > 0: # Check current count too
-                              source_wet_day_index_in_list = random.randrange(wet_count[m])
+                         if original_wet_count[m] > 0 and wet_count[m] > 0:
+                              source_wet_day_index_in_list = int(Rnd() * wet_count[m])
                               source_day_index = wet_array[m][source_wet_day_index_in_list]
                               source_wet_day_value = ctx.data_array[j][source_day_index]
                          else:
                              search_order = set_random_array(m)
                              for neighbor_month in search_order:
                                  if wet_count[neighbor_month] > 0:
-                                     source_wet_day_index_in_list = random.randrange(wet_count[neighbor_month])
+                                     source_wet_day_index_in_list = int(Rnd() * wet_count[neighbor_month])
                                      source_day_index = wet_array[neighbor_month][source_wet_day_index_in_list]
                                      source_wet_day_value = ctx.data_array[j][source_day_index]
                                      break
 
-                         if source_wet_day_value == GLOBAL_MISSING_CODE:
-                              # Fallback if no source found (should be rare if total_wet_count > 0 initially)
-                               print(f"Warning: Ensemble {j+1}, Forced Occ, Month {m+1}, Day {day_index_to_modify}: Could not find source wet day value.")
-                               continue # Skip adding this day
+                         if source_wet_day_value != GLOBAL_MISSING_CODE:
+                             ctx.data_array[j][day_index_to_modify] = source_wet_day_value
 
-                         ctx.data_array[j][day_index_to_modify] = source_wet_day_value
+                             if dry_day_list_index < dry_count[m] - 1:
+                                 dry_array[m][dry_day_list_index] = dry_array[m][-1]
+                             dry_array[m].pop()
+                             wet_array[m].append(day_index_to_modify)
 
-                         last_dry_day_index = dry_array[m].pop()
-                         if dry_day_list_index < dry_count[m]-1:
-                              dry_array[m][dry_day_list_index] = last_dry_day_index
-                         wet_array[m].append(day_index_to_modify)
-
-                         dry_count[m] -= 1
-                         wet_count[m] += 1
-                         total_wet_count += 1
+                             dry_count[m] -= 1
+                             wet_count[m] += 1
+                             total_wet_count += 1
 
         # --- Preserve Totals (Optional) ---
         if ctx.preserve_totals_check:
@@ -602,21 +592,14 @@ def apply_occurrence(ctx: SDSMContext, progress_callback=None):
                              # Apply multiplier, but ensure result doesn't go below threshold
                              new_val = ctx.data_array[j][i] * rainfall_multiplier
                              ctx.data_array[j][i] = max(ctx.local_thresh + 1e-6, new_val) # Ensure stays above threshold
-            elif new_total_wet_days > 0 and total_rainfall <= 1e-9:
-                # Edge case: Original total was zero, but now we have wet days.
-                # Cannot preserve zero total. Maybe warn? VB didn't explicitly handle this.
-                pass
-            elif new_total_wet_days == 0 and total_rainfall > 1e-9:
-                 # Edge case: Original total > 0, but now zero wet days. Cannot preserve.
-                 pass
 
     if progress_callback: progress_callback(100, "Applying Occurrence Complete")
 
 
 def set_random_array(selected_month):
     """Generates a random sequence of months around the selected month (0-11). Mirrors VB."""
-    # VB used Rnd < 0.5, Python uses random.choice or random.shuffle
-    multiplier = random.choice([1, -1])
+    # VB used Rnd < 0.5, Python mimics this
+    multiplier = 1 if Rnd() < 0.5 else -1
     temp_array = [0] * 11 # 11 other months
     idx = 0
     for i in range(1, 7): # Offsets 1 to 6
@@ -799,8 +782,6 @@ def unbox_cox(value: float, lamda: float) -> float:
                  return GLOBAL_MISSING_CODE
             # Add check for large exponents if lamda is small
             power = 1.0 / lamda
-            # Rough check for potential overflow before calculating
-            # This is complex, rely on try-except for now
             return base ** power
     except (ValueError, OverflowError):
         # Handle math errors during inverse transform
@@ -920,8 +901,6 @@ def apply_variance(ctx: SDSMContext, progress_callback=None):
             mean_trans = sum(valid_transformed_values) / len(valid_transformed_values)
 
             # 3. Find the scaling factor for the *transformed* data iteratively
-            #    We want Var(untransform(Y_adj)) / Var(X) = target_variance_ratio
-            #    Where Y_adj = (Y - MeanY) * factor + MeanY, and Y = transform(X)
             if progress_callback: progress_callback(int(j / ctx.ensemble_size * 10) + 30, f"Variance {j+1} Finding Factor")
 
             # VB iterative search for the 'factor'
@@ -951,7 +930,6 @@ def apply_variance(ctx: SDSMContext, progress_callback=None):
 
                 if resulting_variance == GLOBAL_MISSING_CODE:
                      # If calc fails, we can't proceed with search. Use best guess so far or fail.
-                     # Let's try to continue with best_factor found so far, or fail if it's the first iter.
                      print(f"Warning: Ensemble {j+1}, Iter {iter_num+1}: Could not calculate resulting variance. Using previous best factor.")
                      if iter_num == 0: best_factor = 1.0 # Default if fails immediately
                      break # Exit iteration loop
@@ -984,12 +962,10 @@ def apply_variance(ctx: SDSMContext, progress_callback=None):
                         else:
                              # If untransform fails, leave original value? Or set missing?
                              # Let's leave original value as a fallback.
-                             # print(f"Warning: Ensemble {j+1}, Day {i}: Failed to untransform adjusted value. Original value kept.")
                              pass # Keep original ctx.data_array[j][i]
 
                     except (ValueError, OverflowError):
                          # Keep original value if adjustment/untransform fails
-                         # print(f"Warning: Ensemble {j+1}, Day {i}: Error during final variance application. Original value kept.")
                          pass # Keep original ctx.data_array[j][i]
 
     if progress_callback: progress_callback(100, "Applying Variance Complete")
@@ -1009,14 +985,18 @@ def apply_trend(ctx: SDSMContext, progress_callback=None):
             if abs(ctx.linear_trend) < 1e-9: continue # Skip if zero trend
             # VB: IncrementValue = LinearTrend / YearIndicator (or 365.25)
             # VB: IncrementMultiplier = LinearTrend / (YearIndicator * 100)
-            # Let's use days directly for simplicity unless YearIndicator logic is required
-            increment_per_day = ctx.linear_trend / ctx.year_indicator # Value added per day over the year
-            increment_multiplier_per_day = ctx.linear_trend / (ctx.year_indicator * 100.0) # For conditional %
+            if ctx.year_indicator == 366:
+                increment_per_day = ctx.linear_trend / 365.25 # VB divided by 365.25 for leap years
+                increment_multiplier_per_day = ctx.linear_trend / 36525.0 # VB logic
+            else:
+                increment_per_day = ctx.linear_trend / ctx.year_indicator
+                increment_multiplier_per_day = ctx.linear_trend / (ctx.year_indicator * 100.0)
 
             for i in range(ctx.no_of_days):
                 val = ctx.data_array[j][i]
                 if val != GLOBAL_MISSING_CODE:
-                    day_index = i # 0-based day index
+                    # VB used 1-based index (i in range 1 to NoOfDays)
+                    day_index = i + 1 # Convert to 1-based for VB compatibility
 
                     if not ctx.conditional_check: # Unconditional: Add trend
                          trend_effect = increment_per_day * day_index
@@ -1034,14 +1014,12 @@ def apply_trend(ctx: SDSMContext, progress_callback=None):
         # --- Exponential Trend ---
         elif ctx.trend_option == 1:
             exp_trend_val = ctx.exp_trend
-            if abs(exp_trend_val) < 1e-9: continue # Skip if zero trend (VB checked for non-zero)
+            if abs(exp_trend_val) < 1e-9: continue # Skip if zero trend
 
             add_exp = exp_trend_val > 0
             exp_trend_abs = abs(exp_trend_val)
 
             # VB: ExpAValue = NoOfDays / (Log(ExpTrendAbs + 1))
-            # Avoid Log(0) or Log(1) issues
-            if exp_trend_abs <= 1e-9: continue # Should be caught above
             try:
                 log_arg = exp_trend_abs + 1.0
                 if log_arg <= 1e-9 : continue # Avoid log of zero/negative
@@ -1054,13 +1032,12 @@ def apply_trend(ctx: SDSMContext, progress_callback=None):
             for i in range(ctx.no_of_days):
                 val = ctx.data_array[j][i]
                 if val != GLOBAL_MISSING_CODE:
-                    day_index = i # 0-based
+                    # VB used 1-based index
+                    day_index = i + 1
 
                     try:
                         # VB: TrendEffect = Exp( (i / ExpAValue) ) - 1
-                        # Use day_index + 1 because VB loop was 1 to NoOfDays? Check VB i usage carefully.
-                        # Assuming VB's 'i' was 1-based loop counter. Python 'i' is 0-based index.
-                        exponent = (day_index + 1) / exp_a_value
+                        exponent = day_index / exp_a_value
                         # Check for large exponent
                         if exponent > 700: # Prevent overflow
                             trend_effect = float('inf')
@@ -1102,12 +1079,10 @@ def apply_trend(ctx: SDSMContext, progress_callback=None):
             for i in range(ctx.no_of_days):
                  val = ctx.data_array[j][i]
                  if val != GLOBAL_MISSING_CODE:
-                    day_index = i # 0-based
-
                     # VB: XMapping = (((i - 1) / (NoOfDays - 1)) * 12) - 6
-                    # Adjusting for 0-based index 'i'
+                    # Since VB used 1-based index, for 0-based index we just use i
                     if ctx.no_of_days > 1:
-                        x_mapping = ((day_index / (ctx.no_of_days - 1)) * 12.0) - 6.0
+                        x_mapping = ((i / (ctx.no_of_days - 1)) * 12.0) - 6.0
                     else:
                          x_mapping = 0.0 # Avoid division by zero if only one day
 
@@ -1160,8 +1135,7 @@ def write_output_file(ctx: SDSMContext, progress_callback=None):
     if progress_callback: progress_callback(100, "Writing Output Complete")
     return True
 
-# --- .PAR / .SIM file functions (Optional, kept from previous version) ---
-# These seem useful for SDSM context but weren't explicitly in the GenerateFrm VB code.
+# --- .PAR file function (keeping minimal functionality needed) ---
 def parse_par_file(par_path: str, ctx: SDSMContext):
     lines = []
     try:
@@ -1187,8 +1161,8 @@ def parse_par_file(par_path: str, ctx: SDSMContext):
         ensemble_str = lines[idx]; idx += 1
         ctx.ensemble_size = int(ensemble_str)
 
-        # Skip variance factor percent, transform code, bias correction from PAR (read during simulation usually)
-        idx += 3 # Skip 3 lines: varfactor%, transcode, biascorr
+        # Skip variance factor percent, transform code, bias correction from PAR
+        idx += 3 # Skip 3 lines
 
         # Read Predictor Files (relative paths)
         ctx.predictor_files = []
@@ -1197,39 +1171,32 @@ def parse_par_file(par_path: str, ctx: SDSMContext):
             if idx >= len(lines): break
             pfile = lines[idx]
             idx += 1
-            # Store absolute path for potential later use, though SIM needs relative
             abs_pfile = os.path.normpath(os.path.join(par_dir, pfile))
-            ctx.predictor_files.append(abs_pfile) # Store abs path
+            ctx.predictor_files.append(abs_pfile)
 
         # Read Data File (relative path)
         if idx < len(lines):
             data_file = lines[idx]
             # Check if it's a coefficient line or the data file name
-            # Basic check: if it contains spaces, assume coefficients started
             if ' ' not in data_file and '.' in data_file: # Likely filename
                 idx += 1
                 abs_data_file = os.path.normpath(os.path.join(par_dir, data_file))
                 ctx.in_file = os.path.basename(abs_data_file)
                 ctx.in_root = abs_data_file
-            # Else: Assume coefficients start here, no explicit data file in PAR
 
         # Read Monthly Coefficients (if present)
         ctx.monthly_coeffs = []
         coeffs_found = False
         while idx < len(lines):
             parts = lines[idx].split()
-            # Check if it looks like coefficients (multiple numbers)
             try:
                 coeffs = [float(x) for x in parts]
-                # Basic check on number of coeffs (Intercept + Predictors)
                 if len(coeffs) == ctx.num_predictors + 1:
                     ctx.monthly_coeffs.append(coeffs)
                     coeffs_found = True
                 else:
-                    # Doesn't match expected number, might be end of file or other info
                     break
             except ValueError:
-                 # Not numbers, must be end of coeffs or other info
                  break
             idx += 1
 
@@ -1241,52 +1208,6 @@ def parse_par_file(par_path: str, ctx: SDSMContext):
     except Exception as e:
         QMessageBox.critical(None, "Error", f"Error parsing .PAR file '{os.path.basename(par_path)}':\n{e}\nLine approx {idx+1}")
         return False
-
-
-def write_sim_file(ctx: SDSMContext):
-    """Writes a .SIM file corresponding to the input and .OUT file."""
-    if not ctx.out_root: return # Need output file path
-
-    sim_file_path = os.path.splitext(ctx.out_root)[0] + ".SIM"
-    par_dir = os.path.dirname(ctx.in_root) if ctx.in_root else "."
-    out_dir = os.path.dirname(ctx.out_root)
-
-    try:
-        # Determine transform code based on lambda (approximation)
-        if ctx.conditional_check:
-            if abs(ctx.lamda - 0.25) < 0.05: trans_code = "2" # Near Sqrt
-            elif abs(ctx.lamda) < 0.01: trans_code = "3"      # Near Log
-            elif abs(ctx.lamda - 1.0) < 0.01: trans_code = "1" # Near Linear (no transform)
-            else: trans_code = "4" # Other Box-Cox (assuming 4 means Box-Cox)
-        else:
-            trans_code = "1" # No transform for unconditional
-
-        lines = [
-            str(ctx.num_predictors),
-            str(ctx.num_months),
-            str(ctx.year_length),
-            ctx.start_date.strftime("%d/%m/%Y"),
-            str(ctx.no_of_days),
-            "#TRUE#" if ctx.conditional_check else "#FALSE#",
-            str(ctx.ensemble_size),
-            f"{ctx.variance_factor_percent:.4f}", # Variance change factor (ratio)
-            trans_code,
-            f"{ctx.bias_correction:.4f}",
-             # Data file relative to SIM file location? Or relative to PAR? Assume relative to PAR.
-            os.path.relpath(ctx.in_root, out_dir) if ctx.in_root else "",
-        ]
-        # Predictor files relative to SIM file location? Or relative to PAR? Assume relative to PAR.
-        predictor_lines = [os.path.relpath(p, out_dir) for p in ctx.predictor_files]
-        lines.extend(predictor_lines)
-
-        with open(sim_file_path, "w") as f:
-            for line in lines:
-                f.write(line + "\n")
-        print(f"SIM file written to {sim_file_path}")
-
-    except Exception as e:
-        QMessageBox.critical(None, "Error", f"Error writing SIM file '{sim_file_path}':\n{e}")
-
 
 ###############################################################################
 # 4. PyQt5 User Interface (ScenarioGeneratorWidget)
@@ -1432,7 +1353,6 @@ class ScenarioGeneratorWidget(QWidget):
         self.generateButton = QPushButton("Generate Scenario")
         self.generateButton.setStyleSheet("background-color: #4CAF50; color: white; font-weight: bold;")
         self.resetButton = QPushButton("Reset Form")
-        # self.resetButton.setStyleSheet("background-color: #f44336; color: white;") # Optional styling
         buttonLayout.addStretch()
         buttonLayout.addWidget(self.resetButton)
         buttonLayout.addWidget(self.generateButton)
@@ -1552,8 +1472,7 @@ class ScenarioGeneratorWidget(QWidget):
         self.startDateInput.setText(self.ctx.start_date.strftime("%d/%m/%Y"))
         self.ensembleSizeInput.setText(str(self.ctx.ensemble_size))
         self.conditionalCheck.setChecked(self.ctx.conditional_check)
-        # Threshold usually not in PAR, keep UI value or default? Let's keep UI/default.
-        # self.thresholdInput.setText(str(self.ctx.local_thresh))
+        # Threshold usually not in PAR, keep UI value or default
 
         # Update input file label if ctx has it (from PAR)
         if self.ctx.in_file:
@@ -1720,19 +1639,15 @@ class ScenarioGeneratorWidget(QWidget):
             self.update_progress(0, "Error during file reading.")
             self.generateButton.setEnabled(True)
             self.resetButton.setEnabled(True)
-            # No need for QMessageBox here, read_input_file shows it
             return
 
         # 5. Apply Treatments (check error_occurred after each step)
         if self.ctx.occurrence_check and not self.ctx.error_occurred:
             apply_occurrence(self.ctx, self.update_progress)
 
-        # Variance needs means, calculate them if Variance or Amount is checked
-        if (self.ctx.variance_check or self.ctx.amount_check) and not self.ctx.error_occurred:
-             # CalcMeans only needed if variance is applied OR amount is unconditional
-             # Let's calculate if Variance is checked, as VB did.
-             if self.ctx.variance_check:
-                 calc_means(self.ctx, self.update_progress)
+        # Variance needs means, calculate them if Variance is checked
+        if self.ctx.variance_check and not self.ctx.error_occurred:
+            calc_means(self.ctx, self.update_progress)
 
         if self.ctx.amount_check and not self.ctx.error_occurred:
             apply_amount(self.ctx, self.update_progress)
@@ -1751,8 +1666,6 @@ class ScenarioGeneratorWidget(QWidget):
         success = False
         if not self.ctx.error_occurred:
             if write_output_file(self.ctx, self.update_progress):
-                # Optionally write SIM file
-                write_sim_file(self.ctx)
                 success = True
 
         # 7. Finalize
@@ -1767,7 +1680,6 @@ class ScenarioGeneratorWidget(QWidget):
             QMessageBox.information(self, "Results", msg)
         elif self.ctx.error_occurred:
             self.update_progress(0, "Processing failed.")
-            # QMessageBox should have been shown by the function that failed
         else:
             self.update_progress(0, "Processing cancelled or failed silently.")
 
@@ -1779,14 +1691,6 @@ ContentWidget = ScenarioGeneratorWidget # Alias for dynamic loading
 
 def main():
     app = QApplication(sys.argv)
-    # Set Stylesheet (Optional)
-    # app.setStyleSheet("""
-    #     QWidget { font-size: 10pt; }
-    #     QPushButton { padding: 5px 10px; }
-    #     QLineEdit { padding: 3px; }
-    #     QGroupBox { margin-top: 10px; }
-    #     QGroupBox::title { subcontrol-origin: margin; left: 7px; padding: 0px 5px 0px 5px; }
-    # """)
     window = ScenarioGeneratorWidget()
     window.setWindowTitle("SDSM Scenario Generator")
     window.setGeometry(100, 100, 750, 650) # Adjusted size

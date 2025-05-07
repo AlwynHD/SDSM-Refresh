@@ -112,7 +112,7 @@ class comparedFileBox(borderedQGroupBox):
 
     def selectFile(self):
         fileName = QFileDialog.getOpenFileName(
-            self, "Select statistic file", "", "TXT Files (*.TXT);;All Files ()"
+            self, "Select statistic file", "", "All Files (*.*)"
         )
         if fileName[0] != "":
             self.pathSelected = fileName[0]

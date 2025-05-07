@@ -73,7 +73,7 @@ def tenToTheN(n, missingCode): return np.float_power(10, n) if n <= 308 else mis
 def powHalf(n, missingCode): return np.float_power(n, 1/2) if n <= 1e308 else missingCode
 def powThird(n, missingCode): return np.float_power(n, 1/3) if n <= 1e308 else missingCode
 def powQuarter(n, missingCode): return np.float_power(n, 1/4) if n <= 1e308 else missingCode
-def returnSelf(n): return n
+def returnSelf(n, missingCode): return n
 
 def backwardsChange(data, applyThresh):
     """Returns the difference between each value in a column and the previous value in that column"""
@@ -88,7 +88,7 @@ def backwardsChange(data, applyThresh):
 
     for c in range(len(data.T)):
         for r in range(len(data[:, c])):
-            if valueIsValid(data[r][c], applyThresh):
+            if valueIsValid(data[r][c], applyThresh, missingCode, thresh):
                 success += 1
                 if r == 0 or not valueIsValid(data[r - 1][c], applyThresh, missingCode, thresh):
                     returnData[r][c] = missingCode
@@ -244,7 +244,7 @@ def boxCox(data, applyThresh):
 
         invalidCount = 0
         for r in range(len(data[:, c])):
-            if valueIsValid(data[r][c], applyThresh, missingCode, thresh) or data[r][c] == minVal:
+            if (valueIsValid(data[r][c], applyThresh, missingCode, thresh) or data[r][c] == minVal) and data[r][c] != 0:
                 returnData[r][c] = boxCoxData[0][r - invalidCount]
                 success += 1
             else:
@@ -271,15 +271,20 @@ def unBoxCox(data, lamda, leftShift, applyThresh):
 
     for c in range(len(data.T)):
         unBoxCoxData = [entry for entry in data[:, c] if valueIsValid(entry, applyThresh, missingCode, thresh)]
+        newType = type(unBoxCoxData)
 
         #Left shift data
         for i in range(len(unBoxCoxData)):
-            unBoxCoxData[i] += leftShift
+            unBoxCoxData[i] += newType(leftShift)
 
         #Reverse boxcox
-        unBoxCoxData = sci.special.inv_boxcox(unBoxCoxData, lamda)
+        try:
+            unBoxCoxData = sci.special.inv_boxcox(unBoxCoxData, lamda)
+        except:
+            return [], "Unable to perform unboxcox for this data."
+        
         for i in range(len(unBoxCoxData)):
-            unBoxCoxData[i] -= leftShift
+            unBoxCoxData[i] -= newType(leftShift)
 
         #Write back to column
         invalidCount = 0
@@ -327,16 +332,14 @@ def writeToFile(data, path):
     longestLengths = []
     for column in data:
         strColumn = [str(entry) for entry in column]
-        print(strColumn)
         longestLengths.append(len(max(strColumn, key=len)))
-
-    print(longestLengths)
 
     file = open(path, "w")
     for r in range(len(data)):
         for c in range(len(data[r])):
+            
             extraWhitespace = longestLengths[c] - len(str(data[r][c]))
-            file.write(str(data[r][c]) + " " * (5 + extraWhitespace))
+            file.write(str(data[r][c]) + " " * (20 + extraWhitespace) + " ")
         file.write("\n")
     file.close()
 
@@ -358,8 +361,6 @@ if __name__ == "__main__":
 
     settings = getSettings()
 
-    outData = genericTransform(data, ln, applyThresh)[0]
-    writeToFile(outData, r"C:\Users\ajs25\Downloads\Output.txt")
     #genericTransform(data, log, applyThresh)
     #genericTransform(data, square, applyThresh)[0])
     #genericTransform(data, cube, applyThresh)

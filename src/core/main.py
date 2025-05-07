@@ -10,8 +10,8 @@ from PyQt5.QtGui import QIcon, QScreen, QDesktopServices  # Added QDesktopServic
 from importlib import import_module
 
 # Global variables for window dimensions
-windowWidth = 1600
-windowHeight = 1300
+windowWidth = 1280
+windowHeight = 720
 
 class SDSMWindow(QMainWindow):
     def __init__(self):

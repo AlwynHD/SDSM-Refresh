@@ -153,7 +153,7 @@ class ContentWidget(QWidget):
         leftSideLayout.setSpacing(10)
 
         # Create North File Selection Group
-        northGroupBox = QGroupBox("File Selection 1")
+        northGroupBox = QGroupBox("North File Selection")
         northLayout = QVBoxLayout()
 
         # Create file list widget for North files
@@ -195,7 +195,7 @@ class ContentWidget(QWidget):
         leftSideLayout.addWidget(northGroupBox)
 
         # Create South File Selection Group (similar to North)
-        southGroupBox = QGroupBox("File Selection 2")
+        southGroupBox = QGroupBox("South File Selection")
         southLayout = QVBoxLayout()
 
         # Create file list widget for South files
@@ -1343,6 +1343,7 @@ class ContentWidget(QWidget):
             # Create plot
             ax = figure.add_subplot(111)
             
+            adjust_y_axis_for_percentile = stat_info["id"] == 14
             # Determine chart title based on selected data and statistic
             title = "Time Series Plot"
             y_label = ""
@@ -1493,20 +1494,50 @@ class ContentWidget(QWidget):
             
             # Customize x-axis based on data type
             if self.DatesCombo.currentIndex() != 0:  # Not raw data
+                date_text = f"Data period: {self.FSDate} to {self.FEdate}"
+                plt.figtext(0.01, 0.01, date_text, fontsize=8, ha='left')
+            
+            if adjust_y_axis_for_percentile and has_labeled_lines:
+                # Collect all y values that were actually plotted
+                all_y_values = []
+                for i in range(1, self.total_time_series_files + 1):
+                    for j in range(self.TimeSeriesLength):
+                        if (j < len(self.TimeSeriesData) and 
+                            i < len(self.TimeSeriesData[j]) and 
+                            self.TimeSeriesData[j][i] is not None):
+                            all_y_values.append(self.TimeSeriesData[j][i])
+                
+                if all_y_values:
+                    min_val = min(all_y_values)
+                    max_val = max(all_y_values)
+                    
+                    # Add padding (10% of range)
+                    data_range = max_val - min_val
+                    padding = max(data_range * 0.1, 0.5)  # At least 0.5 padding
+                    
+                    # Set y-axis limits with padding
+                    ax.set_ylim(min_val - padding, max_val + padding)
+                    
+                    # Add a horizontal line at y=0 
+                    ax.axhline(y=0, color='black', linestyle='-', alpha=0.3)
+
+            # Adjust layout
+            figure.tight_layout()
+                
                 # Create custom tick marks for years
-                ticks = []
-                tick_labels = []
+            ticks = []
+            tick_labels = []
+                                
+            for j in range(min(self.TimeSeriesLength, len(self.TimeSeriesData))):
+                if self.TimeSeriesData[j][0] and str(self.TimeSeriesData[j][0]).strip():
+                    # Only add labels for even-numbered years to avoid crowding
+                    if j % 2 == 0 or self.TimeSeriesLength < 10:
+                        ticks.append(j)
+                        tick_labels.append(str(self.TimeSeriesData[j][0]).strip())
                 
-                for j in range(min(self.TimeSeriesLength, len(self.TimeSeriesData))):
-                    if self.TimeSeriesData[j][0] and str(self.TimeSeriesData[j][0]).strip():
-                        # Only add labels for even-numbered years to avoid crowding
-                        if j % 2 == 0 or self.TimeSeriesLength < 10:
-                            ticks.append(j)
-                            tick_labels.append(str(self.TimeSeriesData[j][0]).strip())
-                
-                if ticks:
-                    ax.set_xticks(ticks)
-                    ax.set_xticklabels(tick_labels, rotation=45, ha='right')
+            if ticks:
+                ax.set_xticks(ticks)
+                ax.set_xticklabels(tick_labels, rotation=45, ha='right')
             
             # Add grid
             ax.grid(True, linestyle='--', alpha=0.7)
@@ -1514,6 +1545,30 @@ class ContentWidget(QWidget):
             # Add legend if there's more than one time series and there are labeled lines
             if self.total_time_series_files > 1 and has_labeled_lines:
                 ax.legend(loc='best', frameon=True, framealpha=0.8, fontsize='small')
+
+            if adjust_y_axis_for_percentile and has_labeled_lines:
+                # Collect all y values that were actually plotted
+                all_y_values = []
+                for i in range(1, self.total_time_series_files + 1):
+                    for j in range(self.TimeSeriesLength):
+                        if (j < len(self.TimeSeriesData) and 
+                            i < len(self.TimeSeriesData[j]) and 
+                            self.TimeSeriesData[j][i] is not None):
+                            all_y_values.append(self.TimeSeriesData[j][i])
+                
+                if all_y_values:
+                    min_val = min(all_y_values)
+                    max_val = max(all_y_values)
+                    
+                    # Add padding (10% of range)
+                    data_range = max_val - min_val
+                    padding = max(data_range * 0.1, 0.5)  # At least 0.5 padding
+                    
+                    # Set y-axis limits with padding
+                    ax.set_ylim(min_val - padding, max_val + padding)
+                    
+                    # Add a horizontal line at y=0
+                    ax.axhline(y=0, color='black', linestyle='-', alpha=0.3)
             
             # Add data range information in the corner
             if self.DatesCombo.currentIndex() != 0:  # Not raw data
@@ -1597,7 +1652,7 @@ class ContentWidget(QWidget):
                     # Get the size of the printer page
                     rect = painter.viewport()
                     
-                    # Create QPixmap from the figure
+                    # Create a QPixmap from the figure
                     canvas = FigureCanvas(figure)
                     canvas.draw()
                     pixmap = QPixmap.fromImage(QImage(canvas.buffer_rgba(), 
@@ -3554,10 +3609,11 @@ class ContentWidget(QWidget):
             # Calculate total precipitation and precipitation above threshold
             for i in range(size_of):
                 value = self.periodArray[file_no][i]
-                total_precip += value
-                
-                if value > ann_percentile:
-                    total_precip_greater += value
+                if value >= 0:
+                    total_precip += value
+                    
+                    if value > ann_percentile:
+                        total_precip_greater += value
             
             # Calculate percentage
             if total_precip == 0:

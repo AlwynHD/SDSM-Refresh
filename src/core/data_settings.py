@@ -70,15 +70,9 @@ class ContentWidget(QWidget):
         mainLayout.setSpacing(20)
         self.setLayout(mainLayout)
 
-        # Dark blue background
-        palette = QPalette()
-        palette.setColor(QPalette.Window, QColor(10, 10, 55))
-        self.setAutoFillBackground(True)
-        self.setPalette(palette)
-
         # === Data Group ===
         dataGroupBox = QGroupBox("Data")
-        dataGroupBox.setStyleSheet("color: white;")
+        dataGroupBox.setStyleSheet("color: black;")
         dataLayout = QVBoxLayout()
         dataGroupBox.setLayout(dataLayout)
 
@@ -102,7 +96,7 @@ class ContentWidget(QWidget):
 
         # === Miscellaneous Group ===
         miscGroupBox = QGroupBox("Miscellaneous")
-        miscGroupBox.setStyleSheet("color: white;")
+        miscGroupBox.setStyleSheet("color: black;")
         miscLayout = QVBoxLayout()
         miscGroupBox.setLayout(miscLayout)
 
@@ -122,7 +116,7 @@ class ContentWidget(QWidget):
 
         # === Default Directory Group ===
         dirGroupBox = QGroupBox("Default Directory")
-        dirGroupBox.setStyleSheet("color: white;")
+        dirGroupBox.setStyleSheet("color: black;")
         dirLayout = QVBoxLayout()
         dirGroupBox.setLayout(dirLayout)
 
@@ -142,10 +136,12 @@ class ContentWidget(QWidget):
         mainLayout.addLayout(topLayout)
 
         # Reset Button
-        resetButton = QPushButton("Reset")
+        mainLayout.addStretch()
+        resetButton = QPushButton("🔄 Reset Settings")
+        resetButton.setStyleSheet("background-color: #ED0800; color: white; font-weight: bold;")
         resetButton.clicked.connect(self.resetSettings)
         mainLayout.addWidget(resetButton)
-        mainLayout.addStretch()
+        
 
         # Text color for inputs
         for w in (self.startDateEdit, self.endDateEdit,
@@ -159,15 +155,18 @@ class ContentWidget(QWidget):
         # === Export / Save / Load Buttons ===
         buttonLayout = QHBoxLayout()
 
-        exportBtn = QPushButton("Export Settings")
+        exportBtn = QPushButton("📤 Export Settings")
+        exportBtn.setStyleSheet("background-color: #1FC7F5; color: white; font-weight: bold;")
         exportBtn.clicked.connect(self.saveSettingsFromUi)
         buttonLayout.addWidget(exportBtn)
 
-        saveBtn = QPushButton("Save Settings")
+        saveBtn = QPushButton("💾 Save Settings")
+        saveBtn.setStyleSheet("background-color: #4CAF50; color: white; font-weight: bold;")
         saveBtn.clicked.connect(self.saveSettingsDefault)
         buttonLayout.addWidget(saveBtn)
 
-        loadBtn = QPushButton("Load Settings")
+        loadBtn = QPushButton("📂 Load Settings")
+        loadBtn.setStyleSheet("background-color: #F57F0C; color: white; font-weight: bold;")
         loadBtn.clicked.connect(self.loadSettingsFromUi)
         buttonLayout.addWidget(loadBtn)
 
@@ -177,8 +176,7 @@ class ContentWidget(QWidget):
         global defaultDir
         d = QFileDialog.getExistingDirectory(self, "Select Default Directory", defaultDir)
         if d:
-            defaultDir = d
-            self.defaultDirDisplay.setText(defaultDir)
+            self.defaultDirDisplay.setText(d)
 
     def validateDate(self, s):
         try:
@@ -410,6 +408,8 @@ class ContentWidget(QWidget):
         randomSeed = self.randomSeedCheckBox.isChecked()
 
         # Write to defaultIniFile
+        global defaultDir
+        defaultDir = self.defaultDirDisplay.text()
         self.saveSettings(iniFile=defaultIniFile, silent=False)
 
     def loadSettingsFromUi(self):

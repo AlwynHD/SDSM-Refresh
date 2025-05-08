@@ -163,7 +163,7 @@ def loadFilesIntoMemory(filesToLoad):
     return loadedFiles
 
 def increaseDate(startDate, noDays, leapYear): 
-    """increases datatime object by noDays, can t leapYears if leapYear is false"""
+    """increases datatime object by noDays, can't leapYears if leapYear is false"""
     # this might have to change back to orginal vb code as not sure why it was done the way it was
     finalDate = startDate + datetime.timedelta(days=noDays)
     if not leapYear:

@@ -62,7 +62,7 @@ class SDSMWindow(QMainWindow):
         for index, (name, icon) in enumerate(zip(self.menuButtonNames, self.menuButtonIcons)):
             menuButton = QPushButton(name)
 
-            if index < len(self.menuButtonNames) - 1:
+            if index < len(self.menuButtonNames):
                 arrow_icon = QIcon("src/images/arrow_down_thick.png")
                 menuButton.setIcon(arrow_icon)
                 menuButton.setIconSize(QSize(self.button_height // 2,

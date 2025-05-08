@@ -1597,7 +1597,7 @@ class ContentWidget(QWidget):
                     # Get the size of the printer page
                     rect = painter.viewport()
                     
-                    # Create a QPixmap from the figure
+                    # Create QPixmap from the figure
                     canvas = FigureCanvas(figure)
                     canvas.draw()
                     pixmap = QPixmap.fromImage(QImage(canvas.buffer_rgba(), 

@@ -122,8 +122,7 @@ class SDSMWindow(QMainWindow):
         # Load initial content (Home screen)
         self.loadContent(0)
         
-        # Center the window on the screen
-        self.centerOnScreen()
+        self.showMaximized()
     
     def loadContent(self, index, *args):
         """

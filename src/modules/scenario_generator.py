@@ -8,114 +8,105 @@ import statistics
 from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
                              QLabel, QLineEdit, QGridLayout, QCheckBox, QRadioButton,
                              QButtonGroup, QFileDialog, QGroupBox, QMessageBox, QProgressBar,
-                             QStyle) # Added QStyle for icons
+                             QStyle) # Import QStyle for icons
 from PyQt5.QtCore import Qt, QTimer
 
-# --- Global Constants (Mirroring VB Globals) ---
-GLOBAL_MISSING_CODE = -999.0
-DEFAULT_THRESHOLD = 0.0
-DEFAULT_START_DATE = datetime.date(2000, 1, 1)
-DEFAULT_YEAR_INDICATOR = 365
+# --- Default Values ---
+# Used when no specific values are provided by the user
+GLOBAL_MISSING_CODE = -999.0  # Value that indicates missing data
+DEFAULT_THRESHOLD = 0.0       # Default threshold for wet/dry day separation
+DEFAULT_START_DATE = datetime.date(2000, 1, 1)  # Default starting date
+DEFAULT_YEAR_INDICATOR = 365  # Default days in year (non-leap year)
 
-# ... (Keep all your existing global functions and SDSMContext class here) ...
-# Rnd(), g_dd, g_mm, g_yyyy, SDSMContext, is_leap, days_in_month, increase_date,
-# parse_value, format_value_output, check_settings, mini_reset, read_input_file,
-# apply_occurrence, set_random_array, calc_means, apply_amount, find_min_lambda,
-# unbox_cox, calc_variance_after_transform, apply_variance, apply_trend,
-# write_output_file, parse_par_file
-# (These functions are not modified for UI changes, so they are omitted for brevity in this response,
-#  but they MUST be present in your actual file.)
-# --- Global Constants (Mirroring VB Globals) ---
-GLOBAL_MISSING_CODE = -999.0
-DEFAULT_THRESHOLD = 0.0
-DEFAULT_START_DATE = datetime.date(2000, 1, 1)
-DEFAULT_YEAR_INDICATOR = 365
-
-# Simulate VB's Rnd() function
+# Random number generator that mimics VB's Rnd() function
+# Returns a random number between 0 and 1
 def Rnd():
-    """Simulates VB's Rnd() function - returns float between 0 and 1"""
     return random.random()
 
-# Global date variables to match VB's approach
-g_dd = 0
-g_mm = 0
-g_yyyy = 0
+# Global date variables for tracking current date during processing
+g_dd = 0   # Day
+g_mm = 0   # Month
+g_yyyy = 0 # Year
 
-###############################################################################
-# 1. SDSMContext: Stores parameters and data for scenario generation.
-###############################################################################
+#############################################################
+# Main class to store all parameters and data for processing
+#############################################################
 class SDSMContext:
     def __init__(self):
         self.reset()
 
     def reset(self):
         # File paths
-        self.in_file = ""
-        self.in_root = ""
-        self.out_file = ""
-        self.out_root = ""
+        self.in_file = ""     # Input filename (without path)
+        self.in_root = ""     # Full path to input file
+        self.out_file = ""    # Output filename (without path)
+        self.out_root = ""    # Full path to output file
 
         # Basic parameters
-        self.start_date = DEFAULT_START_DATE
-        self.local_thresh = DEFAULT_THRESHOLD
-        self.ensemble_size = 1
-        self.no_of_days = 0
-        self.year_indicator = DEFAULT_YEAR_INDICATOR # From VB globals (adjust if needed)
-        self.year_length = 365 # To match VB's YearLength variable
+        self.start_date = DEFAULT_START_DATE  # Starting date of data series
+        self.local_thresh = DEFAULT_THRESHOLD # Threshold for wet/dry day separation
+        self.ensemble_size = 1                # Number of data columns (scenarios)
+        self.no_of_days = 0                   # Total number of days in the data
+        self.year_indicator = DEFAULT_YEAR_INDICATOR # Days in a year setting
+        self.year_length = 365                # Standard year length
 
-        # Data array (List of lists: [ensemble][day])
-        self.data_array = []
-        self.mean_array = []  # list of (mean, sd) for each ensemble
+        # Data storage
+        self.data_array = []   # Main array to store data [ensemble][day]
+        self.mean_array = []   # Stores mean and SD values for each ensemble
 
-        # Treatment flags and parameters
-        self.occurrence_check = False
-        self.conditional_check = False # If true, only > threshold values are modified for amount/variance/trend
-        self.occurrence_factor = 0.0   # User input value (e.g., 5 for +5%)
-        self.occurrence_factor_percent = 1.0 # Multiplier (e.g., 1.05 for +5%)
-        self.occurrence_option = 0      # 0 = Stochastic (Factor), 1 = Forced (Percentage)
-        self.preserve_totals_check = False # For occurrence
+        # Treatment options
+        # Occurrence settings (frequency of wet/dry days)
+        self.occurrence_check = False         # Whether to apply occurrence treatment
+        self.conditional_check = False        # If true, only values > threshold are modified
+        self.occurrence_factor = 0.0          # User input value (e.g., 5 for +5%)
+        self.occurrence_factor_percent = 1.0  # Actual multiplier (e.g., 1.05 for +5%)
+        self.occurrence_option = 0            # 0 = Stochastic, 1 = Forced
+        self.preserve_totals_check = False    # Whether to maintain total rainfall
 
-        self.amount_check = False
-        self.amount_option = 0          # 0 = factor, 1 = addition
-        self.amount_factor = 0.0        # User input value (e.g., 5 for +5%)
-        self.amount_factor_percent = 1.0 # Multiplier (e.g., 1.05 for +5%)
-        self.amount_addition = 0
+        # Amount settings (magnitude of values)
+        self.amount_check = False             # Whether to apply amount treatment
+        self.amount_option = 0                # 0 = factor (multiply), 1 = addition (add)
+        self.amount_factor = 0.0              # User input value (e.g., 5 for +5%)
+        self.amount_factor_percent = 1.0      # Actual multiplier (e.g., 1.05 for +5%)
+        self.amount_addition = 0              # Amount to add (if using addition option)
 
-        self.variance_check = False
-        self.variance_factor = 0.0      # User input value (e.g., 10 for +10%)
-        self.variance_factor_percent = 1.0 # Target variance ratio (e.g., 1.10 for +10%)
+        # Variance settings (spread of values)
+        self.variance_check = False           # Whether to apply variance treatment
+        self.variance_factor = 0.0            # User input value (e.g., 10 for +10%)
+        self.variance_factor_percent = 1.0    # Target variance ratio (e.g., 1.10 for +10%)
 
-        self.trend_check = False
-        self.linear_trend = 0.0
-        self.exp_trend = 1.0 # VB code defaults ExpTrend to 1
-        self.logistic_trend = 1.0 # VB code defaults LogisticTrend to 1
-        self.trend_option = 0 # 0 = Linear, 1 = Exponential, 2 = Logistic (matching VB OptionButton index)
-        self.add_exp_option = True # Derived from ExpTrend sign
+        # Trend settings (changes over time)
+        self.trend_check = False              # Whether to apply trend treatment
+        self.linear_trend = 0.0               # Linear trend amount
+        self.exp_trend = 1.0                  # Exponential trend factor
+        self.logistic_trend = 1.0             # Logistic trend factor
+        self.trend_option = 0                 # 0 = Linear, 1 = Exponential, 2 = Logistic
+        self.add_exp_option = True            # Whether trend is positive or negative
 
-        self.lamda = 0.0 # Box-Cox lambda
+        self.lamda = 0.0                      # Box-Cox transform parameter
 
         # Processing state
-        self.error_occurred = False
-        self.global_kop_out = False # Flag to stop processing (like VB Escape key)
+        self.error_occurred = False           # Flag for error handling
+        self.global_kop_out = False           # Flag to stop processing (like Escape key)
 
-        # PAR-related (keeping some for potential use)
-        self.num_predictors = 0
-        self.num_months = 12
-        self.monthly_coeffs = []
-        self.predictor_files = []
-        self.bias_correction = 0.8 # Default
-        self.zom = [0.0] * 12 # ZoM array for forced occurrence
+        # PAR-file related settings
+        self.num_predictors = 0               # Number of predictors in PAR file
+        self.num_months = 12                  # Number of months (usually 12)
+        self.monthly_coeffs = []              # Monthly coefficients from PAR file
+        self.predictor_files = []             # Predictor files from PAR file
+        self.bias_correction = 0.8            # Default bias correction factor
+        self.zom = [0.0] * 12                 # Monthly occurrence percentages for forced mode
 
-###############################################################################
-# 2. Helper Functions (Mirroring VB)
-###############################################################################
+#############################################################
+# Helper Functions
+#############################################################
 
+# Check if a year is a leap year
 def is_leap(year):
-    """Checks if a year is a leap year."""
     return year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
 
+# Get the number of days in a specific month
 def days_in_month(year, month):
-    """Returns the number of days in a specific month of a year."""
     if month == 2:
         return 29 if is_leap(year) else 28
     elif month in [4, 6, 9, 11]:
@@ -123,105 +114,118 @@ def days_in_month(year, month):
     else:
         return 31
 
-# VB-style date increment using global variables
+# Move the global date forward by one day
 def increase_date(ctx=None):
-    """Increases date by one day using VB approach."""
     global g_dd, g_mm, g_yyyy
+    
+    g_dd += 1  # Increase day
 
-    g_dd += 1
-
-    # Get days in current month - match VB logic
+    # Check if we need to move to next month
     if ctx and ctx.year_length == 1 and g_mm == 2 and is_leap(g_yyyy):
-        # VB checks YearLength = 1 for leap year adjustment
-        days_current_month = 29
+        days_current_month = 29  # Special case for leap year February
     else:
         days_current_month = days_in_month(g_yyyy, g_mm)
 
     if g_dd > days_current_month:
-        g_mm += 1
-        g_dd = 1
+        g_mm += 1  # Move to next month
+        g_dd = 1   # Reset day to 1
 
     if g_mm == 13:
-        g_mm = 1
-        g_yyyy += 1
+        g_mm = 1       # Reset to January
+        g_yyyy += 1    # Increase year
 
+# Convert a string to a floating-point value
+# Returns GLOBAL_MISSING_CODE for invalid or missing values
 def parse_value(str_val):
-    """Parses a string to float, handling missing code."""
     val_str = str_val.strip()
     try:
         val = float(val_str)
-        # Handle potential missing codes represented differently
+        # Check if the value represents a missing code
         if abs(val - GLOBAL_MISSING_CODE) < 1e-6:
             return GLOBAL_MISSING_CODE
         return val
     except ValueError:
         return GLOBAL_MISSING_CODE
 
+# Format a value for writing to output file
+# Handles missing values and formatting
 def format_value_output(value):
-    """Formats float for output file, handling missing code."""
     if abs(value - GLOBAL_MISSING_CODE) < 1e-6:
-        # Output missing as empty space or a specific string if required
-        # VB used Tab, implying empty field for missing
+        # Output tab for missing values
         return "\t"
     else:
-        # VB format "#####0.000" -> 8 characters wide, 3 decimal places, right-aligned
-        return f"{value:8.3f}\t" # Adjust width (8) if needed
+        # Format with 3 decimal places, 8 characters wide, right-aligned
+        return f"{value:8.3f}\t"
 
+# Check if user settings are valid
+# Returns True if all settings are acceptable, False otherwise
 def check_settings(ctx: SDSMContext, parent_widget=None) -> bool:
-    """Checks if user has sensible options selected (mirrors VB)."""
     all_ok = True
-    if not ctx.in_file or len(ctx.in_file) < 1: # Allow single char names
+    
+    # Check if input file is selected
+    if not ctx.in_file or len(ctx.in_file) < 1:
         QMessageBox.critical(parent_widget, "Error", "You must select an input file first.")
         all_ok = False
+    
+    # Check if output file is specified
     elif not ctx.out_file:
         QMessageBox.critical(parent_widget, "Error", "You must enter a filename to save results to.")
         all_ok = False
+    
+    # Check if at least one treatment is selected
     elif not (ctx.occurrence_check or ctx.amount_check or ctx.trend_check or ctx.variance_check):
         QMessageBox.critical(parent_widget, "Error", "You must select at least one treatment.")
         all_ok = False
+    
+    # Check if occurrence treatment has conditional processing enabled
     elif ctx.occurrence_check and not ctx.conditional_check:
         QMessageBox.critical(parent_widget, "Error", "You cannot perform an occurrence treatment on data that are unconditional.")
         all_ok = False
-    # Amount Checks
+    
+    # Check amount settings
     elif ctx.amount_check and ctx.amount_option == 0 and abs(ctx.amount_factor_percent - 1.0) < 1e-6:
         QMessageBox.critical(parent_widget, "Error", "You are trying to apply an amount treatment (Factor) but applying no change (0%).")
         all_ok = False
     elif ctx.amount_check and ctx.amount_option == 1 and abs(ctx.amount_addition) < 1e-6:
          QMessageBox.critical(parent_widget, "Error", "You are trying to apply an amount treatment (Addition) but applying no change (0).")
          all_ok = False
-    # Occurrence Checks
+    
+    # Check occurrence settings
     elif ctx.occurrence_check and ctx.occurrence_option == 0 and abs(ctx.occurrence_factor_percent - 1.0) < 1e-6:
         QMessageBox.critical(parent_widget, "Error", "You are trying to perform an occurrence treatment (Factor) but applying zero frequency change.")
         all_ok = False
-    # Variance Checks
+    
+    # Check variance settings
     elif ctx.variance_check and abs(ctx.variance_factor_percent - 1.0) < 1e-6:
          QMessageBox.critical(parent_widget, "Error", "You are trying to apply a variance change but have not entered an amount (0%).")
          all_ok = False
-    # Trend Checks (ensure a value is set if checked)
-    elif ctx.trend_check and ctx.trend_option == 0 and abs(ctx.linear_trend) < 1e-9 :
+    
+    # Check trend settings
+    elif ctx.trend_check and ctx.trend_option == 0 and abs(ctx.linear_trend) < 1e-9:
         QMessageBox.critical(parent_widget, "Error", "Linear trend is selected, but the value is zero.")
         all_ok = False
-    elif ctx.trend_check and ctx.trend_option == 1 and abs(ctx.exp_trend) < 1e-9 : # abs(1.0 - 1.0) is zero, so check against the input value
+    elif ctx.trend_check and ctx.trend_option == 1 and abs(ctx.exp_trend) < 1e-9:
         QMessageBox.critical(parent_widget, "Error", "Exponential trend is selected, but the value (factor) is effectively 1 (or zero if referring to additive effect).")
         all_ok = False
-    elif ctx.trend_check and ctx.trend_option == 2 and abs(ctx.logistic_trend) < 1e-9 : # abs(1.0 - 1.0) is zero.
+    elif ctx.trend_check and ctx.trend_option == 2 and abs(ctx.logistic_trend) < 1e-9:
         QMessageBox.critical(parent_widget, "Error", "Logistic trend is selected, but the value (factor) is effectively 1 (or zero if referring to additive effect).")
         all_ok = False
 
     return all_ok
 
+# Reset error flags before starting a new operation
 def mini_reset(ctx: SDSMContext):
-    """Resets flags for a new operation or after error (simpler than VB)."""
     ctx.error_occurred = False
     ctx.global_kop_out = False
 
-###############################################################################
-# 3. Core Scenario Generation Functions (Detailed Translation)
-###############################################################################
+#############################################################
+# Core Functions for Scenario Generation
+#############################################################
 
+# Read and parse the input data file
 def read_input_file(ctx: SDSMContext, progress_callback=None):
-    """Reads data from file, performs basic checks."""
     try:
+        # Open and read the file
         with open(ctx.in_root, "r") as f:
             lines = f.readlines()
     except Exception as e:
@@ -229,113 +233,138 @@ def read_input_file(ctx: SDSMContext, progress_callback=None):
         ctx.error_occurred = True
         return False
 
+    # Check if file is empty
     if not lines:
         QMessageBox.critical(None, "File Read Error", "Input file is empty.")
         ctx.error_occurred = True
         return False
 
+    # Set number of days from file length
     ctx.no_of_days = len(lines)
-    if ctx.no_of_days > 75000: # VB limit check (approx 200 years)
+    
+    # Warn if file is very large
+    if ctx.no_of_days > 75000:
          QMessageBox.warning(None, "Warning", f"Input file has {ctx.no_of_days} days, which exceeds the typical limit (around 75000). Processing will continue, but may be slow or unstable.")
 
-    # Initialize data_array: list of lists [ensemble][day]
+    # Initialize data array for each ensemble
     ctx.data_array = [[] for _ in range(ctx.ensemble_size)]
     expected_columns = ctx.ensemble_size
 
+    # Process each line in the file
     for i, line in enumerate(lines):
-        if ctx.global_kop_out: return False # Check for user cancel
+        # Check for user cancellation
+        if ctx.global_kop_out: 
+            return False
+        
+        # Update progress if callback provided
         if progress_callback:
             progress_callback(int(i / ctx.no_of_days * 100), "Reading Data")
 
-        parts = line.split() # Split by whitespace
+        # Split line into columns
+        parts = line.split()
         actual_columns = len(parts)
 
-        if i == 0 and actual_columns < expected_columns: # Check first line for column count
+        # Check if first line has enough columns
+        if i == 0 and actual_columns < expected_columns:
             QMessageBox.critical(None, "File Format Error",
                                  f"Data file seems to have fewer columns ({actual_columns}) than the specified Ensemble Size ({expected_columns}).\nPlease check the input file and Ensemble Size setting.")
             ctx.error_occurred = True
             return False
+        # Handle lines with fewer columns
         elif actual_columns < expected_columns:
-            # Handle lines with fewer columns - treat missing as GLOBAL_MISSING_CODE
             parsed_vals = [parse_value(p) for p in parts]
             parsed_vals.extend([GLOBAL_MISSING_CODE] * (expected_columns - actual_columns))
         else:
-             # Take only the first 'expected_columns' values
+            # Parse values from the line
             parsed_vals = [parse_value(parts[j]) for j in range(expected_columns)]
 
-        # Append parsed values to each ensemble's list
+        # Store values in data array
         for ens_j in range(expected_columns):
              ctx.data_array[ens_j].append(parsed_vals[ens_j])
 
-    if progress_callback: progress_callback(100, "Reading Data Complete")
+    # Update progress to complete
+    if progress_callback: 
+        progress_callback(100, "Reading Data Complete")
+    
     return True
 
 
+# Apply occurrence treatment to modify frequency of wet days
 def apply_occurrence(ctx: SDSMContext, progress_callback=None):
-    """Apply an occurrence treatment (add/remove wet days). Mirrors VB logic."""
     global g_dd, g_mm, g_yyyy
 
-    if not ctx.conditional_check: # Should have been caught by check_settings
+    # Verify conditional processing is enabled (required for occurrence)
+    if not ctx.conditional_check:
         QMessageBox.critical(None, "Logic Error", "Occurrence treatment requires conditional process.")
         ctx.error_occurred = True
         return
 
-    random.seed() # Initialize random seed
+    # Initialize random seed for reproducibility
+    random.seed()
     given_zero_warning = False
 
-    for j in range(ctx.ensemble_size): # Loop through each ensemble
-        if ctx.global_kop_out: return
+    # Process each ensemble
+    for j in range(ctx.ensemble_size):
+        # Check for user cancellation
+        if ctx.global_kop_out: 
+            return
+        
+        # Update progress
         if progress_callback:
             progress_callback(int(j / ctx.ensemble_size * 100), f"Applying Occurrence Ensemble {j+1}")
 
-        # --- Initialize monthly counts and arrays for this ensemble ---
-        # Use 0-based indexing for months (0-11)
-        dry_count = [0] * 12
-        wet_count = [0] * 12
-        day_count = [0] * 12 # Total non-missing days per month
-        wet_array = [[] for _ in range(12)] # Stores indices of wet days for each month
-        dry_array = [[] for _ in range(12)] # Stores indices of dry days for each month
-        prop_wet_array = [0.0] * 12
-        prop_dry_array = [0.0] * 12
-        total_rainfall = 0.0
-        total_wet_count = 0
+        # Initialize monthly counts and arrays
+        dry_count = [0] * 12         # Count of dry days per month
+        wet_count = [0] * 12         # Count of wet days per month
+        day_count = [0] * 12         # Total non-missing days per month
+        wet_array = [[] for _ in range(12)]  # Indices of wet days for each month
+        dry_array = [[] for _ in range(12)]  # Indices of dry days for each month
+        prop_wet_array = [0.0] * 12  # Proportion of wet days per month
+        prop_dry_array = [0.0] * 12  # Proportion of dry days per month
+        total_rainfall = 0.0         # Sum of rainfall values
+        total_wet_count = 0          # Total wet days across all months
 
-        # --- First Pass: Count wet/dry days per month and store indices ---
+        # First pass: count wet/dry days and collect their indices
         g_dd = ctx.start_date.day
         g_mm = ctx.start_date.month
         g_yyyy = ctx.start_date.year
 
         for i in range(ctx.no_of_days):
             val = ctx.data_array[j][i]
-            m = g_mm - 1 # 0-based month index
+            m = g_mm - 1  # Convert to 0-based month index
 
+            # Process non-missing values
             if val != GLOBAL_MISSING_CODE:
                 day_count[m] += 1
+                
+                # Check if day is wet (above threshold)
                 if val > ctx.local_thresh:
                     wet_count[m] += 1
-                    wet_array[m].append(i) # Store the day index 'i'
+                    wet_array[m].append(i)  # Store day index
                     total_rainfall += val
                     total_wet_count += 1
                 else:
                     dry_count[m] += 1
-                    dry_array[m].append(i) # Store the day index 'i'
+                    dry_array[m].append(i)  # Store day index
 
-            # Increment date using VB-style approach
+            # Move to next day
             increase_date(ctx)
 
-        original_wet_count = wet_count[:] # Keep original count for adding days logic
+        # Save original wet count for reference
+        original_wet_count = wet_count[:]
 
-        # --- Calculate proportions ---
+        # Calculate wet and dry proportions for each month
         for m in range(12):
-            sum_days = day_count[m] # Use total non-missing days
+            sum_days = day_count[m]
             if sum_days > 0:
                 prop_wet_array[m] = wet_count[m] / sum_days
                 prop_dry_array[m] = dry_count[m] / sum_days
             else:
-                prop_wet_array[m] = GLOBAL_MISSING_CODE # Indicate no data for month
+                # Mark as missing if no days in this month
+                prop_wet_array[m] = GLOBAL_MISSING_CODE
                 prop_dry_array[m] = GLOBAL_MISSING_CODE
 
-        # --- Check if any wet days exist ---
+        # Check if data contains any wet days
         if total_wet_count <= 0:
             if not given_zero_warning:
                 msg = f"Warning - Ensemble {j+1} has zero rainfall days and cannot be manipulated by occurrence treatment."
@@ -343,19 +372,19 @@ def apply_occurrence(ctx: SDSMContext, progress_callback=None):
                     msg = "Warning - there are zero rainfall days available so the data cannot be manipulated by occurrence treatment."
                 QMessageBox.warning(None, "Results", msg)
                 given_zero_warning = True
-            continue # Skip to next ensemble
+            continue  # Skip to next ensemble
 
-        # --- Perform Occurrence Modification ---
-
+        # Apply occurrence modification based on selected option
         # Option 0: Stochastic Factor Adjustment
         if ctx.occurrence_option == 0:
             if ctx.occurrence_factor_percent < 1.0:
-                # --- Remove wet days ---
+                # REMOVING WET DAYS
                 days_to_delete = round(total_wet_count - (total_wet_count * ctx.occurrence_factor_percent))
-                if days_to_delete <= 0 : continue # No days to delete
+                if days_to_delete <= 0:
+                    continue  # No days to delete
 
-                # Build cumulative probability based on *dryness* (higher chance to remove from drier months)
-                # VB uses PropDryArray but excludes fully dry months
+                # Build probability distribution based on dryness
+                # (higher probability to remove from drier months)
                 cum_prop_sum = [0.0] * 12
                 if prop_dry_array[0] == GLOBAL_MISSING_CODE or prop_dry_array[0] == 1.0:
                     cum_prop_sum[0] = 0.0
@@ -367,104 +396,14 @@ def apply_occurrence(ctx: SDSMContext, progress_callback=None):
                         cum_prop_sum[i] = cum_prop_sum[i-1]
                     else:
                         cum_prop_sum[i] = cum_prop_sum[i-1] + prop_dry_array[i]
-                if cum_prop_sum[11] == 0.0: # All months are fully dry or missing, cannot remove
+                        
+                # Skip if no months available for selection
+                if cum_prop_sum[11] == 0.0:
                     continue
 
+                # Delete the required number of wet days
                 for _ in range(days_to_delete):
-                    # VB-style random selection using cumulative probability
-                    selected_month = -1
-                    random_no = Rnd() * cum_prop_sum[11]
-
-                    for i in range(12):
-                        if random_no < cum_prop_sum[i]:
-                            selected_month = i
-                            break
-
-                    if selected_month == -1: # Should not happen if cum_prop_sum[11] > 0
-                        selected_month = 11
-
-
-                    # Make sure we get a month with wet days
-                    attempts = 0
-                    while wet_count[selected_month] <= 0 and attempts < 12:
-                        # This logic might be flawed if the month selected based on dryness has no wet days
-                        # Fallback: just find any month with wet days if direct selection fails
-                        selected_month = (selected_month + 1) % 12 # Simple linear scan
-                        attempts += 1
-
-                    if wet_count[selected_month] <= 0:
-                        # If still no wet days after attempts, try to find one in any month
-                        found_wet_month = False
-                        for m_idx in range(12):
-                            if wet_count[m_idx] > 0:
-                                selected_month = m_idx
-                                found_wet_month = True
-                                break
-                        if not found_wet_month: continue # No wet days available anywhere
-
-                    # Select a random wet day for that month
-                    wet_day_list_index = int(Rnd() * wet_count[selected_month])
-                    day_index_to_modify = wet_array[selected_month][wet_day_list_index]
-
-                    # Set the day to dry (using local threshold)
-                    ctx.data_array[j][day_index_to_modify] = ctx.local_thresh # Or 0.0 if threshold is 0
-
-                    # Remove the day index from wet_array and add to dry_array
-                    if wet_day_list_index < wet_count[selected_month] - 1:
-                        wet_array[selected_month][wet_day_list_index] = wet_array[selected_month][-1]
-                    wet_array[selected_month].pop()
-
-                    # Add to dry array
-                    dry_array[selected_month].append(day_index_to_modify)
-
-                    # Update counts
-                    wet_count[selected_month] -= 1
-                    dry_count[selected_month] += 1
-                    total_wet_count -= 1
-
-                    # Update cumulative probability if month became fully dry for selection
-                    if wet_count[selected_month] == 0:
-                        # Rebuild cum_prop_sum or adjust the specific month's contribution
-                        if prop_dry_array[selected_month] != GLOBAL_MISSING_CODE and prop_dry_array[selected_month] != 1.0:
-                            # This month was part of cum_prop_sum calculation, if it becomes non-selectable (fully wet/dry)
-                            # for removal, its effective prop_dry for selection criteria changes.
-                            # Simplified: if this month is no longer a candidate, its cum_prop needs adjustment.
-                            # VB's logic seems to allow selection from a month until it has no more wet days.
-                            # The cum_prop_sum is based on initial dryness, not dynamically updated based on removed days.
-                            pass
-
-
-            elif ctx.occurrence_factor_percent > 1.0:
-                # --- Add wet days ---
-                days_to_add = round((total_wet_count * ctx.occurrence_factor_percent) - total_wet_count)
-                spaces_available = ctx.no_of_days - total_wet_count # Total non-wet days
-                if days_to_add > spaces_available:
-                    QMessageBox.critical(None, "Error Message", f"Ensemble {j+1}: You cannot add that many wet days ({days_to_add}) as there are only {spaces_available} dry/missing days available.")
-                    ctx.error_occurred = True
-                    return # Stop processing
-
-                if days_to_add <= 0: continue # No days to add
-
-                # Build cumulative probability based on *wetness* (higher chance to add to wetter months)
-                cum_prop_sum = [0.0] * 12
-                if prop_wet_array[0] == GLOBAL_MISSING_CODE or prop_wet_array[0] == 1.0: # If fully wet or no data
-                    cum_prop_sum[0] = 0.0
-                else:
-                    cum_prop_sum[0] = prop_wet_array[0]
-
-                for i in range(1, 12):
-                    if prop_wet_array[i] == GLOBAL_MISSING_CODE or prop_wet_array[i] == 1.0:
-                        cum_prop_sum[i] = cum_prop_sum[i-1]
-                    else:
-                        cum_prop_sum[i] = cum_prop_sum[i-1] + prop_wet_array[i]
-                if cum_prop_sum[11] == 0.0: # All months are fully dry or missing, cannot add based on wetness
-                    # Fallback: could distribute randomly or based on month length if no wetness guidance
-                    # For now, if no "wet" months to guide, skip adding based on this logic
-                    continue
-
-
-                for _ in range(days_to_add):
-                    # VB-style random selection using cumulative probability
+                    # Select a month based on dryness probability
                     selected_month = -1
                     random_no = Rnd() * cum_prop_sum[11]
 
@@ -476,140 +415,233 @@ def apply_occurrence(ctx: SDSMContext, progress_callback=None):
                     if selected_month == -1:
                         selected_month = 11
 
-                    # Make sure we get a month with dry days
+                    # Find a month with wet days (if selected has none)
+                    attempts = 0
+                    while wet_count[selected_month] <= 0 and attempts < 12:
+                        selected_month = (selected_month + 1) % 12
+                        attempts += 1
+
+                    if wet_count[selected_month] <= 0:
+                        # Try to find any month with wet days
+                        found_wet_month = False
+                        for m_idx in range(12):
+                            if wet_count[m_idx] > 0:
+                                selected_month = m_idx
+                                found_wet_month = True
+                                break
+                        if not found_wet_month:
+                            continue  # No wet days left anywhere
+
+                    # Select a random wet day from the chosen month
+                    wet_day_list_index = int(Rnd() * wet_count[selected_month])
+                    day_index_to_modify = wet_array[selected_month][wet_day_list_index]
+
+                    # Set the day to dry (threshold value)
+                    ctx.data_array[j][day_index_to_modify] = ctx.local_thresh
+
+                    # Update the wet and dry arrays
+                    if wet_day_list_index < wet_count[selected_month] - 1:
+                        wet_array[selected_month][wet_day_list_index] = wet_array[selected_month][-1]
+                    wet_array[selected_month].pop()
+                    dry_array[selected_month].append(day_index_to_modify)
+
+                    # Update counts
+                    wet_count[selected_month] -= 1
+                    dry_count[selected_month] += 1
+                    total_wet_count -= 1
+
+            elif ctx.occurrence_factor_percent > 1.0:
+                # ADDING WET DAYS
+                days_to_add = round((total_wet_count * ctx.occurrence_factor_percent) - total_wet_count)
+                spaces_available = ctx.no_of_days - total_wet_count
+                
+                # Check if we have enough dry days to convert
+                if days_to_add > spaces_available:
+                    QMessageBox.critical(None, "Error Message", 
+                                        f"Ensemble {j+1}: You cannot add that many wet days ({days_to_add}) as there are only {spaces_available} dry/missing days available.")
+                    ctx.error_occurred = True
+                    return
+
+                if days_to_add <= 0:
+                    continue  # No days to add
+
+                # Build probability distribution based on wetness
+                # (higher probability to add to wetter months)
+                cum_prop_sum = [0.0] * 12
+                if prop_wet_array[0] == GLOBAL_MISSING_CODE or prop_wet_array[0] == 1.0:
+                    cum_prop_sum[0] = 0.0
+                else:
+                    cum_prop_sum[0] = prop_wet_array[0]
+
+                for i in range(1, 12):
+                    if prop_wet_array[i] == GLOBAL_MISSING_CODE or prop_wet_array[i] == 1.0:
+                        cum_prop_sum[i] = cum_prop_sum[i-1]
+                    else:
+                        cum_prop_sum[i] = cum_prop_sum[i-1] + prop_wet_array[i]
+                        
+                # Skip if no months available for selection
+                if cum_prop_sum[11] == 0.0:
+                    continue
+
+                # Add the required number of wet days
+                for _ in range(days_to_add):
+                    # Select a month based on wetness probability
+                    selected_month = -1
+                    random_no = Rnd() * cum_prop_sum[11]
+
+                    for i in range(12):
+                        if random_no < cum_prop_sum[i]:
+                            selected_month = i
+                            break
+
+                    if selected_month == -1:
+                        selected_month = 11
+
+                    # Find a month with dry days (if selected has none)
                     attempts = 0
                     while dry_count[selected_month] <= 0 and attempts < 12:
-                        selected_month = (selected_month + 1) % 12 # Linear scan
+                        selected_month = (selected_month + 1) % 12
                         attempts += 1
 
                     if dry_count[selected_month] <= 0:
-                        # If still no dry days, find any month with dry days
+                        # Try to find any month with dry days
                         found_dry_month = False
                         for m_idx in range(12):
                             if dry_count[m_idx] > 0:
                                 selected_month = m_idx
                                 found_dry_month = True
                                 break
-                        if not found_dry_month: continue # No dry days available anywhere
+                        if not found_dry_month:
+                            continue  # No dry days left anywhere
 
-                    # Select a random dry day for that month
+                    # Select a random dry day to convert to wet
                     dry_day_list_index = int(Rnd() * dry_count[selected_month])
                     day_index_to_modify = dry_array[selected_month][dry_day_list_index]
 
-                    # --- Select a wet day value to copy using VB logic ---
+                    # Find a wet day value to use as template
                     source_wet_day_value = GLOBAL_MISSING_CODE
 
-                    # VB Logic: Prioritize using a wet day from the *same* month if available (original count)
-                    # Using current wet_count[selected_month] is more robust if days are added iteratively
+                    # Try to use a wet day from the same month if available
                     if wet_count[selected_month] > 0:
                         source_wet_day_index_in_list = int(Rnd() * wet_count[selected_month])
                         source_day_index = wet_array[selected_month][source_wet_day_index_in_list]
                         source_wet_day_value = ctx.data_array[j][source_day_index]
-                    # If no wet day found in the selected month, find nearest month with a wet day
-                    elif original_wet_count[selected_month] > 0: # Fallback to original if current has none (should not happen if wet_count >0 check fails)
-                        # This part might be redundant if the first check on wet_count[selected_month] is sufficient.
-                        # Original VB might have used original_wet_count here. Let's assume current wet_count for source.
-                        pass
+                    # If no wet day in this month, search nearby months
+                    elif original_wet_count[selected_month] > 0:
+                        pass  # This branch is likely redundant
 
-
-                    if source_wet_day_value == GLOBAL_MISSING_CODE: # If still no value (e.g. selected month had no current wet days)
+                    # If still no wet day found, search other months
+                    if source_wet_day_value == GLOBAL_MISSING_CODE:
                         search_order = set_random_array(selected_month)
                         for neighbor_month in search_order:
                             if wet_count[neighbor_month] > 0:
                                 source_wet_day_index_in_list = int(Rnd() * wet_count[neighbor_month])
                                 source_day_index = wet_array[neighbor_month][source_wet_day_index_in_list]
                                 source_wet_day_value = ctx.data_array[j][source_day_index]
-                                break # Found wet day in neighbor
+                                break
 
-                    # Apply the selected wet day value
+                    # Apply the wet day value if we found one
                     if source_wet_day_value != GLOBAL_MISSING_CODE:
                         ctx.data_array[j][day_index_to_modify] = source_wet_day_value
 
-                        # Remove the day index from dry_array and add to wet_array
+                        # Update arrays
                         if dry_day_list_index < dry_count[selected_month] - 1:
                             dry_array[selected_month][dry_day_list_index] = dry_array[selected_month][-1]
                         dry_array[selected_month].pop()
-
-                        # Add to wet array
                         wet_array[selected_month].append(day_index_to_modify)
 
                         # Update counts
                         dry_count[selected_month] -= 1
                         wet_count[selected_month] += 1
                         total_wet_count += 1
-                        # Note: cum_prop_sum for adding is based on initial wetness and not dynamically updated here.
 
-        # Option 1: Forced Percentage (Not fully implemented in provided VB, assuming based on name)
+        # Option 1: Forced Percentage
         elif ctx.occurrence_option == 1:
-             # This requires ctx.zom to be set, e.g., ctx.zom = [10.0, 12.0, ...] %
-             if not hasattr(ctx, 'zom') or len(ctx.zom) != 12:
-                 QMessageBox.critical(None,"Error", "Forced occurrence requires target percentages (ZoM) for each month, which are not set.")
-                 ctx.error_occurred = True
-                 return
+            # Check if target percentages are set
+            if not hasattr(ctx, 'zom') or len(ctx.zom) != 12:
+                QMessageBox.critical(None, "Error", "Forced occurrence requires target percentages (ZoM) for each month, which are not set.")
+                ctx.error_occurred = True
+                return
 
-             for m in range(12): # Loop through each month
-                 if day_count[m] <= 0: continue # Skip months with no data
+            # Process each month
+            for m in range(12):
+                if day_count[m] <= 0:
+                    continue  # Skip months with no data
 
-                 target_percentage = ctx.zom[m] / 100.0
-                 target_wet_count = round(target_percentage * day_count[m])
-                 current_wet_count_month = wet_count[m] # Use per-month wet_count
+                # Calculate target number of wet days
+                target_percentage = ctx.zom[m] / 100.0
+                target_wet_count = round(target_percentage * day_count[m])
+                current_wet_count_month = wet_count[m]
 
-                 if current_wet_count_month > target_wet_count:
-                     # --- Remove wet days ---
-                     days_to_delete = current_wet_count_month - target_wet_count
-                     for _ in range(days_to_delete):
-                          if wet_count[m] <= 0: break
-                          wet_day_list_index = int(Rnd() * wet_count[m])
-                          day_index_to_modify = wet_array[m][wet_day_list_index]
-                          ctx.data_array[j][day_index_to_modify] = ctx.local_thresh
+                if current_wet_count_month > target_wet_count:
+                    # REMOVING WET DAYS
+                    days_to_delete = current_wet_count_month - target_wet_count
+                    for _ in range(days_to_delete):
+                        if wet_count[m] <= 0:
+                            break
+                        # Select random wet day to convert to dry
+                        wet_day_list_index = int(Rnd() * wet_count[m])
+                        day_index_to_modify = wet_array[m][wet_day_list_index]
+                        ctx.data_array[j][day_index_to_modify] = ctx.local_thresh
 
-                          if wet_day_list_index < wet_count[m] - 1:
-                              wet_array[m][wet_day_list_index] = wet_array[m][-1]
-                          wet_array[m].pop()
-                          dry_array[m].append(day_index_to_modify)
+                        # Update arrays
+                        if wet_day_list_index < wet_count[m] - 1:
+                            wet_array[m][wet_day_list_index] = wet_array[m][-1]
+                        wet_array[m].pop()
+                        dry_array[m].append(day_index_to_modify)
 
-                          wet_count[m] -= 1
-                          dry_count[m] += 1
-                          total_wet_count -= 1 # Keep track of overall total
+                        # Update counts
+                        wet_count[m] -= 1
+                        dry_count[m] += 1
+                        total_wet_count -= 1
 
-                 elif current_wet_count_month < target_wet_count:
-                     # --- Add wet days ---
-                     days_to_add = target_wet_count - current_wet_count_month
-                     for _ in range(days_to_add):
-                         if dry_count[m] <= 0: break # No space left to add in this month
+                elif current_wet_count_month < target_wet_count:
+                    # ADDING WET DAYS
+                    days_to_add = target_wet_count - current_wet_count_month
+                    for _ in range(days_to_add):
+                        if dry_count[m] <= 0:
+                            break  # No more dry days to convert
+                            
+                        # Select random dry day to convert to wet
+                        dry_day_list_index = int(Rnd() * dry_count[m])
+                        day_index_to_modify = dry_array[m][dry_day_list_index]
 
-                         dry_day_list_index = int(Rnd() * dry_count[m])
-                         day_index_to_modify = dry_array[m][dry_day_list_index]
+                        # Find a wet day value to use as template
+                        source_wet_day_value = GLOBAL_MISSING_CODE
+                        
+                        # Try to use a wet day from the same month if available
+                        if wet_count[m] > 0:
+                            source_wet_day_index_in_list = int(Rnd() * wet_count[m])
+                            source_day_index = wet_array[m][source_wet_day_index_in_list]
+                            source_wet_day_value = ctx.data_array[j][source_day_index]
+                        # If no wet day in this month, search nearby months
+                        else:
+                            search_order = set_random_array(m)
+                            for neighbor_month in search_order:
+                                if wet_count[neighbor_month] > 0:
+                                    source_wet_day_index_in_list = int(Rnd() * wet_count[neighbor_month])
+                                    source_day_index = wet_array[neighbor_month][source_wet_day_index_in_list]
+                                    source_wet_day_value = ctx.data_array[j][source_day_index]
+                                    break
 
-                         # --- Select source wet day value (same logic as stochastic add) ---
-                         source_wet_day_value = GLOBAL_MISSING_CODE
-                         if wet_count[m] > 0: # Use current wet days in the month
-                              source_wet_day_index_in_list = int(Rnd() * wet_count[m])
-                              source_day_index = wet_array[m][source_wet_day_index_in_list]
-                              source_wet_day_value = ctx.data_array[j][source_day_index]
-                         else: # If current month has no wet days, look at neighbors
-                             search_order = set_random_array(m)
-                             for neighbor_month in search_order:
-                                 if wet_count[neighbor_month] > 0:
-                                     source_wet_day_index_in_list = int(Rnd() * wet_count[neighbor_month])
-                                     source_day_index = wet_array[neighbor_month][source_wet_day_index_in_list]
-                                     source_wet_day_value = ctx.data_array[j][source_day_index]
-                                     break
+                        # Apply the wet day value if we found one
+                        if source_wet_day_value != GLOBAL_MISSING_CODE:
+                            ctx.data_array[j][day_index_to_modify] = source_wet_day_value
 
-                         if source_wet_day_value != GLOBAL_MISSING_CODE:
-                             ctx.data_array[j][day_index_to_modify] = source_wet_day_value
+                            # Update arrays
+                            if dry_day_list_index < dry_count[m] - 1:
+                                dry_array[m][dry_day_list_index] = dry_array[m][-1]
+                            dry_array[m].pop()
+                            wet_array[m].append(day_index_to_modify)
 
-                             if dry_day_list_index < dry_count[m] - 1:
-                                 dry_array[m][dry_day_list_index] = dry_array[m][-1]
-                             dry_array[m].pop()
-                             wet_array[m].append(day_index_to_modify)
+                            # Update counts
+                            dry_count[m] -= 1
+                            wet_count[m] += 1
+                            total_wet_count += 1
 
-                             dry_count[m] -= 1
-                             wet_count[m] += 1
-                             total_wet_count += 1
-
-        # --- Preserve Totals (Optional) ---
+        # Preserve totals if requested
         if ctx.preserve_totals_check:
+            # Calculate new total rainfall
             new_total_rainfall = 0.0
             new_total_wet_days = 0
             for i in range(ctx.no_of_days):
@@ -618,313 +650,387 @@ def apply_occurrence(ctx: SDSMContext, progress_callback=None):
                     new_total_rainfall += val
                     new_total_wet_days += 1
 
-            if new_total_rainfall > 1e-9 and total_rainfall > 1e-9 and new_total_wet_days > 0: # Avoid division by zero or near-zero
+            # Scale rainfall to match original total
+            if new_total_rainfall > 1e-9 and total_rainfall > 1e-9 and new_total_wet_days > 0:
                 rainfall_multiplier = total_rainfall / new_total_rainfall
-                if abs(rainfall_multiplier - 1.0) > 1e-6: # Only apply if change is significant
+                if abs(rainfall_multiplier - 1.0) > 1e-6:  # Only apply if change is significant
                     for i in range(ctx.no_of_days):
                         if ctx.data_array[j][i] != GLOBAL_MISSING_CODE and ctx.data_array[j][i] > ctx.local_thresh:
-                             # Apply multiplier, but ensure result doesn't go below threshold
-                             new_val = ctx.data_array[j][i] * rainfall_multiplier
-                             ctx.data_array[j][i] = max(ctx.local_thresh + 1e-6, new_val) # Ensure stays above threshold
+                            # Apply multiplier but keep values above threshold
+                            new_val = ctx.data_array[j][i] * rainfall_multiplier
+                            ctx.data_array[j][i] = max(ctx.local_thresh + 1e-6, new_val)
 
-    if progress_callback: progress_callback(100, "Applying Occurrence Complete")
+    # Update progress to complete
+    if progress_callback:
+        progress_callback(100, "Applying Occurrence Complete")
 
 
+# Generate a random sequence of months around a selected month
 def set_random_array(selected_month):
-    """Generates a random sequence of months around the selected month (0-11). Mirrors VB."""
-    # VB used Rnd < 0.5, Python mimics this
+    # Randomly decide direction of search (forward or backward)
     multiplier = 1 if Rnd() < 0.5 else -1
-    temp_array = [0] * 11 # 11 other months
+    temp_array = [0] * 11  # For 11 other months
     idx = 0
-    for i in range(1, 7): # Offsets 1 to 6
-        # Alternate adding +i*mult and -i*mult
+    
+    # Create offsets from the selected month
+    for i in range(1, 7):  # Offsets 1 to 6
+        # Add months in alternating directions
         if idx < 11:
             temp_array[idx] = multiplier * i
             idx += 1
-        if idx < 11 and i <= 5: # Offsets -1 to -5 (opposite sign)
-            temp_array[idx] = -multiplier * i # VB had -i*multiplier, corrected to -multiplier*i or similar
+        if idx < 11 and i <= 5:  # Offsets in opposite direction
+            temp_array[idx] = -multiplier * i
             idx += 1
 
+    # Convert offsets to actual month indices (0-11)
     random_array = [0] * 11
     for i in range(11):
-        month_val = temp_array[i] + (selected_month + 1) # Convert to 1-based for calculation
-        # Wrap around using modulo logic
+        month_val = temp_array[i] + (selected_month + 1)  # Convert to 1-based
+        # Wrap around the year
         if month_val > 12:
             month_val -= 12
         elif month_val < 1:
              month_val += 12
-        random_array[i] = month_val - 1 # Convert back to 0-based
+        random_array[i] = month_val - 1  # Convert back to 0-based
+    
     return random_array
 
 
+# Calculate mean and standard deviation for each ensemble
 def calc_means(ctx: SDSMContext, progress_callback=None):
-    """Calculates mean and SD for each ensemble. Stores in ctx.mean_array."""
-    ctx.mean_array = [] # Reset
+    ctx.mean_array = []  # Reset array
+    
+    # Process each ensemble
     for j in range(ctx.ensemble_size):
-        if ctx.global_kop_out: return
+        # Check for user cancellation
+        if ctx.global_kop_out:
+            return
+            
+        # Update progress
         if progress_callback:
-             progress_callback(int(j / ctx.ensemble_size * 50), f"Calculating Mean/SD {j+1}") # 50% for means
+             progress_callback(int(j / ctx.ensemble_size * 50), f"Calculating Mean/SD {j+1}")
 
+        # Collect valid values for statistics
         values_for_stats = []
         for i in range(ctx.no_of_days):
             val = ctx.data_array[j][i]
             if val != GLOBAL_MISSING_CODE:
-                # Check conditional flag
+                # If conditional, only include values above threshold
                 if not ctx.conditional_check or (ctx.conditional_check and val > ctx.local_thresh):
                     values_for_stats.append(val)
 
+        # Calculate statistics
         mean = GLOBAL_MISSING_CODE
         sd = GLOBAL_MISSING_CODE
         count = len(values_for_stats)
 
         if count > 0:
+            # Calculate mean
             mean = sum(values_for_stats) / count
-            if count > 1: # Need at least 2 points for standard deviation
-                variance = sum([(x - mean) ** 2 for x in values_for_stats]) / count # Population variance (like VB)
+            
+            # Calculate standard deviation
+            if count > 1:  # Need at least 2 points for SD
+                variance = sum([(x - mean) ** 2 for x in values_for_stats]) / count
                 sd = math.sqrt(variance)
             else:
-                sd = 0.0 # SD is 0 if only one point
+                sd = 0.0  # SD is 0 if only one point
 
+        # Store results
         ctx.mean_array.append({'mean': mean, 'sd': sd})
 
-    if progress_callback: progress_callback(100, "Calculating Mean/SD Complete")
+    # Update progress to complete
+    if progress_callback:
+        progress_callback(100, "Calculating Mean/SD Complete")
 
 
+# Apply amount treatment to modify the magnitude of values
 def apply_amount(ctx: SDSMContext, progress_callback=None):
-    """Apply an amount factor or addition to data."""
+    # Process each ensemble
     for j in range(ctx.ensemble_size):
-        if ctx.global_kop_out: return
+        # Check for user cancellation
+        if ctx.global_kop_out:
+            return
+            
+        # Update progress
         if progress_callback:
              progress_callback(int(j / ctx.ensemble_size * 100), f"Applying Amount {j+1}")
 
-        if ctx.amount_option == 0:  # Factor
-            if abs(ctx.amount_factor_percent - 1.0) < 1e-6: continue # Skip if factor is 1.0
+        # Option 0: Apply factor (multiply by percentage)
+        if ctx.amount_option == 0:
+            # Skip if factor is 1.0 (no change)
+            if abs(ctx.amount_factor_percent - 1.0) < 1e-6:
+                continue
+                
+            # Process each day
             for i in range(ctx.no_of_days):
                 val = ctx.data_array[j][i]
                 if val != GLOBAL_MISSING_CODE:
+                    # Check if value should be modified (conditional)
                     if not ctx.conditional_check or (ctx.conditional_check and val > ctx.local_thresh):
-                         new_val = val * ctx.amount_factor_percent
-                         # Ensure result doesn't go below threshold if it was above
-                         if ctx.conditional_check and val > ctx.local_thresh and new_val <= ctx.local_thresh:
-                             ctx.data_array[j][i] = ctx.local_thresh + 1e-6 # Set just above
-                         elif not ctx.conditional_check and val <= ctx.local_thresh and new_val <= ctx.local_thresh:
-                             # For unconditional, if it was dry and becomes "more dry", keep it at original dry value or threshold
-                             ctx.data_array[j][i] = val # Or clamp to threshold if that's desired. Original logic for non-conditional is simple multiplication.
-                         else:
-                             ctx.data_array[j][i] = new_val
-        else:  # Addition
-            if abs(ctx.amount_addition) < 1e-6: continue # Skip if addition is 0
+                        # Apply factor
+                        new_val = val * ctx.amount_factor_percent
+                        
+                        # Handle threshold for conditional processing
+                        if ctx.conditional_check and val > ctx.local_thresh and new_val <= ctx.local_thresh:
+                            # Keep values above threshold if they started that way
+                            ctx.data_array[j][i] = ctx.local_thresh + 1e-6
+                        elif not ctx.conditional_check and val <= ctx.local_thresh and new_val <= ctx.local_thresh:
+                            # For unconditional, if dry day becomes "more dry", keep original
+                            ctx.data_array[j][i] = val
+                        else:
+                            ctx.data_array[j][i] = new_val
+        
+        # Option 1: Apply addition (add value)
+        else:
+            # Skip if addition is 0
+            if abs(ctx.amount_addition) < 1e-6:
+                continue
+                
+            # Process each day
             for i in range(ctx.no_of_days):
-                 val = ctx.data_array[j][i]
-                 if val != GLOBAL_MISSING_CODE:
-                     if not ctx.conditional_check or (ctx.conditional_check and val > ctx.local_thresh):
-                         new_val = val + ctx.amount_addition
-                          # Ensure result doesn't go below threshold if it was above
-                         if ctx.conditional_check and val > ctx.local_thresh and new_val <= ctx.local_thresh:
-                             ctx.data_array[j][i] = ctx.local_thresh + 1e-6 # Set just above
-                         elif not ctx.conditional_check and val <= ctx.local_thresh and new_val <= ctx.local_thresh:
-                             # Similar to factor, if unconditional and it was dry, adding a negative might make it "more dry"
-                             # VB usually applies addition straightforwardly.
-                             # If new_val would make a non-conditional value cross threshold downwards, VB might just apply it.
-                             # The concern is mainly for conditional cases keeping values > threshold.
-                             ctx.data_array[j][i] = new_val
-                         else:
-                             ctx.data_array[j][i] = new_val
+                val = ctx.data_array[j][i]
+                if val != GLOBAL_MISSING_CODE:
+                    # Check if value should be modified (conditional)
+                    if not ctx.conditional_check or (ctx.conditional_check and val > ctx.local_thresh):
+                        # Apply addition
+                        new_val = val + ctx.amount_addition
+                        
+                        # Handle threshold for conditional processing
+                        if ctx.conditional_check and val > ctx.local_thresh and new_val <= ctx.local_thresh:
+                            # Keep values above threshold if they started that way
+                            ctx.data_array[j][i] = ctx.local_thresh + 1e-6
+                        elif not ctx.conditional_check and val <= ctx.local_thresh and new_val <= ctx.local_thresh:
+                            # Apply addition even if it makes dry days "more dry"
+                            ctx.data_array[j][i] = new_val
+                        else:
+                            ctx.data_array[j][i] = new_val
 
-    if progress_callback: progress_callback(100, "Applying Amount Complete")
+    # Update progress to complete
+    if progress_callback:
+        progress_callback(100, "Applying Amount Complete")
 
 
+# Find the optimal lambda value for Box-Cox transformation
 def find_min_lambda(ctx: SDSMContext, ensemble: int, start: float, finish: float, step: float) -> float:
-    """Finds the best lambda for Box-Cox using Hinkley (1977) method. Mirrors VB."""
     best_lam = start
     min_abs_d = float('inf')
 
+    # Try different lambda values
     k = start
-    while k <= finish + 1e-9: # Add tolerance for float comparison
+    while k <= finish + 1e-9:  # Add tolerance for float comparison
         temp_array = []
-        # Box-Cox transform valid data points
+        
+        # Apply Box-Cox transform to valid data points
         for i in range(ctx.no_of_days):
             val = ctx.data_array[ensemble][i]
-            # VB check: <> GlobalMissingCode AND > LocalThresh AND <> 0
-            # The condition for variance usually operates on values > threshold (conditional)
-            # and if unconditional, on all non-missing values.
-            # The Box-Cox itself is typically for positive data, so > local_thresh implicitly handles > 0 for precip.
-            if val != GLOBAL_MISSING_CODE and val > ctx.local_thresh : # Ensure positive for log/power
-                if abs(val) < 1e-9: # Skip actual zero values even if above a negative threshold
-                    if ctx.local_thresh >= 0: continue # If threshold is non-negative, this implies val is zero, skip.
-                                                      # If threshold is negative, a small positive val is fine.
+            
+            # Only transform valid values above threshold
+            if val != GLOBAL_MISSING_CODE and val > ctx.local_thresh:
+                # Skip zero values even if above a negative threshold
+                if abs(val) < 1e-9:
+                    if ctx.local_thresh >= 0:
+                        continue
+                
                 try:
-                    if abs(k) < 1e-9: # Lambda is zero -> log transform
+                    # Apply Box-Cox transform
+                    if abs(k) < 1e-9:  # Lambda is zero -> log transform
                         transformed_val = math.log(val)
-                    else: # Standard Box-Cox
+                    else:  # Standard Box-Cox
                         transformed_val = (val ** k - 1) / k
                     temp_array.append(transformed_val)
-                except (ValueError, OverflowError): # Handle log(neg/zero) or power errors
-                     continue
+                except (ValueError, OverflowError):
+                    continue
 
+        # Need enough points for meaningful statistics
         count = len(temp_array)
-        if count > 10: # Need enough points (VB used > 10)
+        if count > 10:
+            # Calculate mean and median
             mean_val = sum(temp_array) / count
             temp_array.sort()
             median_val = statistics.median(temp_array)
 
+            # Calculate quartiles and IQR
             q1_idx = int(count * 0.25)
             q3_idx = int(count * 0.75)
-            if q3_idx >= count: q3_idx = count -1 # Ensure valid index
+            if q3_idx >= count:
+                q3_idx = count - 1  # Ensure valid index
 
-            if q1_idx < q3_idx : # Ensure at least 2 distinct points for Q1 and Q3
+            if q1_idx < q3_idx:  # Ensure at least 2 distinct points for Q1 and Q3
                 q1 = temp_array[q1_idx]
                 q3 = temp_array[q3_idx]
                 iqr = q3 - q1
-            elif count > 0 :
-                iqr = temp_array[-1] - temp_array[0] # Fallback for small N
-                if count == 1: iqr = 0.0
+            elif count > 0:
+                iqr = temp_array[-1] - temp_array[0]  # Fallback for small N
+                if count == 1:
+                    iqr = 0.0
             else:
-                 iqr = 0.0
+                iqr = 0.0
 
+            # Calculate d statistic (measure of symmetry)
             d = GLOBAL_MISSING_CODE
-            if abs(iqr) > 1e-9: # Avoid division by zero
-                 d = (mean_val - median_val) / iqr
+            if abs(iqr) > 1e-9:  # Avoid division by zero
+                d = (mean_val - median_val) / iqr
 
+            # Find lambda that minimizes |d| (most symmetric)
             if d != GLOBAL_MISSING_CODE:
-                 abs_d = abs(d)
-                 if abs_d < min_abs_d:
-                     min_abs_d = abs_d
-                     best_lam = k
+                abs_d = abs(d)
+                if abs_d < min_abs_d:
+                    min_abs_d = abs_d
+                    best_lam = k
+        
+        # Move to next lambda value
         k += step
-    if min_abs_d == float('inf'): return GLOBAL_MISSING_CODE
+    
+    # Return best lambda or missing code if none found
+    if min_abs_d == float('inf'):
+        return GLOBAL_MISSING_CODE
     return best_lam
 
+# Inverse Box-Cox transform
 def unbox_cox(value: float, lamda: float) -> float:
-    """Inverse Box-Cox transform. Mirrors VB."""
     if value == GLOBAL_MISSING_CODE:
         return GLOBAL_MISSING_CODE
+    
     try:
-        if abs(lamda) < 1e-9: # Lambda is zero -> exp
-            if value > 700: return float('inf')
+        if abs(lamda) < 1e-9:  # Lambda is zero -> exp
+            if value > 700:
+                return float('inf')  # Avoid overflow
             return math.exp(value)
-        else: # Standard inverse Box-Cox
+        else:  # Standard inverse Box-Cox
             base = (value * lamda) + 1
             if base < 0:
-                 # Trying to take power of negative number, e.g. (-2)^0.5.
-                 # This often happens if transformed values are pushed too far.
-                 # Return missing or a very small positive number if contextually appropriate.
-                 return GLOBAL_MISSING_CODE # Safest
+                # Cannot take power of negative number
+                return GLOBAL_MISSING_CODE
             power = 1.0 / lamda
-            # Potential for very large numbers if base > 1 and power is large positive,
-            # or very small if base is small and power is large positive.
-            # Or complex if base < 0 and power is fractional. Python handles base < 0 with fractional power if result is real.
             return base ** power
     except (ValueError, OverflowError):
         return GLOBAL_MISSING_CODE
 
 
+# Helper function for variance adjustment
+# Applies factor to transformed data, then calculates variance after untransforming
 def calc_variance_after_transform(ctx: SDSMContext, ensemble: int, trans_array, factor: float, mean_trans: float) -> float:
-    """Helper for ApplyVariance: Applies factor to transformed data, untransforms, calculates variance. Mirrors VB."""
     temp_untransformed = []
-    original_values_for_variance_calc = [] # Store original values that will be transformed
 
-    # First, identify which original values contribute to trans_array
-    # This is implicitly done by iterating through trans_array where it's not MISSING_CODE
-    # and finding the corresponding original data_array value.
-
-    for i in range(ctx.no_of_days): # Iterate through all days to match trans_array indexing
-        if trans_array[i] != GLOBAL_MISSING_CODE: # This day was part of the transform
-            # The original value that was transformed corresponds to ctx.data_array[ensemble][i]
-            original_val = ctx.data_array[ensemble][i] # Keep for threshold check later
+    # Process each day that was part of the transformation
+    for i in range(ctx.no_of_days):
+        if trans_array[i] != GLOBAL_MISSING_CODE:
+            original_val = ctx.data_array[ensemble][i]
 
             try:
+                # Apply adjustment to transformed value
                 val_trans_adjusted = ((trans_array[i] - mean_trans) * factor) + mean_trans
+                
+                # Untransform back to original scale
                 val_untransformed = unbox_cox(val_trans_adjusted, ctx.lamda)
 
                 if val_untransformed != GLOBAL_MISSING_CODE and val_untransformed != float('inf'):
-                     # Conditional check: if original was > thresh, new must also be > thresh
-                     if ctx.conditional_check and original_val > ctx.local_thresh:
-                         if val_untransformed <= ctx.local_thresh:
-                             temp_untransformed.append(ctx.local_thresh + 1e-6) # Clamp
-                         else:
-                             temp_untransformed.append(val_untransformed)
-                     else: # Unconditional, or original was not > thresh (no clamping needed based on original state)
+                    # Ensure conditional values stay above threshold
+                    if ctx.conditional_check and original_val > ctx.local_thresh:
+                        if val_untransformed <= ctx.local_thresh:
+                            temp_untransformed.append(ctx.local_thresh + 1e-6)
+                        else:
+                            temp_untransformed.append(val_untransformed)
+                    else:
                         temp_untransformed.append(val_untransformed)
             except (ValueError, OverflowError):
-                 continue
+                continue
 
+    # Calculate variance of untransformed values
     count = len(temp_untransformed)
     if count > 1:
         mean_new = sum(temp_untransformed) / count
-        variance = sum([(x - mean_new) ** 2 for x in temp_untransformed]) / count # Population variance
+        variance = sum([(x - mean_new) ** 2 for x in temp_untransformed]) / count
         return variance
     elif count == 1:
-         return 0.0
+        return 0.0  # Variance is 0 with only one point
     else:
         return GLOBAL_MISSING_CODE
 
 
+# Apply variance treatment to change spread of values
 def apply_variance(ctx: SDSMContext, progress_callback=None):
-    """Apply a variance treatment. Handles conditional (Box-Cox) and unconditional."""
-    if not ctx.mean_array or len(ctx.mean_array) != ctx.ensemble_size : # Check if calc_means was run for all
+    # Check if means have been calculated
+    if not ctx.mean_array or len(ctx.mean_array) != ctx.ensemble_size:
         QMessageBox.critical(None, "Error", "Mean/SD must be calculated for all ensembles before applying variance.")
         ctx.error_occurred = True
         return
 
-    target_variance_ratio = ctx.variance_factor_percent # e.g., 1.10 for +10%
+    # Get target variance ratio (e.g., 1.10 for +10%)
+    target_variance_ratio = ctx.variance_factor_percent
+    
+    # Check for negative variance ratio
     if target_variance_ratio < 0:
         QMessageBox.critical(None, "Error", "Target variance factor results in a negative variance ratio, which is not possible.")
         ctx.error_occurred = True
         return
 
-
-    for j in range(ctx.ensemble_size): # Loop through ensembles
-        if ctx.global_kop_out: return
+    # Process each ensemble
+    for j in range(ctx.ensemble_size):
+        # Check for user cancellation
+        if ctx.global_kop_out:
+            return
+            
+        # Update progress
         if progress_callback:
-             progress_callback(int(j / ctx.ensemble_size * 10), f"Applying Variance {j+1} Prep")
+            progress_callback(int(j / ctx.ensemble_size * 10), f"Applying Variance {j+1} Prep")
 
+        # Get current mean and standard deviation
         mean_j = ctx.mean_array[j]['mean']
         sd_j = ctx.mean_array[j]['sd']
 
+        # Skip if mean or SD is missing
         if mean_j == GLOBAL_MISSING_CODE or sd_j == GLOBAL_MISSING_CODE:
             print(f"Warning: Ensemble {j+1} has missing mean/SD. Skipping variance adjustment.")
             continue
 
+        # Calculate original variance
         original_variance = sd_j ** 2
-        if original_variance < 1e-9: # Allow near-zero variance to be inflated if target_variance_ratio > 1
-             if target_variance_ratio <= 1.0 : # Cannot reduce zero or near-zero variance further meaningfully
+        
+        # Check for near-zero variance
+        if original_variance < 1e-9:
+            if target_variance_ratio <= 1.0:
                 print(f"Warning: Ensemble {j+1} has zero/near-zero initial variance. Skipping variance reduction.")
                 continue
-             # If inflating, original_variance might be problem if it's the denominator.
-             # VB might use a small minimum for original_variance in ratio calculations.
-             # For now, proceed if target_variance_ratio > 1, but be wary of division by original_variance if it's ~0.
 
-
-        # --- Unconditional Process ---
+        # UNCONDITIONAL PROCESS
         if not ctx.conditional_check:
-            if abs(original_variance) < 1e-9 and target_variance_ratio > 1.0 :
-                 # Inflating zero variance: this is tricky.
-                 # (X - MeanX) is 0 for all X if variance is 0. So formula Y = MeanX.
-                 # VB may have special handling. For now, skip if original_variance is zero.
-                 print(f"Warning: Ensemble {j+1} (Unconditional) has zero variance. Cannot scale variance.")
-                 continue
+            # Handle zero variance case
+            if abs(original_variance) < 1e-9 and target_variance_ratio > 1.0:
+                print(f"Warning: Ensemble {j+1} (Unconditional) has zero variance. Cannot scale variance.")
+                continue
 
-            scaling_factor = math.sqrt(target_variance_ratio) if target_variance_ratio >=0 else 0
+            # Calculate scaling factor for variance adjustment
+            scaling_factor = math.sqrt(target_variance_ratio) if target_variance_ratio >= 0 else 0
+            
+            # Apply scaling to all non-missing values
             for i in range(ctx.no_of_days):
                 val = ctx.data_array[j][i]
                 if val != GLOBAL_MISSING_CODE:
-                    # Apply scaling for all non-missing values
+                    # Apply formula: new_value = (old_value - mean) * scaling_factor + mean
                     ctx.data_array[j][i] = ((val - mean_j) * scaling_factor) + mean_j
-            if progress_callback: progress_callback(int((j+1) / ctx.ensemble_size * 100), f"Applying Variance {j+1} Complete")
+                    
+            # Update progress
+            if progress_callback:
+                progress_callback(int((j+1) / ctx.ensemble_size * 100), f"Applying Variance {j+1} Complete")
 
-        # --- Conditional Process (Box-Cox) ---
+        # CONDITIONAL PROCESS (Box-Cox)
         else:
-            # 1. Find optimal lambda
-            if progress_callback: progress_callback(int(j / ctx.ensemble_size * 10) + 10, f"Variance {j+1} Finding Lambda")
+            # 1. Find optimal lambda for Box-Cox transformation
+            if progress_callback:
+                progress_callback(int(j / ctx.ensemble_size * 10) + 10, f"Variance {j+1} Finding Lambda")
+                
+            # Search in progressively narrower ranges
             lamda = find_min_lambda(ctx, j, -2.0, 2.0, 0.25)
             if lamda != GLOBAL_MISSING_CODE:
                 lamda = find_min_lambda(ctx, j, lamda - 0.25, lamda + 0.25, 0.1)
             if lamda != GLOBAL_MISSING_CODE:
                 lamda = find_min_lambda(ctx, j, lamda - 0.1, lamda + 0.1, 0.01)
 
+            # Check if lambda was found
             if lamda == GLOBAL_MISSING_CODE:
-                QMessageBox.warning(None, "Lambda Error", f"Ensemble {j+1}: Could not find suitable lambda for Box-Cox. Skipping variance adjustment for this ensemble.")
+                QMessageBox.warning(None, "Lambda Error", 
+                                   f"Ensemble {j+1}: Could not find suitable lambda for Box-Cox. Skipping variance adjustment for this ensemble.")
                 continue
 
             ctx.lamda = lamda
@@ -933,12 +1039,17 @@ def apply_variance(ctx: SDSMContext, progress_callback=None):
             trans_array = [GLOBAL_MISSING_CODE] * ctx.no_of_days
             valid_transformed_values = []
             num_values_for_transform = 0
+            
             for i in range(ctx.no_of_days):
                 val = ctx.data_array[j][i]
-                if val != GLOBAL_MISSING_CODE and val > ctx.local_thresh: # Key conditional check
-                    num_values_for_transform +=1
-                    if abs(val) < 1e-9 and ctx.local_thresh >=0 : continue # Skip zero if non-negative threshold
+                if val != GLOBAL_MISSING_CODE and val > ctx.local_thresh:
+                    num_values_for_transform += 1
+                    # Skip zero values
+                    if abs(val) < 1e-9 and ctx.local_thresh >= 0:
+                        continue
+                        
                     try:
+                        # Apply Box-Cox transform
                         if abs(ctx.lamda) < 1e-9:
                             transformed_val = math.log(val)
                         else:
@@ -947,387 +1058,429 @@ def apply_variance(ctx: SDSMContext, progress_callback=None):
                         valid_transformed_values.append(transformed_val)
                     except (ValueError, OverflowError):
                         trans_array[i] = GLOBAL_MISSING_CODE
-                # else: value is not > threshold or is missing, so trans_array[i] remains MISSING_CODE
 
-            if not valid_transformed_values or len(valid_transformed_values) < 2: # Need at least 2 points for variance
-                 print(f"Warning: Ensemble {j+1}: Insufficient valid values (> threshold) for Box-Cox transform or variance calculation. Skipping variance adjustment.")
-                 continue
+            # Check if we have enough values
+            if not valid_transformed_values or len(valid_transformed_values) < 2:
+                print(f"Warning: Ensemble {j+1}: Insufficient valid values (> threshold) for Box-Cox transform or variance calculation.")
+                continue
 
+            # Calculate mean of transformed values
             mean_trans = sum(valid_transformed_values) / len(valid_transformed_values)
 
             # 3. Iteratively find scaling factor for transformed data
-            if progress_callback: progress_callback(int(j / ctx.ensemble_size * 10) + 30, f"Variance {j+1} Finding Factor")
+            if progress_callback:
+                progress_callback(int(j / ctx.ensemble_size * 10) + 30, f"Variance {j+1} Finding Factor")
 
-            # Original variance for conditional is based on values > threshold. Re-calculate if not already done by calc_means
-            # calc_means already considers conditional_check, so original_variance is correct.
-            if original_variance < 1e-9: # If variance of >thresh values is 0
-                 if target_variance_ratio <= 1.0:
-                    print(f"Warning: Ensemble {j+1} (Conditional) has zero variance for values > threshold. Skipping variance reduction.")
-                    continue
-                 # If inflating, this needs care. calc_variance_after_transform should handle.
-
-            lower_f = 0.1  # Start with a wider range, especially if original_variance is small
+            # Set initial search range
+            lower_f = 0.1
             higher_f = 2.0
-            if target_variance_ratio > 1.0: lower_f = 1.0; higher_f = 3.0 # Increased upper for expansion
-            else: lower_f = 0.01; higher_f = 1.0
+            
+            # Adjust range based on target (increase or decrease)
+            if target_variance_ratio > 1.0:
+                lower_f = 1.0
+                higher_f = 3.0  # Increased upper for expansion
+            else:
+                lower_f = 0.01
+                higher_f = 1.0
 
             best_factor = 1.0
 
-            max_iter = 15 # VB used 10, more might be needed for stability
+            # Binary search for optimal factor
+            max_iter = 15
             for iter_num in range(max_iter):
-                if ctx.global_kop_out: return
+                # Check for user cancellation
+                if ctx.global_kop_out:
+                    return
+                    
+                # Update progress
                 if progress_callback:
-                     prog = int(j / ctx.ensemble_size * 10) + 30 + int(iter_num/max_iter * 60)
-                     progress_callback(prog, f"Variance {j+1} Iter {iter_num+1}")
+                    prog = int(j / ctx.ensemble_size * 10) + 30 + int(iter_num/max_iter * 60)
+                    progress_callback(prog, f"Variance {j+1} Iter {iter_num+1}")
 
+                # Try middle point of current range
                 middle_f = (lower_f + higher_f) / 2.0
-                if abs(middle_f) < 1e-9: middle_f = 1e-9 * (-1 if middle_f < 0 else 1) # Avoid zero factor but keep sign
+                if abs(middle_f) < 1e-9:
+                    middle_f = 1e-9 * (-1 if middle_f < 0 else 1)  # Avoid zero factor but keep sign
 
+                # Calculate resulting variance with this factor
                 resulting_variance = calc_variance_after_transform(ctx, j, trans_array, middle_f, mean_trans)
 
+                # Check if calculation failed
                 if resulting_variance == GLOBAL_MISSING_CODE:
-                     print(f"Warning: Ensemble {j+1}, Iter {iter_num+1}: Could not calculate resulting variance. Factor search might be unstable.")
-                     # Try to nudge factor based on direction: if middle_f was supposed to increase var, but failed, try smaller increase.
-                     if target_variance_ratio > 1.0: higher_f = middle_f # Assume it overshot
-                     else: lower_f = middle_f # Assume it overshot
-                     if abs(higher_f - lower_f) < 1e-3 : break # Converged or stuck
-                     continue
+                    print(f"Warning: Ensemble {j+1}, Iter {iter_num+1}: Could not calculate resulting variance.")
+                    # Adjust search range based on direction
+                    if target_variance_ratio > 1.0:
+                        higher_f = middle_f  # Assume it overshot
+                    else:
+                        lower_f = middle_f  # Assume it overshot
+                    if abs(higher_f - lower_f) < 1e-3:
+                        break  # Converged or stuck
+                    continue
 
-
+                # Calculate current variance ratio
                 current_variance_ratio = GLOBAL_MISSING_CODE
-                if original_variance > 1e-9: # Avoid division by zero if original variance was tiny
+                if original_variance > 1e-9:  # Normal case
                     current_variance_ratio = resulting_variance / original_variance
-                elif resulting_variance > 1e-9: # Original variance was zero, but new one is not
-                    current_variance_ratio = float('inf') # Effectively a large ratio
-                else: # Both are zero
-                    current_variance_ratio = 1.0 # No change from zero
+                elif resulting_variance > 1e-9:  # Original variance was zero
+                    current_variance_ratio = float('inf')
+                else:  # Both are zero
+                    current_variance_ratio = 1.0
 
+                # Adjust search range based on current ratio
                 if current_variance_ratio < target_variance_ratio:
-                    lower_f = middle_f
+                    lower_f = middle_f  # Need to increase factor
                 else:
-                    higher_f = middle_f
+                    higher_f = middle_f  # Need to decrease factor
 
+                # Update best factor
                 best_factor = (lower_f + higher_f) / 2.0
-                if abs(higher_f - lower_f) < 1e-4: break # Convergence
-
+                
+                # Check for convergence
+                if abs(higher_f - lower_f) < 1e-4:
+                    break
 
             # 4. Apply the best factor and untransform
-            if progress_callback: progress_callback(int(j / ctx.ensemble_size * 10)+95, f"Variance {j+1} Applying Final")
+            if progress_callback:
+                progress_callback(int(j / ctx.ensemble_size * 10)+95, f"Variance {j+1} Applying Final")
+                
+            # Process each day
             for i in range(ctx.no_of_days):
-                original_val = ctx.data_array[j][i] # Get original value for conditional check context
-                if trans_array[i] != GLOBAL_MISSING_CODE: # Was part of transform
+                original_val = ctx.data_array[j][i]
+                
+                # Only process days that were transformed
+                if trans_array[i] != GLOBAL_MISSING_CODE:
                     try:
+                        # Apply adjustment and untransform
                         val_trans_adjusted = ((trans_array[i] - mean_trans) * best_factor) + mean_trans
                         val_untransformed = unbox_cox(val_trans_adjusted, ctx.lamda)
 
                         if val_untransformed != GLOBAL_MISSING_CODE and val_untransformed != float('inf'):
-                            # Conditional check: if original was > thresh, new must also be > thresh
-                            if original_val > ctx.local_thresh: # This implies conditional_check is true
+                            # Ensure conditional values stay above threshold
+                            if original_val > ctx.local_thresh:
                                 if val_untransformed <= ctx.local_thresh:
-                                    ctx.data_array[j][i] = ctx.local_thresh + 1e-6 # Clamp
+                                    ctx.data_array[j][i] = ctx.local_thresh + 1e-6  # Keep above threshold
                                 else:
                                     ctx.data_array[j][i] = val_untransformed
-                            # else: original_val was not > thresh. This state shouldn't occur if trans_array[i] is valid,
-                            # as transform only happens for val > local_thresh.
-                            # However, if it did, the untransformed value is applied directly.
-                            # This path (original_val <= local_thresh but trans_array[i] not missing)
-                            # should ideally not be reached if logic is perfectly aligned.
-                            # If it means original_val was modified by previous steps like amount,
-                            # then the clamping is based on the *new* value vs threshold.
-                            # The most robust is just to check the new untransformed value if conditional.
-                            # if ctx.conditional_check and val_untransformed <= ctx.local_thresh and original_val > ctx.local_thresh:
-                            #    ctx.data_array[j][i] = ctx.local_thresh + 1e-6
-                            # else:
-                            #    ctx.data_array[j][i] = val_untransformed
-                        # else: untransform failed, leave original value data_array[j][i]
                     except (ValueError, OverflowError):
-                         pass # Keep original ctx.data_array[j][i]
+                        pass  # Keep original value
 
-    if progress_callback: progress_callback(100, "Applying Variance Complete")
+    # Update progress to complete
+    if progress_callback:
+        progress_callback(100, "Applying Variance Complete")
 
 
+# Apply trend to add time-based changes to values
 def apply_trend(ctx: SDSMContext, progress_callback=None):
-    """Apply Linear, Exponential, or Logistic trend."""
-    if not ctx.trend_check: return
+    if not ctx.trend_check:
+        return
 
-    for j in range(ctx.ensemble_size): # Loop ensembles
-        if ctx.global_kop_out: return
+    # Process each ensemble
+    for j in range(ctx.ensemble_size):
+        # Check for user cancellation
+        if ctx.global_kop_out:
+            return
+            
+        # Update progress
         if progress_callback:
-             progress_callback(int(j / ctx.ensemble_size * 100), f"Applying Trend {j+1}")
+            progress_callback(int(j / ctx.ensemble_size * 100), f"Applying Trend {j+1}")
 
-        # --- Linear Trend ---
+        # LINEAR TREND
         if ctx.trend_option == 0:
-            if abs(ctx.linear_trend) < 1e-9: continue # Skip if zero trend
-            days_per_year = 365.25 if ctx.year_indicator == 366 else float(ctx.year_indicator) # year_indicator=366 implies calendar with leap
-            if days_per_year == 0: days_per_year = 365.25 # Avoid division by zero
+            # Skip if trend is zero
+            if abs(ctx.linear_trend) < 1e-9:
+                continue
+                
+            # Calculate days per year (for annual rate conversion)
+            days_per_year = 365.25 if ctx.year_indicator == 366 else float(ctx.year_indicator)
+            if days_per_year == 0:
+                days_per_year = 365.25  # Avoid division by zero
 
+            # Calculate daily increment
             increment_per_day = ctx.linear_trend / days_per_year
-            increment_multiplier_per_day_percent = ctx.linear_trend / days_per_year # For conditional, it's a % of value
+            increment_multiplier_per_day_percent = ctx.linear_trend / days_per_year
 
+            # Apply to each day
             for i in range(ctx.no_of_days):
                 val = ctx.data_array[j][i]
                 if val != GLOBAL_MISSING_CODE:
-                    day_index_from_start = i # 0-based index for time progression
+                    day_index_from_start = i  # 0-based index
 
-                    if not ctx.conditional_check: # Unconditional: Add trend
-                         trend_effect = increment_per_day * day_index_from_start
-                         ctx.data_array[j][i] = val + trend_effect
-                    else: # Conditional: Multiply by trend factor if > threshold
+                    if not ctx.conditional_check:
+                        # Unconditional: Add trend value
+                        trend_effect = increment_per_day * day_index_from_start
+                        ctx.data_array[j][i] = val + trend_effect
+                    else:
+                        # Conditional: Multiply by trend factor if > threshold
                         if val > ctx.local_thresh:
-                            # VB's "LinearTrend / (YearIndicator * 100)" for conditional suggests LinearTrend is a percentage.
-                            # If LinearTrend input is absolute units/year, then for conditional % change:
-                            # % change for the day = (increment_per_day_absolute / original_value_representative_for_day) * 100
-                            # Or, simpler, the daily increment (absolute) is scaled by (value / mean_of_series) for magnitude effect.
-                            # The VB code seems to treat LinearTrend as a % value for conditional directly.
-                            # Let's assume LinearTrend input itself is a % for conditional.
-                            # So, daily_percentage_increment = (LinearTrend_as_percent / days_per_year)
-                            # Multiplier = 1 + (daily_percentage_increment / 100) * day_index
-                            # Multiplier = 1 + ( (LinearTrend_input / 100) / days_per_year ) * day_index
-                            # VB actually used: Multiplier = 1 + (LinearTrend / (YearIndicator * 100)) * DayNo
-                            # This implies LinearTrend is an annual percentage.
+                            # Calculate trend multiplier (as percentage)
+                            # For annual percentage trend of ctx.linear_trend,
+                            # daily percentage increment is (linear_trend / (days_per_year * 100))
                             trend_multiplier_increment = (ctx.linear_trend / (days_per_year * 100.0)) * day_index_from_start
                             trend_multiplier = 1.0 + trend_multiplier_increment
 
+                            # Apply trend multiplier
                             new_val = val * trend_multiplier
-                            if new_val <= ctx.local_thresh: # Clamp
+                            
+                            # Keep values above threshold
+                            if new_val <= ctx.local_thresh:
                                 ctx.data_array[j][i] = ctx.local_thresh + 1e-6
                             else:
                                 ctx.data_array[j][i] = new_val
 
-        # --- Exponential Trend ---
+        # EXPONENTIAL TREND
         elif ctx.trend_option == 1:
-            exp_trend_factor_input = ctx.exp_trend # This is the target cumulative multiplier by end of series.
-            if abs(exp_trend_factor_input - 1.0) < 1e-9 and not ctx.conditional_check : continue # Factor is 1, no change for unconditional
-            if abs(exp_trend_factor_input) < 1e-9 and ctx.conditional_check: continue # Additive % is 0 for conditional
+            exp_trend_factor_input = ctx.exp_trend
+            
+            # Skip if no change
+            if abs(exp_trend_factor_input - 1.0) < 1e-9 and not ctx.conditional_check:
+                continue
+            if abs(exp_trend_factor_input) < 1e-9 and ctx.conditional_check:
+                continue
 
-            # For UNCONDITIONAL: V_new = V_orig * (Factor_at_time_t)
-            # Factor_at_time_t = Initial_Factor ^ (t / T) where Initial_Factor = exp_trend_factor_input
-            # Or, if exp_trend_factor_input is additive (VB ExpTrend seems to be additive for conditional):
-            # V_new = V_orig + TrendEffect. TrendEffect = (Exp( (i / ExpAValue) ) - 1) * SignOfExpTrendInput
-            # ExpAValue = NoOfDays / (Log(Abs(ExpTrendInput) + 1))
-            # This implies ExpTrendInput is an additive percentage like 50 (for 50%)
+            # Parse input trend value (as percentage)
+            exp_input_val = ctx.exp_trend
+            if abs(exp_input_val) < 1e-9:
+                continue
 
-            # Let's follow VB conditional logic structure for ExpTrend meaning "additive percentage by end of series"
-            # And for unconditional, it might be a multiplicative factor. The code seems to use same TrendEffect calculation.
-
-            # VB's `ExpTrend` seems to be a percentage value (e.g., 50 for 50% change by end of series)
-            # `add_exp` flag indicates if this % is additive or subtractive.
-            # `ExpTrendAbs` in VB seems to be `Abs(frmScenarioGenerator.ExpTrend.Text)`
-            # `Log(ExpTrendAbs + 1)` in VB. If ExpTrend is 50(%), this is Log(51).
-            # This `TrendEffect` is then added/subtracted (unconditional) or used in multiplier (conditional)
-
-            exp_input_val = ctx.exp_trend # User input, e.g. 50 for +50% or -50 for -50%
-            if abs(exp_input_val) < 1e-9: continue
-
+            # Determine if trend is positive or negative
             add_effect = exp_input_val > 0
-            exp_param_abs = abs(exp_input_val / 100.0) # Convert to fraction, e.g., 0.5 for 50%
+            exp_param_abs = abs(exp_input_val / 100.0)  # Convert to fraction, e.g., 0.5 for 50%
 
             try:
-                # Log argument must be > 0.  (exp_param_abs + 1.0) is always > 0.
+                # Calculate exp_a_value for scaling trend over time
                 log_arg = exp_param_abs + 1.0
-                if ctx.no_of_days <=0: continue
+                if ctx.no_of_days <= 0:
+                    continue
                 exp_a_value = ctx.no_of_days / math.log(log_arg)
-                if abs(exp_a_value) < 1e-9: continue
-            except (ValueError, OverflowError): continue
+                if abs(exp_a_value) < 1e-9:
+                    continue
+            except (ValueError, OverflowError):
+                continue
 
+            # Apply to each day
             for i in range(ctx.no_of_days):
                 val = ctx.data_array[j][i]
                 if val != GLOBAL_MISSING_CODE:
-                    day_idx = i # 0-based
+                    day_idx = i  # 0-based
+                    
                     try:
+                        # Calculate exponential trend effect
                         exponent = day_idx / exp_a_value
-                        if exponent > 700: trend_effect_magnitude = float('inf')
-                        elif exponent < -700: trend_effect_magnitude = 0 # exp(-large) -> 0, so (0-1) = -1
-                        else: trend_effect_magnitude = math.exp(exponent) - 1.0
-                        if trend_effect_magnitude == float('inf'): continue
-                    except (ValueError, OverflowError): continue
+                        if exponent > 700:
+                            trend_effect_magnitude = float('inf')
+                        elif exponent < -700:
+                            trend_effect_magnitude = 0
+                        else:
+                            trend_effect_magnitude = math.exp(exponent) - 1.0
+                            
+                        if trend_effect_magnitude == float('inf'):
+                            continue
+                    except (ValueError, OverflowError):
+                        continue
 
-                    # This trend_effect_magnitude is a fractional change relative to initial state,
-                    # scaled by exp_input_val implicitly through exp_a_value.
-                    # The VB code applies `TrendEffect` calculated this way.
-                    # If `exp_input_val` was +50, `trend_effect_magnitude` grows towards `exp_param_abs` (0.5).
-                    # So, the `trend_effect_magnitude` itself IS the fractional change.
-
-                    if not ctx.conditional_check: # Unconditional: V_new = V_orig * (1 +/- trend_effect_magnitude)
-                        # Or is it V_new = V_orig + (V_orig_mean_or_typical * trend_effect_magnitude)?
-                        # VB: If AddExp then Value = Value + TrendEffect. This suggests TrendEffect is absolute.
-                        # However, TrendEffect from Exp((i/ExpAValue))-1 is fractional.
-                        # If ExpTrend is 50(%), TrendEffect grows towards 0.5.
-                        # If Value=10, new Value = 10 + 0.5 = 10.5. (small change)
-                        # If TrendEffect is meant to be scaled by the value itself for unconditional too:
-                        # Value = Value * (1 + TrendEffect if AddExp else 1 - TrendEffect)
-                        # This seems more logical for an "exponential" trend.
-                        # Let's assume unconditional trend is also multiplicative by (1 + scaled_effect)
-                        # where scaled_effect is trend_effect_magnitude * (sign of exp_input_val).
-                        # The VB conditional logic: `ExpMultiplier = (100 +/- TrendEffect) / 100` where TrendEffect is `Abs(TrendEffect)`
-                        # and +/- depends on `AddExp`. This makes `TrendEffect` itself `Exp((i/A))-1`.
-                        # So for conditional, if TrendEffect = 0.2, multiplier is 1.2 or 0.8.
-                        # Let's use a consistent interpretation: trend_effect_magnitude is the fractional change.
-                        # This means `TrendEffect` in VB was likely the fractional change to be applied.
-
+                    if not ctx.conditional_check:
+                        # Unconditional: Apply multiplicative factor
                         current_fractional_change = trend_effect_magnitude
                         if add_effect:
                             ctx.data_array[j][i] = val * (1 + current_fractional_change)
                         else:
                             ctx.data_array[j][i] = val * (1 - current_fractional_change)
-
-                    else: # Conditional: apply if val > thresh
+                    else:
+                        # Conditional: Apply only to values > threshold
                         if val > ctx.local_thresh:
-                            current_fractional_change = trend_effect_magnitude # Already scaled by ExpAValue
+                            current_fractional_change = trend_effect_magnitude
                             if add_effect:
                                 trend_multiplier = 1.0 + current_fractional_change
                             else:
                                 trend_multiplier = 1.0 - current_fractional_change
 
-                            if trend_multiplier < 0: trend_multiplier = 0 # Avoid negative results for positive data
+                            # Avoid negative values
+                            if trend_multiplier < 0:
+                                trend_multiplier = 0
+                                
+                            # Apply trend multiplier
                             new_val = val * trend_multiplier
+                            
+                            # Keep values above threshold
                             if new_val <= ctx.local_thresh:
                                 ctx.data_array[j][i] = ctx.local_thresh + 1e-6
                             else:
                                 ctx.data_array[j][i] = new_val
 
-        # --- Logistic Trend ---
+        # LOGISTIC TREND
         elif ctx.trend_option == 2:
-            logistic_input_val = ctx.logistic_trend # e.g. 10 for +10 units by end, or 10 for +10% by end for conditional
-            if abs(logistic_input_val) < 1e-9: continue
+            logistic_input_val = ctx.logistic_trend
+            
+            # Skip if no change
+            if abs(logistic_input_val) < 1e-9:
+                continue
 
+            # Apply to each day
             for i in range(ctx.no_of_days):
-                 val = ctx.data_array[j][i]
-                 if val != GLOBAL_MISSING_CODE:
+                val = ctx.data_array[j][i]
+                if val != GLOBAL_MISSING_CODE:
+                    # Map day index to range [-6, 6] for sigmoid function
                     if ctx.no_of_days > 1:
-                        x_mapping = ((i / (ctx.no_of_days - 1)) * 12.0) - 6.0 # Scale i to [-6, 6]
-                    else: x_mapping = 0.0
+                        x_mapping = ((i / (ctx.no_of_days - 1)) * 12.0) - 6.0
+                    else:
+                        x_mapping = 0.0
 
                     try:
-                        sigmoid_factor = 1.0 / (1.0 + math.exp(-x_mapping)) # Sigmoid output [0, 1]
-                    except OverflowError: # x_mapping is very large negative
-                         sigmoid_factor = 0.0
+                        # Calculate sigmoid factor [0, 1]
+                        sigmoid_factor = 1.0 / (1.0 + math.exp(-x_mapping))
+                    except OverflowError:
+                        sigmoid_factor = 0.0
 
-                    # `logistic_input_val` is the total change desired by end of series.
-                    # `sigmoid_factor` scales this change over time.
+                    # Calculate trend effect based on sigmoid
                     trend_effect_absolute = logistic_input_val * sigmoid_factor
 
-                    if not ctx.conditional_check: # Unconditional: Add absolute trend effect
+                    if not ctx.conditional_check:
+                        # Unconditional: Add absolute trend effect
                         ctx.data_array[j][i] = val + trend_effect_absolute
-                    else: # Conditional: Multiply by factor related to trend effect
+                    else:
+                        # Conditional: Apply only to values > threshold
                         if val > ctx.local_thresh:
-                            # VB: Multiplier = (100 + IncrementValue) / 100. IncrementValue is LogisticTrend * SigmoidFactor
-                            # This implies LogisticTrend is an input percentage for conditional.
-                            # So, trend_effect_percentage_points = logistic_input_val * sigmoid_factor
-                            # trend_multiplier = 1.0 + (trend_effect_percentage_points / 100.0)
-                            trend_multiplier = 1.0 + ( (logistic_input_val * sigmoid_factor) / 100.0 )
+                            # Calculate multiplier based on percentage
+                            trend_multiplier = 1.0 + ((logistic_input_val * sigmoid_factor) / 100.0)
 
-
-                            if trend_multiplier < 0: trend_multiplier = 0
+                            # Avoid negative values
+                            if trend_multiplier < 0:
+                                trend_multiplier = 0
+                                
+                            # Apply trend multiplier
                             new_val = val * trend_multiplier
+                            
+                            # Keep values above threshold
                             if new_val <= ctx.local_thresh:
                                 ctx.data_array[j][i] = ctx.local_thresh + 1e-6
                             else:
                                 ctx.data_array[j][i] = new_val
-    if progress_callback: progress_callback(100, "Applying Trend Complete")
+                                
+    # Update progress to complete
+    if progress_callback:
+        progress_callback(100, "Applying Trend Complete")
 
 
+# Write the modified data to the output file
 def write_output_file(ctx: SDSMContext, progress_callback=None):
-    """Writes the modified data_array to the output file."""
     try:
         with open(ctx.out_root, "w") as f:
+            # Write each day's data
             for i in range(ctx.no_of_days):
-                if ctx.global_kop_out: return False # Check for user cancel
+                # Check for user cancellation
+                if ctx.global_kop_out:
+                    return False
+                    
+                # Update progress
                 if progress_callback:
                     progress_callback(int(i / ctx.no_of_days * 100), "Writing Output File")
 
+                # Format line with values for each ensemble
                 line_parts = [format_value_output(ctx.data_array[j][i]) for j in range(ctx.ensemble_size)]
-                f.write("".join(line_parts).rstrip('\t') + "\n") # Rstrip to remove last tab
+                f.write("".join(line_parts).rstrip('\t') + "\n")  # Remove trailing tab
 
     except Exception as e:
         QMessageBox.critical(None, "File Write Error", f"Error writing output file:\n{e}")
         ctx.error_occurred = True
         return False
 
-    if progress_callback: progress_callback(100, "Writing Output Complete")
+    # Update progress to complete
+    if progress_callback:
+        progress_callback(100, "Writing Output Complete")
     return True
 
-# --- .PAR file function (keeping minimal functionality needed) ---
+# Parse PAR file to set model parameters
 def parse_par_file(par_path: str, ctx: SDSMContext):
     lines = []
     try:
+        # Read the file
         with open(par_path, "r") as f:
             raw_lines = f.readlines()
-        # Filter empty lines and strip whitespace
+            
+        # Clean up lines (remove empty lines and whitespace)
         lines = [line.strip() for line in raw_lines if line.strip()]
-        if not lines: return False # Empty file
+        if not lines:
+            return False  # Empty file
 
         idx = 0
-        # Helper to safely get next line
+        # Helper function to safely get next line
         def get_line(current_idx):
             if current_idx < len(lines):
                 return lines[current_idx], current_idx + 1
             raise IndexError("Unexpected end of PAR file.")
 
+        # Read basic parameters
         line, idx = get_line(idx); ctx.num_predictors = int(line)
-        line, idx = get_line(idx); ctx.num_months = int(line) # Should be 12
+        line, idx = get_line(idx); ctx.num_months = int(line)  # Should be 12
         line, idx = get_line(idx); ctx.year_length = int(line)
         ctx.year_indicator = ctx.year_length
+        
+        # Parse start date
         line, idx = get_line(idx); start_date_str = line
         try:
             ctx.start_date = datetime.datetime.strptime(start_date_str, "%d/%m/%Y").date()
-        except ValueError: # Try another common format if first fails
+        except ValueError:  # Try alternative format
             ctx.start_date = datetime.datetime.strptime(start_date_str, "%m/%d/%Y").date()
 
+        # Number of days
         line, idx = get_line(idx); ctx.no_of_days = int(line)
 
-        # Skip potential duplicate date/days if present (robust check)
-        if idx < len(lines) and lines[idx] == start_date_str: idx += 1
-        if idx < len(lines) and lines[idx].isdigit() and int(lines[idx]) == ctx.no_of_days: idx +=1
+        # Skip potential duplicate date/days if present
+        if idx < len(lines) and lines[idx] == start_date_str:
+            idx += 1
+        if idx < len(lines) and lines[idx].isdigit() and int(lines[idx]) == ctx.no_of_days:
+            idx += 1
 
+        # Read conditional flag
         line, idx = get_line(idx); cond_str = line
         ctx.conditional_check = (cond_str.upper() == "#TRUE#")
+        
+        # Read ensemble size
         line, idx = get_line(idx); ensemble_str = line
         ctx.ensemble_size = int(ensemble_str)
 
-        # Skip variance factor percent, transform code, bias correction from PAR as they are not directly used
-        # or are set by user in this tool.
-        idx += 3 # Skip 3 lines (VarPerc, Transform, BiasCorrection)
+        # Skip variance factor, transform code, bias correction
+        idx += 3
 
-        # Read Predictor Files (relative paths)
+        # Read predictor files
         ctx.predictor_files = []
         par_dir = os.path.dirname(par_path)
         for _ in range(ctx.num_predictors):
-            if idx >= len(lines): break # Should not happen if PAR is well-formed
+            if idx >= len(lines):
+                break
             line, idx = get_line(idx); pfile = line
             abs_pfile = os.path.normpath(os.path.join(par_dir, pfile))
             ctx.predictor_files.append(abs_pfile)
 
-        # Read Data File (relative path) - this is the observed data for SDSM model calibration,
-        # for Scenario Generator, this becomes the InFile if not overridden.
+        # Read data file path
         if idx < len(lines):
             line, idx = get_line(idx); data_file = line
-            # Check if it's a coefficient line or the data file name
-            if ' ' not in data_file and ('.' in data_file or os.sep in data_file or os.altsep in data_file): # Heuristic for filename
+            # Check if it's a coefficient line or data file name
+            if ' ' not in data_file and ('.' in data_file or os.sep in data_file or os.altsep in data_file):
                 abs_data_file = os.path.normpath(os.path.join(par_dir, data_file))
-                ctx.in_file = os.path.basename(abs_data_file) # Store filename part
-                ctx.in_root = abs_data_file # Store full path
-            else: # Line was not a filename, likely start of coeffs, so put it back conceptually
-                idx -=1
+                ctx.in_file = os.path.basename(abs_data_file)
+                ctx.in_root = abs_data_file
+            else:
+                # Line was not a filename, put it back
+                idx -= 1
 
-
-        # Read Monthly Coefficients (if present)
+        # Read monthly coefficients if present
         ctx.monthly_coeffs = []
         coeffs_found = False
         while idx < len(lines):
             line, current_idx_plus_1 = get_line(idx)
             parts = line.split()
             try:
-                # Ensure all parts are numbers and count matches num_predictors + intercept
+                # Check if line contains coefficient values
                 coeffs = [float(x) for x in parts]
-                if len(coeffs) == ctx.num_predictors + 1: # Intercept + N predictors
+                if len(coeffs) == ctx.num_predictors + 1:  # Intercept + predictors
                     ctx.monthly_coeffs.append(coeffs)
                     coeffs_found = True
                     idx = current_idx_plus_1
-                else: # Does not look like a coefficient line
+                else:
                     break
-            except ValueError: # Not a float, so not a coefficient line
-                 break # Stop trying to read coefficients
+            except ValueError:
+                break  # Not coefficient values
 
         if coeffs_found:
             print(f"Read {len(ctx.monthly_coeffs)} lines of monthly coefficients from PAR file.")
@@ -1338,7 +1491,7 @@ def parse_par_file(par_path: str, ctx: SDSMContext):
         return False
 
 
-# --- Stylesheet ---
+# --- CSS Stylesheet for UI ---
 STYLESHEET = """
     QWidget {
         font-family: 'Segoe UI', 'Helvetica Neue', 'Arial', sans-serif;
@@ -1427,9 +1580,9 @@ STYLESHEET = """
     }
 """
 
-###############################################################################
-# 4. PyQt5 User Interface (ScenarioGeneratorWidget)
-###############################################################################
+#############################################################
+# User Interface Using PyQt5
+#############################################################
 class ScenarioGeneratorWidget(QWidget):
     def __init__(self):
         super().__init__()
@@ -1438,38 +1591,50 @@ class ScenarioGeneratorWidget(QWidget):
         self.reset_ui_and_context()
 
     def _init_ui(self):
+        # Main layout container
         mainLayout = QVBoxLayout(self)
         mainLayout.setContentsMargins(12, 12, 12, 12)
         mainLayout.setSpacing(10)
 
-        # --- File Selection ---
+        # --- File Selection Section ---
         fileGroup = QGroupBox("Files")
         fileLayout = QGridLayout()
         fileLayout.setSpacing(8)
+        
+        # Input file controls
         self.inputFileButton = QPushButton(self.style().standardIcon(QStyle.SP_DirOpenIcon), " Input File")
         self.inputFileLabel = QLabel("No file selected")
         self.inputFileLabel.setObjectName("FileLabel")
         self.inputFileLabel.setWordWrap(True)
-        self.outputFileButton = QPushButton(self.style().standardIcon(QStyle.SP_FileDialogNewFolder), " Output File") # Changed icon
+        
+        # Output file controls
+        self.outputFileButton = QPushButton(self.style().standardIcon(QStyle.SP_FileDialogNewFolder), " Output File")
         self.outputFileLabel = QLabel("No file selected")
         self.outputFileLabel.setObjectName("FileLabel")
         self.outputFileLabel.setWordWrap(True)
+        
+        # Add widgets to layout
         fileLayout.addWidget(self.inputFileButton, 0, 0)
         fileLayout.addWidget(self.inputFileLabel, 0, 1)
         fileLayout.addWidget(self.outputFileButton, 1, 0)
         fileLayout.addWidget(self.outputFileLabel, 1, 1)
-        fileLayout.setColumnStretch(1, 1)
+        fileLayout.setColumnStretch(1, 1)  # Allow filename labels to stretch
+        
         fileGroup.setLayout(fileLayout)
         mainLayout.addWidget(fileGroup)
 
-        # --- General Parameters ---
+        # --- General Parameters Section ---
         generalGroup = QGroupBox("General Settings")
         generalLayout = QGridLayout()
         generalLayout.setSpacing(8)
+        
+        # Create input fields
         self.startDateInput = QLineEdit()
         self.ensembleSizeInput = QLineEdit()
         self.conditionalCheck = QCheckBox("Conditional Process")
         self.thresholdInput = QLineEdit()
+        
+        # Add widgets to layout
         generalLayout.addWidget(QLabel("Start Date (DD/MM/YY):"), 0, 0)
         generalLayout.addWidget(self.startDateInput, 0, 1)
         generalLayout.addWidget(QLabel("Ensemble Size:"), 0, 2)
@@ -1477,25 +1642,28 @@ class ScenarioGeneratorWidget(QWidget):
         generalLayout.addWidget(self.conditionalCheck, 1, 0, 1, 2)
         generalLayout.addWidget(QLabel("Threshold:"), 1, 2)
         generalLayout.addWidget(self.thresholdInput, 1, 3)
-        generalLayout.setColumnStretch(1,1) # Allow input fields to stretch a bit
+        
+        # Allow input fields to stretch
+        generalLayout.setColumnStretch(1,1)
         generalLayout.setColumnStretch(3,1)
+        
         generalGroup.setLayout(generalLayout)
         mainLayout.addWidget(generalGroup)
 
-        # --- Treatments ---
+        # --- Treatments Section ---
         treatmentsGroup = QGroupBox("Treatments")
-        treatmentsLayout = QGridLayout() # Main grid for treatments
-        treatmentsLayout.setSpacing(10) # Spacing between treatment rows
-        treatmentsLayout.setColumnStretch(1, 1) # Allow controls column to stretch
+        treatmentsLayout = QGridLayout()
+        treatmentsLayout.setSpacing(10)
+        treatmentsLayout.setColumnStretch(1, 1)  # Allow controls column to stretch
 
-        # Helper for consistent input field styling in treatments
+        # Helper function for consistent input field styling
         def create_treatment_input(placeholder=""):
             edit = QLineEdit()
             edit.setPlaceholderText(placeholder)
             edit.setObjectName("TreatmentInput")
             return edit
 
-        # Occurrence Row
+        # Occurrence Treatment Row
         self.occurrenceCheck = QCheckBox("Occurrence")
         self.occFactorInput = create_treatment_input("% change")
         self.occOptionGroup = QButtonGroup(self)
@@ -1505,8 +1673,10 @@ class ScenarioGeneratorWidget(QWidget):
         self.occOptionGroup.addButton(self.occForcedRadio, 1)
         self.preserveTotalsCheck = QCheckBox("Preserve Totals")
 
+        # Layout for occurrence controls
         occControlsLayout = QHBoxLayout()
-        occControlsLayout.setContentsMargins(0,0,0,0); occControlsLayout.setSpacing(5)
+        occControlsLayout.setContentsMargins(0,0,0,0)
+        occControlsLayout.setSpacing(5)
         occControlsLayout.addWidget(QLabel("Factor (%):"))
         occControlsLayout.addWidget(self.occFactorInput)
         occControlsLayout.addSpacing(10)
@@ -1515,10 +1685,11 @@ class ScenarioGeneratorWidget(QWidget):
         occControlsLayout.addSpacing(10)
         occControlsLayout.addWidget(self.preserveTotalsCheck)
         occControlsLayout.addStretch(1)
+        
         treatmentsLayout.addWidget(self.occurrenceCheck, 0, 0, Qt.AlignTop)
         treatmentsLayout.addLayout(occControlsLayout, 0, 1)
 
-        # Amount Row
+        # Amount Treatment Row
         self.amountCheck = QCheckBox("Amount")
         self.amountOptionGroup = QButtonGroup(self)
         self.amountFactorRadio = QRadioButton("Factor:")
@@ -1528,59 +1699,83 @@ class ScenarioGeneratorWidget(QWidget):
         self.amountOptionGroup.addButton(self.amountFactorRadio, 0)
         self.amountOptionGroup.addButton(self.amountAddRadio, 1)
 
+        # Layout for amount controls
         amountControlsLayout = QHBoxLayout()
-        amountControlsLayout.setContentsMargins(0,0,0,0); amountControlsLayout.setSpacing(5)
+        amountControlsLayout.setContentsMargins(0,0,0,0)
+        amountControlsLayout.setSpacing(5)
         amountControlsLayout.addWidget(self.amountFactorRadio)
         amountControlsLayout.addWidget(self.amountFactorInput)
         amountControlsLayout.addSpacing(15)
         amountControlsLayout.addWidget(self.amountAddRadio)
         amountControlsLayout.addWidget(self.amountAddInput)
         amountControlsLayout.addStretch(1)
+        
         treatmentsLayout.addWidget(self.amountCheck, 1, 0, Qt.AlignTop)
         treatmentsLayout.addLayout(amountControlsLayout, 1, 1)
 
-        # Variance Row
+        # Variance Treatment Row
         self.varianceCheck = QCheckBox("Variance")
         self.varianceFactorInput = create_treatment_input("% change")
+        
+        # Layout for variance controls
         varianceControlsLayout = QHBoxLayout()
-        varianceControlsLayout.setContentsMargins(0,0,0,0); varianceControlsLayout.setSpacing(5)
+        varianceControlsLayout.setContentsMargins(0,0,0,0)
+        varianceControlsLayout.setSpacing(5)
         varianceControlsLayout.addWidget(QLabel("Factor (%):"))
         varianceControlsLayout.addWidget(self.varianceFactorInput)
         varianceControlsLayout.addStretch(1)
+        
         treatmentsLayout.addWidget(self.varianceCheck, 2, 0, Qt.AlignTop)
         treatmentsLayout.addLayout(varianceControlsLayout, 2, 1)
 
-        # Trend Section
+        # Trend Treatment Section
         self.trendCheck = QCheckBox("Trend")
         self.trendOptionGroup = QButtonGroup(self)
-        # Linear
+        
+        # Linear trend option
         self.trendLinearRadio = QRadioButton("Linear:")
         self.trendLinearInput = create_treatment_input("/year value")
         self.trendOptionGroup.addButton(self.trendLinearRadio, 0)
-        trendLinLayout=QHBoxLayout(); trendLinLayout.setContentsMargins(0,0,0,0); trendLinLayout.setSpacing(5)
-        trendLinLayout.addWidget(self.trendLinearRadio); trendLinLayout.addWidget(self.trendLinearInput); trendLinLayout.addStretch(1)
-        # Exponential
+        trendLinLayout = QHBoxLayout()
+        trendLinLayout.setContentsMargins(0,0,0,0)
+        trendLinLayout.setSpacing(5)
+        trendLinLayout.addWidget(self.trendLinearRadio)
+        trendLinLayout.addWidget(self.trendLinearInput)
+        trendLinLayout.addStretch(1)
+        
+        # Exponential trend option
         self.trendExpRadio = QRadioButton("Exponential:")
         self.trendExpInput = create_treatment_input("factor")
         self.trendOptionGroup.addButton(self.trendExpRadio, 1)
-        trendExpLayout=QHBoxLayout(); trendExpLayout.setContentsMargins(0,0,0,0); trendExpLayout.setSpacing(5)
-        trendExpLayout.addWidget(self.trendExpRadio); trendExpLayout.addWidget(self.trendExpInput); trendExpLayout.addStretch(1)
-        # Logistic
+        trendExpLayout = QHBoxLayout()
+        trendExpLayout.setContentsMargins(0,0,0,0)
+        trendExpLayout.setSpacing(5)
+        trendExpLayout.addWidget(self.trendExpRadio)
+        trendExpLayout.addWidget(self.trendExpInput)
+        trendExpLayout.addStretch(1)
+        
+        # Logistic trend option
         self.trendLogRadio = QRadioButton("Logistic:")
         self.trendLogInput = create_treatment_input("factor")
         self.trendOptionGroup.addButton(self.trendLogRadio, 2)
-        trendLogLayout=QHBoxLayout(); trendLogLayout.setContentsMargins(0,0,0,0); trendLogLayout.setSpacing(5)
-        trendLogLayout.addWidget(self.trendLogRadio); trendLogLayout.addWidget(self.trendLogInput); trendLogLayout.addStretch(1)
+        trendLogLayout = QHBoxLayout()
+        trendLogLayout.setContentsMargins(0,0,0,0)
+        trendLogLayout.setSpacing(5)
+        trendLogLayout.addWidget(self.trendLogRadio)
+        trendLogLayout.addWidget(self.trendLogInput)
+        trendLogLayout.addStretch(1)
 
         # Container for all trend options
         trendOptionsContainer = QVBoxLayout()
-        trendOptionsContainer.setContentsMargins(0,0,0,0); trendOptionsContainer.setSpacing(4)
+        trendOptionsContainer.setContentsMargins(0,0,0,0)
+        trendOptionsContainer.setSpacing(4)
         trendOptionsContainer.addLayout(trendLinLayout)
         trendOptionsContainer.addLayout(trendExpLayout)
         trendOptionsContainer.addLayout(trendLogLayout)
 
         treatmentsLayout.addWidget(self.trendCheck, 3, 0, Qt.AlignTop)
-        treatmentsLayout.addLayout(trendOptionsContainer, 3, 1) # All trend options in one cell, stacked vertically
+        treatmentsLayout.addLayout(trendOptionsContainer, 3, 1)
+        
         treatmentsGroup.setLayout(treatmentsLayout)
         mainLayout.addWidget(treatmentsGroup)
 
@@ -1590,63 +1785,79 @@ class ScenarioGeneratorWidget(QWidget):
         self.progressLabel = QLabel("")
         self.progressLabel.setVisible(False)
         self.progressLabel.setAlignment(Qt.AlignCenter)
-        progressLayout = QVBoxLayout() # Changed to QVBoxLayout for label above bar
+        
+        progressLayout = QVBoxLayout()
         progressLayout.setContentsMargins(0,5,0,0)
         progressLayout.addWidget(self.progressLabel)
         progressLayout.addWidget(self.progressBar)
+        
         mainLayout.addLayout(progressLayout)
 
-        # --- Buttons ---
+        # --- Action Buttons ---
         buttonLayout = QHBoxLayout()
         self.generateButton = QPushButton("Generate Scenario")
-        self.generateButton.setObjectName("GenerateButton") # For specific styling
+        self.generateButton.setObjectName("GenerateButton")  # For specific styling
         self.resetButton = QPushButton("Reset Form")
+        
         buttonLayout.addStretch(1)
         buttonLayout.addWidget(self.resetButton)
         buttonLayout.addWidget(self.generateButton)
+        
         mainLayout.addLayout(buttonLayout)
 
-        mainLayout.addStretch(1) # Push content upwards
+        # Push content upwards
+        mainLayout.addStretch(1)
 
+        # Add tooltips and connect signals
         self._add_tooltips()
         self._connect_signals()
 
 
     def _add_tooltips(self):
+        # File section tooltips
         self.inputFileButton.setToolTip("Load parameters from a .PAR file or raw data from .txt/.dat/.csv")
         self.outputFileButton.setToolTip("Specify the output file name for the generated scenario (e.g., scenario.out)")
+        
+        # General settings tooltips
         self.startDateInput.setToolTip("Start date of the input data series (DD/MM/YYYY)")
         self.ensembleSizeInput.setToolTip("Number of ensemble members (columns) in the input data (1-100)")
         self.conditionalCheck.setToolTip("If checked, Amount, Variance, and Trend treatments only apply to values above the Threshold.\nOccurrence treatment ALWAYS requires this to be checked.")
         self.thresholdInput.setToolTip("Threshold value for conditional processing (e.g., precipitation threshold like 0.1)")
 
+        # Occurrence tooltips
         self.occurrenceCheck.setToolTip("Modify the frequency of wet/dry days (Conditional Process must be checked)")
         self.occFactorInput.setToolTip("Percentage change for 'Factor' occurrence modification (e.g., 5 for +5%, -10 for -10%) [-99 to 100]")
         self.occFactorRadio.setToolTip("Stochastic adjustment of wet/dry days based on the factor")
         self.occForcedRadio.setToolTip("Adjust wet/dry days to meet a forced monthly percentage (ZoM data not loaded via UI)")
         self.preserveTotalsCheck.setToolTip("If checked, scale rainfall amounts after occurrence changes to attempt to preserve original total rainfall")
 
+        # Amount tooltips
         self.amountCheck.setToolTip("Modify the magnitude of data values")
         self.amountFactorInput.setToolTip("Percentage change for 'Factor' amount modification (e.g., 10 for +10%) [-100 to 100]")
         self.amountAddInput.setToolTip("Value to add for 'Addition' amount modification [-100 to 100]")
 
+        # Variance tooltips
         self.varianceCheck.setToolTip("Modify the variance of the data")
         self.varianceFactorInput.setToolTip("Percentage change in variance (e.g., 20 for +20% variance). Must result in non-negative variance ratio.")
 
+        # Trend tooltips
         self.trendCheck.setToolTip("Apply a trend to the data")
         self.trendLinearInput.setToolTip("Linear trend value per year (e.g., 0.1 for +0.1 units/year) [-100 to 100]")
         self.trendExpInput.setToolTip("Exponential trend factor (e.g., 50 for +50% change by end of series, cannot be 0). Affects rate of change.")
         self.trendLogInput.setToolTip("Logistic trend factor (e.g., 10 for +10 units change by end of series) [-100 to 100].")
 
+        # Button tooltips
         self.generateButton.setToolTip("Start the scenario generation process with the current settings")
         self.resetButton.setToolTip("Reset all form fields to their default values")
 
     def _connect_signals(self):
+        # Connect file buttons to methods
         self.inputFileButton.clicked.connect(self.select_input_file)
         self.outputFileButton.clicked.connect(self.select_output_file)
         self.generateButton.clicked.connect(self.run_generation)
         self.resetButton.clicked.connect(self.reset_ui_and_context)
 
+        # Connect validation methods to input fields
         self.startDateInput.editingFinished.connect(self.validate_start_date)
         self.ensembleSizeInput.editingFinished.connect(self.validate_ensemble_size)
         self.thresholdInput.editingFinished.connect(self.validate_threshold)
@@ -1658,6 +1869,7 @@ class ScenarioGeneratorWidget(QWidget):
         self.trendExpInput.editingFinished.connect(self.validate_trend)
         self.trendLogInput.editingFinished.connect(self.validate_trend)
 
+        # Connect checkboxes to context attributes
         self.conditionalCheck.toggled.connect(lambda checked: setattr(self.ctx, 'conditional_check', checked))
         self.occurrenceCheck.toggled.connect(lambda checked: setattr(self.ctx, 'occurrence_check', checked))
         self.preserveTotalsCheck.toggled.connect(lambda checked: setattr(self.ctx, 'preserve_totals_check', checked))
@@ -1665,230 +1877,277 @@ class ScenarioGeneratorWidget(QWidget):
         self.varianceCheck.toggled.connect(lambda checked: setattr(self.ctx, 'variance_check', checked))
         self.trendCheck.toggled.connect(lambda checked: setattr(self.ctx, 'trend_check', checked))
 
+        # Connect radio button groups to context attributes
         self.occOptionGroup.buttonClicked[int].connect(lambda id: setattr(self.ctx, 'occurrence_option', id))
         self.amountOptionGroup.buttonClicked[int].connect(lambda id: setattr(self.ctx, 'amount_option', id))
         self.trendOptionGroup.buttonClicked[int].connect(lambda id: setattr(self.ctx, 'trend_option', id))
 
 
-    # --- UI Action Methods (reset_ui_and_context, select_input_file, etc.) ---
-    # --- These methods remain largely the same as in your original code ---
-    # --- Make sure to include them in your final script. ---
-    # --- For brevity, I'm only showing the modified _init_ui, _add_tooltips, _connect_signals ---
-
+    # Reset the UI and context to default values
     def reset_ui_and_context(self):
-        """Resets both the UI fields and the context object to defaults."""
+        # Reset the context object
         self.ctx.reset()
 
+        # Reset file section
         self.inputFileLabel.setText("No file selected")
         self.outputFileLabel.setText("No file selected")
 
+        # Reset general settings
         self.startDateInput.setText(self.ctx.start_date.strftime("%d/%m/%Y"))
         self.ensembleSizeInput.setText(str(self.ctx.ensemble_size))
         self.conditionalCheck.setChecked(self.ctx.conditional_check)
         self.thresholdInput.setText(str(self.ctx.local_thresh))
 
+        # Reset occurrence section
         self.occurrenceCheck.setChecked(self.ctx.occurrence_check)
         self.occFactorInput.setText(str(self.ctx.occurrence_factor))
         self.occFactorRadio.setChecked(self.ctx.occurrence_option == 0)
         self.occForcedRadio.setChecked(self.ctx.occurrence_option == 1)
         self.preserveTotalsCheck.setChecked(self.ctx.preserve_totals_check)
 
+        # Reset amount section
         self.amountCheck.setChecked(self.ctx.amount_check)
         self.amountFactorRadio.setChecked(self.ctx.amount_option == 0)
         self.amountFactorInput.setText(str(self.ctx.amount_factor))
         self.amountAddRadio.setChecked(self.ctx.amount_option == 1)
         self.amountAddInput.setText(str(self.ctx.amount_addition))
 
+        # Reset variance section
         self.varianceCheck.setChecked(self.ctx.variance_check)
         self.varianceFactorInput.setText(str(self.ctx.variance_factor))
 
+        # Reset trend section
         self.trendCheck.setChecked(self.ctx.trend_check)
         self.trendLinearRadio.setChecked(self.ctx.trend_option == 0)
         self.trendLinearInput.setText(str(self.ctx.linear_trend))
         self.trendExpRadio.setChecked(self.ctx.trend_option == 1)
-        self.trendExpInput.setText(str(self.ctx.exp_trend)) # Default was 1, so 1.0
+        self.trendExpInput.setText(str(self.ctx.exp_trend))
         self.trendLogRadio.setChecked(self.ctx.trend_option == 2)
-        self.trendLogInput.setText(str(self.ctx.logistic_trend)) # Default was 1, so 1.0
+        self.trendLogInput.setText(str(self.ctx.logistic_trend))
 
-
+        # Reset progress indicators
         self.progressBar.setVisible(False)
         self.progressLabel.setVisible(False)
         self.progressBar.setValue(0)
         self.progressLabel.setText("")
 
 
+    # Open file dialog to select input file
     def select_input_file(self):
-        file_path, _ = QFileDialog.getOpenFileName(self, "Select Input File", "", "PAR Files (*.par);;Data Files (*.txt *.dat *.csv);;All Files (*.*)")
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, "Select Input File", "", 
+            "PAR Files (*.par);;Data Files (*.txt *.dat *.csv);;All Files (*.*)"
+        )
+        
         if file_path:
+            # Store file paths
             self.ctx.in_root = file_path
             self.ctx.in_file = os.path.basename(file_path)
-            self.inputFileLabel.setText(f"{self.ctx.in_file} ({os.path.dirname(file_path)})") # Show path too
+# Update the UI with file information
+            self.inputFileLabel.setText(f"{self.ctx.in_file} ({os.path.dirname(file_path)})")
 
+            # If it's a PAR file, try to parse it
             if file_path.lower().endswith(".par"):
                 if parse_par_file(file_path, self.ctx):
-                    QMessageBox.information(self, "PAR Parsed", f"Loaded settings from {os.path.basename(file_path)}.\nInput data file from PAR: {self.ctx.in_file if self.ctx.in_file else 'Not specified in PAR'}")
+                    QMessageBox.information(
+                        self, "PAR Parsed", 
+                        f"Loaded settings from {os.path.basename(file_path)}.\n"
+                        f"Input data file from PAR: {self.ctx.in_file if self.ctx.in_file else 'Not specified in PAR'}"
+                    )
+                    # Update UI with loaded settings
                     self.update_ui_from_context()
                 else:
+                    # Reset if parsing failed
                     self.ctx.in_root = ""
                     self.ctx.in_file = ""
                     self.inputFileLabel.setText("No file selected")
 
+    # Open file dialog to select output file
     def select_output_file(self):
+        # Generate default filename based on input file if possible
         default_name = ""
-        if self.ctx.in_file: # If input file is loaded
+        if self.ctx.in_file:
             base, ext = os.path.splitext(self.ctx.in_file)
             default_name = base + "_scenario.out"
-        else: # Generic default
+        else:
             default_name = "scenario_output.out"
 
-        # Try to get directory of input file if available
+        # Use input file directory as default location
         initial_dir = os.path.dirname(self.ctx.in_root) if self.ctx.in_root else ""
         default_path = os.path.join(initial_dir, default_name)
 
-
-        file_path, _ = QFileDialog.getSaveFileName(self, "Save Output File", default_path, "OUT Files (*.out);;All Files (*.*)")
+        # Open save dialog
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, "Save Output File", default_path, 
+            "OUT Files (*.out);;All Files (*.*)"
+        )
+        
         if file_path:
-             if not file_path.lower().endswith(".out"):
-                 file_path += ".out"
-             self.ctx.out_root = file_path
-             self.ctx.out_file = os.path.basename(file_path)
-             self.outputFileLabel.setText(f"{self.ctx.out_file} ({os.path.dirname(file_path)})")
+            # Add .out extension if missing
+            if not file_path.lower().endswith(".out"):
+                file_path += ".out"
+                
+            # Store file paths
+            self.ctx.out_root = file_path
+            self.ctx.out_file = os.path.basename(file_path)
+            
+            # Update UI
+            self.outputFileLabel.setText(f"{self.ctx.out_file} ({os.path.dirname(file_path)})")
 
 
+    # Update UI elements based on context values (after loading PAR file)
     def update_ui_from_context(self):
-        """Updates UI elements based on current ctx values (e.g., after loading PAR)."""
+        # Update date, ensemble size, and conditional flag
         self.startDateInput.setText(self.ctx.start_date.strftime("%d/%m/%Y"))
         self.ensembleSizeInput.setText(str(self.ctx.ensemble_size))
         self.conditionalCheck.setChecked(self.ctx.conditional_check)
-        # self.thresholdInput.setText(str(self.ctx.local_thresh)) # Threshold not typically in PAR for scenario gen
-
-        if self.ctx.in_file and self.ctx.in_root: # PAR might provide an input data file
-             self.inputFileLabel.setText(f"{self.ctx.in_file} ({os.path.dirname(self.ctx.in_root)})")
-        elif self.ctx.in_root and not self.ctx.in_file: # PAR file itself was selected, but it didn't specify data file
-             self.inputFileLabel.setText(f"PAR: {os.path.basename(self.ctx.in_root)} (Data file not specified in PAR)")
+        
+        # Update input file information
+        if self.ctx.in_file and self.ctx.in_root:
+            # PAR specified a data file
+            self.inputFileLabel.setText(f"{self.ctx.in_file} ({os.path.dirname(self.ctx.in_root)})")
+        elif self.ctx.in_root and not self.ctx.in_file:
+            # PAR file was selected but didn't specify data file
+            self.inputFileLabel.setText(f"PAR: {os.path.basename(self.ctx.in_root)} (Data file not specified in PAR)")
         else:
-             self.inputFileLabel.setText("No file selected")
+            # No file selected
+            self.inputFileLabel.setText("No file selected")
 
+    # Update progress bar and text during processing
     def update_progress(self, value, text):
-        """Slot to update the progress bar and label."""
         self.progressBar.setValue(value)
         self.progressLabel.setText(text)
+        # Process UI events to keep interface responsive
         QApplication.processEvents()
 
-    # --- Validation Methods ---
+    # Validate date format in start date field
     def validate_start_date(self):
         try:
+            # Parse date from text field
             date_obj = datetime.datetime.strptime(self.startDateInput.text(), "%d/%m/%Y").date()
             self.ctx.start_date = date_obj
         except ValueError:
+            # Show error and reset to previous value
             QMessageBox.warning(self, "Input Error", "Invalid start date format. Use DD/MM/YYYY.")
             self.startDateInput.setText(self.ctx.start_date.strftime("%d/%m/%Y"))
 
+    # Validate ensemble size input
     def validate_ensemble_size(self):
         try:
             val = int(self.ensembleSizeInput.text())
+            # Check range (1-100)
             if 1 <= val <= 100:
                 self.ctx.ensemble_size = val
             else:
                 raise ValueError("Value out of range 1-100")
         except ValueError as e:
+            # Show error and reset to previous value
             QMessageBox.warning(self, "Input Error", f"Ensemble size: {e}")
             self.ensembleSizeInput.setText(str(self.ctx.ensemble_size))
 
+    # Validate threshold value
     def validate_threshold(self):
         try:
             val = float(self.thresholdInput.text())
             self.ctx.local_thresh = val
         except ValueError:
+            # Show error and reset to previous value
             QMessageBox.warning(self, "Input Error", "Invalid threshold value. Must be a number.")
             self.thresholdInput.setText(str(self.ctx.local_thresh))
 
+    # Validate occurrence factor input
     def validate_occurrence(self):
         try:
             val = float(self.occFactorInput.text())
+            # Check range (-99 to 100)
             if -99.0 <= val <= 100.0:
                 self.ctx.occurrence_factor = val
+                # Convert to percentage multiplier (e.g., 5% -> 1.05)
                 self.ctx.occurrence_factor_percent = (100.0 + val) / 100.0
             else:
-                 raise ValueError("Value out of range -99 to 100")
+                raise ValueError("Value out of range -99 to 100")
         except ValueError as e:
+            # Show error and reset to previous value
             QMessageBox.warning(self, "Input Error", f"Occurrence factor: {e}")
             self.occFactorInput.setText(str(self.ctx.occurrence_factor))
 
+    # Validate amount factor and addition inputs
     def validate_amount(self):
         try:
+            # Check factor input
             val_factor = float(self.amountFactorInput.text())
             if -100.0 <= val_factor <= 100.0:
                 self.ctx.amount_factor = val_factor
+                # Convert to percentage multiplier (e.g., 5% -> 1.05)
                 self.ctx.amount_factor_percent = (100.0 + val_factor) / 100.0
             else:
-                 raise ValueError("Factor out of range -100 to 100")
+                raise ValueError("Factor out of range -100 to 100")
         except ValueError as e:
+            # Show error and reset to previous value
             QMessageBox.warning(self, "Input Error", f"Amount factor: {e}")
             self.amountFactorInput.setText(str(self.ctx.amount_factor))
+            
         try:
+            # Check addition input
             val_add = float(self.amountAddInput.text())
-            # VB range check: -100 to 100, but can be wider for some variables
-            # Let's assume a reasonable range, but this might need adjustment based on typical data magnitudes
-            # if -10000.0 <= val_add <= 10000.0:
             self.ctx.amount_addition = val_add
-            # else:
-            #      raise ValueError("Addition value seems too large/small")
         except ValueError as e:
+            # Show error and reset to previous value
             QMessageBox.warning(self, "Input Error", f"Amount addition: {e}")
             self.amountAddInput.setText(str(self.ctx.amount_addition))
 
+    # Validate variance factor input
     def validate_variance(self):
         try:
             val = float(self.varianceFactorInput.text())
-            # VB range check: -100000 to 100000 (very wide)
-            # The critical part is that (100+val)/100 must be non-negative
+            # Calculate actual multiplier
             factor_percent = (100.0 + val) / 100.0
+            
+            # Check that result is non-negative
             if factor_percent >= 0:
                 self.ctx.variance_factor = val
                 self.ctx.variance_factor_percent = factor_percent
             else:
-                 raise ValueError("Resulting variance multiplier cannot be negative (input >= -100).")
+                raise ValueError("Resulting variance multiplier cannot be negative (input >= -100).")
         except ValueError as e:
+            # Show error and reset to previous value
             QMessageBox.warning(self, "Input Error", f"Variance factor: {e}")
             self.varianceFactorInput.setText(str(self.ctx.variance_factor))
 
+    # Validate trend inputs (linear, exponential, logistic)
     def validate_trend(self):
         try:
+            # Check linear trend input
             val_lin = float(self.trendLinearInput.text())
-            # if -100.0 <= val_lin <= 100.0: # VB range, could be wider depending on variable
             self.ctx.linear_trend = val_lin
-            # else: raise ValueError("Linear trend value seems too large/small")
         except ValueError as e:
+            # Show error and reset to previous value
             QMessageBox.warning(self, "Input Error", f"Linear trend: {e}")
             self.trendLinearInput.setText(str(self.ctx.linear_trend))
+            
         try:
+            # Check exponential trend input
             val_exp = float(self.trendExpInput.text())
-            # VB check: cannot be zero for its formula. If it's a multiplier, cannot be 1 for no effect.
-            # The current logic uses it as an additive percentage, so 0 means no effect.
-            # if abs(val_exp) < 1e-9 : # If meaning is like "target of 0% change by end"
-            #    QMessageBox.warning(self, "Input Error", "Exponential trend factor of 0 means no change.")
-            #    # self.trendExpInput.setText(str(self.ctx.exp_trend)) # Revert or allow 0
             self.ctx.exp_trend = val_exp
-            self.ctx.add_exp_option = val_exp > 0
-
+            self.ctx.add_exp_option = val_exp > 0  # Whether trend is additive (positive)
         except ValueError as e:
+            # Show error and reset to previous value
             QMessageBox.warning(self, "Input Error", f"Exponential trend: {e}")
             self.trendExpInput.setText(str(self.ctx.exp_trend))
+            
         try:
+            # Check logistic trend input
             val_log = float(self.trendLogInput.text())
-            # if -100.0 <= val_log <= 100.0: # VB range
             self.ctx.logistic_trend = val_log
-            # else: raise ValueError("Logistic trend value seems too large/small")
         except ValueError as e:
+            # Show error and reset to previous value
             QMessageBox.warning(self, "Input Error", f"Logistic trend: {e}")
             self.trendLogInput.setText(str(self.ctx.logistic_trend))
 
 
-    # --- Main Execution ---
+    # Main scenario generation function
     def run_generation(self):
-        """Orchestrates the scenario generation process."""
-        # 1. Update context from UI (catches last-minute changes not triggering 'editingFinished')
+        # 1. Update context from UI (catches last-minute changes)
         self.validate_start_date()
         self.validate_ensemble_size()
         self.validate_threshold()
@@ -1897,6 +2156,7 @@ class ScenarioGeneratorWidget(QWidget):
         self.validate_variance()
         self.validate_trend()
 
+        # Update treatment options from UI
         self.ctx.conditional_check = self.conditionalCheck.isChecked()
         self.ctx.occurrence_check = self.occurrenceCheck.isChecked()
         self.ctx.preserve_totals_check = self.preserveTotalsCheck.isChecked()
@@ -1907,10 +2167,11 @@ class ScenarioGeneratorWidget(QWidget):
         self.ctx.amount_option = self.amountOptionGroup.checkedId()
         self.ctx.trend_option = self.trendOptionGroup.checkedId()
 
-
+        # 2. Validate settings before proceeding
         if not check_settings(self.ctx, self):
             return
 
+        # 3. Reset error flags and prepare UI
         mini_reset(self.ctx)
         self.progressBar.setVisible(True)
         self.progressLabel.setVisible(True)
@@ -1919,76 +2180,101 @@ class ScenarioGeneratorWidget(QWidget):
         self.resetButton.setEnabled(False)
         QApplication.processEvents()
 
-
+        # 4. Read input file
         if not read_input_file(self.ctx, self.update_progress):
             self.update_progress(0, "Error during file reading.")
-            self.generateButton.setEnabled(True); self.resetButton.setEnabled(True)
+            self.generateButton.setEnabled(True)
+            self.resetButton.setEnabled(True)
             return
 
-        # Apply Treatments
+        # 5. Apply treatments in sequence: Occurrence, Amount, Variance, Trend
+        # Apply Occurrence (if selected)
         if self.ctx.occurrence_check and not self.ctx.error_occurred:
             apply_occurrence(self.ctx, self.update_progress)
-            if self.ctx.error_occurred: self._finalize_process(False); return
+            if self.ctx.error_occurred:
+                self._finalize_process(False)
+                return
 
-        # Variance needs means. Amount might change means. If both active, order matters.
-        # VB typical order: Occurrence, Amount, Variance, Trend.
-        # Means for variance should reflect state *after* Amount, if Amount is applied.
-        # Means for Unconditional variance are based on all data.
-        # Means for Conditional variance are based on data > threshold.
-
+        # Apply Amount (if selected)
         if self.ctx.amount_check and not self.ctx.error_occurred:
             apply_amount(self.ctx, self.update_progress)
-            if self.ctx.error_occurred: self._finalize_process(False); return
+            if self.ctx.error_occurred:
+                self._finalize_process(False)
+                return
 
+        # Apply Variance (if selected)
         if self.ctx.variance_check and not self.ctx.error_occurred:
-            calc_means(self.ctx, self.update_progress) # Calculate means based on current data state
-            if self.ctx.error_occurred: self._finalize_process(False); return
+            # Calculate means before variance adjustment
+            calc_means(self.ctx, self.update_progress)
+            if self.ctx.error_occurred:
+                self._finalize_process(False)
+                return
+                
+            # Apply variance treatment
             apply_variance(self.ctx, self.update_progress)
-            if self.ctx.error_occurred: self._finalize_process(False); return
+            if self.ctx.error_occurred:
+                self._finalize_process(False)
+                return
 
+        # Apply Trend (if selected)
         if self.ctx.trend_check and not self.ctx.error_occurred:
             apply_trend(self.ctx, self.update_progress)
-            if self.ctx.error_occurred: self._finalize_process(False); return
+            if self.ctx.error_occurred:
+                self._finalize_process(False)
+                return
 
+        # 6. Write output file
         success = False
         if not self.ctx.error_occurred:
             if write_output_file(self.ctx, self.update_progress):
                 success = True
 
+        # 7. Show completion status
         self._finalize_process(success)
 
+    # Helper to finalize processing and update UI
     def _finalize_process(self, success):
+        # Re-enable buttons
         self.generateButton.setEnabled(True)
         self.resetButton.setEnabled(True)
         QApplication.processEvents()
 
         if success:
+            # Show success message
             self.update_progress(100, "Scenario Generation Complete.")
             msg = f"Scenario Generated Successfully.\n{self.ctx.no_of_days} days processed."
-            if self.ctx.variance_check and self.ctx.conditional_check and abs(self.ctx.lamda - GLOBAL_MISSING_CODE) > 1e-6 :
-                 msg += f"\nLambda for Box-Cox (Variance): {self.ctx.lamda:.3f}"
+            
+            # Include Box-Cox lambda if used
+            if self.ctx.variance_check and self.ctx.conditional_check and abs(self.ctx.lamda - GLOBAL_MISSING_CODE) > 1e-6:
+                msg += f"\nLambda for Box-Cox (Variance): {self.ctx.lamda:.3f}"
+                
             QMessageBox.information(self, "Success", msg)
         elif self.ctx.error_occurred:
+            # Show error message
             self.update_progress(0, "Processing failed. Check messages.")
-            # QMessageBox.critical(self, "Processing Error", "An error occurred during scenario generation. Please check console/messages.")
-        else: # Not success, not error_occurred -> cancelled or other silent fail
+        else:
+            # Process did not complete (cancelled or other silent fail)
             self.update_progress(0, "Processing did not complete.")
 
 
-###############################################################################
-# 5. Main Application Entry Point / Module Export
-###############################################################################
+#############################################################
+# Main Application Entry Point / Module Export
+#############################################################
+# Export the main widget class for use in other modules
 ContentWidget = ScenarioGeneratorWidget
 
+# Main function to run the application standalone
 def main():
     app = QApplication(sys.argv)
-    app.setStyleSheet(STYLESHEET) # Apply global stylesheet
+    app.setStyleSheet(STYLESHEET)  # Apply global stylesheet
+    
     window = ScenarioGeneratorWidget()
     window.setWindowTitle("SDSM Scenario Generator")
-    window.setGeometry(100, 100, 720, 700) # Adjusted size slightly
+    window.setGeometry(100, 100, 720, 700)  # Set window size and position
     window.show()
+    
     sys.exit(app.exec_())
 
+# Run the app if this module is executed directly
 if __name__ == "__main__":
     main()
-

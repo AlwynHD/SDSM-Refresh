@@ -96,7 +96,7 @@ def linePlot(
         'kept': 0,
     }
 
-    while current < analysisEndDate:
+    while current <= analysisEndDate:
         if exitAnalysesFunc():
             return
         counters['total_days'] += 1

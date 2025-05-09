@@ -198,7 +198,13 @@ def pdfPlot(
     # Plot
     plt.figure()
     for label, y in series:
-        plt.plot(xValues, y, label=label, linewidth=1.5)
+        if label == obsLabel:
+            col = 'blue'
+        elif 'Mean' in label:
+            col = 'limegreen'
+        else:
+            col = 'red'
+        plt.plot(xValues, y, label=label, color=col, linewidth=1.5)
     plt.xlabel('Value')
     plt.ylabel('Standardised Density')
     plt.legend(loc='best')

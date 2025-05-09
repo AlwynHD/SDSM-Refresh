@@ -4,9 +4,9 @@ from PyQt5.QtWidgets import (QApplication, QCheckBox, QPushButton, QComboBox, QF
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFontMetrics
 import sys
+from src.lib.FrequencyAnalysis.QQ import qqPlot
 from src.lib.FrequencyAnalysis.PDF import pdfPlot
 from src.lib.FrequencyAnalysis.Line import linePlot
-from src.lib.FrequencyAnalysis.QQ import qqPlot
 from src.lib.FrequencyAnalysis.IDF import run_idf
 from src.lib.FrequencyAnalysis.FA import frequency_analysis
 import configparser
@@ -325,6 +325,7 @@ class ContentWidget(QWidget):
         self.linePlotButton.clicked.connect(self.linePlotButtonClicked)
         self.faGraphicalButton = QPushButton("FA Graphical")
         self.faGraphicalButton.setStyleSheet("background-color: #5adbb5; color: white; font-weight: bold;")
+        self.faGraphicalButton.clicked.connect(lambda: self.faButtonClicked("Graphical"))
         
         graphButtonsLayout.addWidget(self.qqPlotButton)
         graphButtonsLayout.addWidget(self.pdfPlotButton)
@@ -335,15 +336,16 @@ class ContentWidget(QWidget):
         tabButtonsLayout = QHBoxLayout()
         self.faTabButton = QPushButton("FA Tabular")
         self.faTabButton.setStyleSheet("background-color: #ffbd03; color: white; font-weight: bold;")
-        #self.faTabButton.clicked.connect(self.faTabButtonClicked)
+        self.faTabButton.clicked.connect(lambda: self.faButtonClicked("Tabular"))
         self.idfPlotButton = QPushButton("IDF Plot")
         self.idfPlotButton.setStyleSheet("background-color: #dd7973; color: white; font-weight: bold")
-        #self.idfPlotButton.clicked.connect(lambda: self.run_idf_analysis("Graphical"))
+        self.idfPlotButton.clicked.connect(lambda: self.run_idf_analysis("Graphical"))
         self.idfTabButton = QPushButton("IDF Tabular")
-        #self.idfTabButton.clicked.connect(lambda: self.run_idf_analysis("Tabular"))
+        self.idfTabButton.clicked.connect(lambda: self.run_idf_analysis("Tabular"))
         self.idfTabButton.setStyleSheet("background-color: #4681f4; color: white; font-weight: bold")
         self.resetButton = QPushButton(" 🔄 Reset Values")
         self.resetButton.setStyleSheet("background-color: #ED0800; color: white; font-weight: bold;")
+        self.resetButton.clicked.connect(self.resetValues)
         
         tabButtonsLayout.addWidget(self.faTabButton)
         tabButtonsLayout.addWidget(self.idfPlotButton)
@@ -371,6 +373,37 @@ class ContentWidget(QWidget):
         self.endDate.setDate(q_end_date)
 
         return super().showEvent(event)
+    
+    def resetValues(self):
+        # ── Clear file selections ──
+        self.obsDataFile = None
+        self.modDataFile = None
+        self.obsDataLabel.setText("File: Not selected")
+        self.modDataLabel.setText("File: Not selected")
+        self.saveLabel.setText("File: Not selected")
+
+        # ── Reset dates to the global settings ──
+        py_start = settingsAsArrays["globalsdate"][0]
+        py_end   = settingsAsArrays["globaledate"][0]
+        self.startDate.setDate(QDate(py_start.year, py_start.month, py_start.day))
+        self.endDate  .setDate(QDate(py_end.year,   py_end.month,   py_end.day))
+
+        # ── Frequency‐analysis inputs ──
+        self.confidenceInput.setValue(5)     # 5% default
+        self.thresholdInput .setValue(10)    # 10 default
+        self.pdfSpinBox     .setValue(20)    # 20 bins
+        self.dataPeriodCombo.setCurrentIndex(0)  # “All Data”
+        self.applyThresholdCheckbox.setChecked(False)
+
+        # ── Ensemble default ──
+        self.allMembersRadio.setChecked(True)
+
+        # ── IDF settings ──
+        self.methodMomentsRadio   .setChecked(True)
+        self.parameterPowerRadio  .setChecked(False)
+        self.parameterLinearRadio .setChecked(False)
+        self.runningSumInput      .setValue(2)
+
     
     def saveResults(self):
         # Use the default directory from your configuration (assuming it's in settingsAsArrays)
@@ -616,8 +649,12 @@ class ContentWidget(QWidget):
        if self.ensembleMemberRadio.isChecked():
            ensemble_option = "Single Member"
            ensemble_index = self.ensembleMemberSpinBox.value()
+
+       elif self.allMembersRadio.isChecked():
+           ensemble_option ="All Members"
+           ensemble_index = 0
        else:
-           ensemble_option = "All Members"
+           ensemble_option = "All Members + Mean"
            ensemble_index = 0
 
        print(f"🔍 Calling run_idf with: {presentation_type}, {idf_method}, files: {file1_name}, {file2_name}")
@@ -639,16 +676,22 @@ class ContentWidget(QWidget):
            data_period_choice = data_period_choice
        )
        
-    def faTabButtonClicked(self):
-        if not hasattr(self, "obsDataFile") or not hasattr(self, "modDataFile"):
-            print("Please select both Observed and Modelled data files.")
+    def faButtonClicked(self, type):
+        if not hasattr(self, "obsDataFile"):
+            QMessageBox.warning(self, "Input Required",
+                                "Please select at least the Observed File.")
             return
+        
+        if not hasattr(self, "modDataFile"):
+            modDataFile = None
+        else:
+            modDataFile = self.modDataFile
 
         fsDate = self.startDate.date().toPyDate()
         feDate = self.endDate.date().toPyDate()
         applyThresh = self.applyThresholdCheckbox.isChecked()
         threshValue = self.thresholdInput.value()
-        dataPeriodChoice = self.dataPeriodCombo.currentText()
+        dataPeriodChoice = self.dataPeriodCombo.currentIndex()
 
         # Determine the frequency model based on the selected radio button in faLayout
         if self.empiricalRadio.isChecked():
@@ -660,23 +703,31 @@ class ContentWidget(QWidget):
         elif self.stretchedExpRadio.isChecked():
             freqModel = 3
         else:
-            freqModel = "Empirical"  # Fallback default
+            freqModel = 0 # Fallback default
 
         # Use the durations as given in the VB example
         durations = [1.0, 1.1, 1.2, 1.3, 1.5, 2.0, 2.5, 3.0, 3.5]
 
+        # Determine which ensemble to pass in (0=all, >0 specific)
+        if self.ensembleMemberRadio.isChecked():
+            ensembleIndex = self.ensembleMemberSpinBox.value()
+        else:
+            ensembleIndex = 0
+
+        # 6) Call the new Tabular FA
         frequency_analysis(
-            "Tabular",
-            observedFilePath=self.obsDataFile,
-            modelledFilePath=self.modDataFile,
-            fsDate=fsDate,
-            feDate=feDate,
-            dataPeriodChoice=dataPeriodChoice,
-            applyThreshold=applyThresh,
-            thresholdValue=threshValue,
-            durations=durations,
-            ensembleIndex=0,
-            freqModel=freqModel
+            type,
+            self.obsDataFile,
+            modDataFile,
+            fsDate,
+            feDate,
+            dataPeriodChoice,
+            applyThresh,
+            threshValue,
+            durations,
+            self.confidenceInput.value(),
+            ensembleIndex,
+            freqModel
         )
 
         # Optionally, load results into a QTableWidget for GUI display.

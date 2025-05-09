@@ -5,6 +5,7 @@ from copy import deepcopy
 import src.core.data_settings
 from PyQt5.QtWidgets import QApplication, QMainWindow, QTextEdit, QTabWidget, QWidget, QMessageBox
 from PyQt5.QtGui import QFont
+from os import path
 #from scipy.stats import spearmanr
 
 ## NOTE TO READERS: THIS FILE **DOES** WORK
@@ -264,18 +265,6 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
 
     ##Real comments will be added later
 
-    ## In v0.7.1
-    ## DetrendOption sorta working...
-
-    ## In v0.8.1
-    ## ModelTrans sorta working...
-
-    #------------------------
-    # FUNCTION DEFINITITIONS:
-    #------------------------
-
-
-
     ## Globals: import from settings
     reloadGlobals()
     globalMissingCode = _globalSettings['globalmissingcode']
@@ -290,46 +279,16 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
     ## End of Settings Imports (Default Values for now)
 
     NPredictors = len(fileList) - 1
-    debugMsg(fileList)
-    ## Other Vars:
-    progValue = 0 ## Progress Bar
 
-    betaTrend = {}
-
-    ##???
-    #propResiduals = False
-    #if propResiduals:
-    #    residualArray = np.ndarray
-
-    ## True Temps:
-    #rSquared = 0
-    #SE = 0
-    #chowStat = 0
-    #fRatio = 0
-    parameterResultsArray = np.zeros((24,50))
-    biasCorrection = np.ones(12)
-    #CondPropCorrect = 5
-
-    seasonMonths = [ ##Necesary for Season Month Lookups
-        [0, 1, 11], #Winter
-        [2, 3, 4], #Spring
-        [5, 6, 7], #Summer
-        [8, 9, 10]] #Autumn
-
-    ## Note: The following vars were not adjusted to use 0 as their base:
-    # ModelTrans
-    # SeasonCode
     # NB: ModelType starts from 0
     # NB: Swap WorkingDate.Month to CurrentMonth
 
     ## Idea: Could define commonly used ranges here so that we don't keep regenerating them each time.
 
     #------------------------
-    #------ SECTION #1 ------ Error Checking & Validation
+    #----- SECTION #1.0 ----- Error Checking & Validation
     #------------------------
 
-    ##not used rn -> will add later
-    ##i have notes trust me
     if fileList[0] == "":
         raise ValueError("You must select a predictand")
     elif len(fileList) < 2:
@@ -352,8 +311,23 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
 
     #if True:
         #------------------------
-        #------ SECTION #2 ------ Unknown/Initialisation?
+        #----- SECTION #1.1 ----- Initialisation?
         #------------------------
+
+
+        ## Other Vars:
+        #progValue = 0 ## Progress Bar
+
+        betaTrend = {}
+
+        parameterResultsArray = np.zeros((24,50))
+        biasCorrection = np.ones(12)
+
+        seasonMonths = [ ##Necesary for Season Month Lookups
+            [0, 1, 11], #Winter
+            [2, 3, 4], #Spring
+            [5, 6, 7], #Summer
+            [8, 9, 10]] #Autumn
         
         #xValidationResults = np.ndarray((13, 7)).fill(globalMissingCode) ## Original array is XValidationResults(1 To 13, 1 To 7) As Double
         xValidationOutput = {"Unconditional": {}, "Conditional": {}}
@@ -364,15 +338,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
     
         lamdaArray = np.zeros((12,2)) ## Lamda array originally "LamdaArray(1 To 12, 1 To 2) As Double"
 
-        processTerminated = False
-
         statsSummary = np.zeros((26,5)) ## Originally StatsSummary(1 To 26, 1 To 5) As Double
-
-        dependMgs = False
-
-        #-----------------
-        ##CLOSE FILES HERE -> idk why, likely contingency / prep
-        #-----------------
 
         ## Reading in data from files?
         ## FileList is the selected files from 
@@ -391,12 +357,10 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
         noOfDays2Fit = (feDate - fsDate).days + 1
         
         #------------------------
-        #------ SECTION #3 ------ Filtration?
+        #------ SECTION #2 ------ Find Baseline?
         #------------------------
         
         totalToSkip = (fsDate - globalStartDate)
-        #if totalToSkip > 0:
-            ## Progress Bar Stuff
 
 
         fsDateBaseline = np.zeros((12)) ## Original: FSDateBaseline(1 To 12) As Long
@@ -419,15 +383,13 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
             searchPos += 1
 
             totalNumbers += 1
-            ##Call IncreaseDate
             workingDate = increaseDate(workingDate, 1, countLeapYear)
-            progValue = np.floor((totalNumbers / totalToSkip.days) * 100)
-            ##Update progress bar with progValue
+            #progValue = np.floor((totalNumbers / totalToSkip.days) * 100)
 
         ## END While
 
         #------------------------
-        #----- SECTION #4.0 ----- ???
+        #----- SECTION #2.1 ----- dataReadIn initialisation
         #------------------------
 
         if seasonCode == 1:
@@ -451,7 +413,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
 
 
         #------------------------
-        #----- SECTION #4.1 ----- (Finding the Start Pos)
+        #----- SECTION #2.2 ----- (Finding the Start Pos)
         #------------------------
 
         ## Revisit the following - Something feels off... ##
@@ -475,7 +437,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
             searchPos += 1
             #next i
             totalNumbers += 1
-            progValue = np.floor((totalNumbers / nDaysR) * 100)
+            #progValue = np.floor((totalNumbers / nDaysR) * 100)
             #call newProgressBar
 
         #lastDate = deepcopy(workingDate)
@@ -501,7 +463,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
             sectionSizes[currentPeriod, 0] += 1
 
         #------------------------
-        #----- SECTION #4.2 ----- Finding evidence of missing values(?)
+        #----- SECTION #2.3 ----- Load remaining data into loadedFiles for next section
         #------------------------
 
         #call increasedate
@@ -560,7 +522,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
             workingDate = increaseDate(workingDate, 1, countLeapYear)
             currentMonth = workingDate.month - 1
             currentSeason = getSeason(workingDate.month)
-            progValue = np.floor((totalNumbers / nDaysR) * 100)
+            #progValue = np.floor((totalNumbers / nDaysR) * 100)
             searchPos += 1
 
         ##End while
@@ -570,7 +532,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
         #################
 
         #------------------------
-        #----- SECTION #5.0 ----- 
+        #----- SECTION #3.0 ----- 
         #------------------------
 
         anyMissing = False
@@ -592,7 +554,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                 "noOfResiduals": 0
             }
             #------------------------
-            #---- SECTION #5.1.0 ---- SeasonCode 1 -> Annuals
+            #---- SECTION #3.1.0 ---- SeasonCode 1 -> Annuals
             #------------------------
 
             ## uwu
@@ -645,7 +607,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                 ##endif
                 
                 #------------------------
-                #---- SECTION #5.1.1 ---- 
+                #---- SECTION #3.1.1 ---- 
                 #------------------------
 
                 if (detrendOption != 0 and not parmOpt):
@@ -707,7 +669,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                 ##next
 
                 #------------------------
-                #---- SECTION #5.1.2 ---- Conditional Part
+                #---- SECTION #3.1.2 ---- Conditional Part
                 #------------------------
 
                 if autoRegression:
@@ -788,9 +750,6 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                     #call CalculateParameters(true)
                     params = calculateParameters(xMatrix, yMatrix, NPredictors, includeChow, conditionalPart, parmOpt, True, residualArray, tResults) #betaMatrix defined here
 
-                    if processTerminated:
-                        ##exit
-                        do_nothing()
                     if modelTrans == 4:
                         yDash = np.sum(np.matmul(xMatrix, params['betaMatrix']))
                         biasCorrect = 0 if yDash == 0 else (np.sum(yMatrix) / yDash)
@@ -810,7 +769,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                     ##next
                 else:
                     #------------------------
-                    #---- SECTION #5.1.3 ---- DW calculations
+                    #---- SECTION #3.1.3 ---- DW calculations
                     #------------------------
 
                     ##Need to properly calc residualMatrixRows
@@ -825,7 +784,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                 #Call NewProgressBar(ProgressPicture, 100, 100, "Calibrating Model")
 
                 #------------------------
-                #---- SECTION #5.2.0 ---- (season/month)
+                #---- SECTION #3.2.0 ---- (season/month)
                 #------------------------
             else:
                 for periodWorkingOn in range(seasonCode):
@@ -885,7 +844,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                     ##endif
 
                     #------------------------
-                    #---- SECTION #5.2.1 ---- 
+                    #---- SECTION #3.2.1 ---- 
                     #------------------------
 
                     if (detrendOption != 0 and not parmOpt):
@@ -925,10 +884,6 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                     ##call CalculateParameters(parmOpt) ##Adjust to make sure its correct...?
                     params = calculateParameters(xMatrix, yMatrix, NPredictors, includeChow, conditionalPart, parmOpt, not parmOpt, residualArray)     #betaMatrix Defined Here
 
-                    if processTerminated:
-                        ##call mini_reset
-                        do_nothing()
-
                     yMatrix = savedYMatrix
 
                     if seasonCode == 4:
@@ -956,7 +911,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                     ##endif
 
                     #------------------------
-                    #---- SECTION #5.2.2 ---- (Conditional Part)
+                    #---- SECTION #3.2.2 ---- (Conditional Part)
                     #------------------------
 
                     if autoRegression:
@@ -1048,9 +1003,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                         conditionalPart = True
                         ##call CalculateParameters(true)
                         params = calculateParameters(xMatrix, yMatrix, NPredictors, includeChow, conditionalPart, parmOpt, True, residualArray, tResults) #BetaMatrix defined here
-                        if processTerminated:
-                            ##exit
-                            do_nothing()
+                        
                         if modelTrans == 4:
                             yDash = np.sum(np.matmul(xMatrix, params['betaMatrix']))
                             biasCorrect = 0 if yDash == 0 else (np.sum(yMatrix) / yDash)
@@ -1089,7 +1042,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                         ##endif      
                     else:             
                         #------------------------
-                        #---- SECTION #5.2.3 ---- (DW Calculations)
+                        #---- SECTION #3.2.3 ---- (DW Calculations)
                         #------------------------
 
                         residualMatrix = params["residualMatrix"]
@@ -1138,7 +1091,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
             ##endif
                 
             #------------------------
-            #----- SECTION #6.0 ----- PARfile Output
+            #----- SECTION #4.0 ----- PARfile Output
             #------------------------
 
             ##Vars "Written" to PAR file:
@@ -1160,13 +1113,15 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                 #f"{int(autoRegression)}", #"Autoregression": 
                 f"{autoRegression}",
             ]
-            for file in fileList:    
-                PARfileOutput.append(file) #Save predictand & predictor file names
-            PARfileOutput = "\n".join(PARfileOutput) + "\n"
 
+            for file in fileList:    
+                #PARfileOutput.append(file) #Save predictand & predictor file names
+                name = path.split(file)[-1]
+                PARfileOutput.append(name)
+            PARfileOutput = "\n".join(PARfileOutput) + "\n"
             #call PrintResults
             PARfileOutput += printResults(parameterResultsArray, NPredictors, parmOpt, biasCorrection, autoRegression, modelTrans, lamdaArray)
- 
+            PARfileOutput += fileList[0] + "\n"
             #print PTandRoot
             if detrendOption != 0:   ##Will need to double check and standardise this parameter
                 #call PrintTrendParms]
@@ -1179,7 +1134,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                 f.close()
 
             #------------------------
-            #----- SECTION #6.1 ----- Results Screen output
+            #----- SECTION #4.1 ----- Results Screen output
             #------------------------
             
             #from calendar import month_name as months
@@ -1250,7 +1205,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                         output[n]['xValidation']['Mean'][key] /= len(iterator)
 
             #------------------------
-            #----- SECTION #6.2 ----- last minute information appends / info not directly displayed
+            #----- SECTION #4.2 ----- last minute information appends / info not directly displayed
             #------------------------
             
             analysisPeriod = ['Monthly', 'Seasonal', 'Annual']
@@ -2547,6 +2502,7 @@ def plotScatter(residualArray):
         {"pos": [residualArray['predicted'][i], residualArray['residual'][i]]}
         for i in range(residualArray['noOfResiduals'])
     ]
+    plot.setWindowTitle("SDSM Residual Scatter plot") 
     plot.getPlotItem().setLabel("left","Residual")
     plot.getPlotItem().setLabel("bottom","Predicted Value")
     scatter.addPoints(spots)

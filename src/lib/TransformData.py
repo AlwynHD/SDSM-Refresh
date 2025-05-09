@@ -116,10 +116,10 @@ def lag(data, n, wrap):
     processed = 0
 
     for c in range(len(data.T)):
-        if n > len(data.T):
+        if n > len(data[:, c]):
             return returnData, "Cannot perform lag transformation, input past end of file."
         
-        processed += len(data.T)
+        processed += len(data[:, c])
         if wrap:
             returnData[:, c] = np.concatenate((data[:, c][n:], data[:, c][:n])) #The double brackets here are required
         else:

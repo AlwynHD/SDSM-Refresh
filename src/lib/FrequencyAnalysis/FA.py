@@ -190,7 +190,7 @@ def frequency_analysis(
             None,
             noOfXCols, file2ColStart,
             percentileWanted,
-            globalMissingCode
+            globalMissingCode, True
         )
 
     if not success:

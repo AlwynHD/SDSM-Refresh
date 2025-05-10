@@ -2426,7 +2426,10 @@ class ContentWidget(QWidget):
                 
                     if i == 1:  # Only set labels once
                         if self.DatesCombo.currentIndex() == 18:  # Water year
-                            self.TimeSeriesData[j-1][0] = str(int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + j + start_year - 3)
+                            year_val = int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + j + start_year - 2
+                            if int(datetime.strptime(self.FSDate, "%d/%m/%Y").month) >= 10:
+                                year_val -= 1
+                            self.TimeSeriesData[j-1][0] = str(year_val)
                         else:
                             self.TimeSeriesData[j-1][0] = str(int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + start_year + j - 2)
 
@@ -4457,7 +4460,15 @@ class ContentWidget(QWidget):
                             writer.writerow(row)
                         
                         elif self.DatesCombo.currentIndex() == 18:  # Water year selected
-                            row = [str(year_val), "Water Year"]
+
+                            skip = 1
+                            if j == 1:
+                                if int(datetime.strptime(self.FSDate, "%d/%m/%Y").month) < 10:
+                                    skip = 2
+                                else:
+                                    skip = 1
+                            water_year = int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + j - skip
+                            row = [str(water_year), "Water Year"]
                             
                             # Add all statistics for each file
                             for i in range(1, self.total_time_series_files + 1):

@@ -2099,26 +2099,30 @@ class ContentWidget(QWidget):
                                 current_year_idx = self.CurrentYear - int(datetime.strptime(self.FSDate, "%d/%m/%Y").year) + 1
                                 
                                 # Store winter data (December, January, February)
-                                if self.CurrentMonth in [12, 1, 2]:
+                                if self.CurrentMonth == 12:
+                                    next_year_idx = current_year_idx + 1
                                     winter_pos = 13  # Winter season index
-                                    # If this is the first winter value, initialize it
+                                    if next_year_idx < len(self.summaryArray[file_idx]):
+                                        if self.summaryArray[file_idx][next_year_idx][winter_pos][1] == self.global_missing_code:
+                                            self.summaryArray[file_idx][next_year_idx][winter_pos][1] = value
+                                        else:
+                                            self.summaryArray[file_idx][next_year_idx][winter_pos][1] += value
+                                
+                                # January and February belong to current year's winter
+                                elif self.CurrentMonth in [1, 2]:
+                                    winter_pos = 13  # Winter season index
                                     if self.summaryArray[file_idx][current_year_idx][winter_pos][1] == self.global_missing_code:
                                         self.summaryArray[file_idx][current_year_idx][winter_pos][1] = value
                                     else:
                                         self.summaryArray[file_idx][current_year_idx][winter_pos][1] += value
-                                    
-                                    print(f"Added {value} to winter total, now: {self.summaryArray[file_idx][current_year_idx][winter_pos][1]}")
                                 
-                                # Store summer data (June, July, August)
+                                # Summer months belong to current year
                                 elif self.CurrentMonth in [6, 7, 8]:
                                     summer_pos = 15  # Summer season index
-                                    # If this is the first summer value, initialize it
                                     if self.summaryArray[file_idx][current_year_idx][summer_pos][1] == self.global_missing_code:
                                         self.summaryArray[file_idx][current_year_idx][summer_pos][1] = value
                                     else:
                                         self.summaryArray[file_idx][current_year_idx][summer_pos][1] += value
-                                    
-                                    print(f"Added {value} to summer total, now: {self.summaryArray[file_idx][current_year_idx][summer_pos][1]}")
                     
                     except Exception as e:
                         print(f"Error processing file {i} on day {count}: {str(e)}")
@@ -4348,7 +4352,7 @@ class ContentWidget(QWidget):
                         writer.writerow(row)
                 
                 elif self.statsButtonGroup.checkedId() == 3: # Winter/summer ratio
-                    # Write header row
+                    
                     header = ["Year"]
                     for i in range(self.total_time_series_files):
                         header.append(self.AllFilesList[i])

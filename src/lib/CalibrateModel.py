@@ -5,6 +5,7 @@ from copy import deepcopy
 import src.core.data_settings
 from PyQt5.QtWidgets import QApplication, QMainWindow, QTextEdit, QTabWidget, QWidget, QMessageBox
 from PyQt5.QtGui import QFont
+from os import path
 #from scipy.stats import spearmanr
 
 ## NOTE TO READERS: THIS FILE **DOES** WORK
@@ -87,7 +88,7 @@ def reloadGlobals():
         
         
 def debugRun():
-    calibrateModelDefaultExperience()
+    calibrateModelDefaultExperience(0)
 
 def calibrateModelDefaultExperience(modelType):
     """
@@ -121,7 +122,9 @@ def calibrateModelDefaultExperience(modelType):
 
     ##Edit Settings for Testing
     #_globalSettings['modelTrans'] = 5 #Model transformation; 1=none, 2=4root, 3=ln, 4=Inv Normal, 5=box cox
-    _globalSettings['stepwiseregression'] = True
+    #_globalSettings['stepwiseregression'] = True
+
+    _globalSettings['optAlg'] = 1
 
     print(f"Testing with 'modelTrans' == {_globalSettings['modelTrans']}")
 
@@ -262,18 +265,6 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
 
     ##Real comments will be added later
 
-    ## In v0.7.1
-    ## DetrendOption sorta working...
-
-    ## In v0.8.1
-    ## ModelTrans sorta working...
-
-    #------------------------
-    # FUNCTION DEFINITITIONS:
-    #------------------------
-
-
-
     ## Globals: import from settings
     reloadGlobals()
     globalMissingCode = _globalSettings['globalmissingcode']
@@ -288,46 +279,16 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
     ## End of Settings Imports (Default Values for now)
 
     NPredictors = len(fileList) - 1
-    debugMsg(fileList)
-    ## Other Vars:
-    progValue = 0 ## Progress Bar
 
-    betaTrend = {}
-
-    ##???
-    #propResiduals = False
-    #if propResiduals:
-    #    residualArray = np.ndarray
-
-    ## True Temps:
-    #rSquared = 0
-    #SE = 0
-    #chowStat = 0
-    #fRatio = 0
-    parameterResultsArray = np.zeros((24,50))
-    biasCorrection = np.ones(12)
-    #CondPropCorrect = 5
-
-    seasonMonths = [ ##Necesary for Season Month Lookups
-        [0, 1, 11], #Winter
-        [2, 3, 4], #Spring
-        [5, 6, 7], #Summer
-        [8, 9, 10]] #Autumn
-
-    ## Note: The following vars were not adjusted to use 0 as their base:
-    # ModelTrans
-    # SeasonCode
     # NB: ModelType starts from 0
     # NB: Swap WorkingDate.Month to CurrentMonth
 
     ## Idea: Could define commonly used ranges here so that we don't keep regenerating them each time.
 
     #------------------------
-    #------ SECTION #1 ------ Error Checking & Validation
+    #----- SECTION #1.0 ----- Error Checking & Validation
     #------------------------
 
-    ##not used rn -> will add later
-    ##i have notes trust me
     if fileList[0] == "":
         raise ValueError("You must select a predictand")
     elif len(fileList) < 2:
@@ -350,8 +311,23 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
 
     #if True:
         #------------------------
-        #------ SECTION #2 ------ Unknown/Initialisation?
+        #----- SECTION #1.1 ----- Initialisation?
         #------------------------
+
+
+        ## Other Vars:
+        #progValue = 0 ## Progress Bar
+
+        betaTrend = {}
+
+        parameterResultsArray = np.zeros((24,50))
+        biasCorrection = np.ones(12)
+
+        seasonMonths = [ ##Necesary for Season Month Lookups
+            [0, 1, 11], #Winter
+            [2, 3, 4], #Spring
+            [5, 6, 7], #Summer
+            [8, 9, 10]] #Autumn
         
         #xValidationResults = np.ndarray((13, 7)).fill(globalMissingCode) ## Original array is XValidationResults(1 To 13, 1 To 7) As Double
         xValidationOutput = {"Unconditional": {}, "Conditional": {}}
@@ -362,15 +338,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
     
         lamdaArray = np.zeros((12,2)) ## Lamda array originally "LamdaArray(1 To 12, 1 To 2) As Double"
 
-        processTerminated = False
-
         statsSummary = np.zeros((26,5)) ## Originally StatsSummary(1 To 26, 1 To 5) As Double
-
-        dependMgs = False
-
-        #-----------------
-        ##CLOSE FILES HERE -> idk why, likely contingency / prep
-        #-----------------
 
         ## Reading in data from files?
         ## FileList is the selected files from 
@@ -389,12 +357,10 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
         noOfDays2Fit = (feDate - fsDate).days + 1
         
         #------------------------
-        #------ SECTION #3 ------ Filtration?
+        #------ SECTION #2 ------ Find Baseline?
         #------------------------
         
         totalToSkip = (fsDate - globalStartDate)
-        #if totalToSkip > 0:
-            ## Progress Bar Stuff
 
 
         fsDateBaseline = np.zeros((12)) ## Original: FSDateBaseline(1 To 12) As Long
@@ -417,15 +383,13 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
             searchPos += 1
 
             totalNumbers += 1
-            ##Call IncreaseDate
             workingDate = increaseDate(workingDate, 1, countLeapYear)
-            progValue = np.floor((totalNumbers / totalToSkip.days) * 100)
-            ##Update progress bar with progValue
+            #progValue = np.floor((totalNumbers / totalToSkip.days) * 100)
 
         ## END While
 
         #------------------------
-        #----- SECTION #4.0 ----- ???
+        #----- SECTION #2.1 ----- dataReadIn initialisation
         #------------------------
 
         if seasonCode == 1:
@@ -449,7 +413,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
 
 
         #------------------------
-        #----- SECTION #4.1 ----- (Finding the Start Pos)
+        #----- SECTION #2.2 ----- (Finding the Start Pos)
         #------------------------
 
         ## Revisit the following - Something feels off... ##
@@ -473,7 +437,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
             searchPos += 1
             #next i
             totalNumbers += 1
-            progValue = np.floor((totalNumbers / nDaysR) * 100)
+            #progValue = np.floor((totalNumbers / nDaysR) * 100)
             #call newProgressBar
 
         #lastDate = deepcopy(workingDate)
@@ -499,7 +463,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
             sectionSizes[currentPeriod, 0] += 1
 
         #------------------------
-        #----- SECTION #4.2 ----- Finding evidence of missing values(?)
+        #----- SECTION #2.3 ----- Load remaining data into loadedFiles for next section
         #------------------------
 
         #call increasedate
@@ -558,7 +522,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
             workingDate = increaseDate(workingDate, 1, countLeapYear)
             currentMonth = workingDate.month - 1
             currentSeason = getSeason(workingDate.month)
-            progValue = np.floor((totalNumbers / nDaysR) * 100)
+            #progValue = np.floor((totalNumbers / nDaysR) * 100)
             searchPos += 1
 
         ##End while
@@ -568,7 +532,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
         #################
 
         #------------------------
-        #----- SECTION #5.0 ----- 
+        #----- SECTION #3.0 ----- 
         #------------------------
 
         anyMissing = False
@@ -590,7 +554,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                 "noOfResiduals": 0
             }
             #------------------------
-            #---- SECTION #5.1.0 ---- SeasonCode 1 -> Annuals
+            #---- SECTION #3.1.0 ---- SeasonCode 1 -> Annuals
             #------------------------
 
             ## uwu
@@ -643,7 +607,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                 ##endif
                 
                 #------------------------
-                #---- SECTION #5.1.1 ---- 
+                #---- SECTION #3.1.1 ---- 
                 #------------------------
 
                 if (detrendOption != 0 and not parmOpt):
@@ -705,7 +669,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                 ##next
 
                 #------------------------
-                #---- SECTION #5.1.2 ---- Conditional Part
+                #---- SECTION #3.1.2 ---- Conditional Part
                 #------------------------
 
                 if autoRegression:
@@ -786,9 +750,6 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                     #call CalculateParameters(true)
                     params = calculateParameters(xMatrix, yMatrix, NPredictors, includeChow, conditionalPart, parmOpt, True, residualArray, tResults) #betaMatrix defined here
 
-                    if processTerminated:
-                        ##exit
-                        do_nothing()
                     if modelTrans == 4:
                         yDash = np.sum(np.matmul(xMatrix, params['betaMatrix']))
                         biasCorrect = 0 if yDash == 0 else (np.sum(yMatrix) / yDash)
@@ -808,7 +769,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                     ##next
                 else:
                     #------------------------
-                    #---- SECTION #5.1.3 ---- DW calculations
+                    #---- SECTION #3.1.3 ---- DW calculations
                     #------------------------
 
                     ##Need to properly calc residualMatrixRows
@@ -823,7 +784,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                 #Call NewProgressBar(ProgressPicture, 100, 100, "Calibrating Model")
 
                 #------------------------
-                #---- SECTION #5.2.0 ---- (season/month)
+                #---- SECTION #3.2.0 ---- (season/month)
                 #------------------------
             else:
                 for periodWorkingOn in range(seasonCode):
@@ -883,7 +844,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                     ##endif
 
                     #------------------------
-                    #---- SECTION #5.2.1 ---- 
+                    #---- SECTION #3.2.1 ---- 
                     #------------------------
 
                     if (detrendOption != 0 and not parmOpt):
@@ -923,10 +884,6 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                     ##call CalculateParameters(parmOpt) ##Adjust to make sure its correct...?
                     params = calculateParameters(xMatrix, yMatrix, NPredictors, includeChow, conditionalPart, parmOpt, not parmOpt, residualArray)     #betaMatrix Defined Here
 
-                    if processTerminated:
-                        ##call mini_reset
-                        do_nothing()
-
                     yMatrix = savedYMatrix
 
                     if seasonCode == 4:
@@ -954,7 +911,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                     ##endif
 
                     #------------------------
-                    #---- SECTION #5.2.2 ---- (Conditional Part)
+                    #---- SECTION #3.2.2 ---- (Conditional Part)
                     #------------------------
 
                     if autoRegression:
@@ -1046,9 +1003,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                         conditionalPart = True
                         ##call CalculateParameters(true)
                         params = calculateParameters(xMatrix, yMatrix, NPredictors, includeChow, conditionalPart, parmOpt, True, residualArray, tResults) #BetaMatrix defined here
-                        if processTerminated:
-                            ##exit
-                            do_nothing()
+                        
                         if modelTrans == 4:
                             yDash = np.sum(np.matmul(xMatrix, params['betaMatrix']))
                             biasCorrect = 0 if yDash == 0 else (np.sum(yMatrix) / yDash)
@@ -1087,7 +1042,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                         ##endif      
                     else:             
                         #------------------------
-                        #---- SECTION #5.2.3 ---- (DW Calculations)
+                        #---- SECTION #3.2.3 ---- (DW Calculations)
                         #------------------------
 
                         residualMatrix = params["residualMatrix"]
@@ -1136,7 +1091,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
             ##endif
                 
             #------------------------
-            #----- SECTION #6.0 ----- PARfile Output
+            #----- SECTION #4.0 ----- PARfile Output
             #------------------------
 
             ##Vars "Written" to PAR file:
@@ -1158,13 +1113,15 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                 #f"{int(autoRegression)}", #"Autoregression": 
                 f"{autoRegression}",
             ]
-            for file in fileList:    
-                PARfileOutput.append(file) #Save predictand & predictor file names
-            PARfileOutput = "\n".join(PARfileOutput) + "\n"
 
+            for file in fileList:    
+                #PARfileOutput.append(file) #Save predictand & predictor file names
+                name = path.split(file)[-1]
+                PARfileOutput.append(name)
+            PARfileOutput = "\n".join(PARfileOutput) + "\n"
             #call PrintResults
             PARfileOutput += printResults(parameterResultsArray, NPredictors, parmOpt, biasCorrection, autoRegression, modelTrans, lamdaArray)
- 
+            PARfileOutput += fileList[0] + "\n"
             #print PTandRoot
             if detrendOption != 0:   ##Will need to double check and standardise this parameter
                 #call PrintTrendParms]
@@ -1177,7 +1134,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                 f.close()
 
             #------------------------
-            #----- SECTION #6.1 ----- Results Screen output
+            #----- SECTION #4.1 ----- Results Screen output
             #------------------------
             
             #from calendar import month_name as months
@@ -1248,7 +1205,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                         output[n]['xValidation']['Mean'][key] /= len(iterator)
 
             #------------------------
-            #----- SECTION #6.2 ----- last minute information appends / info not directly displayed
+            #----- SECTION #4.2 ----- last minute information appends / info not directly displayed
             #------------------------
             
             analysisPeriod = ['Monthly', 'Seasonal', 'Annual']
@@ -1634,7 +1591,8 @@ def calcDW(residualMatrix: np.ndarray):
     Durbin Watson Shared Code for XValidation and CalibrateModel (Unconditional)
     - ASSUMES CLEAN DATA
     """
-
+    globalMissingCode = _globalSettings['globalmissingcode']
+    
     numerator = 0
     denom = 0
     for i in range(len(residualMatrix) - 1):
@@ -1840,6 +1798,7 @@ def calculateParameters(xMatrix: np.ndarray, yMatrix: np.ndarray, NPredictors: i
             "chowStat":chowStat
             }
 
+
 def calculateParameters2(xMatrix: np.ndarray, yMatrix: np.ndarray, NPredictors: int):
     """
     Calculate Parameters #2 v1.1
@@ -1865,43 +1824,52 @@ def calculateParameters2(xMatrix: np.ndarray, yMatrix: np.ndarray, NPredictors: 
         xTransXInverse = np.linalg.inv(np.matmul(xMatrix.transpose(), xMatrix))
         betaMatrix = np.matmul(xTransXInverse, xTransY)
 
+    elif optimisationChoice == 1:
+        displayWarning("Unfortunately, Dual Simplex is deprecated in this version. Using 'Ordinary Least Squares' instead")
+        _globalSettings['optAlg'] = 0
+        xTransY = np.matmul(xMatrix.transpose(), yMatrix)
+        xTransXInverse = np.linalg.inv(np.matmul(xMatrix.transpose(), xMatrix))
+        betaMatrix = np.matmul(xTransXInverse, xTransY)
     else:
+        raise RuntimeError("Unfortunately, Dual Simplex is deprecated in this version. Please switch the optimisation algorithm to 'Ordinary Least Squares' in the 'System Settings'")
         #Dual Simplex Approach
         ## INITIALISATION
-        IMAX = xMatrix.shape[0] #+1
-        JMAX = NPredictors #+1
-        KPN = IMAX + JMAX
+        IMAX = xMatrix.shape[0] +1
+        JMAX = NPredictors +1
+        KPN = NPredictors + xMatrix.shape[0]
         KP1 = JMAX
         A = np.zeros((IMAX + 1, JMAX + 1))
-        B = np.zeros((20))
-        C = np.zeros((KPN))
-        xBar = np.zeros((20))
+        B = np.zeros((20 + 1))
+        C = np.zeros((KPN + 1))
+        xBar = np.zeros((20 + 1))
         ISS = np.zeros((IMAX + 1), int)
-        NB = np.array(range(JMAX + 1))
+        NB = np.zeros((JMAX + 1)) #np.array(range(JMAX + 1))
         TOL = 0.00000001
 
-        for i in range(KP1, KPN):
+        for i in range(KP1 - 1, KPN + 1):
             C[i] = 2
         xSum = np.sum(xMatrix, 0)
-        for j in range(NPredictors):
+        for j in range(1, NPredictors + 1):
             #I THINK
-            xBar[j] = xSum[j] / len(xSum) ##My math senses tell me something's wrong here...
-            for i in range(xMatrix.shape[0]):
-                A[i + 1, j] = xMatrix[i, j] - xBar[j]
+            NB[j] = j
+            xBar[j] = np.sum(xMatrix[j]) / xMatrix.shape[0] ##My math senses tell me something's wrong here...
+            for i in range(1, xMatrix.shape[0]  + 1):
+                A[i + 1, j] = xMatrix[i - 1, j] - xBar[j]
         
-        for i in range(len(xSum)):
-            ISS[i+ 1] = i + NPredictors
-            A[i + 1, JMAX] = yMatrix[i] - yBar
+        for i in range(1, xMatrix.shape[0] + 1):
+            ISS[i + 1] = i + NPredictors
+            #print(f"SETTING ISS[{i+1} TO {i + NPredictors}]")
+            A[i + 1, JMAX] = yMatrix[i - 1] - yBar
 
         ##END OF INIT
 
-        done = True
+        done = False
         while done != True: ##Condition irrelevant - loop exits via 'break' statement
             while True:
                 H = -TOL
                 ICAND = 0
                 done = True
-                for i in range(1, IMAX): 
+                for i in range(2, IMAX + 1): 
                     if A[i, JMAX] < H:
                         done = False
                         H = A[i, JMAX]
@@ -1913,11 +1881,11 @@ def calculateParameters2(xMatrix: np.ndarray, yMatrix: np.ndarray, NPredictors: 
                 else:
                     JCAND = 0
                     RATIO = -10000000000
-                    for j in range(NPredictors):
+                    for j in range(1, NPredictors + 1):
                         IONE = 1
                         aa = A[ICAND, j]
                         if np.abs(aa) >= TOL:
-                            RCOST = A[0, j]
+                            RCOST = A[1, j]
                             if aa >= -TOL:
                                 IONE = -1
                                 if np.abs(NB[j]) > NPredictors:
@@ -1940,8 +1908,10 @@ def calculateParameters2(xMatrix: np.ndarray, yMatrix: np.ndarray, NPredictors: 
                         break
                     else:
                         ISS[ICAND] *= -1 #Make -ve or vice versa
-                        for j in range(JMAX):
-                            A[0, j] += CJ * A[ICAND, j] * -1
+                        #print(f"INVERTING ISS[{ICAND} TO {ISS[ICAND]}]")
+                        for j in range(1, JMAX + 1):
+                            A[1, j] += CJ * A[ICAND, j]
+                            A[ICAND, j] *= -1
                             #A[]
                         #j
                     #endif
@@ -1956,16 +1926,16 @@ def calculateParameters2(xMatrix: np.ndarray, yMatrix: np.ndarray, NPredictors: 
                 JCAND *= -1
                 NB[JCAND] *= -1
                 oneFlipper = -1
-                A[0, JCAND] = RSAVE
+                A[1, JCAND] = RSAVE
             pivot = A[ICAND, JCAND] * oneFlipper
-            for j in range(JMAX):
+            for j in range(1, JMAX + 1):
                 A[ICAND, j] /= pivot
             #next j
-            for i in range(IMAX):
+            for i in range(1, IMAX + 1):
                 if i != ICAND:
                     AIJ = A[i, JCAND] * oneFlipper
                     if AIJ != 0:
-                        for j in range(JMAX):
+                        for j in range(1, JMAX + 1):
                             A[i, j] -= A[ICAND, j] * AIJ
                         #next j
                         A[i, JCAND] = -AIJ / pivot
@@ -1974,28 +1944,36 @@ def calculateParameters2(xMatrix: np.ndarray, yMatrix: np.ndarray, NPredictors: 
             #next i
             A[ICAND, JCAND] = 1 / pivot
             ISS[ICAND] = NB[JCAND]
+            #print(f"RENEWING ISS[{ICAND}] TO NB:{NB[JCAND]}")
             NB[JCAND] = IT
 
         #endwhile
 
         ALPHA = yBar
-        for i in range(1, IMAX):
+        for i in range(2, IMAX + 1):
             oneFlipper = 1
             II = ISS[i]
+            #if i < 100:
+                #print(f"LOADING ISS[{i}] = {ISS[i]}")
             if np.abs(II) <= NPredictors:
                 if II <= 0:
                     II *= -1
                     oneFlipper = -1
                 #endif
                 B[II] = oneFlipper * A[i, JMAX]
+                #if II != 0:
+                    #print(f"SETTING BAE {II} TO {B[II]}")
                 ALPHA -= xBar[II] * B[II]
             #endif
         #next i
 
-        betaMatrix = np.zeros((NPredictors))
+        betaMatrix = np.zeros((NPredictors + 1))
         betaMatrix[0] = ALPHA
-        for i in range(NPredictors):
+        #print(f"LEN BETA: {len(betaMatrix)}, LEN B: {len(B)}")
+        for i in range(1, NPredictors + 1):
             betaMatrix[i] = B[i]
+            #print(f"BAETA {i}: {betaMatrix[i]}")
+
         #next i
         xTransY = np.matmul(xMatrix.transpose(), yMatrix)
 
@@ -2007,6 +1985,7 @@ def calculateParameters2(xMatrix: np.ndarray, yMatrix: np.ndarray, NPredictors: 
 
         if dependencies and not dependMsg:
             ##Warning error
+            print("[WARNING]: Linear dependencies between predictors")
             pass
         #endif
     #endif
@@ -2232,16 +2211,8 @@ def findMinLamda(start: float, finish: float, stepSize: float, passedMatrix: np.
     #'tries lamda values from start to finish in steps of stepsize for passedMatrix
     #'passedMatrix has already been right shifted by shiftright to make sure it is all >=0
     #'returns either GlobalMissingCode if not found or minimum lamda value if it was
-    GlobalMissingCode = -999
+    globalMissingCode = _globalSettings['globalmissingcode']
     #bestLamdaSoFar As Double  #'Best Lamda so far
-    #Dim minResultSoFar As Double  #'Hinkley (1977) calculation for optimum lamda
-    #Dim Mean As Double      #'mean of transformed values
-    #Dim IQR As Double        #'Inter Quartile Range of transformed values
-    #Dim upper As Long: Dim Lower As Long #'position of IQR values
-    #Dim Median As Double    #'Median
-    #Dim d As Double         #'d as per Hinkley
-    #Dim tempMatrix As Matrix
-    #Dim counter As Integer, Missing As Integer  #'missing counts number we can't transform
     bestLamdaSoFar = start  #'set best lamda to first point to try
     minResultSoFar = 99999  #'set minimum d value to big number to start
 
@@ -2284,10 +2255,10 @@ def findMinLamda(start: float, finish: float, stepSize: float, passedMatrix: np.
             if IQR > 0:
                 d = (mean - median) / IQR
             else:
-                d = GlobalMissingCode
+                d = globalMissingCode
             #End If
             
-            if (d != GlobalMissingCode) and (np.abs(d) < minResultSoFar):
+            if (d != globalMissingCode) and (np.abs(d) < minResultSoFar):
                 minResultSoFar = np.abs(d) #'keep track of best values so far
                 bestLamdaSoFar = k
             #End If
@@ -2298,7 +2269,7 @@ def findMinLamda(start: float, finish: float, stepSize: float, passedMatrix: np.
     #Next k  'try for all values of k
     
     if minResultSoFar == 99999:  #'haven't found anything
-        return GlobalMissingCode
+        return globalMissingCode
     else:
         return bestLamdaSoFar   #'return bestLamdaSoFar as this has lowest d value
     #End If
@@ -2506,34 +2477,19 @@ def printTrendParms(detrendOption: int, betaTrend, seasonCode: int):
     #    print(giga_array, file=f)
     #    f.close()
                 
-                
+
+def displayWarning(text):
+    messageBox = QMessageBox()
+    messageBox.setIcon(QMessageBox.Critical)
+    messageBox.setText(text)
+    messageBox.setWindowTitle("Warning")
+    messageBox.exec_()
 
 
 def plotScatter(residualArray):
     #mimicked from ScreenVariables
     import pyqtgraph as pg
 
-    """
-    On Error GoTo ErrorHandler
-    Dim i As Long
-    Load ScatterChartFrm
-    ScatterChartFrm.HiddenXTitleText.Text = "Predicted Value (Y')"    'X axis label
-    ScatterChartFrm.HiddenYTitleText.Text = "Residual"       'Y axis label
-    ScatterChartFrm.Chart1.Plot.Axis(VtChAxisIdY).AxisTitle.Text = "Residual"
-    ScatterChartFrm.Chart1.Plot.Axis(VtChAxisIdX).AxisTitle.Text = "Predicted Value (Y')"
-    ScatterChartFrm.Chart1.ColumnCount = 2
-    ScatterChartFrm.Chart1.rowCount = NoOfResiduals         'Maximum possible data to display
-    
-    For i = 1 To NoOfResiduals
-        ScatterChartFrm.Chart1.DataGrid.SetData i, 2, ResidualArray(2, i), 0    'Insert the residual into this row - Y axis
-        ScatterChartFrm.Chart1.DataGrid.SetData i, 1, ResidualArray(1, i), 0    'Insert Y' value onto X axis
-    Next i
-    ScatterChartFrm.Chart1.DataGrid.SetSize 0, 0, NoOfResiduals, 2   'Resize data grid to only show data wanted
-    
-    ScatterChartFrm.Chart1.Title = "Residual Plot"
-    ScatterChartFrm.HiddenTitleText = "Residual Plot"
-    ScatterChartFrm.Show   
-    """
     #ResidualArray(1,i) is equivalent to residualArray['predicted'][i], and should go on the X axis
     #ResidualArray(2,i) is equivalent to residualArray['residual'][i], and should go on the Y axis
     #NoOfResiduals is equivalent to residualArray['noOfResiduals'] and should contain the length of the array
@@ -2546,88 +2502,59 @@ def plotScatter(residualArray):
         {"pos": [residualArray['predicted'][i], residualArray['residual'][i]]}
         for i in range(residualArray['noOfResiduals'])
     ]
+    plot.setWindowTitle("SDSM Residual Scatter plot") 
+    plot.getPlotItem().setLabel("left","Residual")
+    plot.getPlotItem().setLabel("bottom","Predicted Value")
     scatter.addPoints(spots)
     plot.addItem(scatter)
 
 def plotHistogram(residualArray, noOfHistCats):
+    """
+    Plots residual data onto a PyQtGraph Histogram
+    """
 
-    minVal = np.min(residualArray['residual'])
-    maxVal = np.max(residualArray['residual'])
+    import pyqtgraph as pg
+
+    residuals = residualArray['residual']
+
+    minVal = np.min(residuals)
+    maxVal = np.max(residuals)
     sizeOfCategories = (maxVal - minVal) / noOfHistCats
     
+    residualHistOccurances = np.zeros(noOfHistCats, dtype=int)
     for i in range(noOfHistCats):
         #???
         catMin = minVal + (i * sizeOfCategories)
         catMax = catMin + sizeOfCategories
         for j in range(residualArray['noOfResiduals']):
-            if residualArray['residual'][j] >= catMin and residualArray['residual'] < catMax:
-                ##residualHistData[i][2] + 1
-                pass
+            #print(f"IS {residualArray['residual'][j]} BETWEEN {catMin} (min) AND {catMax} (max)?")
+            if residualArray['residual'][j] >= catMin and residualArray['residual'][j] < catMax:
+            #    print("YES")
+                residualHistOccurances[i] += 1
+            #input()
         #next j
     #next i
 
-    ##formatting....
-
-    #residualHistData[1][1] = str(minVal:.3f)
-    #residualHistData[noOfHistCats][1] = str(maxVal:.3f)
-
-    #intermediate labels?
-    #for i in range(1, noOfHistCats):
-    #   catMin = minVal + (i * sizeOfCategories)
-    #   residualHistData[i, 1] = str(catMin:.3f)
-        
     
-
-    """
-    Private Sub PlotHistogram()       'plots a histogram of residuals
-    On Error GoTo ErrorHandler
-    ReDim ResidualHistogramData(1 To NoOfHistogramCats, 1 To 2)        'x=labels and data, y= data
-    Dim MaxValue As Double, MinValue As Double, SizeOfCategories As Double
-    Dim CatMin As Double, CatMax As Double
-    MaxValue = -999          'calculate max and min in observed data
-    MinValue = 999
-    For i = 1 To NoOfResiduals
-        If ResidualArray(2, i) > MaxValue Then MaxValue = ResidualArray(2, i)
-        If ResidualArray(2, i) < MinValue Then MinValue = ResidualArray(2, i)
-    Next i
-    SizeOfCategories = (MaxValue - MinValue) / NoOfHistogramCats
-                      
-    For i = 1 To NoOfHistogramCats
-        ResidualHistogramData(i, 2) = 0 'propogate column 2; col 1 for legend lables
-    Next i
     
-    For i = 1 To NoOfHistogramCats  'calculate number of points in each category
-        CatMin = MinValue + ((i - 1) * SizeOfCategories)
-        CatMax = CatMin + SizeOfCategories
-        For j = 1 To NoOfResiduals
-            If ((ResidualArray(2, j) >= CatMin) And (ResidualArray(2, j) < CatMax)) Then
-                ResidualHistogramData(i, 2) = ResidualHistogramData(i, 2) + 1
-            End If
-        Next j
-    Next i
+    residualHistLabels = [minVal]
+    for i in range(1, noOfHistCats):
+        residualHistLabels.append((minVal + (i * sizeOfCategories)))
+    
+    residualHistLabels.append(maxVal)
 
-    tempz = Format(MinValue, "####0.000")
-    ResidualHistogramData(1, 1) = Str(tempz)
-    tempz = Format(MaxValue, "####0.000")
-    ResidualHistogramData(NoOfHistogramCats, 1) = Str(tempz)
-
-    For i = 2 To NoOfHistogramCats - 1      'set up intermediate labels
-        CatMin = MinValue + ((i - 1) * SizeOfCategories)
-        tempz = Format(CatMin, "####0.000")
-        ResidualHistogramData(i, 1) = Str(tempz)
-    Next i
-
-    SeriesDataFirstValue = ResidualHistogramData(1, 1) 'save first value in time series array
-    Load HistogramFrm
-    HistogramFrm.Reset_All
-    HistogramFrm.Show
-    Exit Sub
-ErrorHandler:
-    Call HandleError(Err.Number)
-    Call Mini_Reset
-    Exit Sub
-End Sub
-    """
+    plot = pg.plot()
+    bargraph = pg.PlotCurveItem(x = residualHistLabels, #range(noOfHistCats),
+                                y = residualHistOccurances, 
+                                stepMode=True,
+                                fillLevel=0,
+                                #brush ='g') 
+                                brush=pg.mkBrush(255, 255, 255, 120))
+    plot.setWindowTitle("SDSM Residual Histogram") 
+    plot.getPlotItem().setLabel("left","Frequency")
+    plot.getPlotItem().setLabel("bottom","Residual")
+    plot.addItem(bargraph)
+    
 
 ##Helper Functions:
 

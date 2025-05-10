@@ -468,15 +468,15 @@ class ContentWidget(QWidget):
         self.residualRadioButtonGroup.setExclusive(True)
         self.noneRadioButton = QRadioButton("None")
         self.noneRadioButton.setChecked(True)
-        scatterRadioButton = QRadioButton("Scatter Plot")
-        histogramRadioButton = QRadioButton("Histogram")
+        self.scatterRadioButton = QRadioButton("Scatter Plot")
+        self.histogramRadioButton = QRadioButton("Histogram")
         self.residualRadioButtonGroup.addButton(self.noneRadioButton)
-        self.residualRadioButtonGroup.addButton(scatterRadioButton)
-        self.residualRadioButtonGroup.addButton(histogramRadioButton)
+        self.residualRadioButtonGroup.addButton(self.scatterRadioButton)
+        self.residualRadioButtonGroup.addButton(self.histogramRadioButton)
 
         residualLayout.addWidget(self.noneRadioButton)
-        residualLayout.addWidget(scatterRadioButton)
-        residualLayout.addWidget(histogramRadioButton)
+        residualLayout.addWidget(self.scatterRadioButton)
+        residualLayout.addWidget(self.histogramRadioButton)
 
         # Chow Test CheckBox
         self.chowCheck = QCheckBox("Calculate Chow Test")
@@ -539,9 +539,8 @@ class ContentWidget(QWidget):
         buttonLayout.addWidget(resetButton)
 
     def doCalibration(self):
-        from src.lib.CalibrateModel import calibrateModel, CalibrateAnalysisApp, displayError
+        from src.lib.CalibrateModel import calibrateModel, CalibrateAnalysisApp, displayError, plotScatter, plotHistogram
 
-        print(self.predictandSelected)
         fitStartDate = self.QDateEditToDateTime(self.fitStartDateChooser)
         fitEndDate = self.QDateEditToDateTime(self.fitEndDateChooser)
         modelType = int(self.modelRadioButtonGroup.checkedButton().objectName())
@@ -568,12 +567,18 @@ class ContentWidget(QWidget):
                 int(self.crossValInput.text()),
             )   
         except Exception as e:
-            displayError(e)
+            return displayError(e)
         else:
             #print(data)
             self.newWindow = CalibrateAnalysisApp()
             self.newWindow.loadResults(data)
             self.newWindow.show()
+            if self.scatterRadioButton.isChecked():
+                plotScatter(data['residualArray'])
+            elif self.histogramRadioButton.isChecked():
+                plotHistogram(data['residualArray'], int(self.histogramInput.text()))
+
+        
 
     def resetAll(self):
         # Reset file and path variables and labels
@@ -654,7 +659,6 @@ class ContentWidget(QWidget):
         fileName = QFileDialog.getOpenFileName(
             self, "Select predictand file", "predictand files", "DAT Files (*.DAT)"
         )
-        print(fileName)
         if fileName[0] != "":
             self.predictandSelected = fileName[0]
             self.selectPredictandLabel.setText(
@@ -669,7 +673,6 @@ class ContentWidget(QWidget):
         fileName = QFileDialog.getOpenFileName(
             self, "Select output file", "SDSM-REFRESH", "PAR Files (*.PAR)"
         )
-        print(fileName)
         if fileName[0] != "":
             self.outputSelected = fileName[0]
             self.selectOutputLabel.setText(
@@ -691,9 +694,4 @@ class ContentWidget(QWidget):
             self.predictorsSelected.remove(self.predictorPath + "/" + predictor)
             button.setStyleSheet("color: black; background-color: #F0F0F0")
 
-    def handleMenuButtonClicks(self):
-        button = self.sender().text()
-        if button == "Correlation":
-            print("nope, that aint right")
-        else:
-            print("work in progress, pardon our dust")
+

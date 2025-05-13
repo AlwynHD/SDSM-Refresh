@@ -713,6 +713,15 @@ class ContentWidget(QWidget):
         threshValue = self.thresholdInput.value()
         dataPeriodChoice = self.dataPeriodCombo.currentIndex()
 
+        yearDiff = feDate.year - fsDate.year
+        if yearDiff <= 10:
+            QMessageBox.warning(
+                self,
+                "Invalid Date Range",
+                f"For the FA {type}, start and end dates must be greater than or equal to 10 years apart."
+            )
+            return
+
         # Determine the frequency model based on the selected radio button in faLayout
         if self.empiricalRadio.isChecked():
             freqModel = 0

@@ -274,9 +274,7 @@ class SDSMWindow(QMainWindow):
 
     def openAcknowledgementsFile(self):
         """
-        Open the help viewer.
-        If a section (anchor) is provided, jump to that part of SDSMHelp.html.
-        Otherwise, load the entire help file.
+        Open the Acknowledgements viewer.
         """
         ack_file = os.path.abspath("src/core/Acknowledgements.html")
         url = QUrl.fromLocalFile(ack_file)

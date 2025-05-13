@@ -125,6 +125,10 @@ class ContentWidget(QWidget):
         self.setWindowTitle("Frequency Analysis")
         self.setGeometry(100, 100, 800, 600)
         layout = QVBoxLayout()
+
+        self.primaryColour = "purple"
+        self.secondaryColour = "magenta"
+        self.tertiaryColour = "pink"
         
         # --- Row 1: Observed Data & Modelled Data --- #
         dataLayout = QHBoxLayout()
@@ -352,8 +356,24 @@ class ContentWidget(QWidget):
         tabButtonsLayout.addWidget(self.idfTabButton)
         tabButtonsLayout.addWidget(self.resetButton)
         layout.addLayout(tabButtonsLayout)
+
+        self.setColours("#431371", "#b78eec", "#cd086b")
         
         self.setLayout(layout)
+
+    def setColours(self, primary, secondary, tertiary):
+        self.qqPlotButton.setStyleSheet(f"background-color: {primary}; color: white; font-weight: bold;")
+        self.pdfPlotButton.setStyleSheet(f"background-color: {secondary}; color: white; font-weight: bold")
+        self.linePlotButton.setStyleSheet(f"background-color: {primary}; color: white; font-weight: bold")
+        self.faGraphicalButton.setStyleSheet(f"background-color: {secondary}; color: white; font-weight: bold;")
+        self.faTabButton.setStyleSheet(f"background-color: {secondary}; color: white; font-weight: bold;")
+        self.idfPlotButton.setStyleSheet(f"background-color: {primary}; color: white; font-weight: bold")
+        self.idfTabButton.setStyleSheet(f"background-color: {secondary}; color: white; font-weight: bold")
+        self.resetButton.setStyleSheet(f"background-color: {tertiary}; color: white; font-weight: bold;")
+
+        self.primaryColour = primary
+        self.secondaryColour = secondary
+        self.tertiaryColour = tertiary
 
     def showEvent(self, event):
         global globalSDate 

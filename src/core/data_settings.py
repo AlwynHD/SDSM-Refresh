@@ -64,6 +64,10 @@ class ContentWidget(QWidget):
     def __init__(self):
         super().__init__()
 
+        self.primaryColour = "purple"
+        self.secondaryColour = "magenta"
+        self.tertiaryColour = "pink"
+
         # Main content layout
         mainLayout = QVBoxLayout()
         mainLayout.setContentsMargins(10, 10, 10, 10)
@@ -137,10 +141,10 @@ class ContentWidget(QWidget):
 
         # Reset Button
         mainLayout.addStretch()
-        resetButton = QPushButton("🔄 Reset Settings")
-        resetButton.setStyleSheet("background-color: #ED0800; color: white; font-weight: bold;")
-        resetButton.clicked.connect(self.resetSettings)
-        mainLayout.addWidget(resetButton)
+        self.resetButton = QPushButton("🔄 Reset Settings")
+        self.resetButton.setStyleSheet("background-color: #ED0800; color: white; font-weight: bold;")
+        self.resetButton.clicked.connect(self.resetSettings)
+        mainLayout.addWidget(self.resetButton)
         
 
         # Text color for inputs
@@ -155,22 +159,34 @@ class ContentWidget(QWidget):
         # === Export / Save / Load Buttons ===
         buttonLayout = QHBoxLayout()
 
-        exportBtn = QPushButton("📤 Export Settings")
-        exportBtn.setStyleSheet("background-color: #1FC7F5; color: white; font-weight: bold;")
-        exportBtn.clicked.connect(self.saveSettingsFromUi)
-        buttonLayout.addWidget(exportBtn)
+        self.exportBtn = QPushButton("📤 Export Settings")
+        self.exportBtn.setStyleSheet("background-color: #1FC7F5; color: white; font-weight: bold;")
+        self.exportBtn.clicked.connect(self.saveSettingsFromUi)
+        buttonLayout.addWidget(self.exportBtn)
 
-        saveBtn = QPushButton("💾 Save Settings")
-        saveBtn.setStyleSheet("background-color: #4CAF50; color: white; font-weight: bold;")
-        saveBtn.clicked.connect(self.saveSettingsDefault)
-        buttonLayout.addWidget(saveBtn)
+        self.saveBtn = QPushButton("💾 Save Settings")
+        self.saveBtn.setStyleSheet("background-color: #4CAF50; color: white; font-weight: bold;")
+        self.saveBtn.clicked.connect(self.saveSettingsDefault)
+        buttonLayout.addWidget(self.saveBtn)
 
-        loadBtn = QPushButton("📂 Load Settings")
-        loadBtn.setStyleSheet("background-color: #F57F0C; color: white; font-weight: bold;")
-        loadBtn.clicked.connect(self.loadSettingsFromUi)
-        buttonLayout.addWidget(loadBtn)
+        self.loadBtn = QPushButton("📂 Load Settings")
+        self.loadBtn.setStyleSheet("background-color: #F57F0C; color: white; font-weight: bold;")
+        self.loadBtn.clicked.connect(self.loadSettingsFromUi)
+        buttonLayout.addWidget(self.loadBtn)
 
         mainLayout.addLayout(buttonLayout)
+
+        self.setColours("#431371", "#b78eec", "#cd086b")
+
+    def setColours(self, primary, secondary, tertiary):
+        self.resetButton.setStyleSheet(f"background-color: {tertiary}; color: white; font-weight: bold;")
+        self.exportBtn.setStyleSheet(f"background-color: {primary}; color: white; font-weight: bold;")
+        self.saveBtn.setStyleSheet(f"background-color: {secondary}; color: white; font-weight: bold;")
+        self.loadBtn.setStyleSheet(f"background-color: {primary}; color: white; font-weight: bold;")
+
+        self.primaryColour = primary
+        self.secondaryColour = secondary
+        self.tertiaryColour = tertiary
 
     def chooseDefaultDir(self):
         global defaultDir

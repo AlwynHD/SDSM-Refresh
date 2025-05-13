@@ -117,6 +117,10 @@ class SDSMWindow(QMainWindow):
         link3Action = QAction("SDSM-DC Paper", self)
         link3Action.triggered.connect(lambda: QDesktopServices.openUrl(QUrl("https://www.int-res.com/abstracts/cr/v61/n3/p259-276/")))
         linksMenu.addAction(link3Action)
+
+        link4Action = QAction("Acknowledgements", self)
+        link4Action.triggered.connect(lambda: self.openAcknowledgementsFile())
+        linksMenu.addAction(link4Action)
         
         openSettingsAction = QAction("Open Data Settings", self)
         openSettingsAction.triggered.connect(self.loadDataSettingsContent)
@@ -259,6 +263,24 @@ class SDSMWindow(QMainWindow):
             layout.addWidget(textBrowser)
             textBrowser.setSource(url)
             helpDialog.exec_()
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Could not open help content: {str(e)}")
+
+    def openAcknowledgementsFile(self):
+        """
+        Open the Acknowledgements viewer.
+        """
+        ack_file = os.path.abspath("src/core/Acknowledgements.html")
+        url = QUrl.fromLocalFile(ack_file)
+        try:
+            ackDialog = QDialog(self)
+            ackDialog.setWindowTitle("Help")
+            ackDialog.resize(800, 600)
+            layout = QVBoxLayout(ackDialog)
+            textBrowser = QTextBrowser(ackDialog)
+            layout.addWidget(textBrowser)
+            textBrowser.setSource(url)
+            ackDialog.exec_()
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Could not open help content: {str(e)}")
     

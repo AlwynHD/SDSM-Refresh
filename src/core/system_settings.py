@@ -64,6 +64,10 @@ class ContentWidget(QWidget):
     def __init__(self):
         super().__init__()
 
+        self.primaryColour = "purple"
+        self.secondaryColour = "magenta"
+        self.tertiaryColour = "pink"
+
         # Main content layout
         mainLayout = QVBoxLayout()
         mainLayout.setContentsMargins(10, 10, 10, 10)
@@ -188,28 +192,28 @@ class ContentWidget(QWidget):
         mainLayout.addWidget(wetDayGroupBox)
 
         # Reset button
-        resetBtn = QPushButton("🔄 Reset Settings")
-        resetBtn.setStyleSheet("background-color: #ED0800; color: white; font-weight: bold;")
-        resetBtn.clicked.connect(self.resetSettings)
-        mainLayout.addWidget(resetBtn)
+        self.resetBtn = QPushButton("🔄 Reset Settings")
+        self.resetBtn.setStyleSheet("background-color: #ED0800; color: white; font-weight: bold;")
+        self.resetBtn.clicked.connect(self.resetSettings)
+        mainLayout.addWidget(self.resetBtn)
 
         # Export / Save / Load buttons
         btnLayout = QHBoxLayout()
 
-        exportBtn = QPushButton("📤 Export Settings")
-        exportBtn.setStyleSheet("background-color: #1FC7F5; color: white; font-weight: bold;")
-        exportBtn.clicked.connect(self.saveSettingsFromUi)
-        btnLayout.addWidget(exportBtn)
+        self.exportBtn = QPushButton("📤 Export Settings")
+        self.exportBtn.setStyleSheet("background-color: #1FC7F5; color: white; font-weight: bold;")
+        self.exportBtn.clicked.connect(self.saveSettingsFromUi)
+        btnLayout.addWidget(self.exportBtn)
 
-        saveBtn = QPushButton("💾 Save Settings")
-        saveBtn.setStyleSheet("background-color: #4CAF50; color: white; font-weight: bold;")
-        saveBtn.clicked.connect(self.saveSettingsDefault)
-        btnLayout.addWidget(saveBtn)
+        self.saveBtn = QPushButton("💾 Save Settings")
+        self.saveBtn.setStyleSheet("background-color: #4CAF50; color: white; font-weight: bold;")
+        self.saveBtn.clicked.connect(self.saveSettingsDefault)
+        btnLayout.addWidget(self.saveBtn)
 
-        loadBtn = QPushButton("📂 Load Settings")
-        loadBtn.setStyleSheet("background-color: #F57F0C; color: white; font-weight: bold;")
-        loadBtn.clicked.connect(self.loadSettingsFromUi)
-        btnLayout.addWidget(loadBtn)
+        self.loadBtn = QPushButton("📂 Load Settings")
+        self.loadBtn.setStyleSheet("background-color: #F57F0C; color: white; font-weight: bold;")
+        self.loadBtn.clicked.connect(self.loadSettingsFromUi)
+        btnLayout.addWidget(self.loadBtn)
 
         mainLayout.addLayout(btnLayout)
 
@@ -227,6 +231,18 @@ class ContentWidget(QWidget):
         # Initial load
         self.loadSettings()
         self.loadSettingsIntoUi()
+
+        self.setColours("#431371", "#b78eec", "#cd086b")
+
+    def setColours(self, primary, secondary, tertiary):
+        self.resetBtn.setStyleSheet(f"background-color: {tertiary}; color: white; font-weight: bold;")
+        self.exportBtn.setStyleSheet(f"background-color: {primary}; color: white; font-weight: bold;")
+        self.saveBtn.setStyleSheet(f"background-color: {secondary}; color: white; font-weight: bold;")
+        self.loadBtn.setStyleSheet(f"background-color: {primary}; color: white; font-weight: bold;")
+
+        self.primaryColour = primary
+        self.secondaryColour = secondary
+        self.tertiaryColour = tertiary
 
     def resetSettings(self):
         global varianceInflation, biasCorrection, fixedThreshold

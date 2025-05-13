@@ -250,13 +250,13 @@ def frequency_analysis(
         if file1Used:
             obs_vals = arr[:, 1]
             mask_obs = obs_vals != globalMissingCode
-            ax.plot(x[mask_obs], obs_vals[mask_obs], marker='o', linestyle='-', label=obs_label, color='darkblue')
+            ax.plot(x[mask_obs], obs_vals[mask_obs], marker='o', linestyle='-', label=obs_label, color='black')
 
         # Modeled series
         if file2Used:
             mod_vals = arr[:, file2ColStart - 1]
             mask_mod = mod_vals != globalMissingCode
-            ax.plot(x[mask_mod], mod_vals[mask_mod], marker='s', linestyle='--', label=mod_label, color='lightgreen')
+            ax.plot(x[mask_mod], mod_vals[mask_mod], marker='s', linestyle='--', label=mod_label, color='darkred')
             # Confidence bounds only for all ensembles
             if ensembleIndex == 0 and no_of_ensembles > 1 and percentileWanted > 0:
                 lower = arr[:, file2ColStart + 3]
@@ -264,8 +264,8 @@ def frequency_analysis(
                 mask_pct = (lower != globalMissingCode) & (upper != globalMissingCode)
                 low_pct = percentileWanted/2
                 high_pct = 100 - low_pct
-                ax.plot(x[mask_pct], lower[mask_pct], marker='^', linestyle=':', label=f'Low {low_pct}%', color='red')
-                ax.plot(x[mask_pct], upper[mask_pct], marker='v', linestyle=':', label=f'High {high_pct}%', color='red')
+                ax.plot(x[mask_pct], lower[mask_pct], marker='^', linestyle=':', label=f'Low {low_pct}%', color='darkred')
+                ax.plot(x[mask_pct], upper[mask_pct], marker='v', linestyle=':', label=f'High {high_pct}%', color='darkred')
 
         ax.set_xlabel('Return period (years)')
         ax.set_ylabel('Value')

@@ -372,6 +372,16 @@ def getSettings():
         
     return settingsDictionary
 
+def resource_path(path):
+    from os.path import relpath, join
+    import sys
+    try:
+        root = sys._MEIPASS
+    except Exception:
+        root = relpath(".")
+        print("FAIL")
+    
+    return join(root, path)
 
 if __name__ == '__main__':
     #Module tests go here

@@ -75,7 +75,7 @@ def convert_value(key, value):
     else:
         return value
 
-def load_settings(config_path="src/lib/settings.ini"):
+def load_settings(config_path="settings.ini"):
     """
     Load and convert settings from the configuration file.
 

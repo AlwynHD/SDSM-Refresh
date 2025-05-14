@@ -11,7 +11,7 @@ import os
 import sys
 
 # Constants
-defaultIniFile = os.path.join("src", "lib", "settings.ini")
+defaultIniFile = os.path.relpath("settings.ini")
 
 # Default Values for Reset
 defaultValues = {
@@ -24,7 +24,7 @@ defaultValues = {
     'allowNeg': True,
     'randomSeed': True,
     'thresh': 0,
-    'defaultDir': os.path.join("src", "lib"),
+    'defaultDir': os.path.relpath("."),
     'globalMissingCode': -999,
     'varianceInflation': 12,
     'biasCorrection': 1,

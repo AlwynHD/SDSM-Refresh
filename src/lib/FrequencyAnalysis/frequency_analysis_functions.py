@@ -25,7 +25,7 @@ def convertValue(key, value):
         return [int(x) for x in value.split(',') if x.strip()]
     return value
 
-def loadSettings(configPath='src/lib/settings.ini'):
+def loadSettings(configPath='settings.ini'):
     parser = configparser.ConfigParser()
     parser.read(configPath)
     raw = parser['Settings']

@@ -243,7 +243,7 @@ def run_idf(
 
 def load_settings(settings_path='src\lib\settings.ini'):
     config = configparser.ConfigParser()
-    config.read("src/lib/settings.ini")  # use full or relative path to your actual file
+    config.read("settings.ini")  # use full or relative path to your actual file
     return config
 
 def has_sufficient_data(observed_data, modelled_data, min_points=100):

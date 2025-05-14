@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, QUrl
 from PyQt5.QtGui import QIcon, QScreen, QDesktopServices  # Added QDesktopServices import
 from importlib import import_module
-from src.lib.utils import resource_path
+from src.lib.utils import resource_path, regenerate_ini
 
 # Global variables for window dimensions
 windowWidth = 1280
@@ -119,6 +119,9 @@ class SDSMWindow(QMainWindow):
         openSettingsAction2 = QAction("Open System Settings", self)
         openSettingsAction2.triggered.connect(self.loadSystemSettingsContent)
         settingsMenu.addAction(openSettingsAction2)
+
+        # Regenerate ini file if missing
+        regenerate_ini()
         
         # Load initial content (Home screen)
         self.loadContent(0)

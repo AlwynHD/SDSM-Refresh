@@ -234,9 +234,10 @@ def boxCox(data, applyThresh):
 
         #Right shift data
         minVal = np.min(boxCoxData)
-        boxCoxData = [entry + abs(minVal) for entry in boxCoxData]
+        if minVal < 0:
+            boxCoxData = [entry + abs(minVal) for entry in boxCoxData]
 
-        #Remove all zero values
+        #Remove all zero values as the scipy function cannot handle them
         boxCoxData = [entry for entry in boxCoxData if entry > 0]
 
         #Box Cox Transform
@@ -244,7 +245,7 @@ def boxCox(data, applyThresh):
 
         invalidCount = 0
         for r in range(len(data[:, c])):
-            if (valueIsValid(data[r][c], applyThresh, missingCode, thresh) or data[r][c] == minVal) and data[r][c] != 0:
+            if (valueIsValid(data[r][c], applyThresh, missingCode, thresh) and data[r][c] != 0 and data[r][c] != minVal):
                 returnData[r][c] = boxCoxData[0][r - invalidCount]
                 success += 1
             else:
@@ -271,21 +272,13 @@ def unBoxCox(data, lamda, leftShift, applyThresh):
 
     for c in range(len(data.T)):
         unBoxCoxData = [entry for entry in data[:, c] if valueIsValid(entry, applyThresh, missingCode, thresh)]
-        newType = type(unBoxCoxData)
 
-        #Left shift data
-        for i in range(len(unBoxCoxData)):
-            unBoxCoxData[i] += newType(leftShift)
+        #Inverse box cox
+        unBoxCoxData = sci.special.inv_boxcox(unBoxCoxData, lamda)
 
-        #Reverse boxcox
-        try:
-            unBoxCoxData = sci.special.inv_boxcox(unBoxCoxData, lamda)
-        except:
-            return [], "Unable to perform unboxcox for this data."
-        
-        for i in range(len(unBoxCoxData)):
-            unBoxCoxData[i] -= newType(leftShift)
-
+        #Left shift the data
+        unBoxCoxData = [entry - leftShift for entry in unBoxCoxData]
+            
         #Write back to column
         invalidCount = 0
         for r in range(len(data[:, c])):
@@ -385,5 +378,7 @@ if __name__ == "__main__":
     #removeOutliers(data, sdFilter, applyThresh)
 
     #boxCox(data, applyThresh)
-    #unBoxCox(data, lamda, leftShift, applyThresh)
+    #unBoxCox(data, lamda, leftShift applyThresh)
+
+    #unBoxCox(box, lamda, leftShift, applyThresh)
     #createOut(r"C:\Users\ajs25\Downloads\csvTest.csv")

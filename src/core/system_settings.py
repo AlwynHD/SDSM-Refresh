@@ -26,6 +26,7 @@ defaultValues = {
     'thresh': 0,
     'defaultDir': os.path.join("src", "lib"),
     'globalMissingCode': -999,
+    'colourMode': 'Default',
     'varianceInflation': 12,
     'biasCorrection': 1,
     'fixedThreshold': 0.5,
@@ -49,6 +50,7 @@ randomSeed = defaultValues['randomSeed']
 thresh = defaultValues['thresh']
 defaultDir = defaultValues['defaultDir']
 globalMissingCode = defaultValues['globalMissingCode']
+colourMode = defaultValues['colourMode']
 varianceInflation = defaultValues['varianceInflation']
 biasCorrection = defaultValues['biasCorrection']
 fixedThreshold = defaultValues['fixedThreshold']
@@ -63,10 +65,6 @@ months = defaultValues['months'][:]
 class ContentWidget(QWidget):
     def __init__(self):
         super().__init__()
-
-        self.primaryColour = "purple"
-        self.secondaryColour = "magenta"
-        self.tertiaryColour = "pink"
 
         # Main content layout
         mainLayout = QVBoxLayout()
@@ -232,7 +230,9 @@ class ContentWidget(QWidget):
         self.loadSettings()
         self.loadSettingsIntoUi()
 
-        self.setColours("#431371", "#b78eec", "#cd086b")
+    def showEvent(self, event):
+        self.loadSettings()
+        return super().showEvent(event)
 
     def setColours(self, primary, secondary, tertiary):
         self.resetBtn.setStyleSheet(f"background-color: {tertiary}; color: white; font-weight: bold;")
@@ -240,9 +240,11 @@ class ContentWidget(QWidget):
         self.saveBtn.setStyleSheet(f"background-color: {secondary}; color: white; font-weight: bold;")
         self.loadBtn.setStyleSheet(f"background-color: {primary}; color: white; font-weight: bold;")
 
-        self.primaryColour = primary
-        self.secondaryColour = secondary
-        self.tertiaryColour = tertiary
+    def resetColours(self):
+        self.resetBtn.setStyleSheet(f"background-color: #ED0800; color: white; font-weight: bold;")
+        self.exportBtn.setStyleSheet(f"background-color: #1FC7F5; color: white; font-weight: bold;")
+        self.saveBtn.setStyleSheet(f"background-color: #4CAF50; color: white; font-weight: bold;")
+        self.loadBtn.setStyleSheet(f"background-color: #F57F0C; color: white; font-weight: bold;")
 
     def resetSettings(self):
         global varianceInflation, biasCorrection, fixedThreshold
@@ -291,7 +293,7 @@ class ContentWidget(QWidget):
     def loadSettings(self, iniFile=defaultIniFile):
         global varianceInflation, biasCorrection, fixedThreshold
         global modelTransformation, optimizationAlgorithm, criteriaType
-        global stepwiseRegression, conditionalSelection, months
+        global stepwiseRegression, conditionalSelection, months, colourMode
 
         if not os.path.exists(iniFile):
             return
@@ -335,6 +337,27 @@ class ContentWidget(QWidget):
                 fallback=','.join(map(str, defaultValues['months']))
             ).split(',')
         ]
+        colourMode = cfg.get('Settings', 'ColourMode', fallback=defaultValues['colourMode'])
+        self.changeColourMode(colourMode)
+
+    def changeColourMode(self, mode: str):
+        if mode.lower() == "default":
+            self.resetColours()
+        elif mode.lower() == "protanopia":
+            # high-contrast blue/orange/green
+            self.setColours("#377eb8", "#ff7f00", "#4daf4a")
+        elif mode.lower() == "deuteranopia":
+            # purple/red/yellow
+            self.setColours("#984ea3", "#e41a1c", "#d6ce29")
+        elif mode.lower() == "tritanopia":
+            # brown/pink/gray
+            self.setColours("#a65628", "#f781bf", "#999999")
+        elif mode.lower() == "lboro":
+            # Loughborough brand
+            self.setColours("#431371", "#b78eec", "#cd086b")
+        else:
+            # Fallback
+            self.resetColours()
 
     def saveSettings(self, iniFile=None, silent=False):
         global varianceInflation, biasCorrection, fixedThreshold

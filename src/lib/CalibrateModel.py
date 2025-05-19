@@ -86,158 +86,6 @@ def reloadGlobals():
         debugMsg("[Error]: Invalid Stepwise Criteria choice. Using 'AIC' option")
         _globalSettings['aicWanted'] = True
         
-        
-def debugRun():
-    calibrateModelDefaultExperience(0)
-
-def calibrateModelDefaultExperience(modelType):
-    """
-    CALIBRATE MODEL TESTING FUNCTION
-    Also gives an idea of what to expect using it
-    """
-    #global _globalSettings
-    reloadGlobals()
-    #_globalSettings['globalsdate'] = date(1948, 1, 1) #date(2004, 8, 5)
-    #_globalSettings['globaledate'] = date(2017, 12, 31) #date(1961, 1, 10) #date(2017, 12, 31)#date(2025, 1, 7)
-
-    ## Parameters
-    #fsDate = deepcopy(globalStartDate)
-    fsDate = date(1948, 1, 1)
-    #fsDate = date(1961, 1, 1)
-    #feDate = deepcopy(globalEndDate)
-    #feDate = date(1961, 1, 10)
-    #feDate = date(1965, 1, 10)
-    feDate = date(1996, 12, 31)
-    #feDate = date(1997, 12, 31)
-    #feDate = date(2015, 12, 31)
-    #modelType = 0 #0
-    parmOpt = False  ## Whether Conditional or Unconditional. True = Cond, False = Uncond. 
-    ##ParmOpt(1) = Uncond = False
-    ##ParmOpt(0) = Cond = True
-    autoRegression = False ## Replaces AutoRegressionCheck -> Might be mutually exclusive with parmOpt - will check later...
-    includeChow = False
-    detrendOption = 0 #0, 1 or 2...
-    doCrossValidation = False
-    crossValFolds = 2
-
-    ##Edit Settings for Testing
-    #_globalSettings['modelTrans'] = 5 #Model transformation; 1=none, 2=4root, 3=ln, 4=Inv Normal, 5=box cox
-    #_globalSettings['stepwiseregression'] = True
-
-    _globalSettings['optAlg'] = 1
-
-    print(f"Testing with 'modelTrans' == {_globalSettings['modelTrans']}")
-
-    #if PTandRoot == None:
-    PTandRoot = "predictand files/NoviSadPrecOBS.dat" ##Predictand file
-    #if fileList == []:
-
-    fileList = [
-    #    "temp", "mslp", "p500", "p850", "rhum", 
-    #    "r500", "r850", "p__f", "p__z", 
-    #    "p__v", "p__u", "p_th", "p_zh", "p5_f", 
-    #    "p5_z", "p5_v", "p5_u", "p5th", "p5zh", 
-    #    "p8_f", "p8_z", "p8_v", "p8_u","p8th", 
-    #    "p8zh", "shum", "dswr", 
-    #    "lftx", #"pottmp", "pr_wtr",
-        "p__f", "p__u", "p__v", "p__z",
-        "p_th", "p_zh"
-    #"p5th"
-    ] #note - ncep_prec.dat is absent - nice round number of 30
-    for i in range(len(fileList)):
-        fileList[i] = "predictor files/ncep_" + fileList[i] + ".dat"
-    PARfilePath = "JOHN_PARFILE.PAR"
-    ## Predictor files should be in the format [path/to/predictor/file.dat]
-    ## Files usually begin with ncep_
-
-    ## NOTE: FOR OPTIMAL PERFORMANCE, MERGE PTandRoot with fileList:
-    fileList.insert(0, PTandRoot)
-    
-    results = calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType, parmOpt, autoRegression, includeChow, detrendOption, doCrossValidation, crossValFolds)
-    
-    return results
-
-    ## Output for similar results to the OG software:
-    print(f"FINAL RESULTS:")
-    debugMsg(f"Debug data:")
-    debugMsg(f"Fit Start Date: {fsDate}")
-    debugMsg(f"Fit End Date: {feDate}")
-    #print(f"Predictand: {PTandRoot}")
-    print(f"\nPredictors:\n")
-    for i in fileList:
-        print(i)
-
-    month_name = {
-        "January":"January  ",
-        "February":"February ",
-        "March":"March    ",
-        "April":"April    ",
-        "May":"May      ",
-        "June":"June     ",
-        "July":"July     ",
-        "August":"August   ",
-        "September":"September",
-        "October":"October  ",
-        "November":"November ",
-        "December":"December ",
-        "Mean":"Mean     "
-    }
-
-            
-    ##Useful info on how to display/format the resutls...
-    #from calendar import month_name
-    ## Better formatted Month Names so they are all same length
-    months2 = deepcopy(months)
-    months2.append("Mean")
-    u = "Unconditional"
-    c = "Conditional"
-    x = "xValidation"      
-    print(f"\nUnconditional Statistics:")
-    print(f"\nMonth\t\tRSquared\tSE\t\tFRatio\t\t{'D-Watson' if not parmOpt else 'Prop Correct'}\t{'Chow' if includeChow else ''}")
-    if not parmOpt:
-        for i in months2:
-            if includeChow:
-                print(f"{month_name[i]}\t{results[u][i]['RSquared']:.4f}\t\t{results[u][i]['SE']:.4f}\t\t{results[u][i]['FRatio']:.2f}\t\t{results[u][i]['D-Watson']:.4f}\t\t{results[u][i]['Chow']:.4f}")
-            else:
-                print(f"{month_name[i]}\t{results[u][i]['RSquared']:.4f}\t\t{results[u][i]['SE']:.4f}\t\t{results[u][i]['FRatio']:.2f}\t\t{results[u][i]['D-Watson']:.4f}")
-        if doCrossValidation:
-            print(f"\nCross Validation Results:")
-            print(f"\nMonth\t\tRSquared\tSE\t\tD-Watson\tSpearman\tBias")
-            for i in months2:
-                print(f"{month_name[i]}\t{results[u][x][i]['RSquared']:.4f}\t\t{results[u][x][i]['SE']:.4f}\t\t{results[u][x][i]['D-Watson']:.4f}\t\t{results[u][x][i]['SpearmanR']:.4f}\t\t{results[u][x][i]['Bias']:.4f}")
-
-    else:
-        for i in months2:
-            if includeChow:
-                print(f"{month_name[i]}\t{results[u][i]['RSquared']:.4f}\t\t{results[u][i]['SE']:.4f}\t\t{results[u][i]['FRatio']:.4f}\t\t{results[u][i]['PropCorrect']:.4f}\t\t{results[u][i]['Chow']:.4f}")
-            else:
-                print(f"{month_name[i]}\t{results[u][i]['RSquared']:.4f}\t\t{results[u][i]['SE']:.4f}\t\t{results[u][i]['FRatio']:.4f}\t\t{results[u][i]['PropCorrect']:.4f}")
-        if doCrossValidation:
-            print(f"\nCross Validation Results:")
-            print(f"\nMonth\t\tRSquared\tSE\t\tProp Correct")
-            for i in months2:
-                print(f"{month_name[i]}\t{results[u][x][i]['RSquared']:.4f}\t\t{results[u][x][i]['SE']:.4f}\t\t{results[u][x][i]['PropCorrect']:.4f}")
-        print(f"\nConditional Statistics:")
-        print(f"\nMonth\t\tRSquared\tSE\t\tFRatio\t\t{'Chow' if includeChow else ''}")
-        for i in months2:
-            if includeChow:
-                print(f"{month_name[i]}\t{results[c][i]['RSquared']:.4f}\t\t{results[c][i]['SE']:.4f}\t\t{results[c][i]['FRatio']:.4f}\t\t{results[c][i]['Chow']:.4f}")
-            else:
-                print(f"{month_name[i]}\t{results[c][i]['RSquared']:.4f}\t\t{results[c][i]['SE']:.4f}\t\t{results[c][i]['FRatio']:.4f}")
-        if doCrossValidation:
-            print(f"\nCross Validation (Conditional Part) Results:")
-            print(f"\nMonth\t\tRSquared\tSE\t\tSpearman")
-            for i in months2:
-                print(f"{month_name[i]}\t{results[c][x][i]['RSquared']:.4f}\t\t{results[c][x][i]['SE']:.4f}\t\t{results[c][x][i]['SpearmanR']:.4f}")
-        
-        
-            
-        
-        #print(f"\nConditional Statistics:")
-        #print(f"\nMonth\t\tRSquared\tSE\t\tFRatio\t\t{'D-Watson' if not parmOpt else 'Prop Correct'}\t{'Chow' if includeChow else 0}")
-
-    #debugMsg(f"TotalNumbers: {totalNumbers}, Missing Days: {noOfDays2Fit - totalNumbers}")
-
 def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=False, autoRegression=False, includeChow=False, detrendOption=0, doCrossValidation=False, crossValFolds=2):
     """
         Core Calibrate Model Function (v0.7.1)
@@ -369,8 +217,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
 
         searchPos = 0
 
-        while (fsDate - workingDate).days > 0: ##Infinite Loop Bug
-            #debugMsg("Loop0")
+        while (fsDate - workingDate).days > 0:
             if seasonCode == 1:
                 fsDateBaseline[0] += 1
             elif seasonCode == 4:
@@ -384,7 +231,6 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
 
             totalNumbers += 1
             workingDate = increaseDate(workingDate, 1, countLeapYear)
-            #progValue = np.floor((totalNumbers / totalToSkip.days) * 100)
 
         ## END While
 
@@ -404,8 +250,6 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
         totalNumbers = 0
         missingRows = 0
         anyMissing = False
-    
-        ## Progress Bar Update Stuff
 
         workingDate = deepcopy(fsDate)
         currentMonth = workingDate.month - 1
@@ -420,17 +264,14 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
 
         noOfSections = np.zeros((12), dtype=int)
         startFound = False
-        debugMsg(f"Initial Search Pos: {searchPos}")
 
         while not startFound:
-            #debugMsg("Loop1")
             startFound = True
             for i in range(NPredictors + 1):
                 #tempReadin[i] = loadedFiles[i]
                 #if tempReadin[i] == globalMissingCode: startFound = False
                 if loadedFiles[i][searchPos] == globalMissingCode: 
                     startFound = False
-                    #debugMsg(f"Missing Value detected at searchPos: {searchPos} in file {fileList[i]}")
                 #else:
             if not startFound:
                 workingDate = increaseDate(workingDate, 1, countLeapYear)
@@ -473,11 +314,6 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
         #Do Until (DateDiff("d", DateSerial(CurrentYear, CurrentMonth, CurrentDay), FSDate)) <= 0
 
         while (feDate - workingDate).days >= 0:
-            #debugMsg("Loop2")
-            #Do Events, whatever that means
-            ##Maybe Exit???
-
-            #debugMsg(f"Day Diff: {(feDate - workingDate).days}, Val: {loadedFiles[0][searchPos]}")
 
             anyMissing = False
             for i in range(NPredictors + 1):
@@ -498,10 +334,8 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
             
             if anyMissing:
                 missingRows += 1
-                debugMsg(f"Missing Value detected at searchPos: {searchPos}")
             else: 
                 for i in range(NPredictors + 1):
-                    #debugMsg(f"CurrentPeriod: {currentPeriod}, i: {i}, sizeOf[Period]: {sizeOfDataArray[currentPeriod]}, searchPos: {searchPos}")
                     dataReadIn[currentPeriod, i, sizeOfDataArray[currentPeriod]] = loadedFiles[i][searchPos] #tempReadin(i)
                 sizeOfDataArray[currentPeriod] += 1
             ####################################
@@ -537,7 +371,6 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
 
         anyMissing = False
         for i in range(0, seasonCode):
-            debugMsg(f"sizeOfDataArray[{i}]: is {sizeOfDataArray[i]} < 10?")
             if sizeOfDataArray[i] < 10:
                 anyMissing = True
 
@@ -578,12 +411,9 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                     yMatrixAboveThreshPos = np.ndarray((sizeOfDataArray[0]))
                     for i in range(sizeOfDataArray[0]):
                         yMatrix[i] = dataReadIn[0, 0, i]
-                        #debugMsg(f"YMatrix Value #{i} Loaded: {dataReadIn[0, 0, i]}")
-                        #xMatrix[i, 0] = 1# --> What does this meen?
                         xMatrix[i, 0] = 1 #loadedFiles[0]
                         for j in range(1, NPredictors + 1): #MODEL? ##+1 bc Range is not INCLUSIVE
                             xMatrix[i, j] = dataReadIn[0, j, i]
-                            #debugMsg(f"XMatrix C#{j} Value #{i} Loaded: {dataReadIn[0, j, i]}")
                 else: ## Autoregression option
                     xMatrix = np.ndarray((sizeOfDataArray[0] - 1, NPredictors + 2))
                     yMatrix = np.ndarray((sizeOfDataArray[0] - 1))
@@ -938,8 +768,6 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
 
                         ### propogateConditional Code ###
 
-                        print(f"Len yMat: {len(yMatrix)}")
-                        print(f"Len yMatAbove: {len(yMatrixAboveThreshPos)}")
                         rejectedIndex = []
                         for i in range(len(yMatrix)):
                             if yMatrix[i] <= thresh:
@@ -1072,7 +900,6 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
 
                                 for j in range(1, sectionSize):
                                     ##curious+
-                                    #debugMsg(f"sectionSize: {sectionSize}, residualMatrix size: {len(residualMatrix)}, j ({j}) + positionStart ({positionStart}) = {j + positionStart} < {sectionSize}")
                                     DWDenom += residualMatrix[j + positionStart] ** 2
                                 #next j
                                 positionStart += sectionSize
@@ -1095,19 +922,19 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
             #------------------------
 
             ##Vars "Written" to PAR file:
-            print("GlobalSettings:")
-            for i in _globalSettings:
-                print(f"{i}: {_globalSettings[i]}")
+            #print("GlobalSettings:")
+            #for i in _globalSettings:
+            #    print(f"{i}: {_globalSettings[i]}")
             PARfileOutput = [
                 f"{NPredictors if detrendOption == 0 else -NPredictors}", #NPredictors
                 f"{seasonCode}", #Season Code
                 "360" if _globalSettings['thirtyDay'] else ("366" if countLeapYear else "365"), #"YearIndicator": 
-                f"{globalStartDate}", #"Record Start Date": 
+                f"{globalStartDate.day:02d}/{globalStartDate.month:02d}/{globalStartDate.year:04d}", #"Record Start Date": Needs dd/mm/YYYY format instead of YYYY-nn-dd for other SDSM Components it seems.
                 f"{nDaysR}", #"Record Length": 
-                f"{fsDate}", #"Fit start date": 
+                f"{fsDate.day:02d}/{fsDate.month:02d}/{fsDate.year:04d}", #"Fit start date": 
                 f"{noOfDays2Fit}", #"No of days in fit": 
                 #f"{int(parmOpt)}", #"Set Rainfall Parameter": ?
-                f"{parmOpt}",
+                f"#{parmOpt}#", #Hashes '#' were present in the original. Re-implemented for backwards compatibility
                 f"{modelTrans}", #"Model Transformation option": 
                 "1", #"Ensemble size set to 1":#Idk what to do with this
                 #f"{int(autoRegression)}", #"Autoregression": 
@@ -1249,11 +1076,6 @@ def detrendData(yMatrix: np.array, yMatrixAboveThreshPos: np.array, detrendOptio
     # '1 to 12 for each month or season; for linear model (y=mx+b) 1=intercept b, 2= gradient m
     # 'for power function (y=ax^b;log y = log a + b log x ) 1=a, 2=b , 3=minimum applied before logs could be applied
 
-
-    print(f"Len yMat: {len(yMatrix)}")
-    print(f"Len YABOVE: {len(yMatrixAboveThreshPos)}")
-
-    debugMsg(yMatrix)
     xValues = np.ndarray((len(yMatrix), 2))
     #betaValues = np.array((2))
     tempMatrix1 = np.ndarray
@@ -1681,7 +1503,6 @@ def stepWiseRegression(xMatrix: np.ndarray, yMatrix: np.ndarray, NPredictors: in
     newFileList = []
     for j in range(noOfCols - 1):
         newFileList.append(int(permArray[maxLocation][j]))
-        print(f"ADDED FILE {permArray[maxLocation][j]}")
 
 
     return {"newFileList": newFileList,
@@ -1758,7 +1579,6 @@ def calculateParameters(xMatrix: np.ndarray, yMatrix: np.ndarray, NPredictors: i
 
     if parmOpt:
         if conditionalPart:
-            #print("Conditional CalcParams:")
             untransformData([modMatrix2Test, yMatrix2Test], lamdaValues)
             ##call untransformdata
             ##Useful when processing Transformed Data
@@ -2080,7 +1900,6 @@ def transformData(xMatrix: np.ndarray, yMatrix: np.ndarray, extraArrays: np.ndar
         fxOld = fxNormal(fx)         #'normal
         i = 1 #Counter
         while ((i <= 50000) and (area > zStart)):
-            #debugMsg("Loop3")
             fx -= delta
             fxNew = fxNormal(fx)         #'normal
             area -= (delta * 0.5 * (fxOld + fxNew))
@@ -2100,7 +1919,6 @@ def transformData(xMatrix: np.ndarray, yMatrix: np.ndarray, extraArrays: np.ndar
             cp += percentileChange
             j = 1
             while ((j <= 50000) and (area < cp)):
-                #debugMsg("Loop4")
                 fx += delta
                 fxNew = fxNormal(fx)         #'normal
                 area += (delta * 0.5 * (fxOld + fxNew))
@@ -2527,9 +2345,7 @@ def plotHistogram(residualArray, noOfHistCats):
         catMin = minVal + (i * sizeOfCategories)
         catMax = catMin + sizeOfCategories
         for j in range(residualArray['noOfResiduals']):
-            #print(f"IS {residualArray['residual'][j]} BETWEEN {catMin} (min) AND {catMax} (max)?")
             if residualArray['residual'][j] >= catMin and residualArray['residual'][j] < catMax:
-            #    print("YES")
                 residualHistOccurances[i] += 1
             #input()
         #next j
@@ -2598,14 +2414,12 @@ def calcRSQR(modMatrix: np.ndarray, yMatrix: np.ndarray, limit: int, checkMissin
             rsqr = numerator / denom
         elif denom < 0:
             ##Edge case testing
-            debugMsg("Error: Edge Case Detected - denom < 0")
+            debugMsg("[Error]: Edge Case Detected - denom < 0")
             #readline()
             rsqr = globalMissingCode
         else:
             rsqr = globalMissingCode
 
-    debugMsg(f"calcRSQR: {rsqr}, only if {missing} < {missingLim}")
-    
     return rsqr
 
 def calcPropCorrect(modMatrix: np.ndarray, yMatrix: np.ndarray, limit: int):

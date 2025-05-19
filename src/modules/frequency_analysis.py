@@ -113,6 +113,7 @@ def load_settings(config_path="src/lib/settings.ini"):
 settings, settingsAsArrays = load_settings()
 
 globalSDate = settings["globalsdate"]
+colourMode = settings["colourmode"]
 
 moduleName = "Frequency Analysis"
 
@@ -125,10 +126,6 @@ class ContentWidget(QWidget):
         self.setWindowTitle("Frequency Analysis")
         self.setGeometry(100, 100, 800, 600)
         layout = QVBoxLayout()
-
-        self.primaryColour = "purple"
-        self.secondaryColour = "magenta"
-        self.tertiaryColour = "pink"
         
         # --- Row 1: Observed Data & Modelled Data --- #
         dataLayout = QHBoxLayout()
@@ -351,7 +348,7 @@ class ContentWidget(QWidget):
         tabButtonsLayout.addWidget(self.resetButton)
         layout.addLayout(tabButtonsLayout)
 
-        self.setColours("#431371", "#b78eec", "#cd086b")
+        self.changeColourMode(colourMode)
         
         self.setLayout(layout)
 
@@ -365,14 +362,42 @@ class ContentWidget(QWidget):
         self.idfTabButton.setStyleSheet(f"background-color: {secondary}; color: white; font-weight: bold")
         self.resetButton.setStyleSheet(f"background-color: {tertiary}; color: white; font-weight: bold;")
 
-        self.primaryColour = primary
-        self.secondaryColour = secondary
-        self.tertiaryColour = tertiary
+    def resetColours(self):
+        self.qqPlotButton.setStyleSheet(f"background-color: #4CAF50; color: white; font-weight: bold;")
+        self.pdfPlotButton.setStyleSheet(f"background-color: #1FC7F5; color: white; font-weight: bold")
+        self.linePlotButton.setStyleSheet(f"background-color: #F57F0C; color: white; font-weight: bold")
+        self.faGraphicalButton.setStyleSheet(f"background-color: #5adbb5; color: white; font-weight: bold;")
+        self.faTabButton.setStyleSheet(f"background-color: #ffbd03; color: white; font-weight: bold;")
+        self.idfPlotButton.setStyleSheet(f"background-color: #dd7973; color: white; font-weight: bold")
+        self.idfTabButton.setStyleSheet(f"background-color: #4681f4; color: white; font-weight: bold")
+        self.resetButton.setStyleSheet(f"background-color: #ED0800; color: white; font-weight: bold;")
+
+    def changeColourMode(self, mode: str):
+        if mode.lower() == "default":
+            self.resetColours()
+        elif mode.lower() == "protanopia":
+            # high-contrast blue/orange/green
+            self.setColours("#377eb8", "#ff7f00", "#4daf4a")
+        elif mode.lower() == "deuteranopia":
+            # purple/red/yellow
+            self.setColours("#984ea3", "#e41a1c", "#d6ce29")
+        elif mode.lower() == "tritanopia":
+            # brown/pink/gray
+            self.setColours("#a65628", "#f781bf", "#999999")
+        elif mode.lower() == "lboro":
+            # Loughborough brand
+            self.setColours("#431371", "#b78eec", "#cd086b")
+        else:
+            # Fallback
+            self.resetColours()
 
     def showEvent(self, event):
-        global globalSDate 
+        global globalSDate, colourMode
         settings, settingsAsArrays = load_settings()
         globalSDate = settings["globalsdate"]
+        colourMode = settings["colourmode"]
+
+        self.changeColourMode(colourMode)
 
         # Extract the first (and only) element from the array for both start and end dates
         py_start_date = settingsAsArrays["globalsdate"][0]

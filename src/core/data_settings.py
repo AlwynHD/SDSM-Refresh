@@ -5,7 +5,8 @@ import json
 from PyQt5.QtWidgets import (
     QVBoxLayout, QWidget, QHBoxLayout, QPushButton,
     QLabel, QLineEdit, QCheckBox, QGroupBox,
-    QFileDialog, QMessageBox, QApplication
+    QFileDialog, QMessageBox, QApplication,
+    QComboBox
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPalette, QColor
@@ -27,6 +28,7 @@ defaultValues = {
     'thresh': 0,
     'defaultDir': os.path.join("src", "lib"),
     'globalMissingCode': -999,
+    'colourMode': 'Default',
     'varianceInflation': 12,
     'biasCorrection': 1,
     'fixedThreshold': 0.5,
@@ -50,6 +52,7 @@ randomSeed = defaultValues['randomSeed']
 thresh = defaultValues['thresh']
 defaultDir = defaultValues['defaultDir']
 globalMissingCode = defaultValues['globalMissingCode']
+colourMode = defaultValues['colourMode']
 varianceInflation = defaultValues['varianceInflation']
 biasCorrection = defaultValues['biasCorrection']
 fixedThreshold = defaultValues['fixedThreshold']
@@ -63,10 +66,6 @@ months = defaultValues['months']
 class ContentWidget(QWidget):
     def __init__(self):
         super().__init__()
-
-        self.primaryColour = "purple"
-        self.secondaryColour = "magenta"
-        self.tertiaryColour = "pink"
 
         # Main content layout
         mainLayout = QVBoxLayout()
@@ -118,6 +117,23 @@ class ContentWidget(QWidget):
         miscLayout.addWidget(self.missingDataEdit)
         miscLayout.addWidget(self.randomSeedCheckBox)
 
+        # === Colour Mode Group ===
+        colourGroupBox = QGroupBox("Colour Mode")
+        colourGroupBox.setStyleSheet("color: black;")
+        colourLayout = QVBoxLayout()
+        colourGroupBox.setLayout(colourLayout)
+
+        colourLayout.addWidget(QLabel("Select Colour Mode:"))
+        self.colourCombo = QComboBox()
+        self.colourCombo.addItems([
+            "Default",
+            "Protanopia",
+            "Deuteranopia",
+            "Tritanopia",
+            "Lboro"
+        ])
+        colourLayout.addWidget(self.colourCombo)
+
         # === Default Directory Group ===
         dirGroupBox = QGroupBox("Default Directory")
         dirGroupBox.setStyleSheet("color: black;")
@@ -132,12 +148,15 @@ class ContentWidget(QWidget):
         chooseBtn.clicked.connect(self.chooseDefaultDir)
         dirLayout.addWidget(chooseBtn)
 
-        # Assemble top groups
+        # Assemble top groups: Data, Miscellaneous, Colour Mode
         topLayout = QHBoxLayout()
         topLayout.addWidget(dataGroupBox, 1)
         topLayout.addWidget(miscGroupBox, 1)
-        topLayout.addWidget(dirGroupBox, 2)
+        topLayout.addWidget(colourGroupBox, 1)
         mainLayout.addLayout(topLayout)
+
+        # Default Directory on its own row below
+        mainLayout.addWidget(dirGroupBox)
 
         # Reset Button
         mainLayout.addStretch()
@@ -145,7 +164,6 @@ class ContentWidget(QWidget):
         self.resetButton.setStyleSheet("background-color: #ED0800; color: white; font-weight: bold;")
         self.resetButton.clicked.connect(self.resetSettings)
         mainLayout.addWidget(self.resetButton)
-        
 
         # Text color for inputs
         for w in (self.startDateEdit, self.endDateEdit,
@@ -176,7 +194,29 @@ class ContentWidget(QWidget):
 
         mainLayout.addLayout(buttonLayout)
 
-        self.setColours("#431371", "#b78eec", "#cd086b")
+        self.colourCombo.currentTextChanged.connect(self.changeColourMode)
+        self.changeColourMode(self.colourCombo.currentText())
+
+    def changeColourMode(self, mode: str):
+        global colourMode
+        colourMode = mode
+        if mode.lower() == "default":
+            self.resetColours()
+        elif mode.lower() == "protanopia":
+            # high-contrast blue/orange/green
+            self.setColours("#377eb8", "#ff7f00", "#4daf4a")
+        elif mode.lower() == "deuteranopia":
+            # purple/red/yellow
+            self.setColours("#984ea3", "#e41a1c", "#d6ce29")
+        elif mode.lower() == "tritanopia":
+            # brown/pink/gray
+            self.setColours("#a65628", "#f781bf", "#999999")
+        elif mode.lower() == "lboro":
+            # Loughborough brand
+            self.setColours("#431371", "#b78eec", "#cd086b")
+        else:
+            # Fallback
+            self.resetColours()
 
     def setColours(self, primary, secondary, tertiary):
         self.resetButton.setStyleSheet(f"background-color: {tertiary}; color: white; font-weight: bold;")
@@ -184,9 +224,11 @@ class ContentWidget(QWidget):
         self.saveBtn.setStyleSheet(f"background-color: {secondary}; color: white; font-weight: bold;")
         self.loadBtn.setStyleSheet(f"background-color: {primary}; color: white; font-weight: bold;")
 
-        self.primaryColour = primary
-        self.secondaryColour = secondary
-        self.tertiaryColour = tertiary
+    def resetColours(self):
+        self.resetButton.setStyleSheet(f"background-color: #ED0800; color: white; font-weight: bold;")
+        self.exportBtn.setStyleSheet(f"background-color: #1FC7F5; color: white; font-weight: bold;")
+        self.saveBtn.setStyleSheet(f"background-color: #4CAF50; color: white; font-weight: bold;")
+        self.loadBtn.setStyleSheet(f"background-color: #F57F0C; color: white; font-weight: bold;")
 
     def chooseDefaultDir(self):
         global defaultDir
@@ -220,7 +262,7 @@ class ContentWidget(QWidget):
 
     def loadSettings(self, iniFile=defaultIniFile):
         global leapValue, yearLength, yearIndicator, globalSDate, globalEDate, globalNDays
-        global allowNeg, randomSeed, thresh, defaultDir, globalMissingCode
+        global allowNeg, randomSeed, thresh, defaultDir, globalMissingCode, colourMode
         global varianceInflation, biasCorrection, fixedThreshold
         global modelTransformation, optimizationAlgorithm, criteriaType
         global stepwiseRegression, conditionalSelection, months
@@ -241,6 +283,7 @@ class ContentWidget(QWidget):
             globalMissingCode = self.safeGetInt(cfg, 'Settings', 'GlobalMissingCode',
                                                 defaultValues['globalMissingCode'])
             defaultDir    = cfg.get('Settings', 'DefaultDir', fallback=defaultValues['defaultDir'])
+            colourMode = cfg.get('Settings', 'ColourMode', fallback=defaultValues['colourMode'])
             varianceInflation = self.safeGetInt(cfg, 'Settings', 'VarianceInflation',
                                                 defaultValues['varianceInflation'])
             biasCorrection    = self.safeGetInt(cfg, 'Settings', 'BiasCorrection',
@@ -277,7 +320,7 @@ class ContentWidget(QWidget):
         """
         Write out current globals into an INI. If iniFile is None, prompt for folder.
         """
-        global yearIndicator, globalSDate, globalEDate, allowNeg, randomSeed, thresh
+        global yearIndicator, globalSDate, globalEDate, allowNeg, randomSeed, thresh, colourMode
         global globalMissingCode, defaultDir, varianceInflation, biasCorrection
         global fixedThreshold, modelTransformation, optimizationAlgorithm
         global criteriaType, stepwiseRegression, conditionalSelection, months
@@ -298,6 +341,7 @@ class ContentWidget(QWidget):
             'Thresh': str(thresh),
             'GlobalMissingCode': str(int(globalMissingCode)),
             'DefaultDir': defaultDir,
+            'ColourMode': colourMode,
             'VarianceInflation': str(varianceInflation),
             'BiasCorrection': str(biasCorrection),
             'FixedThreshold': str(fixedThreshold),
@@ -327,6 +371,7 @@ class ContentWidget(QWidget):
         self.allowNegativeCheckBox.setChecked(allowNeg)
         self.randomSeedCheckBox.setChecked(randomSeed)
         self.defaultDirDisplay.setText(defaultDir)
+        self.colourCombo.setCurrentText(colourMode)
 
     def saveSettingsFromUi(self):
         """
@@ -443,7 +488,7 @@ class ContentWidget(QWidget):
         Reset all settings to defaults, then refresh UI.
         """
         global leapValue, yearLength, yearIndicator, globalSDate, globalEDate, globalNDays
-        global allowNeg, randomSeed, thresh, defaultDir, globalMissingCode
+        global allowNeg, randomSeed, thresh, defaultDir, globalMissingCode, colourMode
 
         leapValue = defaultValues['leapValue']
         yearLength = defaultValues['yearLength']
@@ -458,6 +503,7 @@ class ContentWidget(QWidget):
         thresh = defaultValues['thresh']
         defaultDir = defaultValues['defaultDir']
         globalMissingCode = defaultValues['globalMissingCode']
+        colourMode = defaultValues['colourMode']
 
         self.loadSettingsIntoUi(ini=False)
 

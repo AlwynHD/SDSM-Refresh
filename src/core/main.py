@@ -9,10 +9,6 @@ from PyQt5.QtCore import Qt, QUrl, QSize
 from PyQt5.QtGui import QIcon, QScreen, QDesktopServices  # Added QDesktopServices import
 from importlib import import_module
 
-# Global variables for window dimensions
-windowWidth = 1600
-windowHeight = 1300
-
 class SDSMWindow(QMainWindow):
     def __init__(self):
         """
@@ -21,8 +17,7 @@ class SDSMWindow(QMainWindow):
         """
         super().__init__()
         
-        self.setWindowTitle("SDSM - Beta V1")
-        self.resize(windowWidth, windowHeight)
+        self.setWindowTitle("SDSM")
         
         screen_geometry = QApplication.desktop().screenGeometry()
         screen_height = screen_geometry.height()
@@ -138,8 +133,7 @@ class SDSMWindow(QMainWindow):
         # Load initial content (Home screen)
         self.loadContent(0)
         
-        # Center the window on the screen
-        self.centerOnScreen()
+        self.showMaximized()
     
     def loadContent(self, index, *args):
         """

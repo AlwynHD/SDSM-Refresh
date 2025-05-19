@@ -165,7 +165,7 @@ class ContentWidget(QWidget):
         leftSideLayout = QVBoxLayout()
         
         # Analysis Series Group Box
-        analysisGroupBox = QGroupBox("Analysis Series")
+        analysisGroupBox = QGroupBox("Analysis Period")
         analysisGroupBox.setStyleSheet("color: black;")
         analysisLayoutBox = QVBoxLayout()
         self.startDateLabel = QLabel("Analysis start date:")
@@ -249,14 +249,8 @@ class ContentWidget(QWidget):
         separator = QFrame()
         separator.setFrameShape(QFrame.HLine)
         separator.setFrameShadow(QFrame.Sunken)
-        faLayout.addWidget(separator)
         
-        self.saveButton = QPushButton("Save Results To 💾")
-        self.saveLabel = QLabel("File: Not selected")
-        self.saveButton.clicked.connect(self.saveResults)
-        faLayout.addWidget(self.saveButton)
-        faLayout.addWidget(self.saveLabel)
-        faGroupBox.setFixedHeight(350)
+        faGroupBox.setFixedHeight(360)
         faGroupBox.setLayout(faLayout)
         
         analysisFreqLayout.addLayout(leftSideLayout)

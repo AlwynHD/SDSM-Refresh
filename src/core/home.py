@@ -21,12 +21,22 @@ class ContentWidget(QWidget):
         self.updateBackgroundImage()
         self.setAutoFillBackground(True)  # Enable auto-fill for the background
 
-        # Label displaying application details at the center of the Home screen
-        appDetails = "Statistical DownScaling Model -\nDecision Centric\nSDSM-DC\nVersion 7.0"
+        # Label displaying application details near the top-center of the Home screen
+        appDetails = (
+            "Statistical DownScaling Model -\n"
+            "Decision Centric\n"
+            "SDSM-DC\n"
+            "Version 7.0"
+        )
         homeScreenLabel = QLabel(appDetails, self)
-        homeScreenLabel.setAlignment(Qt.AlignCenter)  # Center-align the text
-        homeScreenLabel.setStyleSheet("font-size: 48px; color: black;")  # Style the label text
-        homeScreenLayout.addWidget(homeScreenLabel)
+        homeScreenLabel.setAlignment(Qt.AlignCenter)            # center text within the label
+        homeScreenLabel.setStyleSheet("font-size: 72px; color: black;")
+
+        # Layout tweaks
+        homeScreenLayout.setContentsMargins(0, 200, 0, 0)        # 50px padding at top
+        homeScreenLayout.addWidget(homeScreenLabel, 
+                                alignment=Qt.AlignHCenter)  # center the widget horizontally
+        homeScreenLayout.addStretch(1)                          # push remaining space below
 
     def resizeEvent(self, event):
         """

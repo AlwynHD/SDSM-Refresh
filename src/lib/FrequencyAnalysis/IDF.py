@@ -638,16 +638,19 @@ def are_dates_valid(start_date_raw, end_date_raw):
         # Check chronological order
         if start > end:
             print("❌ Start date must be before or equal to the end date.")
+            QMessageBox.critical(None, "Invalid Date Range", "❌ Start date must be before or equal to the end date.")
             return False
         
         # Ensure range is at least 10 years
         if (end.year - start.year) < 10:
             print("❌ You must select at least ten years of data for IDF analysis.")
+            QMessageBox.warning(None, "Invalid Date Range", "❌ You must select at least ten years of data for IDF analysis.")
             return False 
 
         # Check for excessively long date ranges
         if (end.year - start.year) > 150:
             print("❌ Analysis period must not exceed 150 years.")
+            QMessageBox.warning(None, "Invalid Date Range", "❌ Analysis period must not exceed 150 years.")
             return False
 
         # If all checks pass

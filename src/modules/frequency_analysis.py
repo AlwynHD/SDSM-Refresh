@@ -517,24 +517,28 @@ class ContentWidget(QWidget):
         # 7) missing‐code
         globalMissingCode = settings["globalmissingcode"]
 
-        #try:
-        pdfPlot(
-            observedFile      = obsPath,
-            modelledFile      = modPath,
-            fsDate            = fsDate,
-            feDate            = feDate,
-            globalStartDate   = globalSDate,
-            ensembleOption    = ensembleMode,
-            ensembleWanted    = ensembleIndex,
-            numPdfCategories  = numPdfCategories,
-            dataPeriod        = dataPeriod,
-            applyThreshold    = applyThreshold,
-            threshold         = threshold,
-            missingCode       = globalMissingCode,
-            exitAnalyses      = lambda: False
-        )
-        #except Exception as e:
-        #    QMessageBox.critical(self, "PDF Plot Error", str(e))
+        try:
+            pdfPlot(
+                observedFile     = obsPath,
+                modelledFile     = modPath,
+                fsDate           = fsDate,
+                feDate           = feDate,
+                globalStartDate  = globalSDate,
+                ensembleOption   = ensembleMode,
+                ensembleWanted   = ensembleIndex,
+                numPdfCategories = numPdfCategories,
+                dataPeriod       = dataPeriod,
+                applyThreshold   = applyThreshold,
+                threshold        = threshold,
+                missingCode      = globalMissingCode,
+                exitAnalyses     = lambda: False
+            )
+        except ValueError as ve:
+            QMessageBox.critical(self, "PDF Plot Error", str(ve))
+        except IOError as ioe:
+            QMessageBox.critical(self, "PDF Plot Error", str(ioe))
+        except Exception as ex:
+            QMessageBox.critical(self, "PDF Plot Error", f"Unexpected error: {ex}")
     
     def linePlotButtonClicked(self):
         # 1) file paths (None if not selected)
@@ -576,8 +580,8 @@ class ContentWidget(QWidget):
         applyThreshold  = self.applyThresholdCheckbox.isChecked()
         thresholdValue  = self.thresholdInput.value()
 
-        #try:
-        linePlot(
+        try:
+            linePlot(
                 observedFilePath  = obsPath,
                 modelledFilePath  = modPath,
                 analysisStartDate = startDate,
@@ -591,8 +595,12 @@ class ContentWidget(QWidget):
                 globalMissingCode = settings["globalmissingcode"],
                 exitAnalysesFunc  = lambda: False
             )
-        #except Exception as e:
-        #    print("Line Plot Error")
+        except ValueError as ve:
+            QMessageBox.critical(self, "Line Plot Error", str(ve))
+        except IOError as ioe:
+            QMessageBox.critical(self, "Line Plot Error", str(ioe))
+        except Exception as ex:
+            QMessageBox.critical(self, "Line Plot Error", f"Unexpected error: {ex}")
 
     
     def qqPlotButtonClicked(self):

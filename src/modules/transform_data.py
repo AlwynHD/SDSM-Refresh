@@ -19,7 +19,8 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, QDate
 from PyQt5.QtGui import QPalette, QColor, QIcon
 from src.lib.utils import loadFilesIntoMemory
-import os
+from os import path
+from src.lib.utils import getSettings
 
 # Define the name of the module for display in the content area
 moduleName = "Transform Data"
@@ -71,7 +72,8 @@ class ContentWidget(QWidget):
         """
         super().__init__()
 
-        self.predictorPath = "predictor files"
+        self.defaultDir = path.abspath(getSettings()['defaultdir'])
+        self.predictorPath = self.defaultDir
 
         self.inputSelected = ""
         self.outputSelected = ""

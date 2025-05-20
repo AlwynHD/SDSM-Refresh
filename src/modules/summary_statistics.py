@@ -44,7 +44,7 @@ class ContentWidget(QWidget):
             "globalMissingCode": -999,
         }
 
-        defaultIniFile = os.path.join("src", "lib", "settings.ini")
+        defaultIniFile = os.path.relpath("settings.ini")
 
         config = configparser.ConfigParser()
         config.read(defaultIniFile)

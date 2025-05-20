@@ -195,8 +195,13 @@ def pettittCalc(data, startYear):
 
     petMatrix[:, 3] = np.abs(petMatrix[:, 3])
 
-    pettittVal = round(2 * np.e ** ((-6 * max(petMatrix[:, 3]) ** 2) / ((20 ** 3) + (20 ** 2))), 5)
+    pettittVal = round(2 * np.e ** ((-6 * max(petMatrix[:, 3]) ** 2) / ((len(data) ** 3) + (len(data) ** 2))), 5)
     
+
+    settings = getSettings()
+    missingCode = settings["globalmissingcode"]
+    pettittMax = missingCode
+
     if pettittVal < 0.05:
         for i in range(len(petMatrix[:, 3])):
             if petMatrix[i, 3] == max(petMatrix[:, 3]):

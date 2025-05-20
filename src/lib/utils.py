@@ -311,8 +311,14 @@ def getSettings():
     'months': ['0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0']}
     """
 
-    defaultIniFile = os.path.join("src", "lib", "settings.ini")
-    file = open(defaultIniFile, "r")
+    defaultIniFile = os.path.relpath("settings.ini")
+    try:
+        file = open(defaultIniFile, "r")
+    except FileNotFoundError:
+        #Regenerate INI
+        regenerate_ini()
+        file = open(defaultIniFile, "r")
+        
     settings = file.readlines()
     file.close()
     settingsDictionary = {}
@@ -353,6 +359,8 @@ def getSettings():
             value = int(value)
         elif value.replace('.', '', 1).isdigit():
             value = float(value)
+        elif key == 'defaultdir': #
+            pass
         elif ',' in value:
             value = [x.strip() for x in value.split(',')]
         elif '/' in value:
@@ -372,6 +380,42 @@ def getSettings():
         
     return settingsDictionary
 
+def regenerate_ini():
+    if not os.path.exists('settings.ini'):
+        import configparser
+        cfg = configparser.ConfigParser()
+        cfg['Settings'] = {
+            'YearIndicator': '366',
+            'GlobalSDate': '01/01/1961',
+            'GlobalEDate': '31/12/2015',
+            'AllowNeg': 'True',
+            'RandomSeed': 'True',
+            'Thresh': '0',
+            'GlobalMissingCode': '-999',
+            'DefaultDir': '.',
+            'VarianceInflation': '12',
+            'BiasCorrection': '1',
+            'FixedThreshold': '0.5',
+            'ModelTransformation': 'None',
+            'OptimizationAlgorithm': 'Ordinary Least Squares',
+            'CriteriaType': 'AIC Criteria',
+            'StepwiseRegression': 'False',
+            'ConditionalSelection': 'Stochastic',
+            'Months': '0,0,0,0,0,0,0,0,0,0,0,0',
+        }
+        file = open('settings.ini', 'w')
+        cfg.write(file)
+        file.close()
+        #Errors here are likely fatal
+
+def resource_path(path):
+    import sys
+    try:
+        root = sys._MEIPASS
+    except Exception:
+        root = os.path.relpath(".")
+    
+    return os.path.join(root, path)
 
 if __name__ == '__main__':
     #Module tests go here

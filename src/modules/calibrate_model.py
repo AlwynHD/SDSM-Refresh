@@ -19,7 +19,8 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt, QDate
 from PyQt5.QtGui import QPalette, QColor, QIcon
-from os import listdir
+from os import listdir, path
+from src.lib.utils import getSettings
 
 # Define the name of the module for display in the content area
 moduleName = "Calibrate Model"
@@ -41,8 +42,8 @@ class ContentWidget(QWidget):
         Initialize the Calibrate Model screen UI/UX, setting up the layout, buttonBar, and contentArea.
         """
         super().__init__()
-
-        self.predictorPath = "predictor files"
+        self.defaultDir = path.abspath(getSettings()['defaultdir'])
+        self.predictorPath = self.defaultDir
         self.predictandSelected = ""
         self.predictorsSelected = []
         self.outputSelected = ""
@@ -582,7 +583,7 @@ class ContentWidget(QWidget):
 
     def resetAll(self):
         # Reset file and path variables and labels
-        self.predictorPath = "predictor files"
+        self.predictorPath = self.defaultDir
         self.predictandSelected = ""
         self.outputSelected = ""
         self.predictorsSelected = []
@@ -641,12 +642,12 @@ class ContentWidget(QWidget):
         if self.predictorPath != "":
             self.writePredictors()
         else:
-            self.predictorPath = "predictor files"
+            self.predictorPath = self.defaultDir
             self.writePredictors()
 
     def resetPredictors(self):
         self.predictorsSelected = []
-        self.predictorPath = "predictor files"
+        self.predictorPath = self.defaultDir
         while self.predictorsScrollLayout.count():
             item = self.predictorsScrollLayout.takeAt(0)
             widget = item.widget()

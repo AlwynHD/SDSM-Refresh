@@ -19,7 +19,8 @@ from PyQt5.QtWidgets import (
     QComboBox,
 )
 from PyQt5.QtCore import Qt, QSize, QDate
-
+from src.lib.utils import getSettings
+from os import path
 # Define the name of the module for display in the content area
 moduleName = "Compare Results"
 
@@ -178,7 +179,8 @@ class ContentWidget(QWidget):
         """
         super().__init__()
 
-        self.predictorPath = "predictor files"
+        self.defaultDir = path.abspath(getSettings()['defaultdir'])
+        self.predictorPath = self.defaultDir
 
         self.predictandSelected = ""
         self.predictorsSelected = []

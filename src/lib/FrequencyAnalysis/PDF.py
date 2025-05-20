@@ -3,10 +3,13 @@ import math
 import matplotlib.pyplot as plt
 from datetime import date
 from typing import Optional, Callable, List, Tuple
+from PyQt5.QtWidgets import QApplication, QFileDialog, QAction
+from PyQt5.QtGui import QIcon
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from src.lib.FrequencyAnalysis.frequency_analysis_functions import (
     fsDateOk, feDateOk, ensembleNumberOK,
     increaseObsDate, increaseDate,
-    doWeWantThisDatum, dateSerial, getSeason
+    doWeWantThisDatum, dateSerial, getSeason,export_series_to_csv
 )
 
 minDataPoints = 100  # Minimum entries required per series for PDF
@@ -205,6 +208,20 @@ def pdfPlot(
         else:
             col = 'red'
         plt.plot(xValues, y, label=label, color=col, linewidth=1.5)
+        # Add export action to the toolbar (not menu)
+    def add_export_to_toolbar():
+        manager = plt.get_current_fig_manager()
+        if hasattr(manager, 'toolbar') and isinstance(manager.toolbar, NavigationToolbar):
+            # Set icon path (you can use your own icon here)
+            icon_path = 'src/images/exportsvg.svg'  # replace with a valid PNG/SVG path on your system
+    
+            export_action = QAction(QIcon(icon_path), "", manager.toolbar)
+            export_action.setToolTip("Export CSV")  # ✅ Hover text
+            export_action.triggered.connect(lambda: export_series_to_csv(xValues, series))
+            manager.toolbar.addAction(export_action)  # ✅ this puts it directly on the toolbar
+    
+    # Inject before show
+    add_export_to_toolbar()
     plt.xlabel('Value')
     plt.ylabel('Standardised Density')
     plt.legend(loc='best')

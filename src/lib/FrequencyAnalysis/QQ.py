@@ -2,8 +2,12 @@
 
 import os
 import math
+import csv
 import numpy as np
 import matplotlib.pyplot as plt
+from PyQt5.QtWidgets import QApplication, QFileDialog, QAction
+from PyQt5.QtGui import QIcon
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from datetime import date
 from typing import Optional, Callable
 
@@ -12,7 +16,7 @@ from src.lib.FrequencyAnalysis.frequency_analysis_functions import (
     calcPercentile,
     increaseDate,
     getSeason,
-    globalMissingCode
+    globalMissingCode,export_qq_matrix_to_csv
 )
 
 
@@ -155,7 +159,28 @@ def qqPlot(
         all_mod.extend(mean_q)
     M = max(max(obs_q), max(all_mod))
     plt.plot([0, M], [0, M], 'b-', linewidth=2)
+    # Add export action to the toolbar (not menu)
+    def add_export_to_toolbar(mode, obs_q, ensemble_q, mean_q=None, ensembleIndex=None):
+        manager = plt.get_current_fig_manager()
+        if hasattr(manager, 'toolbar') and isinstance(manager.toolbar, NavigationToolbar):
+            icon_path = 'src/images/exportsvg.svg'
+            export_action = QAction(QIcon(icon_path), "", manager.toolbar)
+            export_action.setToolTip("Export CSV")
+    
+            # Hook up the correct export based on mode
+            if mode == 'allMembers':
+                export_action.triggered.connect(lambda: export_qq_matrix_to_csv(obs_q, ensemble_q))
+            elif mode == 'ensembleMean':
+                export_action.triggered.connect(lambda: export_qq_matrix_to_csv(obs_q, ensemble_q, mean_q, include_mean=True))
+            elif mode == 'ensembleMember':
+                export_action.triggered.connect(lambda: export_qq_matrix_to_csv(obs_q, [ensemble_q[ensembleIndex - 1]]))
+            else:  # allPlusMean or unknown
+                export_action.triggered.connect(lambda: export_qq_matrix_to_csv(obs_q, ensemble_q, mean_q, include_mean=True))
+    
+            manager.toolbar.addAction(export_action) 
 
+    # Inject before show
+    add_export_to_toolbar(ensembleMode, obs_q, ensemble_q, mean_q if 'mean_q' in locals() else None, ensembleIndex)
     plt.title("Quantile-Quantile Plot")
     plt.xlabel(modLabel)
     plt.ylabel(obsLabel)

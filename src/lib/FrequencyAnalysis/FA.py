@@ -1,8 +1,10 @@
 import matplotlib.pyplot as plt
+import csv
 import numpy as np
 import configparser
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem, QHeaderView, QLabel, QMessageBox
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem, QHeaderView, QLabel, QMessageBox, QFileDialog, QPushButton
 import math
+from PyQt5.QtCore import Qt
 from datetime import date
 import os
 from src.lib.FrequencyAnalysis.frequency_analysis_functions import (
@@ -14,7 +16,9 @@ from src.lib.FrequencyAnalysis.frequency_analysis_functions import (
     gumbelAnalysis,
     stretchedAnalysis,
     convertValue,
-    stripMissing
+    stripMissing,
+    get_seasonal_value,
+    export_table_to_csv
 )
 active_windows = []
 def frequency_analysis(
@@ -295,7 +299,26 @@ def frequency_analysis(
         plt.show()
 
     else:
-                # --- Build headers ---
+        # --- Create heading text ---
+        fit_map = {
+            0: 'Empirical',
+            1: 'Generalised Extreme Value',
+            2: 'Gumbel',
+            3: 'Stretched Exponential'
+        }
+        fit_str = fit_map.get(freqModel, '')
+        season=dataPeriodChoice
+        seasonal_value=get_seasonal_value(season)
+        season_label = f"Season: {seasonal_value}" if currentSeason else "Season: Unknown"
+        
+        fit_label = f"Fit: {fit_str}" if fit_str else "Fit: Not specified"
+        obs_label = f"Observed data: {os.path.basename(observedFilePath)}" if observedFilePath else ""
+        mod_label = f"Modelled data: {os.path.basename(modelledFilePath)}" if modelledFilePath else ""
+        
+        # --- Create heading label ---
+        info_text = "\n".join(filter(None, [season_label, fit_label, obs_label, mod_label]))
+        info_label = QLabel(info_text)
+        info_label.setAlignment(Qt.AlignLeft)        # --- Build headers ---
         headers = ['Return Period']
         if file1Used:
             headers.append('Obs')
@@ -358,7 +381,11 @@ def frequency_analysis(
         window.setWindowTitle("Frequency Analysis Table")
         layout = QVBoxLayout()
         layout.addWidget(QLabel("📊 Frequency Analysis Results"))
+        layout.addWidget(info_label)
         layout.addWidget(table)
+        export_btn = QPushButton("Export Table to CSV")
+        export_btn.clicked.connect(lambda: export_table_to_csv(table))
+        layout.addWidget(export_btn)
         window.setLayout(layout)
         window.resize(700, 500)
         window.show()

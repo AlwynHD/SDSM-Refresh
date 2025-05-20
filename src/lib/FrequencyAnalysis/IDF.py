@@ -1,7 +1,10 @@
 import math
+import csv 
 import matplotlib.pyplot as plt
 import configparser
-from PyQt5.QtWidgets import QWidget,QMessageBox, QVBoxLayout, QTableWidget, QTableWidgetItem, QLabel, QTextEdit,QApplication, QHeaderView,QTabWidget
+from statistics import mean, stdev
+from collections import defaultdict
+from PyQt5.QtWidgets import QPushButton, QFileDialog, QWidget,QMessageBox, QVBoxLayout, QTableWidget, QTableWidgetItem, QLabel, QTextEdit,QApplication, QHeaderView,QTabWidget
 from datetime import timedelta
 from datetime import datetime
 from typing import Tuple
@@ -201,6 +204,8 @@ def run_idf(
                 END_OF_SECTION=-12345
             )
             
+            print("Annual Mean Calculations:")
+            print(obs_ams_by_window)
             # -------------------------------------
             # 3. Compute Return Periods
             # -------------------------------------
@@ -296,32 +301,21 @@ def run_idf(
         print("📈 Scaling AMS to IDF table...")
         sdsm_scaled_table_obs = {}
         sdsm_scaled_table_mod = {}
-        
-        if idf_method == "Intensity":
 
+        beta_obs = None
+        beta_mod = None
+
+        if idf_method == "Intensity":
+           
             
             if file1_used:
-                sdsm_scaled_table_obs, _ = intensity_scaling(
-                    file1_used=True, file2_used=False,
-                    idf_years_to_model=idf_years_to_model,
-                    idf_hours_array=idf_hours_array,
-                    obs_ams_by_window=obs_ams,
-                    ret_per_obs_by_window=ret_per_obs_for_intensity,
-                    mod_ams_by_window=None,
-                    ret_per_mod_by_window=None
-                )
+                sdsm_scaled_table_obs, beta_obs = intensity_scaling_observed_moments(obs_ams_by_window, idf_years_to_model)
         
             if file2_used:
-                _, sdsm_scaled_table_mod = intensity_scaling(
-                    file1_used=False, file2_used=True,
-                    idf_years_to_model=idf_years_to_model,
-                    idf_hours_array=idf_hours_array,
-                    obs_ams_by_window=None,
-                    ret_per_obs_by_window=None,
-                    mod_ams_by_window=mod_ams_by_window,
-                    ret_per_mod_by_window=ret_per_mod_by_window
-                )
+                sdsm_scaled_table_mod,beta_mod = intensity_scaling_modelled(mod_ams_by_window,idf_years_to_model,idf_hours_array)
+
             print(sdsm_scaled_table_obs)
+            print(sdsm_scaled_table_mod)
         
         elif idf_method == "Power":
             
@@ -456,6 +450,7 @@ def run_idf(
         print(ensemble_option)
         print(ensemble_index)
         print("📤 Generating final output...")
+        show_beta_values(beta_obs, beta_mod)
         if presentation_type == "Tabular":
            result_window = present_results_as_table(
         idf_hours_array,
@@ -1017,53 +1012,101 @@ def compute_ensemble_mean_ams(ams_lists):
     transposed = zip(*ams_lists)
     return [sum(year) / len(year) for year in transposed]
 
-def intensity_scaling(
-    file1_used=False,
-    file2_used=False,
-    idf_years_to_model=[],
-    idf_hours_array=[],
-    obs_ams_by_window=None,
-    ret_per_obs_by_window=None,
-    mod_ams_by_window=None,
-    ret_per_mod_by_window=None
-):
-    """
-    Performs intensity scaling for observed and/or modelled datasets.
-    Returns: (SDSMScaledTableObs, SDSMScaledTableMod)
-    """
-    try:
-        SDSMScaledTableObs = {}
-        SDSMScaledTableMod = {}
 
-        # ===== OBSERVED SCALING =====
-        if file1_used and obs_ams_by_window and ret_per_obs_by_window:
-            obs_scalings = set_obs_scalings(obs_ams_by_window, ret_per_obs_by_window, idf_years_to_model)
+def intensity_scaling_observed_moments(ams_by_window, idf_years):
+    print("\n🔎 Step 1: AMS by window")
+    for window, values in ams_by_window.items():
+        print(f"Window {window}: {values}")
 
-            obs_idf_params = {
-                rp: calc_obs_scalings_linear_regression(obs_scalings[rp])
-                for rp in idf_years_to_model
-            }
+    # Step 2: Normalize AMS by window size
+    normalized = {
+        window: [v / window for v in values]
+        for window, values in ams_by_window.items()
+    }
+    print("\n🔎 Step 2: Normalized AMS")
+    for window, values in normalized.items():
+        print(f"Window {window}: {values[:10]} ...")
 
-            SDSMScaledTableObs = calc_sdsm_scaled_table(idf_years_to_model, idf_hours_array, obs_idf_params)
+    # Step 3: Calculate NCMs (non-central moments) for powers q
+    powers_q = [0.5, 1, 1.5, 2, 2.5, 3]
+    moments_table = defaultdict(list)
 
-        # ===== MODELLED SCALING =====
-        if file2_used and mod_ams_by_window and ret_per_mod_by_window:
-            mod_scalings = set_obs_scalings(mod_ams_by_window, ret_per_mod_by_window, idf_years_to_model)
+    for window in sorted(normalized):
+        for q in powers_q:
+            powered = [v**q for v in normalized[window]]
+            m_q = mean(powered)
+            print(m_q)
+            moments_table[q].append(math.log(m_q))  # Step 4: log
 
-            mod_idf_params = {
-                rp: calc_obs_scalings_linear_regression(mod_scalings[rp])
-                for rp in idf_years_to_model
-            }
+    print("\n🔎 Step 3 & 4: Log Moments Table")
+    for q in powers_q:
+        print(f"q={q}: {moments_table[q]}")
 
-            SDSMScaledTableMod = calc_sdsm_scaled_table(idf_years_to_model, idf_hours_array, mod_idf_params)
+    # Step 5: Compute slope (k-values) for each q
+    x_vals = [math.log(window * 24) for window in sorted(normalized)]
+    k_values = []
+    for q in powers_q:
+        y_vals = moments_table[q]
+        n = len(x_vals)
+        sum_x = sum(x_vals)
+        sum_y = sum(y_vals)
+        sum_xx = sum(x**2 for x in x_vals)
+        sum_xy = sum(x*y for x, y in zip(x_vals, y_vals))
+        slope = (n * sum_xy - sum_x * sum_y) / (n * sum_xx - sum_x**2)
+        k_values.append(slope)
 
-        print("✅ Intensity scaling completed.")
-        return SDSMScaledTableObs, SDSMScaledTableMod
+    print("\n🔎 Step 5: Slopes (k-values) for each q")
+    for q, k in zip(powers_q, k_values):
+        print(f"q={q:.1f}, k={k:.6f}")
 
-    except Exception as e:
-        handle_error(e)
-        mini_reset()
-        return {}, {}
+    # Step 6: Regression of k vs q to get Beta
+    sum_q = sum(powers_q)
+    sum_k = sum(k_values)
+    sum_qq = sum(q**2 for q in powers_q)
+    sum_qk = sum(q*k for q, k in zip(powers_q, k_values))
+    n = len(powers_q)
+    beta = (n * sum_qk - sum_q * sum_k) / (n * sum_qq - sum_q**2)
+
+    print(f"\n📐 Step 6: Final Beta = {beta:.6f}")
+
+    # Step 7: Gumbel Parameters
+    day1 = normalized[1]  # Use 1-day normalized AMS
+    mu = mean(day1) / 24
+    sigma = stdev(day1) / 24
+    gumbel_mu = mu - 0.45 * sigma
+    gumbel_beta = sigma * 0.7797
+
+    print(f"\n📐 Step 7: Gumbel Params -> mu={gumbel_mu:.6f}, beta={gumbel_beta:.6f}")
+
+    # Step 8: Estimate 24h intensities for return periods
+    idf_table = defaultdict(dict)
+    for T in idf_years:
+        T_for_calc = 1.01 if T == 1 else T  # 🛠 Adjust T=1 to 1.01 internally
+        try:
+            xt = gumbel_mu - gumbel_beta * math.log(-math.log(1 - 1 / T_for_calc))
+        except:
+            continue
+        idf_table[T][24.0] = xt
+
+    # Step 9: Extrapolate to other durations
+    for T in idf_years:
+        if T not in idf_table:
+            continue
+        x_24 = idf_table[T][24.0]
+        for h in [0.25, 0.5, 1, 2, 3, 6, 24, 48, 120, 240, 360]:
+            if h == 24:
+                continue
+            intensity = x_24 * (h / 24)**beta
+            idf_table[T][h] = intensity
+        
+
+    print("\n📊 Final IDF Table")
+    for T in idf_years:
+        print(f"Return Period {T} years:")
+        for h in sorted(idf_table[T]):
+            print(f"  {h} hours -> {idf_table[T][h]:.2f} mm/hr")
+
+    return idf_table, beta
 
 def build_year_array(observed_data, start_date, END_OF_SECTION, timestep_hours=1):
     """
@@ -1090,8 +1133,107 @@ def build_year_array(observed_data, start_date, END_OF_SECTION, timestep_hours=1
 
         years.append(current_date.year)
         current_date += timedelta(hours=timestep_hours)
-
+    
     return years
+# Modelled Intensity Scaling Workflow (replicating Observed steps)
+
+def intensity_scaling_modelled(
+    modelled_ams_by_window: dict,
+    idf_years_to_model: list,
+    idf_hours_array: list,
+):
+    import math
+    from collections import defaultdict
+    import numpy as np
+
+    print("\n🔍 Step 1: Received AMS for modelled data")
+    for w, vals in modelled_ams_by_window.items():
+        print(f"Window {w}: {vals[:5]} ... total {len(vals)}")
+
+    # --- Step 2: Normalize AMS by dividing by window (running sum length) ---
+    print("\n🔍 Step 2: Normalized AMS by window")
+    normalized = {}
+    for w, vals in modelled_ams_by_window.items():
+        normed = [round(v / w, 1) for v in vals]
+        normalized[w] = normed
+        print(f"Window {w}: {normed[:5]} ...")
+
+    # --- Step 3: Compute means of NCMs for q = 0.5 to 3 ---
+    print("\n🔍 Step 3: Non-central moments")
+    q_values = [0.5, 1, 1.5, 2, 2.5, 3]
+    moments_table = defaultdict(list)
+
+    for q in q_values:
+        for w in sorted(normalized):
+            ncm = np.mean([val ** q for val in normalized[w]])
+            log_ncm = math.log10(ncm)
+            moments_table[q].append((w, log_ncm))
+        print(f"q = {q}: {[f'{x[1]:.2f}' for x in moments_table[q]]}")
+
+    # --- Step 4: Regress each q column against log(window) ---
+    print("\n🔍 Step 4: Slopes (k values)")
+    k_values = {}
+    for q in q_values:
+        x = [math.log10(w * 24) for w, _ in moments_table[q]]
+        y = [v for _, v in moments_table[q]]
+        n = len(x)
+        sum_x = sum(x)
+        sum_y = sum(y)
+        sum_xx = sum([xi**2 for xi in x])
+        sum_xy = sum([xi * yi for xi, yi in zip(x, y)])
+        slope = (n * sum_xy - sum_x * sum_y) / (n * sum_xx - sum_x**2)
+        k_values[q] = slope
+        print(f"k({q}) = {slope:.4f}")
+
+    # --- Step 5: Fit beta using linear regression on (q, k) ---
+    print("\n🔍 Step 5: Final regression for Beta")
+    q_list = q_values
+    k_list = [k_values[q] for q in q_list]
+    q_mean = sum(q_list) / len(q_list)
+    k_mean = sum(k_list) / len(k_list)
+    num = sum((q - q_mean) * (k - k_mean) for q, k in zip(q_list, k_list))
+    den = sum((q - q_mean)**2 for q in q_list)
+    beta = num / den
+    print(f"✅ Beta = {beta:.4f}")
+
+    # --- Step 6: Gumbel fitting using mean/sd of 1-day AMS ---
+    print("\n🔍 Step 6: Gumbel Fit (mu, beta) for T")
+    from statistics import mean, stdev
+    ams_1day = modelled_ams_by_window[1]
+    mu = mean(ams_1day) / 24
+    sd = stdev(ams_1day) / 24
+    gumbel_mu = mu - 0.45 * sd
+    gumbel_beta = sd * 0.7797
+    print(f"Mu = {gumbel_mu:.4f}, Beta = {gumbel_beta:.4f}")
+
+    # --- Step 7: Build modelled IDF table ---
+    idf_table = defaultdict(dict)
+    for T in idf_years_to_model:
+        T_adj = T if T > 1 else 1.01
+        try:
+            xt = gumbel_mu - gumbel_beta * math.log(-math.log(1 - 1 / T_adj))
+        except:
+            continue
+        idf_table[T][24.0] = xt
+
+    for T in idf_years_to_model:
+        if T not in idf_table:
+            continue
+        x_24 = idf_table[T][24.0]
+        for h in idf_hours_array:
+            if h == 24:
+                continue
+            intensity = x_24 * (h / 24)**beta
+            idf_table[T][h] = intensity
+
+
+    print("\n📊 Final IDF Table (Modelled)")
+    for T in idf_years_to_model:
+        print(f"Return Period {T} years:")
+        for h in sorted(idf_table[T]):
+            print(f"  {h} hrs -> {idf_table[T][h]:.2f} mm/hr")
+
+    return idf_table, beta
 
     
 def extract_ams_by_year_fullseries(data, years, END_OF_SECTION, missing_code):
@@ -1281,13 +1423,7 @@ def calc_sdsm_scaled_table(idf_years, idf_hours_array, idf_params):
     print(table)
     return table
 
-##2. Parameter-Power-Scaling
-def ParameterPowerScaling():
-    {
 
-
-
-    }
 def parameter_scaling_step1(obs_ams_by_window, global_missing_code, max_window_size):
     """
     Step 1 of Parameter Scaling: compute mean, SD, beta, mu, logs, and log(hours).
@@ -1343,7 +1479,7 @@ def parameter_scaling_step1(obs_ams_by_window, global_missing_code, max_window_s
         parm["log_hours"] = math.log(hours)
 
         obs_parm_values[window] = parm
-
+        
     return obs_mean, obs_sd, obs_parm_values
 
 def calc_slopes_obs_values(obs_parm_values, global_missing_code):
@@ -1429,7 +1565,12 @@ def parameter_power_scaling(
                 intensity = (mu - beta * logbit) / duration
                 scaled_table[rp][duration] = intensity if intensity >= 0 else None
 
-        
+                     # Assume `beta` is your calculated slope value (float)
+                msg = QMessageBox()
+                msg.setIcon(QMessageBox.Information)
+                msg.setWindowTitle("β Slope Value")
+                msg.setText(f"The β value (slope) used for intensity scaling is:\n\nβ = {beta:.4f}")
+                msg.exec_()
             except Exception as e:
                 print(f"❌ Failed at RP={rp}, duration={duration}: {e}")
                 scaled_table[rp][duration] = None
@@ -1491,7 +1632,7 @@ def parameter_linear_scaling_final(
 
                     intensity = (first_part - second_part * log_bit) / duration
                     SDSMScaledTableMod[rp].append(intensity if intensity >= 0 else None)
-
+ 
         mini_reset()
         return SDSMScaledTableObs
 
@@ -1532,8 +1673,23 @@ def present_results_as_table(hours_array, return_periods, sdsm_scaled_table_obs=
         table.setEditTriggers(QTableWidget.NoEditTriggers)
         table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         table.verticalHeader().setVisible(False)
+        
         return table
-
+    def export_current_tab_to_csv():
+        current_widget = tabs.currentWidget()
+        if isinstance(current_widget, QTableWidget):
+            path, _ = QFileDialog.getSaveFileName(window, "Export Table to CSV", "", "CSV Files (*.csv)")
+            if path:
+                with open(path, 'w', newline='', encoding='utf-8') as file: 
+                    writer = csv.writer(file)
+                    headers = [current_widget.horizontalHeaderItem(i).text() for i in range(current_widget.columnCount())]
+                    writer.writerow(headers)
+                    for row in range(current_widget.rowCount()):
+                        row_data = []
+                        for col in range(current_widget.columnCount()):
+                            item = current_widget.item(row, col)
+                            row_data.append(item.text() if item else "")
+                        writer.writerow(row_data)
     window = QWidget()
     window.setWindowTitle("IDF Intensity Tables")
     layout = QVBoxLayout()
@@ -1553,6 +1709,11 @@ def present_results_as_table(hours_array, return_periods, sdsm_scaled_table_obs=
         layout.addWidget(QLabel("⚠️ No intensity data available to display."))
     else:
         layout.addWidget(tabs)
+
+    # Add export button below the tabs
+        export_button = QPushButton("Export Current Table to CSV")
+        export_button.clicked.connect(export_current_tab_to_csv)
+        layout.addWidget(export_button)
 
     window.setLayout(layout)
     window.resize(1700, 600)
@@ -1595,6 +1756,21 @@ def present_results_as_graph(hours_array, return_periods, sdsm_scaled_table_obs=
     plt.tight_layout()
     plt.show()
 
+def show_beta_values(beta_obs, beta_mod):
+    msg = QMessageBox()
+    msg.setIcon(QMessageBox.Information)
+    msg.setWindowTitle("β Slope Values")
+
+    text = "The β values (slope) used for intensity scaling:\n"
+    if beta_obs is not None:
+        text += f"\n• Observed β = {beta_obs:.3f}"
+    if beta_mod is not None:
+        text += f"\n• Modelled β = {beta_mod:.3f}"
+    if beta_obs is None and beta_mod is None:
+        text += "\nNo β values available."
+
+    msg.setText(text)
+    msg.exec_()
 
 # Dummy placeholders for functions you may already have or need to define
 def mini_reset():

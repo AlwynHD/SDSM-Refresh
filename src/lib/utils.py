@@ -105,14 +105,23 @@ def displayFiles(selected_files):
 
 def selectFile():
     """
-    pulls up the windows file explorer for user to select any file that ends in .Dat
+    pulls up the windows file explorer for user to select a select
+    files are ordered according to the sdsm manual
     returns file path
     """
     app = QApplication([])
     file_dialog = QFileDialog()
     file_dialog.setFileMode(QFileDialog.ExistingFiles)
-    file_dialog.setNameFilter("DAT files (*.DAT)")
-    if file_dialog.exec_():
+    file_dialog.setNameFilters({
+    "DAT files (.DAT))",
+    "PAR files (.PAR)",
+    "SIM files (.SIM)",
+    "OUTfiles (.OUT)",
+    "TXTfiles (*.TXT)",
+    "All Files ()"
+    })
+    file_dialog.selectNameFilter("All File ()"); 
+    if file_dialog.exec():
         files = file_dialog.selectedFiles()
         return files
 
@@ -137,6 +146,7 @@ def filesNames(fileName):
 
     return fileDescription
 
+#nouse
 def resetFiles(predictorSelected):
     """
     useless function does .clear()
@@ -152,8 +162,8 @@ def loadFilesIntoMemory(filesToLoad):
         loadedFiles.append(np.loadtxt(fileLocation))
     return loadedFiles
 
-def increaseDate(startDate, noDays, leapYear): #todo check if the leap year thing was important
-    """increases datatime object by noDays, can t leapYears if leapYear is false"""
+def increaseDate(startDate, noDays, leapYear): 
+    """increases datatime object by noDays, can't leapYears if leapYear is false"""
     # this might have to change back to orginal vb code as not sure why it was done the way it was
     finalDate = startDate + datetime.timedelta(days=noDays)
     if not leapYear:
@@ -173,15 +183,15 @@ def sigLevelOK(sigLevelInput):
     correctSigValue = False
     sigLevel = 0.05
     if sigLevelInput == "" or not type(sigLevelInput) is float:              #SigLevelText is the input from the user
-        #todo error message to user orgianl: MsgBox "Significance level must be a value.", 0 + vbCritical, "Error Message" 
+        
         print("Significance level must be a value.")
     else:
         if sigLevelInput > 0.999 or sigLevelInput < 0:
-            #todo error message to user orginal: MsgBox "Significance level must be positive and less than 1.", 0 + vbCritical, "Error Message"
+            
             print("Significance level must be positive and less than 1.")
         else:
             if sigLevelInput == 0.1111:
-                print("BlankFrm.Show") #todo figure out why this is here in the first place and what BlankFrm.Show does in vb
+                print("BlankFrm.Show")
             else:
                 sigLevel = sigLevelInput
                 correctSigValue = True
@@ -192,16 +202,16 @@ def fSDateOK(fSDate, feDate, globalSDate):
 
     output = False
     if not (isinstance(fSDate, datetime.date) or isinstance(fSDate, thirtyDate)):
-        #todo error message to user about correct date orginal MsgBox "Start date is invalid - it must be in the format dd/mm/yyyy.", 0 + vbCritical, "Error Message"
+        
         fSDate = globalSDate
         print("Start date is invalid - it must be in the format dd/mm/yyyy")
     elif (fSDate - feDate).days > 1:
-        #todo error message to user about correct date orginal MsgBox "End date must be later than start date.", 0 + vbCritical, "Error Message"
+        
         fSDate = globalSDate
         print("End date must be later than start date.")
         print(fSDate - feDate)
     elif (fSDate - globalSDate).days < 0:
-        #todo error message to user about correct date orginal MsgBox "Fit start date must be later than record start date.", 0 + vbCritical, "Error Message"
+        
         fSDate = globalSDate
         print("Fit start date must be later than record start date.")
     else:
@@ -213,25 +223,26 @@ def fEDateOK(fsDate, feDate, globalEDate):
 
     output = False
     if not (isinstance(feDate, datetime.date) or isinstance(feDate, thirtyDate)):
-        #todo error message to user about correct date orginal MsgBox "End date is invalid - it must be in the format dd/mm/yyyy.", 0 + vbCritical, "Error Message"
+        
         fsDate = globalEDate 
         print("End date is invalid - it must be in the format dd/mm/yyyy.")
     elif (fsDate - feDate).days > 1:
-        #todo error message to user about correct date orginal MsgBox "End date must be later than start date.", 0 + vbCritical, "Error Message"
+        
         feDate = globalEDate
         print("End date must be later than start date.")
     elif (feDate - globalEDate).days > 0:
-        #todo error message to user about correct date orginal MsgBox "Fit end date must be earlier than record end date.", 0 + vbCritical, "Error Message"
+        
         feDate = globalEDate
         print("Fit end date must be earlier than record end date.")
         print((feDate - globalEDate).days >= 0)
     else:
         output = True 
     return output
-   
+
+#nouse
 def findDataStart(predictandFile): # gets predictand numpy array then gets the position of the first data position
     """ this gets the first data index where the predictand is not a -999"""
-    firstData = predictandFile[predictandFile != -999] #todo change to missing code
+    firstData = predictandFile[predictandFile != -999]
     if firstData.size == 0:
         return None  # All values are errors
     return np.where(predictandFile == firstData[0])[0][0]
@@ -258,13 +269,15 @@ def dateWanted(date, analysisPeriodChosen):
             answer = True     #Individual months
     return answer
 
+#nouse
 def checkForFile(file, errorMessage):
     if file is None:
         print(errorMessage)
         return False
     else:
         return True
-    
+
+#nouse
 def checkIfFileFormatted(file):
     #Only checks the first line, not ideal but this is how it's done in the original
     with open(file) as f:
@@ -362,4 +375,4 @@ def getSettings():
 
 if __name__ == '__main__':
     #Module tests go here
-    getSettings()
+    print(displayFiles(["Autoregression"]))

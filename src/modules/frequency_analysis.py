@@ -113,6 +113,7 @@ def load_settings(config_path="src/lib/settings.ini"):
 settings, settingsAsArrays = load_settings()
 
 globalSDate = settings["globalsdate"]
+colourMode = settings["colourmode"]
 
 moduleName = "Frequency Analysis"
 
@@ -164,7 +165,7 @@ class ContentWidget(QWidget):
         leftSideLayout = QVBoxLayout()
         
         # Analysis Series Group Box
-        analysisGroupBox = QGroupBox("Analysis Series")
+        analysisGroupBox = QGroupBox("Analysis Period")
         analysisGroupBox.setStyleSheet("color: black;")
         analysisLayoutBox = QVBoxLayout()
         self.startDateLabel = QLabel("Analysis start date:")
@@ -248,14 +249,8 @@ class ContentWidget(QWidget):
         separator = QFrame()
         separator.setFrameShape(QFrame.HLine)
         separator.setFrameShadow(QFrame.Sunken)
-        faLayout.addWidget(separator)
         
-        self.saveButton = QPushButton("Save Results To 💾")
-        self.saveLabel = QLabel("File: Not selected")
-        self.saveButton.clicked.connect(self.saveResults)
-        faLayout.addWidget(self.saveButton)
-        faLayout.addWidget(self.saveLabel)
-        faGroupBox.setFixedHeight(350)
+        faGroupBox.setFixedHeight(360)
         faGroupBox.setLayout(faLayout)
         
         analysisFreqLayout.addLayout(leftSideLayout)
@@ -352,13 +347,57 @@ class ContentWidget(QWidget):
         tabButtonsLayout.addWidget(self.idfTabButton)
         tabButtonsLayout.addWidget(self.resetButton)
         layout.addLayout(tabButtonsLayout)
+
+        self.changeColourMode(colourMode)
         
         self.setLayout(layout)
 
+    def setColours(self, primary, secondary, tertiary):
+        self.qqPlotButton.setStyleSheet(f"background-color: {primary}; color: white; font-weight: bold;")
+        self.pdfPlotButton.setStyleSheet(f"background-color: {secondary}; color: white; font-weight: bold")
+        self.linePlotButton.setStyleSheet(f"background-color: {primary}; color: white; font-weight: bold")
+        self.faGraphicalButton.setStyleSheet(f"background-color: {secondary}; color: white; font-weight: bold;")
+        self.faTabButton.setStyleSheet(f"background-color: {secondary}; color: white; font-weight: bold;")
+        self.idfPlotButton.setStyleSheet(f"background-color: {primary}; color: white; font-weight: bold")
+        self.idfTabButton.setStyleSheet(f"background-color: {secondary}; color: white; font-weight: bold")
+        self.resetButton.setStyleSheet(f"background-color: {tertiary}; color: white; font-weight: bold;")
+
+    def resetColours(self):
+        self.qqPlotButton.setStyleSheet(f"background-color: #4CAF50; color: white; font-weight: bold;")
+        self.pdfPlotButton.setStyleSheet(f"background-color: #1FC7F5; color: white; font-weight: bold")
+        self.linePlotButton.setStyleSheet(f"background-color: #F57F0C; color: white; font-weight: bold")
+        self.faGraphicalButton.setStyleSheet(f"background-color: #5adbb5; color: white; font-weight: bold;")
+        self.faTabButton.setStyleSheet(f"background-color: #ffbd03; color: white; font-weight: bold;")
+        self.idfPlotButton.setStyleSheet(f"background-color: #dd7973; color: white; font-weight: bold")
+        self.idfTabButton.setStyleSheet(f"background-color: #4681f4; color: white; font-weight: bold")
+        self.resetButton.setStyleSheet(f"background-color: #ED0800; color: white; font-weight: bold;")
+
+    def changeColourMode(self, mode: str):
+        if mode.lower() == "default":
+            self.resetColours()
+        elif mode.lower() == "protanopia":
+            # high-contrast blue/orange/green
+            self.setColours("#377eb8", "#ff7f00", "#4daf4a")
+        elif mode.lower() == "deuteranopia":
+            # purple/red/yellow
+            self.setColours("#984ea3", "#e41a1c", "#d6ce29")
+        elif mode.lower() == "tritanopia":
+            # brown/pink/gray
+            self.setColours("#a65628", "#f781bf", "#999999")
+        elif mode.lower() == "lboro":
+            # Loughborough brand
+            self.setColours("#431371", "#b78eec", "#cd086b")
+        else:
+            # Fallback
+            self.resetColours()
+
     def showEvent(self, event):
-        global globalSDate 
+        global globalSDate, colourMode
         settings, settingsAsArrays = load_settings()
         globalSDate = settings["globalsdate"]
+        colourMode = settings["colourmode"]
+
+        self.changeColourMode(colourMode)
 
         # Extract the first (and only) element from the array for both start and end dates
         py_start_date = settingsAsArrays["globalsdate"][0]
@@ -478,24 +517,28 @@ class ContentWidget(QWidget):
         # 7) missing‐code
         globalMissingCode = settings["globalmissingcode"]
 
-        #try:
-        pdfPlot(
-            observedFile      = obsPath,
-            modelledFile      = modPath,
-            fsDate            = fsDate,
-            feDate            = feDate,
-            globalStartDate   = globalSDate,
-            ensembleOption    = ensembleMode,
-            ensembleWanted    = ensembleIndex,
-            numPdfCategories  = numPdfCategories,
-            dataPeriod        = dataPeriod,
-            applyThreshold    = applyThreshold,
-            threshold         = threshold,
-            missingCode       = globalMissingCode,
-            exitAnalyses      = lambda: False
-        )
-        #except Exception as e:
-        #    QMessageBox.critical(self, "PDF Plot Error", str(e))
+        try:
+            pdfPlot(
+                observedFile     = obsPath,
+                modelledFile     = modPath,
+                fsDate           = fsDate,
+                feDate           = feDate,
+                globalStartDate  = globalSDate,
+                ensembleOption   = ensembleMode,
+                ensembleWanted   = ensembleIndex,
+                numPdfCategories = numPdfCategories,
+                dataPeriod       = dataPeriod,
+                applyThreshold   = applyThreshold,
+                threshold        = threshold,
+                missingCode      = globalMissingCode,
+                exitAnalyses     = lambda: False
+            )
+        except ValueError as ve:
+            QMessageBox.critical(self, "PDF Plot Error", str(ve))
+        except IOError as ioe:
+            QMessageBox.critical(self, "PDF Plot Error", str(ioe))
+        except Exception as ex:
+            QMessageBox.critical(self, "PDF Plot Error", f"Unexpected error: {ex}")
     
     def linePlotButtonClicked(self):
         # 1) file paths (None if not selected)
@@ -537,8 +580,8 @@ class ContentWidget(QWidget):
         applyThreshold  = self.applyThresholdCheckbox.isChecked()
         thresholdValue  = self.thresholdInput.value()
 
-        #try:
-        linePlot(
+        try:
+            linePlot(
                 observedFilePath  = obsPath,
                 modelledFilePath  = modPath,
                 analysisStartDate = startDate,
@@ -552,8 +595,12 @@ class ContentWidget(QWidget):
                 globalMissingCode = settings["globalmissingcode"],
                 exitAnalysesFunc  = lambda: False
             )
-        #except Exception as e:
-        #    print("Line Plot Error")
+        except ValueError as ve:
+            QMessageBox.critical(self, "Line Plot Error", str(ve))
+        except IOError as ioe:
+            QMessageBox.critical(self, "Line Plot Error", str(ioe))
+        except Exception as ex:
+            QMessageBox.critical(self, "Line Plot Error", f"Unexpected error: {ex}")
 
     
     def qqPlotButtonClicked(self):
@@ -692,6 +739,15 @@ class ContentWidget(QWidget):
         applyThresh = self.applyThresholdCheckbox.isChecked()
         threshValue = self.thresholdInput.value()
         dataPeriodChoice = self.dataPeriodCombo.currentIndex()
+
+        yearDiff = feDate.year - fsDate.year
+        if yearDiff <= 10:
+            QMessageBox.warning(
+                self,
+                "Invalid Date Range",
+                f"For the FA {type}, start and end dates must be greater than or equal to 10 years apart."
+            )
+            return
 
         # Determine the frequency model based on the selected radio button in faLayout
         if self.empiricalRadio.isChecked():

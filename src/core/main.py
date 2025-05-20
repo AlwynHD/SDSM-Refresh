@@ -9,10 +9,6 @@ from PyQt5.QtCore import Qt, QUrl, QSize
 from PyQt5.QtGui import QIcon, QScreen, QDesktopServices  # Added QDesktopServices import
 from importlib import import_module
 
-# Global variables for window dimensions
-windowWidth = 1600
-windowHeight = 1300
-
 class SDSMWindow(QMainWindow):
     def __init__(self):
         """
@@ -21,8 +17,7 @@ class SDSMWindow(QMainWindow):
         """
         super().__init__()
         
-        self.setWindowTitle("SDSM - Beta V1")
-        self.resize(windowWidth, windowHeight)
+        self.setWindowTitle("SDSM")
         
         screen_geometry = QApplication.desktop().screenGeometry()
         screen_height = screen_geometry.height()
@@ -62,7 +57,7 @@ class SDSMWindow(QMainWindow):
         for index, (name, icon) in enumerate(zip(self.menuButtonNames, self.menuButtonIcons)):
             menuButton = QPushButton(name)
 
-            if index < len(self.menuButtonNames) - 1:
+            if index < len(self.menuButtonNames):
                 arrow_icon = QIcon("src/images/arrow_down_thick.png")
                 menuButton.setIcon(arrow_icon)
                 menuButton.setIconSize(QSize(self.button_height // 2,
@@ -122,6 +117,10 @@ class SDSMWindow(QMainWindow):
         link3Action = QAction("SDSM-DC Paper", self)
         link3Action.triggered.connect(lambda: QDesktopServices.openUrl(QUrl("https://www.int-res.com/abstracts/cr/v61/n3/p259-276/")))
         linksMenu.addAction(link3Action)
+
+        link4Action = QAction("Acknowledgements", self)
+        link4Action.triggered.connect(lambda: self.openAcknowledgementsFile())
+        linksMenu.addAction(link4Action)
         
         openSettingsAction = QAction("Open Data Settings", self)
         openSettingsAction.triggered.connect(self.loadDataSettingsContent)
@@ -134,8 +133,7 @@ class SDSMWindow(QMainWindow):
         # Load initial content (Home screen)
         self.loadContent(0)
         
-        # Center the window on the screen
-        self.centerOnScreen()
+        self.showMaximized()
     
     def loadContent(self, index, *args):
         """
@@ -265,6 +263,24 @@ class SDSMWindow(QMainWindow):
             layout.addWidget(textBrowser)
             textBrowser.setSource(url)
             helpDialog.exec_()
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Could not open help content: {str(e)}")
+
+    def openAcknowledgementsFile(self):
+        """
+        Open the Acknowledgements viewer.
+        """
+        ack_file = os.path.abspath("src/core/Acknowledgements.html")
+        url = QUrl.fromLocalFile(ack_file)
+        try:
+            ackDialog = QDialog(self)
+            ackDialog.setWindowTitle("Help")
+            ackDialog.resize(800, 600)
+            layout = QVBoxLayout(ackDialog)
+            textBrowser = QTextBrowser(ackDialog)
+            layout.addWidget(textBrowser)
+            textBrowser.setSource(url)
+            ackDialog.exec_()
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Could not open help content: {str(e)}")
     

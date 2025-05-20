@@ -7,6 +7,7 @@ from datetime import datetime, date
 import os
 from collections import defaultdict
 import numpy as np
+from typing import List, Tuple, Optional
 
 def convertValue(key, value):
     if key in ('globalsdate', 'globaledate'):
@@ -1158,163 +1159,162 @@ def gumbelAnalysis(
     except Exception as e:
         #print("❌ Exception in gumbelAnalysis:", e)
         return False, None, 0
-    
-def calcStretchedValue(cValue: float, year: int, r0: float, pWet: float) -> float:
-    """
-    Calculates the stretched‐exponential flood estimate for a given return period year,
-    exactly mirroring the VB logic (without extra pr‐bounds checks).
-    """
-    try:
-        pr = 1.0 / (pWet * year * 365.25)
-        # VB does not guard pr between 0 and 1, nor check pWet or cValue before this,
-        # so we compute directly and let any math error be caught below.
-        val = -math.log(pr)
-        stretched = val ** (1.0 / cValue)
-        return stretched * r0
-
-    except Exception:
-        return globalMissingCode
 
 def stretchedAnalysis(
-    obsDates, observedData,
-    modDatesList, modelledData,
-    noOfEnsembles,
-    useThresh, thresh, freqThresh,
-    file1Used, file2Used,
-    defaultDir,
-    noOfXCols, file2ColStart,
-    percentileWanted,
-    globalMissingCode
-):
+    obsDates: List,
+    observedData: List[float],
+    modDatesList: List[List],
+    modelledData: List[List[float]],
+    noOfEnsembles: int,
+    useThresh: bool,
+    thresh: float,
+    freqThresh: float,
+    file1Used: bool,
+    file2Used: bool,
+    defaultDir: str,
+    noOfXCols: int,
+    file2ColStart: int,
+    percentileWanted: float,
+    globalMissingCode: float,
+    debug: bool = False
+) -> Tuple[bool, Optional[List[List[float]]], int]:
     """
-    Performs a Stretched‐Exponential analysis on daily exceedances,
-    matching the original VB logic exactly (no EndOfSection sentinels),
-    rounding each ensemble’s flood‐event to 4 decimals before percentiles.
-    Returns (success: bool, freqAnalData: List[List], noOfXDataPoints: int).
+    Returns (success, freqAnalData, noOfXDataPoints).
+    If debug=True you get printouts of key internals.
     """
-    try:
-        # (A) OBSERVED: filter raw daily values by missing & user‐threshold
-        if file1Used:
-            obs_clean = [
-                v for dt, v in zip(obsDates, observedData)
-                if v != globalMissingCode and (useThresh == 0 or v >= thresh)
+
+    # 1) Filter missing / below-threshold
+    if file1Used:
+        obsClean = [
+            v for v in observedData
+            if v != globalMissingCode
+               and (not useThresh or v >= thresh)
+        ]
+        if debug:
+            print("OBS: after thresh filter:", len(obsClean), "points")
+        if len(obsClean) < 10:
+            return False, None, 0
+
+    if file2Used:
+        modClean = []
+        for j in range(noOfEnsembles):
+            thisClean = [
+                v for v in modelledData[j]
+                if v != globalMissingCode
+                   and (not useThresh or v >= thresh)
             ]
-            if len(obs_clean) < 10:
-                return False, None, 0
+            modClean.append(thisClean)
+        if debug:
+            lengths = [len(lst) for lst in modClean]
+            print("MOD: ensemble lengths after thresh filter:", lengths)
+        if max(len(lst) for lst in modClean) < 10:
+            return False, None, 0
 
-            # Compute TotObsWet & R0, PrObsWet using 'thresh'
-            wet_all = [v for v in obs_clean if v > thresh]
-            if not wet_all:
-                return False, None, 0
-            TotObsWet = len(wet_all)
-            R0        = sum(wet_all) / TotObsWet
-            PrObsWet  = TotObsWet / len(obs_clean)
+    # 2) Determine return‐periods and how many X‐points
+    returnPeriods = [2, 3, 4, 5, 10, 15, 20, 30, 50, 100]
+    noOfXDataPoints = len(returnPeriods)
 
-            # Select "wet days" for regression using freqThresh
-            wet = [v for v in obs_clean if v > freqThresh]
-            if len(wet) < 10:
-                return False, None, 0
+    # 3) Figure out minimal needed columns
+    minCols = 1                # at least the RP column
+    if file1Used:
+        minCols = max(minCols, 2)
+    if file2Used:
+        # always need median at file2ColStart
+        minCols = max(minCols, file2ColStart + 1)
+        # if upper & lower percentiles
+        if percentileWanted > 0 and noOfEnsembles > 1:
+            minCols = max(minCols, file2ColStart + 5)
+    actualCols = max(noOfXCols, minCols)
 
-            # Build regression matrices for observed
-            n_obs = len(wet)
-            X_obs, Y_obs = [], []
-            for idx, val in enumerate(sorted(wet)):
-                N = n_obs - idx
-                p = N / (TotObsWet + 1)
-                Y_obs.append([math.log(-math.log(p))])
-                X_obs.append([1.0, math.log(val / R0)])
-            X_obs = np.array(X_obs)
-            Y_obs = np.array(Y_obs)
-            beta_obs = np.linalg.inv(X_obs.T @ X_obs) @ (X_obs.T @ Y_obs)
-            cObs = beta_obs[1, 0]
-        else:
-            cObs = R0 = PrObsWet = None
+    # 4) Build output array
+    freqAnalData = [[0.0]*actualCols for _ in range(noOfXDataPoints)]
+    for i, rp in enumerate(returnPeriods):
+        freqAnalData[i][0] = float(rp)
 
-        # (B) MODELLED: repeat per ensemble, rounding flood‐events
-        allEvents = []
-        if file2Used:
-            returnPeriods = [2,3,4,5,10,15,20,30,50,100]
-            for seriesDates, seriesVals in zip(modDatesList, modelledData):
-                mod_clean = [
-                    v for dt, v in zip(seriesDates, seriesVals)
-                    if v != globalMissingCode and (useThresh == 0 or v >= thresh)
-                ]
-                if len(mod_clean) < 10:
-                    return False, None, 0
+    # 5) Observed‐only block
+    if file1Used:
+        totObsWet = sum(1 for v in obsClean if v > thresh)
+        sumObsWet = sum(v for v in obsClean if v > thresh)
+        r0 = (sumObsWet / totObsWet) if totObsWet>0 else 0.0
+        prObsWet = totObsWet / len(obsClean)
 
-                # Compute TotModWet & R0m, PrModWet using 'thresh'
-                wetm_all = [v for v in mod_clean if v > thresh]
-                if not wetm_all:
-                    return False, None, 0
-                TotModWet = len(wetm_all)
-                R0m       = sum(wetm_all) / TotModWet
-                PrModWet  = TotModWet / len(mod_clean)
+        if debug:
+            print(f"OBS: totObsWet={totObsWet}, R0={r0:.3f}, prObsWet={prObsWet:.3f}")
 
-                # Select for regression using freqThresh
-                wetm = [v for v in mod_clean if v > freqThresh]
-                if len(wetm) < 10:
-                    return False, None, 0
+        workingObs = [v for v in obsClean if v > freqThresh]
+        if len(workingObs) < 10:
+            return False, None, 0
+        workingObs.sort()
 
-                # Build regression matrices for this ensemble
-                n_mod = len(wetm)
-                X_mod, Y_mod = [], []
-                for idx, val in enumerate(sorted(wetm)):
-                    N = n_mod - idx
-                    p = N / (TotModWet + 1)
-                    Y_mod.append([math.log(-math.log(p))])
-                    X_mod.append([1.0, math.log(val / R0m)])
-                X_mod = np.array(X_mod)
-                Y_mod = np.array(Y_mod)
-                beta_mod = np.linalg.inv(X_mod.T @ X_mod) @ (X_mod.T @ Y_mod)
-                cMod = beta_mod[1, 0]
+        nObs = len(workingObs)
+        Xobs = np.ones((nObs, 2))
+        yobs = np.zeros((nObs, 1))
+        for j, val in enumerate(workingObs):
+            N = nObs - j
+            Pr = N / (totObsWet + 1)
+            yobs[j, 0] = math.log(-math.log(Pr))
+            Xobs[j, 1] = math.log(val / r0)
 
-                # Compute and round flood‐event values for this ensemble
-                ev = [
-                    calcStretchedValue(cMod, rp, R0m, PrModWet)
-                    for rp in returnPeriods
-                ]
-                allEvents.append(ev)
+        betaObs = np.linalg.inv(Xobs.T @ Xobs) @ (Xobs.T @ yobs)
+        cValueObs = float(betaObs[1, 0])
+        if debug:
+            print(f"OBS: cValueObs = {cValueObs:.4f}")
 
-        # (C) Prepare output matrix
-        returnPeriods = [2,3,4,5,10,15,20,30,50,100]
-        rows = len(returnPeriods)
-        freqAnalData = [[None]*noOfXCols for _ in range(rows)]
         for i, rp in enumerate(returnPeriods):
-            freqAnalData[i][0] = rp
+            freqAnalData[i][1] = calcStretchedValue(cValueObs, rp, r0, prObsWet)
 
-        # (D) Populate observed column
-        if file1Used:
+    # 6) Modelled‐only block
+    if file2Used:
+        # collect flood‐event arrays
+        modEvents = [[0.0]*noOfXDataPoints for _ in range(noOfEnsembles)]
+
+        for j in range(noOfEnsembles):
+            dataJ = modClean[j]
+            totModWet = sum(1 for v in dataJ if v > thresh)
+            sumModWet = sum(v for v in dataJ if v > thresh)
+            r0Mod = (sumModWet / totModWet) if totModWet>0 else 0.0
+            prModWet = totModWet / len(dataJ)
+
+            workingMod = [v for v in dataJ if v > freqThresh]
+            workingMod.sort()
+            nMod = len(workingMod)
+            if nMod < 10:
+                return False, None, 0
+            
+            if debug:
+                print(f"[ENSEMBLE #{j+1}] raw count={len(modelledData[j])}, "
+                f"postThresh count={len(modClean[j])}, "
+                f"totModWet={totModWet}, R0={r0Mod:.4f}, pWet={prModWet:.4f}, "
+                f"workingCount={len(workingMod)}")
+
+            Xmod = np.ones((nMod, 2))
+            ymod = np.zeros((nMod, 1))
+            for k, val in enumerate(workingMod):
+                N = nMod - k
+                Pr = N / (totModWet + 1)
+                ymod[k, 0] = math.log(-math.log(Pr))
+                Xmod[k, 1] = math.log(val / r0Mod)
+
+            betaMod = np.linalg.inv(Xmod.T @ Xmod) @ (Xmod.T @ ymod)
+            cValueMod = float(betaMod[1, 0])
+            if debug:
+                print(f"MOD #{j+1}: cValueMod = {cValueMod:.4f}")
+
             for i, rp in enumerate(returnPeriods):
-                freqAnalData[i][1] = calcStretchedValue(cObs, rp, R0, PrObsWet)
+                modEvents[j][i] = calcStretchedValue(cValueMod, rp, r0Mod, prModWet)
 
-        # (E) Populate modelled median & percentiles using calcPercentile
-        if file2Used:
-            med_col = file2ColStart - 1
-            hi_col  = file2ColStart + 1
-            lo_col  = file2ColStart + 3
+        # write medians and percentiles
+        for i in range(noOfXDataPoints):
+            row = [modEvents[j][i] for j in range(noOfEnsembles)]
+            freqAnalData[i][file2ColStart-1] = calcPercentile(row, 50)
+            if percentileWanted > 0 and noOfEnsembles > 1:
+                freqAnalData[i][file2ColStart+1] = calcPercentile(row, 100-(percentileWanted/2))
+                freqAnalData[i][file2ColStart+3] = calcPercentile(row, percentileWanted/2)
 
-            for i in range(rows):
-                vals = sorted(ev[i] for ev in allEvents)
-                # median (50th)
-                if 0 <= med_col < noOfXCols:
-                    freqAnalData[i][med_col] = calcPercentile(vals, 50)
-                # upper & lower bounds
-                if percentileWanted > 0 and noOfEnsembles > 1:
-                    hi = calcPercentile(vals, 100 - percentileWanted/2)
-                    lo = calcPercentile(vals, percentileWanted/2)
-                    if 0 <= hi_col < noOfXCols:
-                        freqAnalData[i][hi_col] = hi
-                    if 0 <= lo_col < noOfXCols:
-                        freqAnalData[i][lo_col] = lo
+    # 7) Extra X‐columns (RP repeats)
+    if actualCols > 2:
+        for col in range(2, actualCols, 2):
+            for i, rp in enumerate(returnPeriods):
+                freqAnalData[i][col] = float(rp)
 
-        # (F) Duplicate RP into any extra stat columns (3,5,7 …)
-        if noOfXCols > 2:
-            for col in range(2, noOfXCols, 2):
-                for i, rp in enumerate(returnPeriods):
-                    freqAnalData[i][col] = rp
-
-        return True, freqAnalData, rows
-
-    except Exception as e:
-        print("❌ Exception in stretchedAnalysis:", e)
-        return False, None, 0
+    return True, freqAnalData, noOfXDataPoints

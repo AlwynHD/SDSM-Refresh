@@ -43,8 +43,8 @@ def partialCorrelation(A, B, n, crossCorr, corrArrayList):
         denom = (1 - crossCorr[A][int(corrArrayList[0])] ** 2) * (1 - crossCorr[B][int(corrArrayList[0])] ** 2)
     else:                #r12.34567etc... case - calculate r12.3456, r17.3456, r27.3456 for example
         result = partialCorrelation(A, B, n - 1, crossCorr, corrArrayList)     #r12.3456 for r12.34567 for example
-        r13 = partialCorrelation(A, int(corrArrayList[n]), n - 1, crossCorr, corrArrayList) #r17.3456 for r12.34567 for example
-        r23 = partialCorrelation(B, int(corrArrayList[n]), n - 1, crossCorr, corrArrayList) #r27.3456 for r12.34567 for example
+        r13 = partialCorrelation(A, int(corrArrayList[n - 1]), n - 1, crossCorr, corrArrayList) #r17.3456 for r12.34567 for example
+        r23 = partialCorrelation(B, int(corrArrayList[n - 1]), n - 1, crossCorr, corrArrayList) #r27.3456 for r12.34567 for example
         result = result - (r13 * r23)
         denom = (1 - r13 ** 2) * (1 - r23 ** 2)
 
@@ -80,6 +80,7 @@ def correlation(predictandSelected, predictorSelected, inputs):
     
     #from settings
     leapYear = settings["leapYear"]
+    print(leapYear)
     thirtyDay = settings["thirtyDay"]
     threshold = settings["fixedthreshold"]
     missingCode = settings["globalmissingcode"]
@@ -98,15 +99,22 @@ def correlation(predictandSelected, predictorSelected, inputs):
     autoRegressionTick = inputs.get('autoRegressionTick', False)
 
     #epsilon = inputs.get('epsilon', 1e-10)
-    
+    """
+    If PTandFile = "" Then              'No predictand selected
+        MsgBox "You must select a predictand.", 0 + vbCritical, "Error Message"
+    ElseIf NPredictors < 1 Then         'No predictors selected
+        MsgBox "You must select at least one predictor.", 0 + vbCritical, "Error Message"
+        File2.SetFocus
+    ElseIf NPredictors > 12 Then         'No predictors selected
+        MsgBox "Sorry - you are allowed a maximum of 12 predictors only.", 0 + vbCritical, "Error Message"
+        File2.SetFocus
+    Else"""
     # Input validation with returned error messages
     if predictandSelected == "":
         return {"error": "Predictand Error"}
-    elif len(predictorSelected) < 1 and not autoRegressionTick:
+    elif len(predictorSelected) < 1:
         return {"error": "Predictor Error"}
-    elif len(predictorSelected) > 1:
-        return {"error": "Predictor Error"}
-    elif autoRegressionTick and len(predictorSelected) == 1:
+    elif len(predictorSelected) > 12:
         return {"error": "Predictor Error"}
     # Set up variables
     nVariables = len(predictorSelected) + 1
@@ -133,6 +141,12 @@ def correlation(predictandSelected, predictorSelected, inputs):
         if dateWanted(workingDate, analysisPeriodChosen):
             totalNumbers += 1
             row = [file[i] for file in loadedFiles]
+            if len(row) != nVariables:
+                print("ERROR")
+            
+            # Count threshold failures
+            if row[0] <= threshold and conditional and row[0] != missingCode:
+                totalBelowThreshold += 1
             
             missingNumber = row.count(missingCode)
             
@@ -144,9 +158,6 @@ def correlation(predictandSelected, predictorSelected, inputs):
             elif (conditional and row[0] > threshold) or not conditional:
                 sumData += row
             
-            # Count threshold failures
-            if row[0] <= threshold and conditional and row[0] != missingCode:
-                totalBelowThreshold += 1
                 
             inputData.append(row)
         workingDate = increaseDate(workingDate, 1, leapYear)
@@ -209,31 +220,31 @@ def correlation(predictandSelected, predictorSelected, inputs):
     # Calculate partial correlations
     partial_correlations = []
     if nVariables >= 3:
-       for i in range(1, nVariables):
-                corrArrayList = np.zeros(nVariables + 1)
-                arrayCount = 0
-                for j in range(1, nVariables):
-                    if i != j:
-                        corrArrayList[arrayCount] = j
-                        arrayCount += 1
-                
-                tempResult = partialCorrelation(0, i, nVariables-2, crossCorr, corrArrayList)
-                
-                if abs(tempResult) < 0.999:
-                    TTestValue = (tempResult * np.sqrt(totalNumbers - 2 - totalMissingRows - totalBelowThreshold)) / np.sqrt(1 - (tempResult ** 2))
-                    PrValue = (((1 + ((TTestValue ** 2) / (totalNumbers - totalMissingRows - totalBelowThreshold))) ** -((totalNumbers + 1 - totalMissingRows - totalBelowThreshold) / 2))) / (np.sqrt((totalNumbers - totalMissingRows - totalBelowThreshold) * np.pi))
-                    PrValue = PrValue * np.sqrt(totalNumbers - totalMissingRows - totalBelowThreshold)  # Correction for large N
-                else:
-                    TTestValue = 0
-                    PrValue = 1
-                    tempResult = 0
+        for i in range(1, nVariables):
+            corrArrayList = np.zeros(nVariables + 1)
+            arrayCount = 0
+            for j in range(1, nVariables):
+                if i != j:
+                    corrArrayList[arrayCount] = j
+                    arrayCount += 1
+            
+            tempResult = partialCorrelation(0, i, nVariables-2, crossCorr, corrArrayList)
+            
+            if abs(tempResult) < 0.999:
+                TTestValue = (tempResult * np.sqrt(totalNumbers - 2 - totalMissingRows - totalBelowThreshold)) / np.sqrt(1 - (tempResult ** 2))
+                PrValue = (((1 + ((TTestValue ** 2) / (totalNumbers - totalMissingRows - totalBelowThreshold))) ** -((totalNumbers + 1 - totalMissingRows - totalBelowThreshold) / 2))) / (np.sqrt((totalNumbers - totalMissingRows - totalBelowThreshold) * np.pi))
+                PrValue = PrValue * np.sqrt(totalNumbers - totalMissingRows - totalBelowThreshold)  # Correction for large N
+            else:
+                TTestValue = 0
+                PrValue = 1
+                tempResult = 0
 
-                partial_correlations.append({
-                'variable': nameOfFiles[i],
-                'correlation': tempResult,
-                'p_value': PrValue,
-                'TTestValue': TTestValue
-            })
+            partial_correlations.append({
+            'variable': nameOfFiles[i],
+            'correlation': tempResult,
+            'p_value': PrValue,
+            'TTestValue': TTestValue
+        })
 
     
     # Create dictionary with all results
@@ -329,8 +340,6 @@ def analyseData(predictandSelected, predictorSelected, inputs):
     nVariables = len(predictorSelected) + 1
     
     # Add one more variable slot if autoregression is enabled
-    if autoRegressionTick:
-        nVariables += 1
 
     # Load files into memory
     try:
@@ -340,6 +349,9 @@ def analyseData(predictandSelected, predictorSelected, inputs):
     
     # Slice the loaded files starting from the file start date
     loadedFiles = [file[(fSDate - globalSDate).days:] for file in loadedFiles]
+    if autoRegressionTick:
+        nVariables += 1
+        predictorSelected.append("Autoregresion")
 
     # Initialize working date to file start date
     workingDate = fSDate
@@ -369,10 +381,13 @@ def analyseData(predictandSelected, predictorSelected, inputs):
         currentDay = np.array([[file[i] for file in loadedFiles]], dtype=float)
         
         # If using autoregression and not the first day, add previous day's value
-        if autoRegressionTick and i > 0:
-            # Add previous day's predictand value as an additional predictor
-            previousValue = np.array([[loadedFiles[0][i-1]]])
-            currentDay = np.concatenate((currentDay, previousValue), axis=1)
+        if autoRegressionTick:
+            if  i > 0:
+                # Add previous day's predictand value as an additional predictor
+                previousValue = np.array([[loadedFiles[0][i-1]]])
+                currentDay = np.concatenate((currentDay, previousValue), axis=1)
+            else:
+                currentDay = np.concatenate((currentDay, [[missingCode]]), axis=1)
         
         # Count missing values
         missingCount = np.count_nonzero(currentDay == missingCode)
@@ -392,7 +407,7 @@ def analyseData(predictandSelected, predictorSelected, inputs):
         for month in months:
             if len(month) > 0:  # Make sure month array is not empty
                 month[:, 0] = np.where(month[:, 0] > threshold, 1, np.where(month[:, 0] != missingCode, 0, missingCode))
-
+        
     # Initialize return data array
     returnData = np.zeros((12, 4, nVariables), dtype=float)  # Changed dimensions to store stats for each variable
     
@@ -421,6 +436,7 @@ def analyseData(predictandSelected, predictorSelected, inputs):
             row = np.array([0 if data == missingCode else data for data in row])
             validRows += 1
             
+
             # Calculate sums
             sumData += row
             sumDataSquared += row**2
@@ -586,103 +602,17 @@ def scatterPlot(predictandSelected, predictorSelected, inputs):
         # Append the new column to the original array
         inputData = np.hstack((inputData, newColumn.reshape(-1, 1)))
         
-        if inputData[totalNumbers - 1, 0] != missingCode and (not (inputData[totalNumbers - 1, 0] <= threshold) and conditional):
+        """if inputData[totalNumbers - 1, 0] != missingCode and (not (inputData[totalNumbers - 1, 0] <= threshold) and conditional):
             sumData = np.append(sumData, inputData[totalNumbers - 1, 0])
             
         else:
             sumData = np.append(sumData, sumData[0])
-            nameOfFiles.append("Autoregression")
+            nameOfFiles.append("Autoregression")"""
 
     return {"error": "NA", "Data": inputData.T}
 
 
 
-def format_correlation_results(results):
-    """
-    Format correlation analysis results for display in a PyQt5 application.
-    
-    Parameters:
-    results (dict): Dictionary containing correlation analysis results
-    
-    Returns:
-    str: Formatted string representation of the correlation results
-    """
-    # Extract necessary data from results dictionary
-    start_date = results['analysisPeriod']['startDate']
-    end_date = results['analysisPeriod']['endDate']
-    period_name = results['analysisPeriod']['periodName']
-    
-    # Statistics
-    total_missing = results['stats']['missingValues']
-    total_missing_rows = results['stats']['missingRows']
-    total_below_threshold = results['stats']['belowThreshold']
-    #effective_sample_size = results['stats']['effectiveSampleSize']
-    conditional = results['settings_used']['conditionalAnalysis']
-    
-    # Data
-    file_names = results['names']
-    cross_corr = results['crossCorrelation']
-    partial_correlations = results['partialCorrelations'] if 'partialCorrelations' in results else None
-    
-    # Format output as a string
-    output = []
-    
-    # Header section
-    output.append("CORRELATION MATRIX")
-    output.append("")
-    output.append(f"Analysis Period: {start_date} - {end_date} ({period_name})")
-    output.append("")
-    output.append(f"Missing values: {total_missing}")
-    output.append(f"Missing rows: {total_missing_rows}")
-    if conditional:
-        output.append(f"Values less than or equal to threshold: {total_below_threshold}")
-    output.append("")
-    
-    # Calculate the maximum length of file names for formatting
-    max_length = max(len(file) for file in file_names) + 1
-    n_variables = len(file_names)
-    
-    # Cross-correlation matrix header
-    header_row = " "
-    for j in range(1, n_variables + 1):
-        header_row += f" {j:{max_length + 1}}"
-    output.append(header_row)
-    
-    # Cross-correlation matrix rows
-    for j in range(n_variables):
-        row = f"{j+1} {file_names[j]:{max_length}}"
-        
-        for k in range(n_variables):
-            corr_value = cross_corr[j][k]
-            if k == j:
-                temp_y = "1"
-            else:
-                temp_y = f"{corr_value:.3f}"
-            row += f"{temp_y:{max_length + 2}}"
-        
-        output.append(row)
-    
-    output.append("")
-    
-    # Partial correlations section
-    if n_variables < 3:
-        output.append("NO PARTIAL CORRELATIONS TO CALCULATE")
-    else:
-        output.append(f"PARTIAL CORRELATIONS WITH {file_names[0]}")
-        output.append("")
-        output.append(" " * 24 + f"{'Partial r':12}{'P value':12}")
-        output.append("")
-        
-        # Add partial correlation results if available
-        if partial_correlations:
-            for i in range(1, n_variables):
-                if i-1 < len(partial_correlations):
-                    partial_r = partial_correlations[i-1]['correlation']
-                    p_value = partial_correlations[i-1]['p_value']
-                    output.append(f"{file_names[i]:24}{partial_r:<12.3f}{p_value:<12.3f}")
-    
-    # Join all lines with newlines
-    return "\n".join(output)
 
 def formatCorrelationResults(results):
     """

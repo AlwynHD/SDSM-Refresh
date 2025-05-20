@@ -43,8 +43,8 @@ class ContentWidget(QWidget):
 
         # --- ONES FROM CONFIG ---
         self.local_year_indicator = local_year_indicator
-        self.fs_date = fs_date
-        self.fe_date = fe_date
+        self.fs_date = fs_date.replace("/", "-")
+        self.fe_date = fe_date.replace("/", "-")
         self.global_missing_code = global_missing_code
         # --- --- --- --- --- ---
 
@@ -280,13 +280,16 @@ class ContentWidget(QWidget):
         self.ensemble_mean_check.stateChanged.connect(self.ensemble_mean_check_click)
         ensemble_layout.addWidget(self.ensemble_mean_check)
         
+        
         ensemble_layout.addWidget(QLabel("Ensemble Number:"))
         self.ensemble_number = QSpinBox()
         self.ensemble_number.setMinimum(0)
         self.ensemble_number.setMaximum(100)
         self.ensemble_number.setValue(0)
         self.ensemble_number.setEnabled(False)
+        self.ensemble_number.valueChanged.connect(self.ensemble_number_changed)
         ensemble_layout.addWidget(self.ensemble_number)
+        
         
         ensemble_group.setLayout(ensemble_layout)
         main_layout.addWidget(ensemble_group)
@@ -342,6 +345,11 @@ class ContentWidget(QWidget):
         self.file_n_days.setText("unknown")
         self.file_ensemble_size.setText("unknown")
     
+    def ensemble_number_changed(self, val):
+        # keep track of which ensemble the user actually wants
+        self.ensemble_wanted = val
+
+
     def select_input_file(self):
         """
         Opens file dialog to select input file
@@ -799,7 +807,7 @@ class ContentWidget(QWidget):
                 QMessageBox.critical(self, "Error Message", "An error occurred opening the *.SIM file. Please try again.")
                 return False
             
-            if not self.ensemble_mean_check.isChecked() and self.ensemble_wanted > self.ensemble_size:
+            if not self.ensemble_mean_check.isChecked() and self.ensemble_number.value() > self.ensemble_size:
                 QMessageBox.critical(self, "Error Message", "Ensemble member does not exist in data file.")
                 return False
         else:
@@ -1874,13 +1882,13 @@ class ContentWidget(QWidget):
         # Write to file
         with open(self.save_file_root, 'w') as f:
             f.write(f"SUMMARY STATISTICS FOR: {self.input_filename}\n\n")
-            f.write(f"Analysis Start Date: {print_start_date.strftime('%d-%m-%Y')}\n")
-            f.write(f"Analysis End Date: {print_end_date.strftime('%d-%m-%Y')}\n")
+            f.write(f"Analysis Start Date: {print_start_date}\n")
+            f.write(f"Analysis End Date: {print_end_date}\n")
             
             if self.ensemble_size > 1 and self.ensemble_mean_checked:
                 f.write("Ensemble Member(s): ALL\n")
             elif self.ensemble_size > 1 and not self.ensemble_mean_checked:
-                f.write(f"Ensemble Member(s): {self.ensemble_wanted}\n")
+                f.write(f"Ensemble Member(s): {self.ensemble_number.value()}\n")
             
             f.write("-\n")
             
@@ -1920,13 +1928,13 @@ class ContentWidget(QWidget):
         
         # Format text for dialog display
         result_text = f"SUMMARY STATISTICS FOR: {self.input_filename}\n\n"
-        result_text += f"Analysis Start Date: {print_start_date.strftime('%d-%m-%Y')}\n"
-        result_text += f"Analysis End Date: {print_end_date.strftime('%d-%m-%Y')}\n"
+        result_text += f"Analysis Start Date: {print_start_date}\n"
+        result_text += f"Analysis End Date: {print_end_date}\n"
         
         if self.ensemble_size > 1 and self.ensemble_mean_checked:
             result_text += "Ensemble Member(s): ALL\n\n"
         elif self.ensemble_size > 1 and not self.ensemble_mean_checked:
-            result_text += f"Ensemble Member(s): {self.ensemble_wanted}\n\n"
+            result_text += f"Ensemble Member(s): {self.ensemble_number.value()}\n\n"
         else:
             result_text += "\n"
 

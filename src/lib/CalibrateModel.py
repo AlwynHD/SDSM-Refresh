@@ -1,12 +1,20 @@
 import numpy as np
 from datetime import date as realdate
-from src.lib.utils import loadFilesIntoMemory, increaseDate, thirtyDate
+from src.lib.utils import loadFilesIntoMemory, increaseDate, thirtyDate, getSettings, fSDateOK, fEDateOK
 from copy import deepcopy
 import src.core.data_settings
+from PyQt5.QtWidgets import QApplication, QMainWindow, QTextEdit, QTabWidget, QWidget, QMessageBox
+from PyQt5.QtGui import QFont
+from os import path
 #from scipy.stats import spearmanr
 
 ## NOTE TO READERS: THIS FILE **DOES** WORK
 ## The debugRun test function should give an example configuration
+
+months = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"]
+            
 
 ##DEBUGGING FUNCTIONS:
 debug = False
@@ -14,32 +22,83 @@ def debugMsg(msg):
     if debug == True:
         print(msg)
 
-#GLOBALS:
-thirtydate = False
-if not thirtydate:
-    def date(y: int, m: int, d: int):
-        return realdate(y, m, d)
-else:
-    def date(y: int, m: int, d: int):
-        return thirtyDate(y, m, d)
-#else:
+_globalSettings = {}
 
 ## Bewrae of Matricies being incorrectly "orientated"
 
+def date(y: int, m: int, d: int):
+    """
+    Dynamic Local Date Function
+    if thirtydate is enabled, uses the thirtydate date object
+    otherwise uses the normal date object that normal people use
+    """
+
+    thirtydate = _globalSettings['thirtyDay']
+    if not thirtydate:
+        return realdate(y, m, d)
+    else:
+        return thirtyDate(y, m, d)
+#else:
+
+def reloadGlobals():
+    """
+    Reloads global variables (read-only parameters from settings) for this module 
+    in the unlikely event that they changed between loading this module and running it
+    Also maps Model Transformation and Optimisation Algorithm choice to integers
+    """
+
+    global _globalSettings
+    _globalSettings = getSettings()
+
+    ##Map Model Transformation from String to Int
+    mT = _globalSettings['modeltransformation']
+    #Model transformation; 1=none, 2=4root, 3=ln, 4=Inv Normal, 5=box cox
+    if mT == 'None':
+        _globalSettings['modelTrans'] = 1
+    elif mT == 'Fourth root':
+        _globalSettings['modelTrans'] = 2
+    elif mT == 'Natural log':
+        _globalSettings['modelTrans'] = 3
+    elif mT == 'Inverse Normal':
+        _globalSettings['modelTrans'] = 4
+    elif mT == 'Box Cox':
+        _globalSettings['modelTrans'] = 5
+    else:
+        debugMsg("[Error]: Invalid Model Trans option. Using 'None' option")
+        _globalSettings['modelTrans'] = 1
+
+    ##Map Optimisation Algorithm from String to Int
+    oC = _globalSettings['optimizationalgorithm']
+    if oC == 'Ordinary Least Squares':
+        _globalSettings['optAlg'] = 0
+    elif oC == 'Dual Simplex':
+        _globalSettings['optAlg'] = 1
+    else:
+        debugMsg("[Error]: Invalid Optimisation choice. Using 'Ordinary Least Squares' option")
+        _globalSettings['optAlg'] = 0
+
+    criteria = _globalSettings['criteriatype']
+    if criteria == 'AIC Criteria':
+        _globalSettings['aicWanted'] = True
+    elif criteria == 'BIC Criteria':
+        _globalSettings['aicWanted'] = False
+    else:
+        debugMsg("[Error]: Invalid Stepwise Criteria choice. Using 'AIC' option")
+        _globalSettings['aicWanted'] = True
+        
+        
 def debugRun():
-    #xmat = np.zeros((5,5))
-    #for i in range(5):
-    #    xmat[i,i] = 1
-    #ymat = np.zeros((5))
+    calibrateModelDefaultExperience(0)
 
-    #calculateParameters2(xmat, ymat, 0, 5)
-    calibrateModelDefaultExperience()
-
-def calibrateModelDefaultExperience():
+def calibrateModelDefaultExperience(modelType):
     """
     CALIBRATE MODEL TESTING FUNCTION
     Also gives an idea of what to expect using it
     """
+    #global _globalSettings
+    reloadGlobals()
+    #_globalSettings['globalsdate'] = date(1948, 1, 1) #date(2004, 8, 5)
+    #_globalSettings['globaledate'] = date(2017, 12, 31) #date(1961, 1, 10) #date(2017, 12, 31)#date(2025, 1, 7)
 
     ## Parameters
     #fsDate = deepcopy(globalStartDate)
@@ -48,18 +107,26 @@ def calibrateModelDefaultExperience():
     #feDate = deepcopy(globalEndDate)
     #feDate = date(1961, 1, 10)
     #feDate = date(1965, 1, 10)
-    #feDate = date(1996, 12, 31)
+    feDate = date(1996, 12, 31)
     #feDate = date(1997, 12, 31)
-    feDate = date(2015, 12, 31)
-    modelType = 0 #0
-    parmOpt = True  ## Whether Conditional or Unconditional. True = Cond, False = Uncond. 
+    #feDate = date(2015, 12, 31)
+    #modelType = 0 #0
+    parmOpt = False  ## Whether Conditional or Unconditional. True = Cond, False = Uncond. 
     ##ParmOpt(1) = Uncond = False
     ##ParmOpt(0) = Cond = True
     autoRegression = False ## Replaces AutoRegressionCheck -> Might be mutually exclusive with parmOpt - will check later...
-    includeChow = True
+    includeChow = False
     detrendOption = 0 #0, 1 or 2...
-    doCrossValidation = True
-    crossValFolds = 7
+    doCrossValidation = False
+    crossValFolds = 2
+
+    ##Edit Settings for Testing
+    #_globalSettings['modelTrans'] = 5 #Model transformation; 1=none, 2=4root, 3=ln, 4=Inv Normal, 5=box cox
+    #_globalSettings['stepwiseregression'] = True
+
+    _globalSettings['optAlg'] = 1
+
+    print(f"Testing with 'modelTrans' == {_globalSettings['modelTrans']}")
 
     #if PTandRoot == None:
     PTandRoot = "predictand files/NoviSadPrecOBS.dat" ##Predictand file
@@ -73,7 +140,8 @@ def calibrateModelDefaultExperience():
     #    "p8_f", "p8_z", "p8_v", "p8_u","p8th", 
     #    "p8zh", "shum", "dswr", 
     #    "lftx", #"pottmp", "pr_wtr",
-        "p__f", "p__u", "p__v", "p__z"
+        "p__f", "p__u", "p__v", "p__z",
+        "p_th", "p_zh"
     #"p5th"
     ] #note - ncep_prec.dat is absent - nice round number of 30
     for i in range(len(fileList)):
@@ -86,6 +154,8 @@ def calibrateModelDefaultExperience():
     fileList.insert(0, PTandRoot)
     
     results = calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType, parmOpt, autoRegression, includeChow, detrendOption, doCrossValidation, crossValFolds)
+    
+    return results
 
     ## Output for similar results to the OG software:
     print(f"FINAL RESULTS:")
@@ -96,64 +166,68 @@ def calibrateModelDefaultExperience():
     print(f"\nPredictors:\n")
     for i in fileList:
         print(i)
+
+    month_name = {
+        "January":"January  ",
+        "February":"February ",
+        "March":"March    ",
+        "April":"April    ",
+        "May":"May      ",
+        "June":"June     ",
+        "July":"July     ",
+        "August":"August   ",
+        "September":"September",
+        "October":"October  ",
+        "November":"November ",
+        "December":"December ",
+        "Mean":"Mean     "
+    }
+
             
     ##Useful info on how to display/format the resutls...
     #from calendar import month_name
     ## Better formatted Month Names so they are all same length
-    month_name = [
-        "January  ",
-        "February ",
-        "March    ",
-        "April    ",
-        "May      ",
-        "June     ",
-        "July     ",
-        "August   ",
-        "September",
-        "October  ",
-        "November ",
-        "December ",
-        ]
+    months2 = deepcopy(months)
+    months2.append("Mean")
     u = "Unconditional"
+    c = "Conditional"
+    x = "xValidation"      
     print(f"\nUnconditional Statistics:")
     print(f"\nMonth\t\tRSquared\tSE\t\tFRatio\t\t{'D-Watson' if not parmOpt else 'Prop Correct'}\t{'Chow' if includeChow else ''}")
     if not parmOpt:
-        for i in range(12):
+        for i in months2:
             if includeChow:
                 print(f"{month_name[i]}\t{results[u][i]['RSquared']:.4f}\t\t{results[u][i]['SE']:.4f}\t\t{results[u][i]['FRatio']:.2f}\t\t{results[u][i]['D-Watson']:.4f}\t\t{results[u][i]['Chow']:.4f}")
             else:
                 print(f"{month_name[i]}\t{results[u][i]['RSquared']:.4f}\t\t{results[u][i]['SE']:.4f}\t\t{results[u][i]['FRatio']:.2f}\t\t{results[u][i]['D-Watson']:.4f}")
         if doCrossValidation:
-            x = "xValidation"
             print(f"\nCross Validation Results:")
             print(f"\nMonth\t\tRSquared\tSE\t\tD-Watson\tSpearman\tBias")
-            for i in range(12):
+            for i in months2:
                 print(f"{month_name[i]}\t{results[u][x][i]['RSquared']:.4f}\t\t{results[u][x][i]['SE']:.4f}\t\t{results[u][x][i]['D-Watson']:.4f}\t\t{results[u][x][i]['SpearmanR']:.4f}\t\t{results[u][x][i]['Bias']:.4f}")
+
     else:
-        for i in range(12):
+        for i in months2:
             if includeChow:
                 print(f"{month_name[i]}\t{results[u][i]['RSquared']:.4f}\t\t{results[u][i]['SE']:.4f}\t\t{results[u][i]['FRatio']:.4f}\t\t{results[u][i]['PropCorrect']:.4f}\t\t{results[u][i]['Chow']:.4f}")
             else:
                 print(f"{month_name[i]}\t{results[u][i]['RSquared']:.4f}\t\t{results[u][i]['SE']:.4f}\t\t{results[u][i]['FRatio']:.4f}\t\t{results[u][i]['PropCorrect']:.4f}")
         if doCrossValidation:
-            x = "xValidation"
             print(f"\nCross Validation Results:")
             print(f"\nMonth\t\tRSquared\tSE\t\tProp Correct")
-            for i in range(12):
+            for i in months2:
                 print(f"{month_name[i]}\t{results[u][x][i]['RSquared']:.4f}\t\t{results[u][x][i]['SE']:.4f}\t\t{results[u][x][i]['PropCorrect']:.4f}")
-        c = "Conditional"
         print(f"\nConditional Statistics:")
         print(f"\nMonth\t\tRSquared\tSE\t\tFRatio\t\t{'Chow' if includeChow else ''}")
-        for i in range(12):
+        for i in months2:
             if includeChow:
                 print(f"{month_name[i]}\t{results[c][i]['RSquared']:.4f}\t\t{results[c][i]['SE']:.4f}\t\t{results[c][i]['FRatio']:.4f}\t\t{results[c][i]['Chow']:.4f}")
             else:
                 print(f"{month_name[i]}\t{results[c][i]['RSquared']:.4f}\t\t{results[c][i]['SE']:.4f}\t\t{results[c][i]['FRatio']:.4f}")
         if doCrossValidation:
-            x = "xValidation"
             print(f"\nCross Validation (Conditional Part) Results:")
             print(f"\nMonth\t\tRSquared\tSE\t\tSpearman")
-            for i in range(12):
+            for i in months2:
                 print(f"{month_name[i]}\t{results[c][x][i]['RSquared']:.4f}\t\t{results[c][x][i]['SE']:.4f}\t\t{results[c][x][i]['SpearmanR']:.4f}")
         
         
@@ -166,7 +240,7 @@ def calibrateModelDefaultExperience():
 
 def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=False, autoRegression=False, includeChow=False, detrendOption=0, doCrossValidation=False, crossValFolds=2):
     """
-        Core Calibrate Model Function (v0.4.1)
+        Core Calibrate Model Function (v0.7.1)
         fileList -> Array of predictor file paths. First entry should be the predictand file
         PARfilePath -> Save path for the output file (PARfile)
         fsDate -> Fit start date (currently accepts Date object, may adjust to accept string)
@@ -179,7 +253,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
         doCrossValidation -> Cross Validation Tickbox
         crossValFolds -> Number of folds for CrossValidation
         ----------------------------------------
-        CalibrateModel (will in the future) also reads the following from the Global Setings:
+        CalibrateModel also reads the following from the Global Setings:
         > globalStartDate & globalEndDate -> "Standard" start / end date
         > thresh -> Event Threshold
         > globalMissingCode -> "Missing Data Identifier"
@@ -191,157 +265,84 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
 
     ##Real comments will be added later
 
-    ##NEW in v0.2.0:
-    ## Readded LastSeason & LastMonth
-    ## Replaced all instances of np.array with np.ndarray
-    ## Added IncreaseDate back where necessary
-    ## Corrected periodWorkingOn to be within 0-11 rather than 1-12
-    ## Fixed section #5.2.0 such that it now runs without crashing
-
-    ##In v0.2.1:
-    ## detrendOption correctly uses 0, 1 & 2 rather than bool
-    ## Adjusted DetrendData to use detrendOption as parameter
-
-    ## In v0.2.2:
-    ## Propogate Conditional & Unconditional functions 
-    
-    ## In v0.3.0:
-    ## Calculate Parms & Calc Parms #2 implemented
-    ## calcPropCorrect & calcRSQR helper functions added
-    ## new parameter "optimisationChoice" (is int, might want bool or tiny int...)
-    ## new parameter includeChow (is bool)
-
-    ## In v0.4.0:
-    ## Various corrections so that the correct output is consistenty given for default parameters
-    ## - (Annual, 4 Predictor files, Conditional process, no autoregression or xvalidation, any date)
-    ## Corrections include adjustments to PTandRoot & FileList, calcRSQR, certain range() arrays, 
-    ##  matrix resizing in propogateConditional, corrections to transformData, calcParams1 and 2, 
-    ##  and finally fixing the issue regarding not all data being read in
-    ## Now gives correct output (i.e. identical to the original SDSM tool)
-
-    ## In v0.4.1
-    ## Revised parameters for CalibrateModel
-    ## Explicitly separated parameters read from the settings
-    ## Adjusted output format
-
-    ## In v0.5.0
-    ## Finished implementation of:
-    ## - Autoregression
-    ## - ChowStat
-    ## - Annual/Monthly/Season options
-    ## - parmOpt
-
-    ## In v0.5.1
-    ## Fixed bug regarding residualArrays being calculated twice during Conditional, and never during uncond
-    ## Removed PTandRoot - Will be handled externally. Assume that its been merged into the filelist
-
-    ## In v0.6.0
-    ## Finished implementation of CrossValidation
-
-    ## In v0.6.1
-    ## Added crossValFolds parameter
-
-    #------------------------
-    # FUNCTION DEFINITITIONS:
-    #------------------------
-
     ## Globals: import from settings
-    GlobalMissingCode = -999
-    globalStartDate = date(1948, 1, 1) #date(2004, 8, 5)
-    globalEndDate = date(2017, 12, 31) #date(1961, 1, 10) #date(2017, 12, 31)#date(2025, 1, 7)
-    thresh = 0 ## ??? - Need to import from another file. Event thresh is 0 by default...
+    reloadGlobals()
+    globalMissingCode = _globalSettings['globalmissingcode']
+    globalStartDate = _globalSettings['globalsdate']
+    globalEndDate = _globalSettings['globaledate']
+    thresh = _globalSettings['thresh'] #Event thresh should be 0 by default...
     ## Import from "Advanced Settings"
-    modelTrans = 1 ## Model transformation; 1=none, 2=4root, 3=ln, 4=Inv Normal, 5=box cox
-    applyStepwise = False
-    optimisationChoice = 1 ## 0 caused errror -> double check
+    modelTrans = _globalSettings['modelTrans'] #Model transformation; 1=none, 2=4root, 3=ln, 4=Inv Normal, 5=box cox
+    applyStepwise = _globalSettings['stepwiseregression']
     ## Location Unknown:
-    countLeapYear = True
+    countLeapYear = _globalSettings['leapYear']
     ## End of Settings Imports (Default Values for now)
 
     NPredictors = len(fileList) - 1
-    debugMsg(fileList)
-    ## Other Vars:
-    progValue = 0 ## Progress Bar
 
-    ##???
-    #propResiduals = False
-    #if propResiduals:
-    #    residualArray = np.ndarray
-
-    ## True Temps:
-    #rSquared = 0
-    #SE = 0
-    #chowStat = 0
-    #fRatio = 0
-    parameterResultsArray = np.zeros((24,50))
-    #CondPropCorrect = 5
-
-    seasonMonths = [ ##Necesary for Season Month Lookups
-        [0, 1, 11], #Winter
-        [2, 3, 4], #Spring
-        [5, 6, 7], #Summer
-        [8, 9, 10]] #Autumn
-
-    ## Note: The following vars were not adjusted to use 0 as their base:
-    # ModelTrans
-    # SeasonCode
     # NB: ModelType starts from 0
     # NB: Swap WorkingDate.Month to CurrentMonth
 
     ## Idea: Could define commonly used ranges here so that we don't keep regenerating them each time.
 
     #------------------------
-    #------ SECTION #1 ------ Error Checking & Validation
+    #----- SECTION #1.0 ----- Error Checking & Validation
     #------------------------
 
-    ##not used rn -> will add later
-    ##i have notes trust me
-    
-    if True:
+    if fileList[0] == "":
+        raise ValueError("You must select a predictand")
+    elif len(fileList) < 2:
+        raise ValueError("You must select at least one predictor")
+    elif applyStepwise and NPredictors > 8:
+        raise ValueError("You cannot select more than 8 predictors for the stepwise approach")
+    elif applyStepwise and doCrossValidation:
+        raise ValueError("You cannot perform a cross validation with the stepwise approach")
+    elif applyStepwise and modelType != 2:
+        raise ValueError("You can only select an annual model for the stepwise approach")
+    elif applyStepwise and parmOpt:
+        raise ValueError("You can only select an unconditional model for the stepwise approach")
+    elif PARfilePath == "":
+        raise ValueError("You must enter an appropriate output (PAR) file name")
+    elif not fSDateOK(fsDate, feDate, globalStartDate):
+        raise ValueError("Invalid start date, see logs for more information")
+    elif not fEDateOK(fsDate, feDate, globalEndDate):
+        raise ValueError("Invalid end date, see logs for more information")
+    else:
+
+    #if True:
         #------------------------
-        #------ SECTION #2 ------ Unknown/Initialisation?
+        #----- SECTION #1.1 ----- Initialisation?
         #------------------------
+
+
+        ## Other Vars:
+        #progValue = 0 ## Progress Bar
+
+        betaTrend = {}
+
+        parameterResultsArray = np.zeros((24,50))
+        biasCorrection = np.ones(12)
+
+        seasonMonths = [ ##Necesary for Season Month Lookups
+            [0, 1, 11], #Winter
+            [2, 3, 4], #Spring
+            [5, 6, 7], #Summer
+            [8, 9, 10]] #Autumn
         
-        #xValidationResults = np.ndarray((13, 7)).fill(GlobalMissingCode) ## Original array is XValidationResults(1 To 13, 1 To 7) As Double
+        #xValidationResults = np.ndarray((13, 7)).fill(globalMissingCode) ## Original array is XValidationResults(1 To 13, 1 To 7) As Double
         xValidationOutput = {"Unconditional": {}, "Conditional": {}}
         xValidMessageShown = False
 
         #if ApplyStepwise:
             ## Add msg
     
-        lambdaArray = np.zeros((12,2)) ## Lamda array originally "LamdaArray(1 To 12, 1 To 2) As Double"
-
-        processTerminated = False
+        lamdaArray = np.zeros((12,2)) ## Lamda array originally "LamdaArray(1 To 12, 1 To 2) As Double"
 
         statsSummary = np.zeros((26,5)) ## Originally StatsSummary(1 To 26, 1 To 5) As Double
-
-        dependMgs = False
-
-        #-----------------
-        ##CLOSE FILES HERE -> idk why, likely contingency / prep
-        #-----------------
 
         ## Reading in data from files?
         ## FileList is the selected files from 
         loadedFiles = loadFilesIntoMemory(fileList) 
-
-        """
-                                            'Open selected files
-        Open PTandRoot For Input As #1      'Predictand file
- 
-        Do Until FileList.ListCount = 0      'Remove any predictors from FileList just in case
-            FileList.RemoveItem 0
-        Loop
-        predictorfileNo = 2                 'File # of predictor file starts at 2
-        For subloop = 0 To File2.ListCount - 1  'Check for selected files
-            If File2.Selected(subloop) Then     'If file is selected
-                FileList.AddItem File2.List(subloop)    'Add to list of selected files
-                Open File2.Path & "\" & File2.List(subloop) For Input As #predictorfileNo
-                predictorfileNo = predictorfileNo + 1
-            End If
-        Next subloop
-        outputFileNo = NPredictors + 2  '# for output file set
-        """
 
         ## Season Code thingy
         ## Move and calculate in the widget later
@@ -356,12 +357,10 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
         noOfDays2Fit = (feDate - fsDate).days + 1
         
         #------------------------
-        #------ SECTION #3 ------ Filtration?
+        #------ SECTION #2 ------ Find Baseline?
         #------------------------
         
         totalToSkip = (fsDate - globalStartDate)
-        #if totalToSkip > 0:
-            ## Progress Bar Stuff
 
 
         fsDateBaseline = np.zeros((12)) ## Original: FSDateBaseline(1 To 12) As Long
@@ -379,24 +378,18 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
             else: ##Assume seasonCode = 12:
                 fsDateBaseline[workingDate.month -1] += 1
 
-            ##########################################
-            ## What is "DoEvents"?
-            ##########################################
-
             #for i in range(NPredictors + 1):
                 ##Load in files?
             searchPos += 1
 
             totalNumbers += 1
-            ##Call IncreaseDate
             workingDate = increaseDate(workingDate, 1, countLeapYear)
-            progValue = np.floor((totalNumbers / totalToSkip.days) * 100)
-            ##Update progress bar with progValue
+            #progValue = np.floor((totalNumbers / totalToSkip.days) * 100)
 
         ## END While
 
         #------------------------
-        #----- SECTION #4.0 ----- ???
+        #----- SECTION #2.1 ----- dataReadIn initialisation
         #------------------------
 
         if seasonCode == 1:
@@ -420,7 +413,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
 
 
         #------------------------
-        #----- SECTION #4.1 ----- (Finding the Start Pos)
+        #----- SECTION #2.2 ----- (Finding the Start Pos)
         #------------------------
 
         ## Revisit the following - Something feels off... ##
@@ -434,8 +427,8 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
             startFound = True
             for i in range(NPredictors + 1):
                 #tempReadin[i] = loadedFiles[i]
-                #if tempReadin[i] == GlobalMissingCode: startFound = False
-                if loadedFiles[i][searchPos] == GlobalMissingCode: 
+                #if tempReadin[i] == globalMissingCode: startFound = False
+                if loadedFiles[i][searchPos] == globalMissingCode: 
                     startFound = False
                     #debugMsg(f"Missing Value detected at searchPos: {searchPos} in file {fileList[i]}")
                 #else:
@@ -444,7 +437,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
             searchPos += 1
             #next i
             totalNumbers += 1
-            progValue = np.floor((totalNumbers / nDaysR) * 100)
+            #progValue = np.floor((totalNumbers / nDaysR) * 100)
             #call newProgressBar
 
         #lastDate = deepcopy(workingDate)
@@ -470,7 +463,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
             sectionSizes[currentPeriod, 0] += 1
 
         #------------------------
-        #----- SECTION #4.2 ----- Finding evidence of missing values(?)
+        #----- SECTION #2.3 ----- Load remaining data into loadedFiles for next section
         #------------------------
 
         #call increasedate
@@ -489,8 +482,8 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
             anyMissing = False
             for i in range(NPredictors + 1):
                 #tempReadin[i] = loadedFiles[i] ## input #j, tempReadin(j)
-                #if tempReadin[j] == GlobalMissingCode: anyMissing = True
-                if loadedFiles[i][searchPos] == GlobalMissingCode:
+                #if tempReadin[j] == globalMissingCode: anyMissing = True
+                if loadedFiles[i][searchPos] == globalMissingCode:
                     anyMissing = True
                 #else:
             #next i
@@ -529,7 +522,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
             workingDate = increaseDate(workingDate, 1, countLeapYear)
             currentMonth = workingDate.month - 1
             currentSeason = getSeason(workingDate.month)
-            progValue = np.floor((totalNumbers / nDaysR) * 100)
+            #progValue = np.floor((totalNumbers / nDaysR) * 100)
             searchPos += 1
 
         ##End while
@@ -539,7 +532,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
         #################
 
         #------------------------
-        #----- SECTION #5.0 ----- 
+        #----- SECTION #3.0 ----- 
         #------------------------
 
         anyMissing = False
@@ -550,8 +543,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
 
         if anyMissing:
             #error here
-            debugMsg(f"ERROR: Insufficient Data")
-            exit()
+            raise ValueError("Insufficient data available to build a model")
         else:
             xMatrix = None
             yMatrix = None
@@ -562,7 +554,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                 "noOfResiduals": 0
             }
             #------------------------
-            #---- SECTION #5.1.0 ---- SeasonCode 1 -> Annuals
+            #---- SECTION #3.1.0 ---- SeasonCode 1 -> Annuals
             #------------------------
 
             ## uwu
@@ -615,12 +607,14 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                 ##endif
                 
                 #------------------------
-                #---- SECTION #5.1.1 ---- 
+                #---- SECTION #3.1.1 ---- 
                 #------------------------
 
                 if (detrendOption != 0 and not parmOpt):
                     ##call detrendData(periodWorkingOn, False)
-                    detrendData(yMatrix, yMatrixAboveThreshPos, detrendOption, periodWorkingOn, False)
+                    dResults = detrendData(yMatrix, yMatrixAboveThreshPos, detrendOption, fsDateBaseline[periodWorkingOn], False)
+                    yMatrix = dResults["yMatrix"]
+                    betaTrend[periodWorkingOn] = dResults["betaValues"]
 
                 savedYMatrix = deepcopy(yMatrix)
 
@@ -631,29 +625,37 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                 if doCrossValidation:
                     ##call xValUnConditional
                     #xValUnConditional()
-                    xValResults = xValidation(xMatrix, yMatrix, crossValFolds, parmOpt)
-                    for i in range(12):
-                        xValidationOutput["Unconditional"][i] = xValResults
+                    try:
+                        xValResults = xValidation(xMatrix, yMatrix, crossValFolds, parmOpt)
+                    except Exception as e: 
+                        if not xValidMessageShown:
+                            xValidMessageShown = True
+                            displayError(e)
+                    else:
+                        for i in range(12):
+                            xValidationOutput["Unconditional"][months[i]] = xValResults
 
 
                 conditionalPart = False ##Needed for CalcParameters
 
                 if applyStepwise:
                     ##call stepwise_regression(parmOpt)
-                    stepWiseRegression() ##very wise #betamatrix defined here
-                else:
-                    ##call CalculateParameters(parmOpt)
-                    params = calculateParameters(xMatrix, yMatrix, optimisationChoice, NPredictors, includeChow, conditionalPart, parmOpt, not parmOpt, residualArray)   #betamatrix defined here
+                    stepAdjust = stepWiseRegression(xMatrix, yMatrix, NPredictors) ##very wise
+                    newFileList = [fileList[0]] 
+                    for i in stepAdjust['newFileList']:
+                        newFileList += [fileList[i]]
+                    fileList = newFileList
+                    NPredictors = stepAdjust['NPredictors']
+                    xMatrix = stepAdjust['xMatrix']
                 ##endif
-
-                if processTerminated:
-                    ##call mini_reset
-                    do_nothing()
+                
+                ##call CalculateParameters(parmOpt)
+                params = calculateParameters(xMatrix, yMatrix, NPredictors, includeChow, conditionalPart, parmOpt, not parmOpt, residualArray)   #betamatrix defined here
 
                 yMatrix = savedYMatrix
 
                 for i in range(12):  ## 0-11 inclusive
-                    for j in range(NPredictors): ## 0-NPred inclusive
+                    for j in range(NPredictors + 1): ## 0-NPred inclusive
                         parameterResultsArray[i, j] = params["betaMatrix"][j]
                     ##next
                     ##Dim ParameterResultsArray(1 To 24, 1 To 50) As Double   'stores beta parmeters etc from calulations as going along - printed to file in the end
@@ -667,7 +669,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                 ##next
 
                 #------------------------
-                #---- SECTION #5.1.2 ---- Conditional Part
+                #---- SECTION #3.1.2 ---- Conditional Part
                 #------------------------
 
                 if autoRegression:
@@ -696,48 +698,66 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                         if yMatrix[i] <= thresh:
                             ## NEW AND IMPROVED RESIZE CODE HERE:
                             rejectedIndex.append(i)
+                        else:
+                            yMatrixAboveThreshPos[i] = i+1
                         #End If
                     #Next i
                     xMatrix = np.delete(xMatrix, rejectedIndex, 0)
                     yMatrix = np.delete(yMatrix, rejectedIndex)
+                    yMatrixAboveThreshPos = np.delete(yMatrixAboveThreshPos, rejectedIndex)
 
                     ### End of propogateConditional Code ###
                     
                     if doCrossValidation:
                         #call xvalConditional
                         #xValConditional()
-                        xValResults = xValidation(xMatrix, yMatrix, crossValFolds, parmOpt, True)
-                        for i in range(12):
-                            xValidationOutput["Conditional"][i] = xValResults
+                        try:
+                            xValResults = xValidation(xMatrix, yMatrix, crossValFolds, parmOpt, True)
+                        except Exception as e:
+                            if not xValidMessageShown:
+                                xValidMessageShown = True
+                                displayError(e)
+                        else:
+                            for i in range(12):
+                                xValidationOutput["Conditional"][months[i]] = xValResults
 
                     #call TransformData
-                    transformData(xMatrix, yMatrix, yMatrixAboveThreshPos, modelTrans)
+                    tResults = transformData(xMatrix, yMatrix, [yMatrixAboveThreshPos], modelTrans)
                     ##if errored then exit
+                    if modelTrans != 1:
+                        xMatrix = tResults['xMatrix']
+                        yMatrix = tResults['yMatrix']
+                        yMatrixAboveThreshPos = tResults['extraArrays'][0]
+                        tResults = tResults['tResults'] 
+                        #We don't need tResults to point to the other matricies 
+                        # -> they have their own dedicated variables
 
                     if detrendOption != 0:
                         ##call DetrendData
-                        detrendData(yMatrix, yMatrixAboveThreshPos, detrendOption, periodWorkingOn, True)
+                        dResults = detrendData(yMatrix, yMatrixAboveThreshPos, detrendOption, periodWorkingOn, True)
+                        yMatrix = dResults["yMatrix"]
+                        betaTrend[periodWorkingOn] = dResults["betaValues"]
+
 
 
                     if modelTrans == 5:
                         for i in range(12):
-                            lamdaArray[i, 0] = lamda
-                            lamdaArray[i, 1] = shiftRight
+                            lamdaArray[i, 0] = tResults['lamda']
+                            lamdaArray[i, 1] = tResults['shiftRight']
 
                     ##Can we move the following above, to make it an elif?
                     conditionalPart = True
                     #call CalculateParameters(true)
-                    params = calculateParameters(xMatrix, yMatrix, optimisationChoice, NPredictors, includeChow, conditionalPart, parmOpt, True, residualArray) #betaMatrix defined here
+                    params = calculateParameters(xMatrix, yMatrix, NPredictors, includeChow, conditionalPart, parmOpt, True, residualArray, tResults) #betaMatrix defined here
 
-                    if processTerminated:
-                        ##exit
-                        do_nothing()
                     if modelTrans == 4:
+                        yDash = np.sum(np.matmul(xMatrix, params['betaMatrix']))
+                        biasCorrect = 0 if yDash == 0 else (np.sum(yMatrix) / yDash)
                         for i in range(12):
-                            biasCorrection[i] = CalculateBiasCorrection()
+                            biasCorrection[i] = biasCorrect
                     
                     for i in range(12, 24):
-                        for j in range(NPredictors):
+                        for j in range(NPredictors + 1):
                             parameterResultsArray[i, j] = params["betaMatrix"][j]
                         ##next
                         parameterResultsArray[i, NPredictors + 1] = params["SE"]
@@ -749,7 +769,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                     ##next
                 else:
                     #------------------------
-                    #---- SECTION #5.1.3 ---- DW calculations
+                    #---- SECTION #3.1.3 ---- DW calculations
                     #------------------------
 
                     ##Need to properly calc residualMatrixRows
@@ -764,7 +784,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                 #Call NewProgressBar(ProgressPicture, 100, 100, "Calibrating Model")
 
                 #------------------------
-                #---- SECTION #5.2.0 ---- (season/month)
+                #---- SECTION #3.2.0 ---- (season/month)
                 #------------------------
             else:
                 for periodWorkingOn in range(seasonCode):
@@ -775,7 +795,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                     if not autoRegression:
                         xMatrix = np.ndarray((sizeOfDataArray[periodWorkingOn], NPredictors + 1))
                         yMatrix = np.ndarray((sizeOfDataArray[periodWorkingOn]))
-                        yMatrixAboveThreshPos = np.ndarray((sizeOfDataArray[0]))
+                        yMatrixAboveThreshPos = np.ndarray((sizeOfDataArray[periodWorkingOn]))
                         for i in range(sizeOfDataArray[periodWorkingOn]):
                             yMatrix[i] = dataReadIn[periodWorkingOn, 0, i]
                             xMatrix[i, 0] = 1
@@ -824,12 +844,15 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                     ##endif
 
                     #------------------------
-                    #---- SECTION #5.2.1 ---- 
+                    #---- SECTION #3.2.1 ---- 
                     #------------------------
 
                     if (detrendOption != 0 and not parmOpt):
                         ##call detrendData(periodWorkingOn, False)
-                        detrendData(yMatrix, yMatrixAboveThreshPos, detrendOption, periodWorkingOn, False)
+                        dResults = detrendData(yMatrix, yMatrixAboveThreshPos, detrendOption, periodWorkingOn, False)
+                        yMatrix = dResults["yMatrix"]
+                        betaTrend[periodWorkingOn] = dResults["betaValues"]
+
                        
                     savedYMatrix = deepcopy(yMatrix)
 
@@ -842,28 +865,30 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                     if doCrossValidation:
                         ##call xValUnconditional
                         #xValUnConditional()
-                        xValResults = xValidation(xMatrix, yMatrix, crossValFolds, parmOpt)
-                        if seasonCode == 4:
-                            for i in range(3):
-                                xValidationOutput["Unconditional"][seasonMonths[periodWorkingOn][i]] = xValResults
-                        else: #Assume monthly
-                            xValidationOutput["Unconditional"][periodWorkingOn] = xValResults
+                        try:
+                            xValResults = xValidation(xMatrix, yMatrix, crossValFolds, parmOpt)
+                        except Exception as e: 
+                            if not xValidMessageShown:
+                                xValidMessageShown = True
+                                displayError(e)
+                        else:
+                            if seasonCode == 4:
+                                for i in range(3):
+                                    xValidationOutput["Unconditional"][months[seasonMonths[periodWorkingOn][i]]] = xValResults
+                            else: #Assume monthly
+                                xValidationOutput["Unconditional"][months[periodWorkingOn]] = xValResults
 
                     ###until now, #6.2.1 is near identical to #6.1.1,
                     ###but is notably missing the ApplyStepwise condition for CalcualteParameters
 
                     ##call CalculateParameters(parmOpt) ##Adjust to make sure its correct...?
-                    params = calculateParameters(xMatrix, yMatrix, optimisationChoice, NPredictors, includeChow, conditionalPart, parmOpt, not parmOpt, residualArray)     #betaMatrix Defined Here
-
-                    if processTerminated:
-                        ##call mini_reset
-                        do_nothing()
+                    params = calculateParameters(xMatrix, yMatrix, NPredictors, includeChow, conditionalPart, parmOpt, not parmOpt, residualArray)     #betaMatrix Defined Here
 
                     yMatrix = savedYMatrix
 
                     if seasonCode == 4:
                         for i in range(3):
-                            for j in range(NPredictors):
+                            for j in range(NPredictors + 1):
                                parameterResultsArray[seasonMonths[periodWorkingOn][i], j] = params["betaMatrix"][j]
                             ##next j
                             parameterResultsArray[seasonMonths[periodWorkingOn][i], NPredictors + 1] = params["SE"]
@@ -874,7 +899,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                             statsSummary[seasonMonths[periodWorkingOn][i], 4] = params["fRatio"]
                         ##next i
                     else: ##Monthly?
-                        for i in range(NPredictors):
+                        for i in range(NPredictors + 1):
                             parameterResultsArray[periodWorkingOn, i] = params["betaMatrix"][i]
                         ##next
                         parameterResultsArray[periodWorkingOn, NPredictors + 1] = params["SE"]
@@ -886,7 +911,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                     ##endif
 
                     #------------------------
-                    #---- SECTION #5.2.2 ---- (Conditional Part)
+                    #---- SECTION #3.2.2 ---- (Conditional Part)
                     #------------------------
 
                     if autoRegression:
@@ -913,92 +938,88 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
 
                         ### propogateConditional Code ###
 
+                        print(f"Len yMat: {len(yMatrix)}")
+                        print(f"Len yMatAbove: {len(yMatrixAboveThreshPos)}")
                         rejectedIndex = []
                         for i in range(len(yMatrix)):
                             if yMatrix[i] <= thresh:
                                 ## NEW AND IMPROVED RESIZE CODE HERE:
                                 rejectedIndex.append(i)
-                                #yMatrixAboveThreshPos
+                            else:
+                                yMatrixAboveThreshPos[i] = i+1
                             #End If
                         #Next i
                         xMatrix = np.delete(xMatrix, rejectedIndex, 0)
                         yMatrix = np.delete(yMatrix, rejectedIndex)
+                        yMatrixAboveThreshPos = np.delete(yMatrixAboveThreshPos, rejectedIndex)
 
                         ### End of propogateConditional Code ###
 
                         if doCrossValidation:
                             #call xValConditional
                             #xValConditional()
-                            xValResults = xValidation(xMatrix, yMatrix, crossValFolds, parmOpt, True)
-                            if seasonCode == 4:
-                                for i in range(3):
-                                    xValidationOutput["Conditional"][seasonMonths[periodWorkingOn][i]] = xValResults
-                            else: #Assume monthly
-                                xValidationOutput["Conditional"][periodWorkingOn] = xValResults
+                            try:
+                                xValResults = xValidation(xMatrix, yMatrix, crossValFolds, parmOpt, True)
+                            except Exception as e: 
+                                if not xValidMessageShown:
+                                    xValidMessageShown = True
+                                    displayError(e)
+                            else:
+                                if seasonCode == 4:
+                                    for i in range(3):
+                                        xValidationOutput["Conditional"][months[seasonMonths[periodWorkingOn][i]]] = xValResults
+                                else: #Assume monthly
+                                    xValidationOutput["Conditional"][months[periodWorkingOn]] = xValResults
                         
                         #call TransformData
-                        transformData(xMatrix, yMatrix, yMatrixAboveThreshPos, modelTrans)
+                        tResults = transformData(xMatrix, yMatrix, [yMatrixAboveThreshPos], modelTrans)
                         #if errored then exit
+                        if modelTrans != 1:
+                            xMatrix = tResults['xMatrix']
+                            yMatrix = tResults['yMatrix']
+                            yMatrixAboveThreshPos = tResults['extraArrays'][0]
+                            tResults = tResults['tResults'] 
+                            #We don't need tResults to point to the other matricies 
+                            # -> they have their own dedicated variables
+
 
                         if detrendOption != 0:
                             ##call DetrendData
-                            detrendData(yMatrix, yMatrixAboveThreshPos, detrendOption, periodWorkingOn, True)
+                            dResults = detrendData(yMatrix, yMatrixAboveThreshPos, detrendOption, periodWorkingOn, True)
+                            yMatrix = dResults["yMatrix"]
+                            betaTrend[periodWorkingOn] = dResults["betaValues"]
+
 
                         if modelTrans == 5:
-                            if seasonCode == 12:
-                                lamdaArray[periodWorkingOn, 0] = lamda
-                                lamdaArray[periodWorkingOn, 1] = shiftRight
-                            else:
-                                if periodWorkingOn == 0:
-                                    lamdaArray[0, 0] = lamda
-                                    lamdaArray[1, 0] = lamda
-                                    lamdaArray[11, 0] = lamda
-                                    lamdaArray[0, 1] = shiftRight
-                                    lamdaArray[1, 1] = shiftRight
-                                    lamdaArray[11, 1] = shiftRight
-                                elif periodWorkingOn == 1:
-                                    lamdaArray[2, 0] = lamda
-                                    lamdaArray[3, 0] = lamda
-                                    lamdaArray[4, 0] = lamda
-                                    lamdaArray[2, 1] = shiftRight
-                                    lamdaArray[3, 1] = shiftRight
-                                    lamdaArray[4, 1] = shiftRight
-                                elif periodWorkingOn == 2:
-                                    lamdaArray[5, 0] = lamda
-                                    lamdaArray[6, 0] = lamda
-                                    lamdaArray[7, 0] = lamda
-                                    lamdaArray[5, 1] = shiftRight
-                                    lamdaArray[6, 1] = shiftRight
-                                    lamdaArray[7, 1] = shiftRight
-                                elif periodWorkingOn == 3:
-                                    lamdaArray[8, 0] = lamda
-                                    lamdaArray[9, 0] = lamda
-                                    lamdaArray[10, 0] = lamda
-                                    lamdaArray[8, 1] = shiftRight
-                                    lamdaArray[9, 1] = shiftRight
-                                    lamdaArray[10, 1] = shiftRight
-                                ##endif
+                            if seasonCode == 4:
+                                for i in range(3):
+                                    lamdaArray[seasonMonths[periodWorkingOn][i], 0] = tResults['lamda']
+                                    lamdaArray[seasonMonths[periodWorkingOn][i], 1] = tResults['shiftRight']
+                            else: #assume seasonCode == 12:
+                                lamdaArray[periodWorkingOn, 0] = tResults['lamda']
+                                lamdaArray[periodWorkingOn, 1] = tResults['shiftRight']
                             ##endif
                         ##endif
                         conditionalPart = True
                         ##call CalculateParameters(true)
-                        params = calculateParameters(xMatrix, yMatrix, optimisationChoice, NPredictors, includeChow, conditionalPart, parmOpt, True, residualArray) #BetaMatrix defined here
-                        if processTerminated:
-                            ##exit
-                            do_nothing()
+                        params = calculateParameters(xMatrix, yMatrix, NPredictors, includeChow, conditionalPart, parmOpt, True, residualArray, tResults) #BetaMatrix defined here
+                        
                         if modelTrans == 4:
+                            yDash = np.sum(np.matmul(xMatrix, params['betaMatrix']))
+                            biasCorrect = 0 if yDash == 0 else (np.sum(yMatrix) / yDash)
+
                             if seasonCode == 4:
-                                for i in range(1,4): ##???
-                                    biasCorrection[seasonMonths[periodWorkingOn][i]] = calculateBiasCorrection()
+                                for i in range(4): ##???
+                                    biasCorrection[seasonMonths[periodWorkingOn][i]] = biasCorrect
                                 ##next i
                             else:
-                                biasCorrection[periodWorkingOn] = calculateBiasCorrection()
+                                biasCorrection[periodWorkingOn] = biasCorrect
                             ##endif
                         ##endif
 
                         if seasonCode == 4:
                             for i in range(3): ##???
-                                for j in range(NPredictors):
+                                for j in range(NPredictors + 1):
                                     parameterResultsArray[seasonMonths[periodWorkingOn][i] + 12, j] = params["betaMatrix"][j]
                                 ##next j
                                 parameterResultsArray[seasonMonths[periodWorkingOn][i] + 12, NPredictors + 1] = params["SE"]
@@ -1009,7 +1030,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                                 statsSummary[seasonMonths[periodWorkingOn][i] + 12, 4] = params["fRatio"]
                             ##next i
                         else:
-                            for j in range(NPredictors):
+                            for j in range(NPredictors + 1):
                                 parameterResultsArray[periodWorkingOn + 12, j] = params["betaMatrix"][j]
                             ##next j
                             parameterResultsArray[periodWorkingOn + 12, NPredictors + 1] = params["SE"]
@@ -1021,7 +1042,7 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                         ##endif      
                     else:             
                         #------------------------
-                        #---- SECTION #5.2.3 ---- (DW Calculations)
+                        #---- SECTION #3.2.3 ---- (DW Calculations)
                         #------------------------
 
                         residualMatrix = params["residualMatrix"]
@@ -1070,103 +1091,63 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
             ##endif
                 
             #------------------------
-            #----- SECTION #6.0 ----- Printing to Scream?
+            #----- SECTION #4.0 ----- PARfile Output
             #------------------------
 
-            ##what is PARROOT FOR OUTPUT???
-
-            ##this might be the certified export parameters moment...
-            tempNPred = 0
-            if detrendOption != 0:
-                #print NPredictors
-                tempNPRed = NPredictors
-            else:
-                #print -Npredictors -> what
-                tempNPred = -NPredictors
-            #endif
-            #print seasonCode
-            #print yearIndicator
-            #print globalSDate
-            #print nDaysR
-            #print FSDate.text(?)
-            #print noOfDays2Fit
-            #write parmOpt
-            #write modelTrans
-            #print 1
-            #if autoRegression: ##Less than worthless
-                #print True
-            #else:
-                #print False
-            #endif
-            #for subloop in range(NPredictors): ##may remove in favour of the approach below...
-                #print FileList.List(subloop) ##No clue on this one...
-
-            #next subloop
-
             ##Vars "Written" to PAR file:
-            PARfileOutput = {
-                "NPredictors": NPredictors if detrendOption == 0 else -NPredictors,
-                "SeasonCode": seasonCode,
-                #"YearIndicator": yearIndicator,
-                "GlobalStartDate": globalStartDate,
-                "NDaysR": nDaysR,
-                "FitStartDate": fsDate,
-                "NoOfDays2Fit": noOfDays2Fit,
-                "RainfallParameter":parmOpt,
-                "ModelTrans": modelTrans,
-                "1":1, ##Idk what to do with this
-                "AutoRegression": autoRegression,
-                #"Predictand File": "your_predictand_file.dat"
-            }
+            print("GlobalSettings:")
+            for i in _globalSettings:
+                print(f"{i}: {_globalSettings[i]}")
+            PARfileOutput = [
+                f"{NPredictors if detrendOption == 0 else -NPredictors}", #NPredictors
+                f"{seasonCode}", #Season Code
+                "360" if _globalSettings['thirtyDay'] else ("366" if countLeapYear else "365"), #"YearIndicator": 
+                f"{globalStartDate}", #"Record Start Date": 
+                f"{nDaysR}", #"Record Length": 
+                f"{fsDate}", #"Fit start date": 
+                f"{noOfDays2Fit}", #"No of days in fit": 
+                #f"{int(parmOpt)}", #"Set Rainfall Parameter": ?
+                f"{parmOpt}",
+                f"{modelTrans}", #"Model Transformation option": 
+                "1", #"Ensemble size set to 1":#Idk what to do with this
+                #f"{int(autoRegression)}", #"Autoregression": 
+                f"{autoRegression}",
+            ]
 
-            ##OUTPUTS:
-            #showPARRout = True
-            if debug:
-                print()
-                print("#####################################")
-                print("########## PARFILE OUTPUTS ##########")
-                print("#####################################")
-                if detrendOption == 0:
-                    print(f"NPredictors: {NPredictors}")
-                else:
-                    print(f"NPredictors: {-NPredictors} (Detrend option selected)")
-                ##endif
-                print(f"Season Code: {seasonCode}")
-                print(f"Year Indicator: unknown") #yearIndicator
-                print(f"Record Start Date: {globalStartDate}")
-                print(f"Record Length: {nDaysR}")
-                print(f"Fit Start Date: {fsDate}")
-                print(f"No of days in fit: {noOfDays2Fit}")
-                print(f"Set Rainfall Parameter: {parmOpt}")
-                print(f"Model Transformation option: {modelTrans}")
-                print(f"1")
-                print(f"Autoregression: {autoRegression}")
+            for file in fileList:    
+                #PARfileOutput.append(file) #Save predictand & predictor file names
+                name = path.split(file)[-1]
+                PARfileOutput.append(name)
+            PARfileOutput = "\n".join(PARfileOutput) + "\n"
+            #call PrintResults
+            PARfileOutput += printResults(parameterResultsArray, NPredictors, parmOpt, biasCorrection, autoRegression, modelTrans, lamdaArray)
+            PARfileOutput += fileList[0] + "\n"
+            #print PTandRoot
+            if detrendOption != 0:   ##Will need to double check and standardise this parameter
+                #call PrintTrendParms]
+                PARfileOutput += printTrendParms(detrendOption, betaTrend, seasonCode)
+            #call newProgressBar
 
-                print("#####################################")
-                print("########## END OF PARFILE ###########")
-                print("#####################################")
-                print()
+            #Write to file
+            with open(PARfilePath, "w") as f:
+                print(PARfileOutput, file=f)
+                f.close()
 
-
-            ##real change here:
+            #------------------------
+            #----- SECTION #4.1 ----- Results Screen output
+            #------------------------
+            
             #from calendar import month_name as months
 
             output = {"Predictand": fileList[0]}
+
+            output['Predictors'] = fileList[1:]
             for subloop in range(1, NPredictors + 1):
                 output[f"Predictor#{subloop}"] = fileList[subloop]
-            #for i in range(1, 13):
-            #    output[months[i]] = {} # Initialize month associative array / dict
-            #    output[months[i]]["RSquared"] = statsSummary[i,0]
-            #    output[months[i]]["SE"] = statsSummary[i,1]
-            #    output[months[i]]["FRatio"] = statsSummary[i,4]
-            #    output[months[i]]["D-Watson"] = statsSummary[i,2]
-            #    output[months[i]]["Chow"] = None ##Coming soon!
+
             u = "Unconditional"
             c = "Conditional"
-            months = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
-]
+
             output[u] = {}
             for i in range(12):
                 output[u][months[i]] = {} # Initialize month associative array / dict
@@ -1197,22 +1178,51 @@ def calibrateModel(fileList, PARfilePath, fsDate, feDate, modelType=2, parmOpt=F
                 if parmOpt:
                     output[c]["xValidation"] = xValidationOutput[c]
             ##Done with "prelim data"
-            
-            #call PrintResults
-            #print PTandRoot
-            if detrendOption != 0:   ##Will need to double check and standardise this parameter
-                #call PrintTrendParms
-                #printTrendParms() ##???
-                do_nothing()
-            #call newProgressBar
-            
+
+            ##Mean Summaries:
+            iterator = []
+            if modelType == 0: #Monthly - All Values
+                iterator = range(12)
+            elif modelType == 1: #Seasonally = Only sum 4 values
+                iterator = [0,3,6,9]
+            else: #Annually - Skip summing (or be lazy and iterate once)
+                iterator = [0]
+
+            ##Loop saves cloning the summary code
+            for n in ({u, c} if parmOpt else {u}):
+                output[n]['Mean'] = {}
+                for key in output[n][months[0]]:
+                    output[n]['Mean'][key] = 0
+                    for i in iterator:
+                        output[n]['Mean'][key] += output[n][months[i]][key]
+                    output[n]['Mean'][key] /= len(iterator)
+                if doCrossValidation:
+                    output[n]['xValidation']['Mean'] = {}
+                    for key in output[n]['xValidation'][months[0]]:
+                        output[n]['xValidation']['Mean'][key] = 0
+                        for i in iterator:
+                            output[n]['xValidation']['Mean'][key] += output[n]['xValidation'][months[i]][key]
+                        output[n]['xValidation']['Mean'][key] /= len(iterator)
 
             #------------------------
-            #----- SECTION #6.1 ----- something something load calibResultsFrm
+            #----- SECTION #4.2 ----- last minute information appends / info not directly displayed
             #------------------------
+            
+            analysisPeriod = ['Monthly', 'Seasonal', 'Annual']
+            output['analysisPeriod'] = {
+                'startDate': fsDate,
+                'endDate': feDate,
+                'periodName': analysisPeriod[modelType],
+                'periodIndex': modelType
+            }
+            output['autoregression'] = autoRegression
+            output['ifXVal'] = doCrossValidation
 
-            ##This section is dedicated to the absolutely horrendous layout of the OG SDSM-DC application
-            ##Can safely ignore (i think) -> more useful to output the results to the parent GUI object and handle it there, better, from scratch...
+            #Plot Residual Graph?
+            #if residualAnalysis == 1:
+                #Show Scatter:
+            #plotScatter(residualArray)
+            output['residualArray'] = residualArray
 
             return output
 
@@ -1226,13 +1236,22 @@ def do_nothing():
 
 ##Core functions called directly from calibrateModel()
 
-def detrendData(yMatrix: np.array, yMatrixAboveThreshPos: np.array, detrendOption: int, period: int, conditional: bool):
+def detrendData(yMatrix: np.array, yMatrixAboveThreshPos: np.array, detrendOption: int, fsDateBaseline: int, conditional: bool):
     """"
     Detrend Data Function v1.1
     -- May or may not work - Find out soon!
     DetrendOption: 0 = none, 1 = Linear, 2 = power function
     Requires yMatrixAboveThreshPos to be set (generally configured in TransformData)
     """
+
+    #Dim BetaTrend(1 To 12, 1 To 3) As Double    
+    # 'holds parameters of de trend funtion if detrend option is selected;
+    # '1 to 12 for each month or season; for linear model (y=mx+b) 1=intercept b, 2= gradient m
+    # 'for power function (y=ax^b;log y = log a + b log x ) 1=a, 2=b , 3=minimum applied before logs could be applied
+
+
+    print(f"Len yMat: {len(yMatrix)}")
+    print(f"Len YABOVE: {len(yMatrixAboveThreshPos)}")
 
     debugMsg(yMatrix)
     xValues = np.ndarray((len(yMatrix), 2))
@@ -1248,28 +1267,25 @@ def detrendData(yMatrix: np.array, yMatrixAboveThreshPos: np.array, detrendOptio
             xValues[i, 1] = i
         ##endif
         if detrendOption == 2:
-            xValues[i, 1] += fsDateBaseline[period]
+            xValues[i, 1] += fsDateBaseline
         ##endif
     ##next i
 
     if detrendOption == 1: #linear regression
-        tempMatrix1 = np.linalg.inv(np.matmul(xValues.transpose, xValues))
-        tempMatrix2 = np.matmul(xValues.transpose, yMatrix)
-        betaValues = np.matmul(tempMatrix1, tempMatrix2)
-        betaTrend[period, 0] = betaValues[0] #,0]
-        betaTrend[period, 1] = betaValues[1] #,0]
+        xTransY = np.matmul(xValues.transpose(), yMatrix)
+        xTransXInv = np.linalg.inv(np.matmul(xValues.transpose(), xValues))
+        betaValues = np.matmul(xTransXInv, xTransY)
 
         for i in range(len(yMatrix)):
             yMatrix[i] -= (xValues[i,1] * betaValues[1]) #,0])
         ##next i
 
+        return {"betaValues": [betaValues[0], betaValues[1]],
+                "yMatrix": yMatrix}
+
     elif detrendOption == 2: #Power function
         xLogged = deepcopy(xValues)
-        #minY = 99999
-        #for i in range(len(yMatrix)):
-        #    if yMatrix[i] < minY:
-        #        minY = yMatrix[i]
-        ##next
+
         minY = np.min(yMatrix)
         if minY > 0: minY = 0
         for i in range(len(yMatrix)):
@@ -1277,22 +1293,21 @@ def detrendData(yMatrix: np.array, yMatrixAboveThreshPos: np.array, detrendOptio
 
         for i in range(len(yMatrix)):
             tempYMatrix[i] = np.log(tempYMatrix[i])
-            xLogged[i] = np.log(xValues[i, 1])
+            xLogged[i, 1] = np.log(xValues[i, 1])
 
-        #tempMatrix1 = xLogged.transpose
-        tempMatrix1 = np.linalg.inv(np.matmul(xLogged.transpose, xLogged))
-        tempMatrix2 = np.matmul(xLogged.transpose, tempYMatrix)
-        betaValues = np.matmul(tempMatrix1, tempMatrix2)
-        betaValues[0] = np.exp(betaValues[0]) #,0] = np.exp(betaBalues(0,0))
-        betaTrend[period, 0] = betaValues[0]
-        betaTrend[period, 1] = betaValues[1]
-        betaTrend[period, 2] = minY
+        xTransY = np.matmul(xLogged.transpose(), tempYMatrix)
+        xTransXInv = np.linalg.inv(np.matmul(xLogged.transpose(), xLogged))
+        betaValues = np.matmul(xTransXInv, xTransY)
+        betaValues[0] = np.exp(betaValues[0]) 
 
         for i in range(len(yMatrix)):
-            yMatrix[i] -= (betaValues[0,0] * (xValues[i, 1] ** betaValues[1,0])) - np.abs(minY) - 0.001
+            yMatrix[i] -= (betaValues[0] * (xValues[i][1] ** betaValues[1])) - np.abs(minY) - 0.001
+
+        return {"betaValues": [betaValues[0], betaValues[1], minY],
+                "yMatrix": yMatrix}
         
     else:
-        debugMsg("Error: Invalid Detrend Option")
+        raise ValueError("Invalid Detrend Option")
 
 def propogateUnconditional(yMatrix: np.array, thresh):
     """Propogate: Unconditional Function v1.0
@@ -1332,78 +1347,66 @@ def propogateConditional(xMatrix: np.ndarray, yMatrix: np.ndarray, yMatrixAboveT
 
     return 
 
-def xValUnConditional():
-    """
-    Cross Validation: Unconditional
-    -- Currently a placeholder
-    ----> Coming Soon
-    """
-def xValConditional():
-    """
-    Cross Validation: Conditional
-    -- Currently a placeholder
-    -- VERY similar functionality to xValUncond
-    ----> Might merge code if possible
-    ----> Coming Soon
-    """
-
+##XValidation + Helper functions
 def xValidation(xMatrix: np.ndarray, yMatrix: np.ndarray, noOfFolds, parmOpt, conditionalPart=False):
     """
     Cross Validation - Combined Function
-    Currently has a minor issue in Section #1, leading to innacuracy after 3dp for all values
-    - Error may be larger for more data
     """
 
     ### GOLBALS ###
-    #noOfFolds = 2
-    xValidMessageShown = False
-    #xMatrix = np.ndarray()
-    #yMatrix = np.ndarray()
-    #modelledMatrix = np.ndarray() #"Vertical" Array / Matrix with only 1 column in use 
-    thresh = 0 #--> Import later...
-    GlobalMissingCode = -999
+    thresh = _globalSettings['thresh']
+    globalMissingCode = _globalSettings['globalmissingcode']
+    modelTrans = _globalSettings['modelTrans']
     ### ####### ###  
+
+    #Generic xVal Error Msg bc I'm lazy
+    gErrMsg = "Not all cross validation metrics can be calculated"
 
     #------------------------
     #------ SECTION #1 ------ Modelled Matrix generation
     #------------------------
 
     blockSize = len(yMatrix) // noOfFolds           #'calculate the size of a block (this is rounded down so 428/5 = 85 block size. 85x5=425 so 3 values lost at end)
-    maxEnd = noOfFolds * blockSize - 1          #'index of max value - make sure we don't go over this (eg 424 for example above: lose values 425,426,427)
-    modMatrix = np.zeros((maxEnd + 1))
+    maxEnd = noOfFolds * blockSize          #'index of max value - make sure we don't go over this (eg 424 for example above: lose values 425,426,427)
+    modMatrix = np.zeros((maxEnd))
     #Set ModelledMatrix = New Matrix
     #modelledMatrix.Size (maxEnd + 1), 1         #'stores untransformed modelled values to compare with YMatrix observed values
     
     if blockSize < 10:
         #Error: not enough data
-        exit()
+        raise ValueError("Insufficient data for all cross validation metrics to be calculated")
     #End If
 
     for foldOn in range(noOfFolds):      #'loop through creating appropriate blocks for each block based on other excluded blocks to determine parameters using OLS
         blockStart = (foldOn) * blockSize            #'work out INDEX of block start and end (index starts at zero)
-        blockEnd = blockStart + blockSize - 1           #'INDEX of block end eg 0-84,85-169,170-254 etc
-        tempXMatrix = np.zeros((maxEnd - blockSize + 1, xMatrix.shape[1]))
-        tempYMatrix = np.zeros((maxEnd - blockSize + 1))
+        blockEnd = blockStart + blockSize           #'INDEX of block end eg 0-84,85-169,170-254 etc
+        tempXMatrix = np.zeros((maxEnd - blockSize, xMatrix.shape[1]))
+        tempYMatrix = np.zeros((maxEnd - blockSize))
         rowCount = 0
-        for j in range(maxEnd + 1):                       #'now set up temporary x and y arrays with all data except excluded fold
-            if (j < blockStart) or (j > blockEnd):
-                rowCount = rowCount + 1
+        for j in range(maxEnd):                       #'now set up temporary x and y arrays with all data except excluded fold
+            if (j < blockStart) or (j >= blockEnd):
                 for k in range(xMatrix.shape[1]):
-                    tempXMatrix[rowCount - 1, k] = xMatrix[j, k]
+                    tempXMatrix[rowCount, k] = xMatrix[j, k]
                 #Next k
-                tempYMatrix[rowCount - 1] = yMatrix[j]
+                tempYMatrix[rowCount] = yMatrix[j]
+                rowCount = rowCount + 1
             #End If
         #Next j
+        #tempXMatrix = np.array([xMatrix[i] for i in range(maxEnd) if i not in range(blockStart, blockEnd)]) #xMatrix[:blockStart] + xMatrix[blockEnd:]
+        #tempYMatrix = np.array([yMatrix[i] for i in range(maxEnd) if i not in range(blockStart, blockEnd)]) #yMatrix[:blockStart] + yMatrix[blockEnd:]
         #'tempXMatrix and tempYMatrix now have all data except excluded fold.
+        
         
         if conditionalPart: ##IF we be doin conditional crossvalidation, we need to transform the data first
             ##fn TransformDataForXValidation()
+            tResults = transformData(tempXMatrix, tempYMatrix, [], modelTrans)
+            tempXMatrix = tResults['xMatrix']
+            tempYMatrix = tResults['yMatrix']
+            tResults = tResults['tResults']
+            
             if len(tempYMatrix) < 10:           #make sure we still have enough data after transformation
-                if not (xValidMessageShown):
-                    xValidMessageShown = True       #'make sure message only shows once
-                    #MsgBox "Sorry - insufficient data for all cross validation metrics to be calculated.", 0 + vbCritical, "Error Message"
-                #End If
-                exit() #Exit Sub                         'make sure we have enough data to work with
+                raise RuntimeError(gErrMsg)
+                
         #End If
 
         ##Generate Beta Matrix
@@ -1414,15 +1417,15 @@ def xValidation(xMatrix: np.ndarray, yMatrix: np.ndarray, noOfFolds, parmOpt, co
         
         #                 'now cycle through calculating modelled y (transformed value) for excluded block
 
-        for j in range(blockStart, blockEnd +1): #PC: Do we need +1 here?
+        for j in range(blockStart, blockEnd): #PC: Do we need +1 here?
             for k in range(xMatrix.shape[1]):               #'calculate values
                 modMatrix[j] += (xBetaMatrix[k] * xMatrix[j][k])
             #Next k
         #Next j7
 
-        if conditionalPart & parmOpt:
-            pass
-            # unTransformDataInXVal(blockStart, blockEnd)
+        if conditionalPart and parmOpt:
+            untransformData([modMatrix[blockStart:blockEnd]], tResults)
+            #pass
     #next foldon
 
 
@@ -1448,9 +1451,9 @@ def xValidation(xMatrix: np.ndarray, yMatrix: np.ndarray, noOfFolds, parmOpt, co
     ## "Cleanse" yMat and modMat arrays (filter out missing values, and values below the threshold for the conditional part)
     removeIndex = []
     if parmOpt and conditionalPart:
-        removeIndex = [i for i in range(len(modMatrix)) if (yMatrix[i] <= thresh or modMatrix[i] <= thresh or yMatrix[i] == GlobalMissingCode or modMatrix[i] == GlobalMissingCode)]
+        removeIndex = [i for i in range(len(modMatrix)) if (yMatrix[i] <= thresh or modMatrix[i] <= thresh or yMatrix[i] == globalMissingCode or modMatrix[i] == globalMissingCode)]
     else:
-        removeIndex = [i for i in range(len(modMatrix)) if (yMatrix[i] == GlobalMissingCode or modMatrix[i] == GlobalMissingCode)]
+        removeIndex = [i for i in range(len(modMatrix)) if (yMatrix[i] == globalMissingCode or modMatrix[i] == globalMissingCode)]
     #xMatrix = np.delete(xMatrix, rejectedIndex, 0)
     yMatrix = np.delete(yMatrix, removeIndex)
     modMatrix = np.delete(modMatrix, removeIndex)
@@ -1460,7 +1463,7 @@ def xValidation(xMatrix: np.ndarray, yMatrix: np.ndarray, noOfFolds, parmOpt, co
     #------ SECTION #3 ------ Calculate Statistics
     #------------------------
 
-    output = {}
+    output = {"RSquared":None, "SE":None}
     
     if conditionalPart or not parmOpt: ## If Unconditional, or Conditional part of the Conditional process, calc Spearman Rank
         #if parmOpt and conditionalPart: ##If Conditional Part of conditional process, do spearman after filtering out values
@@ -1476,7 +1479,7 @@ def xValidation(xMatrix: np.ndarray, yMatrix: np.ndarray, noOfFolds, parmOpt, co
         SError = SError / (values - 1)
         SError = np.sqrt(SError)
         output["SE"] = SError
-
+        
         ##RSQR
         limit = len(modMatrix) #maxEnd + 1 (-1)...?
         checkMissing = False #because pre-filtered
@@ -1484,11 +1487,12 @@ def xValidation(xMatrix: np.ndarray, yMatrix: np.ndarray, noOfFolds, parmOpt, co
         rsqr = calcRSQR(modMatrix, yMatrix, limit, checkMissing, missingLim)
         output["RSquared"] = rsqr
 
+        
         if not parmOpt: #If Unconditional
             ##Durbin Watson Calculations
             ##First generate the residual array
-            residualMatrix = np.zeros((maxEnd + 1))
-            for i in range(maxEnd + 1):
+            residualMatrix = np.zeros((maxEnd))
+            for i in range(maxEnd):
                 residualMatrix[i] = yMatrix[i] - modMatrix[i]
             ##Calc Durbin Watson:
             xvDW = calcDW(residualMatrix)
@@ -1500,13 +1504,13 @@ def xValidation(xMatrix: np.ndarray, yMatrix: np.ndarray, noOfFolds, parmOpt, co
             if meanObserved != 0:
                 bias = (meanModelled - meanObserved) / meanObserved
             else:
-                bias = GlobalMissingCode
+                bias = globalMissingCode
             output["Bias"] = bias
 
         elif parmOpt and not conditionalPart: #If Unconditional part of Conditional process
             #Calculate Occurance Stats
             correctCount = 0
-            for i in range(maxEnd + 1):
+            for i in range(maxEnd):
                 if yMatrix[i] == 0 and modMatrix[i] < 0.5:
                     correctCount += 1
                 elif yMatrix[i] == 1 and modMatrix[i] >= 0.5:
@@ -1517,16 +1521,21 @@ def xValidation(xMatrix: np.ndarray, yMatrix: np.ndarray, noOfFolds, parmOpt, co
         #else #Conditional Part does not have any extra features
 
     elif not conditionalPart: ##Unconditional part is happy to provide missing values
-        output["SE"] = GlobalMissingCode
-        output["RSquared"] = GlobalMissingCode
+        output["RSquared"] = globalMissingCode
+        output["SE"] = globalMissingCode
         if parmOpt:
-            output["PropCorrect"] = GlobalMissingCode
+            output["PropCorrect"] = globalMissingCode
         else:
-            output["D-Watson"] = GlobalMissingCode
-            output["Bias"] = GlobalMissingCode
+            output["D-Watson"] = globalMissingCode
+            output["Bias"] = globalMissingCode
     else: #Lo Data, Crash now...
-        print("Error: Not enough data for the conditional part of xValidation")
-        exit()
+        if conditionalPart:
+            #else: Sorry - an error has occurred in the cross validation.  Not all cross validation metrics can be calculated as insufficient data can be inverse transformed.", 0 + vbCritical, "Error Message"
+            #print("Error: Not enough data for the conditional part of xValidation")
+            raise ArithmeticError("Not all cross validation metrics can be calculated as insufficient data can be inverse transformed")
+        else:
+            #if uncond: Sorry - an error has occurred in the cross validation.  Not all cross validation metrics can be calculated
+            raise RuntimeError(gErrMsg)
 
     return output
 
@@ -1577,15 +1586,13 @@ def spearmanr(modMatrix, yMatrix):
     
     return d
 
-
-
-
 def calcDW(residualMatrix: np.ndarray):
     """
     Durbin Watson Shared Code for XValidation and CalibrateModel (Unconditional)
     - ASSUMES CLEAN DATA
     """
-
+    globalMissingCode = _globalSettings['globalmissingcode']
+    
     numerator = 0
     denom = 0
     for i in range(len(residualMatrix) - 1):
@@ -1598,127 +1605,108 @@ def calcDW(residualMatrix: np.ndarray):
         return (numerator / denom)
     #Next i
     else:
-        return GlobalMissingCode
+        return globalMissingCode
     #Next i   
 
-def stepWiseRegression(xMatrix: np.ndarray, yMatrix: np.ndarray, optimisationChoice: int, NPredictors: int, includeChow: bool, conditionalPart: bool, parmOpt: bool, propResiduals:bool, residualArray:np.ndarray):
+##Stepwise Regression + Helper Functions
+def stepWiseRegression(xMatrix: np.ndarray, yMatrix: np.ndarray, NPredictors: int):
     """
     Stepwise Regression function
-    -- Currently a placeholder
     """
-    aicWanted = False
-    jMatrix = np.ones((len(yMatrix, len(yMatrix))))
+    globalMissingCode = _globalSettings['globalmissingcode']
+    aicWanted = _globalSettings['aicWanted']
+    jMatrix = np.ones((len(yMatrix), len(yMatrix)))
 
-    determinePermutations(NPredictors)
-
+    results = determinePermutations(NPredictors)
+    permArray = results
+    totalPerms = len(results) 
+    permErrors = np.zeros((totalPerms))
+    
     for i in range(totalPerms):
         ##Update ProgressBar
 
-        ##DoEvents
-
-        noOfCols = 1
-        for j in range(9):
-            if permArray[i, j] > 0:
-                noOfCols += 1
-            #endif
-        #next j
+        noOfCols = len(permArray[i]) + 1
+        
 
         newXMatrix = np.ones((len(yMatrix), noOfCols))
-        for j in range(1, noOfCols - 1):
-            for k in range(len(yMatrix) - 1):
-                newXMatrix[k, j] = xMatrix[k, permArray[i, j]]
+
+        for j in range(1, noOfCols):
+            for k in range(len(yMatrix)):
+                newXMatrix[k][j] = xMatrix[k][int(permArray[i][j - 1])]
             #next k
         #next j
 
-        results = calculateParameters2(newXMatrix, newYMatrix, optimisatinonChoice, NPredictors)
-
-        #if not terminated
-
-        SSR = np.matmul(results["betaMatrix"].transpose(), np.matmul(newXMatrix.transpose(), newYMatrix))[0,0]
-        SSRMinus = np.matmul(newYMatrix.transpose(), np.matmul(jMatrix, newYMatrix))[0,0]
-        RMSE = np.sqrt(SSR / len(newYMatrix))
-        if aicWanted:
-            PermErrors[i] = (newXMatrix.shape[0] * np.log(RMSE)) + ((newXMatrix.shape[1] - 1) * 2)
+        try:
+            results = calculateParameters2(newXMatrix, yMatrix, NPredictors)
+        except: #'if we couldn't calc parms then ignore this permutation
+            return globalMissingCode
         else:
-            PermErrors[i] = (newXMatrix.shape[0] * np.log(RMSE)) + ((newXMatrix.shape[1] - 1) * np.log(newXMatrix.shape[0]))
+            #if not terminated
+            SSR = np.matmul(results["betaMatrix"].transpose(), np.matmul(newXMatrix.transpose(), yMatrix))
+            SSRMinus = np.matmul(yMatrix.transpose(), np.matmul(jMatrix, yMatrix))
+            RMSE = np.sqrt(SSR / len(yMatrix))
+            if aicWanted:
+                permErrors[i] = (newXMatrix.shape[0] * np.log(RMSE)) + ((newXMatrix.shape[1] - 1) * 2)
+            else:
+                permErrors[i] = (newXMatrix.shape[0] * np.log(RMSE)) + ((newXMatrix.shape[1] - 1) * np.log(newXMatrix.shape[0]))
+            #endif
+        #end try
 
         ##Stop using newXMatrix now
-
-        maxError = -99999
-        maxLocation = 1
-        for i in range(totalPerms):
-            pass
-        
-
-def determinePermutations(numbers):
-    """
-    Returns totalPerms, permArray, and Numbers?
-    """
-    permArray = np.zeros((500, 9))
-    totalPerms = numbers #0
-    for i in range(numbers):
-        #totalPerms += 1
-        permArray[i, 0] = i
     #next i
-    if numbers > 1:
-        totalPerms += 1
-        for i in range(numbers):
-            permArray[totalPerms, i] = i #seems like a fair bit of redundancy imo
-        #next i
-    #endif
+
+    maxError = -99999
+    maxLocation = 1
+    for i in range(totalPerms):
+        if permErrors[i] > maxError:
+            maxError = permErrors[i]
+            maxLocation = i
+        #endif
+    #next i
+
+    if maxError == -99999:
+        RuntimeError("Unable to determine an optimum set of predictors from those selected. Please try an alternative")
+
+    noOfCols = len(permArray[maxLocation]) + 1
     
-    ##The following looks like loop hell
-    ##Must be a more efficient way of doing things
-    ##Also, how is this not going to overflow
-    if numbers > 2:
-        for i in range(1, numbers - 1):
-            generateIfromN(i, numbers, "")
+    NPredictors = noOfCols - 1
+    newXMatrix = np.ones((len(yMatrix), noOfCols))
 
-    return {
-        "TotalPerms": totalPerms,
-        "permArray": permArray
-        }
+    for j in range(1, noOfCols):
+        for k in range(len(yMatrix)):
+            newXMatrix[k][j] = xMatrix[k][int(permArray[maxLocation][j - 1])]
+        #next k
+    #next j
 
-def generateIfromN(sizeToPermute, numbers, appendString, totalPerms, permArray):
-    """
-    Curious Description
-    Genuinely not sure what this is supposed to do...
-    """
-    #what the fuck
-    valueString = ""
-    if sizeToPermute == numbers:
-        for i in range(numbers):
-            valueString += str(i+1) ## Trying to stay true to the original code
-        #next i
-        valueString += appendString.strip()
-        totalPerms += 1
-        for i in range(len(valueString)):
-            permArray[totalPerms, i] = int(valueString[i])
-        #next i
-    elif sizeToPermute == 1:
-        for i in range(numbers):
-            totalPerms += 1
-            valueString = (str(i) + appendString).strip()
-            for j in range(len(valueString)):
-                permArray[totalPerms, j] = int(valueString[j])
-            #next j
-        #next i
-    elif sizeToPermute > 1:
-        generateIfromN(sizeToPermute, numbers - 1, appendString, totalPerms, permArray)
-        valueString = (str(numbers) + appendString)
-        generateIfromN(sizeToPermute - 1, numbers - 1, valueString, totalPerms, permArray)
-    #endif
+    newFileList = []
+    for j in range(noOfCols - 1):
+        newFileList.append(int(permArray[maxLocation][j]))
+        print(f"ADDED FILE {permArray[maxLocation][j]}")
 
 
+    return {"newFileList": newFileList,
+            "noOfCols": noOfCols,
+            "NPredictors":NPredictors,
+            "xMatrix":newXMatrix
+    }
+        
+def determinePermutations(n: int):
+    from itertools import combinations
+    THE_LIST = []
+    #THE_LIST_JR = np.array(range(n))
+    for i in range(n):
+        THE_LIST += list(combinations(range(1, n+1), i+1))
 
+    return THE_LIST
 
-def calculateParameters(xMatrix: np.ndarray, yMatrix: np.ndarray, optimisationChoice: int, NPredictors: int, includeChow: bool, conditionalPart: bool, parmOpt: bool, propResiduals:bool, residualArray:np.ndarray):
+def calculateParameters(xMatrix: np.ndarray, yMatrix: np.ndarray, NPredictors: int, includeChow: bool, conditionalPart: bool, parmOpt: bool, propResiduals: bool, residualArray: np.ndarray, lamdaValues = []):
     """
     Calculate Parameters function v1.1
     -- Presumably calculates parameters
+    -- LamdaValues and yMatrixAboveThreshPos are only necessary when modelTrans == 4 and ConditionalPart == True
     """
-     ### GLOBALS ###
-    GlobalMissingCode = -999
+    ### GLOBALS ###
+    globalMissingCode = _globalSettings['globalmissingcode']
     ### ####### ###
 
     #local vars
@@ -1737,15 +1725,15 @@ def calculateParameters(xMatrix: np.ndarray, yMatrix: np.ndarray, optimisationCh
 
         if (isValid): #Do we have enough data? Are both halves >10?
             ##Cool python hackz
-            results = calculateParameters2(xtemp[:firstHalf], ytemp[:firstHalf], optimisationChoice, NPredictors) #ignore error
+            results = calculateParameters2(xtemp[:firstHalf], ytemp[:firstHalf], NPredictors) #ignore error
             RSS1 = results["RSS"]
 
-            results = calculateParameters2(xtemp[firstHalf:], ytemp[firstHalf:], optimisationChoice, NPredictors) #ignore error
+            results = calculateParameters2(xtemp[firstHalf:], ytemp[firstHalf:],  NPredictors) #ignore error
             RSS2 = results["RSS"]
         #endif
     #endif
 
-    results = calculateParameters2(xMatrix, yMatrix, optimisationChoice, NPredictors)
+    results = calculateParameters2(xMatrix, yMatrix, NPredictors)
     RSSAll = results["RSS"]
     betaMatrix = results["betaMatrix"]
 
@@ -1759,10 +1747,10 @@ def calculateParameters(xMatrix: np.ndarray, yMatrix: np.ndarray, optimisationCh
     #endif
 
     yMatrix2Test = deepcopy(yMatrix)
-    modMatrix2Test = np.ndarray((len(yMatrix)))
+    modMatrix2Test = np.zeros((len(yMatrix)))
 
     for i in range(len(yMatrix)):
-        modMatrix2Test[i] = 0
+        #modMatrix2Test[i] = 0
         for j in range(xMatrix.shape[1]):
             modMatrix2Test[i] += betaMatrix[j] * xMatrix[i, j]
         #next j
@@ -1770,8 +1758,11 @@ def calculateParameters(xMatrix: np.ndarray, yMatrix: np.ndarray, optimisationCh
 
     if parmOpt:
         if conditionalPart:
+            #print("Conditional CalcParams:")
+            untransformData([modMatrix2Test, yMatrix2Test], lamdaValues)
             ##call untransformdata
             ##Useful when processing Transformed Data
+            ##only useful for the conditional part
             pass
         else: #i.e. Not conditionalPart
             condPropCorrect = calcPropCorrect(modMatrix2Test, yMatrix2Test, len(yMatrix2Test))
@@ -1779,7 +1770,7 @@ def calculateParameters(xMatrix: np.ndarray, yMatrix: np.ndarray, optimisationCh
 
     #Quick SError?
     if len(yMatrix) < 2:
-        SE = GlobalMissingCode
+        SE = globalMissingCode
     else:
         SE = np.sqrt(RSSAll / (len(yMatrix) - 1)) ##SQRT?
         SE = max(SE, 0.0001)
@@ -1807,7 +1798,8 @@ def calculateParameters(xMatrix: np.ndarray, yMatrix: np.ndarray, optimisationCh
             "chowStat":chowStat
             }
 
-def calculateParameters2(xMatrix: np.ndarray, yMatrix: np.ndarray, optimisationChoice: int, NPredictors: int):
+
+def calculateParameters2(xMatrix: np.ndarray, yMatrix: np.ndarray, NPredictors: int):
     """
     Calculate Parameters #2 v1.1
     Component function for Calculate Parameters #1 and Stepwise Regression
@@ -1820,54 +1812,64 @@ def calculateParameters2(xMatrix: np.ndarray, yMatrix: np.ndarray, optimisationC
     #-> PropResiduals never read
 
     ### GLOBALS ###
-    GlobalMissingCode = -999
+    globalMissingCode = _globalSettings['globalmissingcode']
     dependMsg = True #No idea where this is supposed to be defined...
+    optimisationChoice = _globalSettings['optAlg']
     ### ####### ###
 
     yBar = np.sum(yMatrix) / len(yMatrix)
 
-    if optimisationChoice == 1:
+    if optimisationChoice == 0:
         xTransY = np.matmul(xMatrix.transpose(), yMatrix)
         xTransXInverse = np.linalg.inv(np.matmul(xMatrix.transpose(), xMatrix))
         betaMatrix = np.matmul(xTransXInverse, xTransY)
 
+    elif optimisationChoice == 1:
+        displayWarning("Unfortunately, Dual Simplex is deprecated in this version. Using 'Ordinary Least Squares' instead")
+        _globalSettings['optAlg'] = 0
+        xTransY = np.matmul(xMatrix.transpose(), yMatrix)
+        xTransXInverse = np.linalg.inv(np.matmul(xMatrix.transpose(), xMatrix))
+        betaMatrix = np.matmul(xTransXInverse, xTransY)
     else:
+        raise RuntimeError("Unfortunately, Dual Simplex is deprecated in this version. Please switch the optimisation algorithm to 'Ordinary Least Squares' in the 'System Settings'")
         #Dual Simplex Approach
         ## INITIALISATION
-        IMAX = xMatrix.shape[0] #+1
-        JMAX = NPredictors #+1
-        KPN = IMAX + JMAX
+        IMAX = xMatrix.shape[0] +1
+        JMAX = NPredictors +1
+        KPN = NPredictors + xMatrix.shape[0]
         KP1 = JMAX
         A = np.zeros((IMAX + 1, JMAX + 1))
-        B = np.zeros((20))
-        C = np.zeros((KPN))
-        xBar = np.zeros((20))
+        B = np.zeros((20 + 1))
+        C = np.zeros((KPN + 1))
+        xBar = np.zeros((20 + 1))
         ISS = np.zeros((IMAX + 1), int)
-        NB = np.array(range(JMAX + 1))
+        NB = np.zeros((JMAX + 1)) #np.array(range(JMAX + 1))
         TOL = 0.00000001
 
-        for i in range(KP1, KPN):
+        for i in range(KP1 - 1, KPN + 1):
             C[i] = 2
         xSum = np.sum(xMatrix, 0)
-        for j in range(NPredictors):
+        for j in range(1, NPredictors + 1):
             #I THINK
-            xBar[j] = xSum[j] / len(xSum) ##My math senses tell me something's wrong here...
-            for i in range(xMatrix.shape[0]):
-                A[i + 1, j] = xMatrix[i, j] - xBar[j]
+            NB[j] = j
+            xBar[j] = np.sum(xMatrix[j]) / xMatrix.shape[0] ##My math senses tell me something's wrong here...
+            for i in range(1, xMatrix.shape[0]  + 1):
+                A[i + 1, j] = xMatrix[i - 1, j] - xBar[j]
         
-        for i in range(len(xSum)):
-            ISS[i+ 1] = i + NPredictors
-            A[i + 1, JMAX] = yMatrix[i] - yBar
+        for i in range(1, xMatrix.shape[0] + 1):
+            ISS[i + 1] = i + NPredictors
+            #print(f"SETTING ISS[{i+1} TO {i + NPredictors}]")
+            A[i + 1, JMAX] = yMatrix[i - 1] - yBar
 
         ##END OF INIT
 
-        done = True
+        done = False
         while done != True: ##Condition irrelevant - loop exits via 'break' statement
             while True:
                 H = -TOL
                 ICAND = 0
                 done = True
-                for i in range(1, IMAX): 
+                for i in range(2, IMAX + 1): 
                     if A[i, JMAX] < H:
                         done = False
                         H = A[i, JMAX]
@@ -1879,11 +1881,11 @@ def calculateParameters2(xMatrix: np.ndarray, yMatrix: np.ndarray, optimisationC
                 else:
                     JCAND = 0
                     RATIO = -10000000000
-                    for j in range(NPredictors):
+                    for j in range(1, NPredictors + 1):
                         IONE = 1
                         aa = A[ICAND, j]
                         if np.abs(aa) >= TOL:
-                            RCOST = A[0, j]
+                            RCOST = A[1, j]
                             if aa >= -TOL:
                                 IONE = -1
                                 if np.abs(NB[j]) > NPredictors:
@@ -1906,8 +1908,10 @@ def calculateParameters2(xMatrix: np.ndarray, yMatrix: np.ndarray, optimisationC
                         break
                     else:
                         ISS[ICAND] *= -1 #Make -ve or vice versa
-                        for j in range(JMAX):
-                            A[0, j] += CJ * A[ICAND, j] * -1
+                        #print(f"INVERTING ISS[{ICAND} TO {ISS[ICAND]}]")
+                        for j in range(1, JMAX + 1):
+                            A[1, j] += CJ * A[ICAND, j]
+                            A[ICAND, j] *= -1
                             #A[]
                         #j
                     #endif
@@ -1922,16 +1926,16 @@ def calculateParameters2(xMatrix: np.ndarray, yMatrix: np.ndarray, optimisationC
                 JCAND *= -1
                 NB[JCAND] *= -1
                 oneFlipper = -1
-                A[0, JCAND] = RSAVE
+                A[1, JCAND] = RSAVE
             pivot = A[ICAND, JCAND] * oneFlipper
-            for j in range(JMAX):
+            for j in range(1, JMAX + 1):
                 A[ICAND, j] /= pivot
             #next j
-            for i in range(IMAX):
+            for i in range(1, IMAX + 1):
                 if i != ICAND:
                     AIJ = A[i, JCAND] * oneFlipper
                     if AIJ != 0:
-                        for j in range(JMAX):
+                        for j in range(1, JMAX + 1):
                             A[i, j] -= A[ICAND, j] * AIJ
                         #next j
                         A[i, JCAND] = -AIJ / pivot
@@ -1940,28 +1944,36 @@ def calculateParameters2(xMatrix: np.ndarray, yMatrix: np.ndarray, optimisationC
             #next i
             A[ICAND, JCAND] = 1 / pivot
             ISS[ICAND] = NB[JCAND]
+            #print(f"RENEWING ISS[{ICAND}] TO NB:{NB[JCAND]}")
             NB[JCAND] = IT
 
         #endwhile
 
         ALPHA = yBar
-        for i in range(1, IMAX):
+        for i in range(2, IMAX + 1):
             oneFlipper = 1
             II = ISS[i]
+            #if i < 100:
+                #print(f"LOADING ISS[{i}] = {ISS[i]}")
             if np.abs(II) <= NPredictors:
                 if II <= 0:
                     II *= -1
                     oneFlipper = -1
                 #endif
                 B[II] = oneFlipper * A[i, JMAX]
+                #if II != 0:
+                    #print(f"SETTING BAE {II} TO {B[II]}")
                 ALPHA -= xBar[II] * B[II]
             #endif
         #next i
 
-        betaMatrix = np.zeros((NPredictors))
+        betaMatrix = np.zeros((NPredictors + 1))
         betaMatrix[0] = ALPHA
-        for i in range(NPredictors):
+        #print(f"LEN BETA: {len(betaMatrix)}, LEN B: {len(B)}")
+        for i in range(1, NPredictors + 1):
             betaMatrix[i] = B[i]
+            #print(f"BAETA {i}: {betaMatrix[i]}")
+
         #next i
         xTransY = np.matmul(xMatrix.transpose(), yMatrix)
 
@@ -1973,6 +1985,7 @@ def calculateParameters2(xMatrix: np.ndarray, yMatrix: np.ndarray, optimisationC
 
         if dependencies and not dependMsg:
             ##Warning error
+            print("[WARNING]: Linear dependencies between predictors")
             pass
         #endif
     #endif
@@ -1983,7 +1996,7 @@ def calculateParameters2(xMatrix: np.ndarray, yMatrix: np.ndarray, optimisationC
     if len(yMatrix) > 0:
         meanY = yBar
     else:
-        meanY = GlobalMissingCode
+        meanY = globalMissingCode
 
     RSS = 0
     for i in range(xMatrix.shape[0]):
@@ -1995,7 +2008,7 @@ def calculateParameters2(xMatrix: np.ndarray, yMatrix: np.ndarray, optimisationC
     #next i
     RSS = max(RSS, 0.0001)
     
-    if meanY != GlobalMissingCode:
+    if meanY != globalMissingCode:
         SSM = 0
         for i in range(xMatrix.shape[0]):
             modelled = 0
@@ -2006,12 +2019,12 @@ def calculateParameters2(xMatrix: np.ndarray, yMatrix: np.ndarray, optimisationC
         #next i
         fRatio = (SSM / NPredictors) / (RSS / (xMatrix.shape[0] - NPredictors))
     else:
-        fRatio = GlobalMissingCode
+        fRatio = globalMissingCode
     #endif
 
     return {"fRatio":fRatio, "betaMatrix":betaMatrix, "residualMatrix":residualMatrix, "predictedMatrix":predictedMatrix, "RSS":RSS}
 
-def transformData(xMatrix: np.ndarray, yMatrix: np.array, yMatrixAboveThreshPos: np.array, modelTrans):
+def transformData(xMatrix: np.ndarray, yMatrix: np.ndarray, extraArrays: np.ndarray, modelTrans: int):
     """
         Transform data v1.0
         transforms data in Y Matrix according to transformation required.  Amends (reduces) X matrix too if some values are missing
@@ -2021,137 +2034,46 @@ def transformData(xMatrix: np.ndarray, yMatrix: np.array, yMatrixAboveThreshPos:
     ##Calls FindMinLambda
 
     ### GLOBALS ###
-    GlobalMissingCode = -999
-    #yMatrixAboveThreshPos = np.array()
-    #xMatrix = np.ndarray()
+    globalMissingCode = _globalSettings['globalmissingcode']
     ### ####### ###
 
     #If modelTrans == 1 then do nothing -> no transformation
-    if modelTrans == 2 or modelTrans == 3: #4th Root or Log selected
-        missing = 0
-        for i in range(len(yMatrix)):
-            #[arr[1] for arr in masterarr if cond = ???]
-            ##max(values, key=len)
-            if yMatrix[i] >= 0:
-                if modelTrans == 2:
-                    yMatrix[i] = yMatrix[i] ^ 0.25
-                else:
-                    yMatrix[i] = np.log(yMatrix[i])
-            else:
-                yMatrix[i] = GlobalMissingCode #-> Global var that needs importing
-                yMatrixAboveThreshPos[i] = GlobalMissingCode   #     'this resords position of y values for detrend option - needs reducing too
-                missing += 1
-        #next i
+    if modelTrans == 1:
+        return {'xMatrix':xMatrix, 'yMatrix':yMatrix, 'extraArrays':extraArrays, 'tResults':None}
+    elif modelTrans == 2 or modelTrans == 3: #4th Root or Log selected
+        ##First, remove missing valus
+        if modelTrans == 2:
+            rejectedIndex = [i for i in range(len(yMatrix)) if yMatrix[i] < 0]
+        else: 
+            rejectedIndex = [i for i in range(len(yMatrix)) if yMatrix[i] <= 0]
+        xMatrix = np.delete(xMatrix, rejectedIndex, 0)
+        yMatrix = np.delete(yMatrix, rejectedIndex)
+        for i in range(len(extraArrays)):
+            extraArrays[i] = np.delete(extraArrays[i], rejectedIndex)
         
-        if missing > 0:  #Remove missing valus
-            ##NB - Will be much easier to clone yMat and xMat and delete records,
-            ##     rather than this "selective copying"
-            if len(yMatrix) - missing > 10:   #'make sure there are enough data
-                newYMatrix = np.ndarray((len(yMatrix) - missing))
-                newXMatrix = np.ndarray((xMatrix.shape[0] - missing, xMatrix.shape[1]))
-                newYMatrixAbove = np.ndarray((len(yMatrixAboveThreshPos) - missing))
-                count = 0
-                for i in range(len(yMatrix)): ##Drop unwanted arrayz
-                    if yMatrix[i] != GlobalMissingCode:
-                        newYMatrix[count] = yMatrix[i]
-                        newYMatrixAbove[count] = yMatrixAboveThreshPos[i]
-                        for j in range(len(xMatrix[0])): #XCols
-                            newXMatrix[count, j] = xMatrix[i, j]
-                        #Next j
-                        count += 1
-
-                    #End If
-                #Next i              'newXMatrix and newYMatrix and newYMatrixAbove now have good data in them
-                yMatrix = deepcopy(newYMatrix)
-                xMatrix = deepcopy(newXMatrix)
-                yMatrixAboveThreshPos = deepcopy(newYMatrixAbove)
-        #End If
+        ##Apply Transformations
+        if modelTrans == 2:
+            yMatrix = [i ** 0.25 for i in yMatrix] ##4th root
+        else:
+            yMatrix = [np.log(i) for i in yMatrix] ##nat log
         
-    elif modelTrans == 5: #          'box cox - so need to find best lamda of YMatrix
-        #x = PeriodWorkingOn         'for testing!
-        #minSoFar = 9999                 #'establish right shift for box cox transform as min value in y matrix if -ve.  Makes all values +ve
-        #for i in range(1,len(yMatrix)):
-        #    if yMatrix[i] < minSoFar:
-        #        minSoFar = yMatrix[i]
-        #Next i
-        minSoFar = np.min(yMatrix)
-        if minSoFar >= 0: 
-            ShiftRight = 0
-        else:
-            ShiftRight = np.abs(minSoFar)
-
-        for i in range(1, len(yMatrix)):              #'now shift all Y matrix data right to make sure it's +ve before we calculate lamda
-            yMatrix[i] += ShiftRight
-        #Next i
-
-        ################
-        ## Lamda Calc ##
-        ################
-
-        insufficientData = False    #'assume enough data unless FindMinLamda tells us otherwise
-        lamda = findMinLamda(-2, 2, 0.25, yMatrix)  #'find a value between -2 to +2
-
-        if lamda != GlobalMissingCode: #  'now home in a bit more
-            lamda = findMinLamda((lamda - 0.25), (lamda + 0.25), 0.1, yMatrix)
-        else:
-            message = "Sorry an error has occurred calculating the optimum lamda transform."
-            if insufficientData: message = message & " There are insufficient data for a Box Cox transformation.  Try an alternative transformation."
-            #MsgBox message, 0 + vbCritical, "Error Message"
-            #insert error here
-        #End If
-        if lamda != GlobalMissingCode: #'home in a bit further
-            lamda = findMinLamda((lamda - 0.1), (lamda + 0.1), 0.01, yMatrix)
-        else:
-            message = "Sorry an error has occurred calculating the optimum lamda transform."
-            if insufficientData: message = message & " There are insufficient data for a Box Cox transformation.  Try an alternative transformation."
-            #MsgBox message, 0 + vbCritical, "Error Message"
-            #insert error here
-        #End If
-
-        if lamda == GlobalMissingCode:
-            message = "Sorry an error has occurred calculating the optimum lamda transform."
-            if insufficientData: message = message & " There are insufficient data for a Box Cox transformation.  Try an alternative transformation."
-            #MsgBox message, 0 + vbCritical, "Error Message"
-            #insert error here
-        #End If
-
-        #######################
-        ## End of Find Lamda ##
-        #######################
-
-        for i in range(len(yMatrix)):
-            if lamda == 0:                          # 'apply box cox lamda transform - do some checks for division by zero first
-                if yMatrix[i] != 0:
-                    yMatrix[i] = np.log(yMatrix[i]) - ShiftRight         #'shift it back to left after transform
-                else:
-                    yMatrix[i] = -5 - ShiftRight     #'cannot log zero so -5 represents log of a very small number
-                #End If
-            else:
-                yMatrix[i] = (((yMatrix[i] ^ lamda) - 1) / lamda) - ShiftRight     #'shift it back to left after transform
-            #End If
-        #Next i
-
-    else:        #'Inverse normal selected: model trans=4
-
-        def fxNormal(fx):
-            return np.exp(-(fx ** 2) / 2) / np.sqrt(2 * np.pi)
-
-        
-        rankMatrix = np.zeros((2, len(yMatrix))) #'add an extra column     ##In this era, for the sake of storage, these matricies are stored horizontally. Mechanically adding another row..
-        rankMatrix[0] = deepcopy(yMatrix)      #'copy Y matrix into RankMatrix
+        return {'xMatrix':xMatrix, 'yMatrix':yMatrix, 'extraArrays':extraArrays, 'tResults':None}
+        #endif
+    elif modelTrans == 4:        #'Inverse normal selected: model trans=4
+        #rankMatrix = np.zeros((2, len(yMatrix))) #'add an extra column     ##In this era, for the sake of storage, these matricies are stored horizontally. Mechanically adding another row..
+        #rankMatrix[0] = deepcopy(yMatrix)      #'copy Y matrix into RankMatrix
         #Set ReSampleMatrix = New Matrix         'save these data in global matrix so can be resampled when untransforming
         #Set ReSampleMatrix = YMatrix.Clone
-        reSampleMatrix = deepcopy(yMatrix)
-
-        for i in range(len(rankMatrix)):        #'set column two to a running count
-            rankMatrix[1, i] = i + 1
-        #Next i
-        
-        rankMatrix.sort(0)              #'sort ascending on first column ie. on data column
+        reSampleMatrix = yMatrix
+        rankMatrix = deepcopy(yMatrix) #TransformData will create a new array, not augment an existing one
+        ordMatrix = np.array(range(len(yMatrix)))  #save initial ordering //ordMatrix
+        argSort = np.argsort(rankMatrix, kind='stable')   #'sort ascending
+        rankMatrix = rankMatrix[argSort]
+        ordMatrix = ordMatrix[argSort]             
         
         #            'Locate lower bound to begin estimation of cdf
         #            'cdf is computed as r/(n+1) where r is the rank and n is sample size
-        zStart = 1 / (len(rankMatrix) + 1)
+        zStart = 1 / (len(yMatrix) + 1)
         delta = 0.0001
         area = 0.5
         fx = 0
@@ -2169,7 +2091,7 @@ def transformData(xMatrix: np.ndarray, yMatrix: np.array, yMatrixAboveThreshPos:
         #'Compute cdf between lower and upper limit
         limit = fx
         area = zStart
-        rankMatrix[0, 0] = limit
+        rankMatrix[0] = limit
         percentileChange = (1 - (area * 2)) / (len(yMatrix) - 1)
         cp = area
         fxOld = fxNormal(fx)         #'normal
@@ -2181,25 +2103,458 @@ def transformData(xMatrix: np.ndarray, yMatrix: np.array, yMatrixAboveThreshPos:
                 #debugMsg("Loop4")
                 fx += delta
                 fxNew = fxNormal(fx)         #'normal
-                area = area + (delta * 0.5 * (fxOld + fxNew))
+                area += (delta * 0.5 * (fxOld + fxNew))
                 fxOld = fxNew
-                if area >= cp:
-                    rankMatrix[0, i] = fx
+                #if area >= cp:
                 j += 1
+            #print(f"j: {j}")
+            rankMatrix[i] = fx
             #Wend
         #Next i
-        
-        rankMatrix.sort(1)       #'sort back into temporal sequence and copy data back to YMatrix
-        yMatrix = deepcopy(rankMatrix[0])
+            
+        argSort = np.argsort(ordMatrix)  #'sort back into temporal sequence and copy data back to YMatrix
+        rankMatrix = rankMatrix[argSort]
+        #rankMatrix[1] = rankMatrix[1][argSort] 
+        #yMatrix = deepcopy(rankMatrix[0])
         #For i = 1 To RankMatrix.Rows
         #    YMatrix(i - 1, 0) = RankMatrix(i - 1, 0)
         #Next i
 
+        return {'xMatrix':xMatrix, 'yMatrix':rankMatrix, 'extraArrays':extraArrays, 'tResults':reSampleMatrix}
+
+    elif modelTrans == 5: #          'box cox - so need to find best lamda of YMatrix
+        data_err = "There is insufficient data for a Box Cox transformation.  Try an alternative transformation"
+        unknown_err = "Unknown error calculating the optimum lamda transform"
+        minSoFar = np.min(yMatrix[1:])
+        shiftRight = np.abs(min(minSoFar, 0))
+
+        if shiftRight != 0: #No point shifting if = 0
+            for i in range(1, len(yMatrix)):              #'now shift all Y matrix data right to make sure it's +ve before we calculate lamda
+                yMatrix[i] += shiftRight
+        #Next i
+
+        ################
+        ## Lamda Calc ##
+        ################
+
+        insufficientData = False    #'assume enough data unless FindMinLamda tells us otherwise
+        lamda = findMinLamda(-2, 2, 0.25, yMatrix, insufficientData)  #'find a value between -2 to +2
+
+        if lamda != globalMissingCode: #  'now home in a bit more
+            lamda = findMinLamda((lamda - 0.25), (lamda + 0.25), 0.1, yMatrix, insufficientData)
+        else:
+            if insufficientData:
+                raise ValueError(data_err) #Not enough data error
+            else:
+                raise RuntimeError(unknown_err)
+        #End If
+        if lamda != globalMissingCode: #'home in a bit further
+            lamda = findMinLamda((lamda - 0.1), (lamda + 0.1), 0.01, yMatrix, insufficientData)
+        else:
+            if insufficientData:
+                raise ValueError(data_err) #Not enough data error
+            else:
+                raise RuntimeError(unknown_err)
+        #End If
+
+        if lamda == globalMissingCode:
+            if insufficientData:
+                raise ValueError(data_err) #Not enough data error
+            else:
+                raise RuntimeError(unknown_err)
+        #End If
+
+        #######################
+        ## End of Find Lamda ##
+        #######################
+
+        rejectedIndex = []
+        for i in range(len(yMatrix)):
+            if lamda == 0:                          # 'apply box cox lamda transform - do some checks for division by zero first
+                if yMatrix[i] > 0:
+                    yMatrix[i] = np.log(yMatrix[i]) - shiftRight         #'shift it back to left after transform
+                elif yMatrix[i] == 0:
+                    yMatrix[i] = -5 - shiftRight     #'cannot log zero so -5 represents log of a very small number
+                else:
+                    rejectedIndex.append(i)                    
+                #End If
+            else:
+                yMatrix[i] = (((yMatrix[i] ** lamda) - 1) / lamda) - shiftRight     #'shift it back to left after transform
+            #End If
+        #Next i
+
+        ##Remove missing values
+        xMatrix = np.delete(xMatrix, rejectedIndex, 0)
+        yMatrix = np.delete(yMatrix, rejectedIndex)
+        for i in range(len(extraArrays)):
+            extraArrays[i] = np.delete(extraArrays[i], rejectedIndex)
+        
+
+        return {'xMatrix':xMatrix, 'yMatrix':yMatrix, 'extraArrays':extraArrays, 'tResults':{'lamda':lamda, 'shiftRight':shiftRight}}
+
+   
+
     #End If
     
     #return Something here
+    return None
+
+def findMinLamda(start: float, finish: float, stepSize: float, passedMatrix: np.ndarray, insufficientData: bool) -> int:
+    #Start, Finish & Stepsize were previously of type "double" (equivalent to float?)
+    """
+        Find Min Lambda
+        Idk
+    """
+
+    #'uses DosserCox transformation and tries different values of lamda
+    #'until lowest result identified - where result is Hinkley (1977) equation
+    #'tries lamda values from start to finish in steps of stepsize for passedMatrix
+    #'passedMatrix has already been right shifted by shiftright to make sure it is all >=0
+    #'returns either GlobalMissingCode if not found or minimum lamda value if it was
+    globalMissingCode = _globalSettings['globalmissingcode']
+    #bestLamdaSoFar As Double  #'Best Lamda so far
+    bestLamdaSoFar = start  #'set best lamda to first point to try
+    minResultSoFar = 99999  #'set minimum d value to big number to start
+
+    #may need finish+1
+    #for k in range(start, finish, stepSize):   #'try each value of lamda in turn
+    #python doesn't like for range loops over floats
+    
+    k = start
+    while k < finish:
+        #Set tempMatrix = New Matrix
+        tempMatrix = deepcopy(passedMatrix)    #'copy passedMatrix into tempmatrix so we don't disturb it just in case
+        mean = 0                            #'ymatrix contains only values>=0
+        counter = 0
+        missing = 0                         #'count of numbers we can't transform
+        for i in range(len(tempMatrix)):   #'set up temp matrix with transformed data
+            if (k == 0) and (tempMatrix[i] == 0):
+                tempMatrix[i] = -99999        #'can't log zero so set missing value to -99999 as these will be sorted to top later
+                missing = missing + 1
+            else:
+                if k == 0:      #'ln transform for lamda = 0
+                    tempMatrix[i] = np.log(tempMatrix[i])
+                else:
+                    tempMatrix[i] = ((tempMatrix[i] ** k) - 1) / k #'BoxCox transform
+                #End If
+            mean = mean + tempMatrix[i]
+            counter = counter + 1
+            #End If
+        #Next i    'temp matrix set up with transformed data, mean has mean and counter number of valid values
+        if counter >= 50:           #'do we have enough data to work with?
+            mean = mean / counter
+            tempMatrix.sort()         #'will put all -99999s to the top (there are missing of these)
+            #' need to calculate median and SD
+            median = tempMatrix[((counter // 2) + missing)]           #'add on missing so we only look at valid numbers
+            lower = (counter // 4) + missing
+            upper = (counter - lower) + missing
+            
+            IQR = tempMatrix[upper] - tempMatrix[lower]
+
+            #'now calculate d as per Hinkley
+            if IQR > 0:
+                d = (mean - median) / IQR
+            else:
+                d = globalMissingCode
+            #End If
+            
+            if (d != globalMissingCode) and (np.abs(d) < minResultSoFar):
+                minResultSoFar = np.abs(d) #'keep track of best values so far
+                bestLamdaSoFar = k
+            #End If
+        else:
+            insufficientData = True
+        #End If      ' end of check for sufficient data to calculate lamda
+        k += stepSize
+    #Next k  'try for all values of k
+    
+    if minResultSoFar == 99999:  #'haven't found anything
+        return globalMissingCode
+    else:
+        return bestLamdaSoFar   #'return bestLamdaSoFar as this has lowest d value
+    #End If
+
+def untransformData(matricies: np.ndarray, tResults):
+    """
+    Untransform Data for Conditional Part
+    -- tResults is the results array from the Transform Data function
+    """
+
+    ### GLOBALS ###
+    globalMissingCode = _globalSettings['globalmissingcode']
+    modelTrans = _globalSettings['modelTrans']
+    ### ####### ###
+
+    if modelTrans == 1: #no transform
+        pass
+    elif modelTrans == 2: #4th root
+        for matrix in matricies:
+            for i in range(len(matrix)):
+                if matrix[i] != globalMissingCode:
+                    matrix[i] **= 4
+            #if yMatrix[i] != globalMissingCode:
+            #    yMatrix[i] **= 4
+    elif modelTrans == 3: #nat log
+        for matrix in matricies:
+            for i in range(len(matrix)):
+                if matrix[i] != globalMissingCode:
+                    matrix[i] = np.exp(matrix[i])
+            #if yMatrix[i] != globalMissingCode:
+            #    yMatrix[i] = np.exp(yMatrix[i])
+
+    elif modelTrans == 4: #inverse normal 
+        #transformResults = reSampleMatrix -> unsorted data to take resampling from
+        ##SORT ROWS
+        rsMatrix = np.sort(tResults, kind='stable')
+        ## "Locate lower bound to begin estimation of cdf"
+        error = False
+        zStart = 1 / (len(rsMatrix) + 1) 
+        delta = 0.0001
+        area = 0.5
+        fx = 0
+        fxOld = fxNormal(fx)
+        if fxOld == globalMissingCode: 
+            #BombOut
+            error = True
+        if not error:
+            for i in range(50000):
+                fx -= delta
+                fxNew = fxNormal(fx)
+                if fxNew == globalMissingCode:
+                    # Then BombOut
+                    error = True
+                    break
+                area -= (delta * 0.5 * (fxOld + fxNew))
+                if area <= zStart:
+                    break
+                fxOld = fxNew
+            #Next i
+        if error: #Untransform failed - inverse normal cannot be calculated
+            debugMsg("[Error]: Inverse normal cannot be calculated")
+            for matrix in matricies:
+                for i in range(len(matrix)):
+                    matrix[i] = globalMissingCode
+                #yMatrix[i] = globalMissingCode
+        else:
+            ## "Compute area between lower and each z-score"
+            limit = fx
+            totalArea = (1 - (2 * zStart))
+
+            for matrix in matricies:
+                for i in range(len(matrix)): #'now use translator to convert all values
+                    if matrix[i] != globalMissingCode:
+                        matrix[i] = translator(matrix[i] , limit, totalArea, rsMatrix)
+                #if yMatrix[i] != globalMissingCode:
+                #    yMatrix[i] = translator(yMatrix[i], limit, totalArea, tResults)
+            #next i
+        #endif
+    
+    elif modelTrans == 5: #Box Cox
+        #transformResults = {'lamda', 'shiftRight'}
+        lamda = tResults['lamda']
+        shift = tResults['shiftRight']
+        for matrix in matricies:
+            for i in range(len(matrix)):
+                if matrix[i] != globalMissingCode:
+                    tempValue = matrix[i] + shift #shift right for current period
+                    if lamda == 0:
+                        tempValue = np.exp(tempValue) - shift #log transform
+                    else:
+                        tempValue = (lamda * tempValue) + 1
+                        if tempValue > 0:
+                            tempValue = np.log(tempValue) / lamda
+                            tempValue = np.exp(tempValue) - shift
+                        else:
+                            tempValue = globalMissingCode
+                    matrix[i] = tempValue
+           #next i
+        #next matrix
+    #endif
+
+def translator(passedValue: float, limit: float, totalArea: float, reSampleMatrix) -> float:
+    """
+    Untransform Data: Inverse Normal helper function
+    """
+
+    ### GLOBALS ###
+    globalMissingCode = _globalSettings['globalmissingcode']
+    ### ####### ###
+
+    if passedValue <= limit:
+        return reSampleMatrix[0]
+    else:
+        try:
+            fxOld = fxNormal(limit)
+        except: #fxOld is invalid / cannot be caluclated
+            return globalMissingCode
+        else:
+            interval = (passedValue - limit) / 100
+            area = 0
+            fx = limit
+            for i in range(100):
+                fx = fx + interval
+                try: 
+                    fxNew = fxNormal(fx)
+                except:
+                    return globalMissingCode
+                else:
+                    area += (interval * 0.5 * (fxOld + fxNew))
+                    fxOld = fxNew
+                #end catch
+            #next i
+            area = min(area, totalArea)
+            locateValue = int(area * len(reSampleMatrix) / totalArea)
+            locateValue = min(locateValue, (len(reSampleMatrix) - 1))
+            return reSampleMatrix[locateValue]
+
+def printResults(parameterResultsArray: np.ndarray, NPredictors: int, parmOpt: bool, biasCorrection, autoRegression: bool, modelTrans: int, tResults: list):
+    """
+    Collects data from output arrays and merges it into
+     string form, ready to be written to the PARfile
+    """
+    #We want: parmOpt, parameterResultsArray, nPredictors, autoregrssion, lamdaArray, modelTrans, biascorrection
+    giga_array = ""
+    if parmOpt:
+        for i in range(12):
+            parameterResultsArray[i, NPredictors + 1 + int(autoRegression)] = 0
+    for i in range(12):
+        for j in range(NPredictors + 3 + int(autoRegression)):
+            giga_array += f"{parameterResultsArray[i, j]:.3f}\t"
+        #next j
+        if modelTrans == 5:
+            #tResults is the LamdaArray
+            giga_array += f"{tResults[i, 0]:.3f}\t"
+            giga_array += f"{tResults[i, 1]:.3f}"
+        #endif
+        giga_array += "\n"
+    #next i
+    if parmOpt:
+        for i in range(12, 24):
+            giga_array += f"{parameterResultsArray[i, 0]:.3f}\t"
+            giga_array += f"{biasCorrection[i - 12]:.3f}\t"
+            for j in range(1, NPredictors + 3):
+                giga_array += f"{parameterResultsArray[i, j]:.3f}\t"
+            #next j
+            giga_array += "\n"
+        #next i
+    #endif
+
+    return giga_array
+
+    #Write to file
+    #with open(parfile, "a") as f:
+    #    print(giga_array, file=f)
+    #    f.close()
+
+def printTrendParms(detrendOption: int, betaTrend, seasonCode: int):
+    """
+    Collects data from the betaTrend array and returns it
+     in string form, ready to be written to the PARfile
+    """
+
+    giga_array = ""
+    if detrendOption == 1:
+        giga_array += "1\n"
+    else: #Assume option #2
+        giga_array += "2\n"
+    #endif
+
+    #if seasonCode == 1:
+    #    giga_array += f"{betaTrend[0,0]}\t{betaTrend[0,1]}"
+    #    if detrendOption == 2:
+    #        giga_array += f"\t{betaTrend[0,2]}\n"
+    #    else:
+    for i in range(seasonCode):
+        giga_array += f"{betaTrend[i][0]}\t{betaTrend[i][1]}"
+        if detrendOption == 2:
+            giga_array += f"\t{betaTrend[i][2]}"
+        giga_array += "\n"
+    
+    return giga_array
+
+    #Write to file
+    #with open(parfile, "a") as f:
+    #    print(giga_array, file=f)
+    #    f.close()
+                
+
+def displayWarning(text):
+    messageBox = QMessageBox()
+    messageBox.setIcon(QMessageBox.Critical)
+    messageBox.setText(text)
+    messageBox.setWindowTitle("Warning")
+    messageBox.exec_()
 
 
+def plotScatter(residualArray):
+    #mimicked from ScreenVariables
+    import pyqtgraph as pg
+
+    #ResidualArray(1,i) is equivalent to residualArray['predicted'][i], and should go on the X axis
+    #ResidualArray(2,i) is equivalent to residualArray['residual'][i], and should go on the Y axis
+    #NoOfResiduals is equivalent to residualArray['noOfResiduals'] and should contain the length of the array
+
+    plot = pg.plot()
+    scatter = pg.ScatterPlotItem(size=10, brush=pg.mkBrush(255, 255, 255, 120))
+
+    outputData = residualArray
+    spots = [
+        {"pos": [residualArray['predicted'][i], residualArray['residual'][i]]}
+        for i in range(residualArray['noOfResiduals'])
+    ]
+    plot.setWindowTitle("SDSM Residual Scatter plot") 
+    plot.getPlotItem().setLabel("left","Residual")
+    plot.getPlotItem().setLabel("bottom","Predicted Value")
+    scatter.addPoints(spots)
+    plot.addItem(scatter)
+
+def plotHistogram(residualArray, noOfHistCats):
+    """
+    Plots residual data onto a PyQtGraph Histogram
+    """
+
+    import pyqtgraph as pg
+
+    residuals = residualArray['residual']
+
+    minVal = np.min(residuals)
+    maxVal = np.max(residuals)
+    sizeOfCategories = (maxVal - minVal) / noOfHistCats
+    
+    residualHistOccurances = np.zeros(noOfHistCats, dtype=int)
+    for i in range(noOfHistCats):
+        #???
+        catMin = minVal + (i * sizeOfCategories)
+        catMax = catMin + sizeOfCategories
+        for j in range(residualArray['noOfResiduals']):
+            #print(f"IS {residualArray['residual'][j]} BETWEEN {catMin} (min) AND {catMax} (max)?")
+            if residualArray['residual'][j] >= catMin and residualArray['residual'][j] < catMax:
+            #    print("YES")
+                residualHistOccurances[i] += 1
+            #input()
+        #next j
+    #next i
+
+    
+    
+    residualHistLabels = [minVal]
+    for i in range(1, noOfHistCats):
+        residualHistLabels.append((minVal + (i * sizeOfCategories)))
+    
+    residualHistLabels.append(maxVal)
+
+    plot = pg.plot()
+    bargraph = pg.PlotCurveItem(x = residualHistLabels, #range(noOfHistCats),
+                                y = residualHistOccurances, 
+                                stepMode=True,
+                                fillLevel=0,
+                                #brush ='g') 
+                                brush=pg.mkBrush(255, 255, 255, 120))
+    plot.setWindowTitle("SDSM Residual Histogram") 
+    plot.getPlotItem().setLabel("left","Frequency")
+    plot.getPlotItem().setLabel("bottom","Residual")
+    plot.addItem(bargraph)
+    
 
 ##Helper Functions:
 
@@ -2213,7 +2568,7 @@ def calcRSQR(modMatrix: np.ndarray, yMatrix: np.ndarray, limit: int, checkMissin
     """
 
     ### GLOBALS ###
-    GlobalMissingCode = -999
+    globalMissingCode = _globalSettings['globalmissingcode']
     ### ####### ###
 
     if missingLim == None:
@@ -2222,7 +2577,7 @@ def calcRSQR(modMatrix: np.ndarray, yMatrix: np.ndarray, limit: int, checkMissin
     sumX = sumY = sumXX = sumYY = sumXY = missing = 0
 
     for i in range(limit):
-        if (modMatrix[i] != GlobalMissingCode and yMatrix[i] != GlobalMissingCode) or checkMissing == False:
+        if (modMatrix[i] != globalMissingCode and yMatrix[i] != globalMissingCode) or checkMissing == False:
             sumX += modMatrix[i]
             sumY += yMatrix[i]
             sumXX += modMatrix[i] ** 2
@@ -2232,7 +2587,7 @@ def calcRSQR(modMatrix: np.ndarray, yMatrix: np.ndarray, limit: int, checkMissin
             missing += 1
     ##end for
 
-    rsqr = GlobalMissingCode
+    rsqr = globalMissingCode
     if missing < missingLim: 
         totalVals = limit - missing
         denom = sumXX - (sumX ** 2 / totalVals)
@@ -2245,9 +2600,9 @@ def calcRSQR(modMatrix: np.ndarray, yMatrix: np.ndarray, limit: int, checkMissin
             ##Edge case testing
             debugMsg("Error: Edge Case Detected - denom < 0")
             #readline()
-            rsqr = GlobalMissingCode
+            rsqr = globalMissingCode
         else:
-            rsqr = GlobalMissingCode
+            rsqr = globalMissingCode
 
     debugMsg(f"calcRSQR: {rsqr}, only if {missing} < {missingLim}")
     
@@ -2258,12 +2613,12 @@ def calcPropCorrect(modMatrix: np.ndarray, yMatrix: np.ndarray, limit: int):
     Proportion Correct Shared code for xValidation:Unconditional (parmOpt=F) & Calculate Params #1
     """
 
-    GlobalMissingCode = -999
+    globalMissingCode = _globalSettings['globalmissingcode']
 
     correctCount = 0
     missing = 0
     for i in range(limit):
-        if (modMatrix[i] != GlobalMissingCode and yMatrix[i] != GlobalMissingCode):
+        if (modMatrix[i] != globalMissingCode and yMatrix[i] != globalMissingCode):
             if (yMatrix[i] == 0 and modMatrix[i] < 0.5):
                 correctCount += 1
             elif (yMatrix[i] == 1 and modMatrix[i] >= 0.5):
@@ -2276,7 +2631,7 @@ def calcPropCorrect(modMatrix: np.ndarray, yMatrix: np.ndarray, limit: int):
     if missing < limit:
         propCorrect = correctCount / (limit - missing)
     else:
-        propCorrect = GlobalMissingCode
+        propCorrect = globalMissingCode
     
     return propCorrect
 
@@ -2289,4 +2644,236 @@ def getSeason(month):
         return 1
     else: #Months 12,1,2 (Winter)
         return 0
+    
+def fxNormal(fx):
+    #Exp(-(fx ^ 2) / 2) / Sqr(2 * 3.1415927)
+    return np.exp(-(fx ** 2) / 2) / np.sqrt(2 * np.pi)
+
+def displayError(error):
+    messageBox = QMessageBox()
+    messageBox.setIcon(QMessageBox.Critical)
+    messageBox.setText(f"{type(error).__name__}:")
+    messageBox.setInformativeText(str(error))
+    messageBox.setWindowTitle("Error")
+    messageBox.exec_()
+
+
+def formatCalibrateResults(results):
+    """
+    Format Calibrate analysis results for display in a PyQt5 application.
+    
+    Parameters:
+    results (dict): Dictionary containing Calibrate analysis results
+    
+    Returns:
+    str: Formatted string representation of the Calibrate results
+    """
+    # Extract necessary data from results dictionary
+    startDate = results['analysisPeriod']['startDate']
+    endDate = results['analysisPeriod']['endDate']
+    periodName = results['analysisPeriod']['periodName']
+    
+    # Statistics
+
+    #conditional = results['settings_used']['conditionalAnalysis']
+    
+    # Data
+    predictand = results['Predictand'].split('/')[-1]
+    #fileNames = results['names']
+    #crossCorr = results['crossCorrelation']
+    #partialCorrelations = results['partialCorrelations'] if 'partialCorrelations' in results else None
+    
+    # Format output as a string
+    output = []
+    
+    # Header section
+    output.append("Predictand: " + predictand)
+    output.append("")
+    output.append("Predictors: ")
+    for i in range(0, len(results['Predictors'])):
+        x = results['Predictors'][i].split("/")[-1]
+        output.append(f"{x}")
+    if results['autoregression'] == True:
+        output.append(f"Autoregression")
+    output.append("")
+    output.append(f"Analysis Period: {startDate} - {endDate} ({periodName})")
+    output.append("")
+
+    maxWidth = 12
+
+    output.append("Unconditional Statistics")
+    #Get all the keys in the first dictionary within unconditional results
+    unconditionalResultsList = list(results['Unconditional'].keys())
+    firstUnconditionalEntryKey = unconditionalResultsList[0]
+    unconditionalKeyList = list(results['Unconditional'][firstUnconditionalEntryKey].keys())
+    
+     # Calculate the maximum length of keys for formatting
+    if results['ifXVal']:
+        line = ""
+        line += (f"{'':{maxWidth*(len(unconditionalKeyList)+1)}}")
+        line += ("Cross Validation Results")
+        output.append(line)
+
+    else:
+        output.append("")
+    # Cross-correlation matrix header
+    headerRow = ""
+    headerRow+= f"{'Month':{maxWidth}}"
+    for j in range(len(unconditionalKeyList)):
+        headerRow += f"{unconditionalKeyList[j]:{maxWidth}}"
+    
+
+    if "xValidation" in results['Unconditional']:
+        xValidationDict = results['Unconditional']["xValidation"]
+        xValidationKeys = list(xValidationDict.keys()) #Months
+        xValidationResultsKeys = list(xValidationDict[xValidationKeys[0]].keys()) #Results within the month
+        for key in xValidationResultsKeys:
+            headerRow += f"{key:{maxWidth}}"
+    output.append(headerRow)
+
+        
+
+    for i in unconditionalResultsList:
+        result = ""
+        if i != "xValidation":
+            result += f"{i:{maxWidth}}"
+        resultsList = list(results['Unconditional'][i].keys())
+        for j in resultsList:
+            if i != "xValidation":
+                result += f"{str(round(float(results['Unconditional'][i][j]),5)):{maxWidth}}"
+        if results['ifXVal']:
+            #xValidation is a dictionary, so go into the months, then get the results from that
+            #print("\n\n\n\n\n\n")
+            for k in xValidationResultsKeys:
+                if i != "xValidation":
+                    xValidation = xValidationDict[i][k]
+                    result += f"{str(round(float(xValidation),5)):{maxWidth}}"
+        
+        output.append(result)
+    output.append("")
+    if "Conditional" in results:
+        #Get all the keys in the first dictionary within unconditional results
+        conditionalResultsList = list(results['Conditional'].keys())
+        firstConditionalEntryKey = conditionalResultsList[0]
+        conditionalKeyList = list(results['Conditional'][firstConditionalEntryKey].keys())
+        output.append("Conditional Statistics")
+        if results['ifXVal']:
+            line = ""
+            line += (f"{'':{maxWidth*(len(conditionalKeyList)+1)}}")
+            line += ("Cross Validation Results")
+            output.append(line)
+
+        else:
+            output.append("")
+        # Conditional statistics header
+        headerRow = ""
+        headerRow += f"{'Month':{maxWidth}}"
+        for j in range(len(conditionalKeyList)):
+            headerRow += f"{conditionalKeyList[j]:{maxWidth}}"
+        if "xValidation" in results['Conditional']:
+            xValidationDict = results['Conditional']["xValidation"]
+            xValidationKeys = list(xValidationDict.keys()) #Months
+            xValidationResultsKeys = list(xValidationDict[xValidationKeys[0]].keys()) #Results within the month
+            for key in xValidationResultsKeys:
+                headerRow += f"{key:{maxWidth}}"
+        output.append(headerRow)
+        for i in conditionalResultsList:
+            result = ""
+            if i != "xValidation":
+                result += f"{i:{maxWidth}}"
+                resultsList = list(results['Conditional'][i].keys())
+                for j in resultsList:
+                    result += f"{str(round(float(results['Conditional'][i][j]),5)):{maxWidth}}"
+
+                if results['ifXVal']:
+                #xValidation is a dictionary, so go into the months, then get the results from that
+                    for k in xValidationResultsKeys:
+                        if i != "xValidation":
+                            xValidation = xValidationDict[i][k]
+                            result += f"{str(round(float(xValidation),5)):{maxWidth}}"
+                output.append(result)
+
+    '''
+    # Cross-correlation matrix rows
+    for j in range(nVariables):
+        row = f"{j+1} {fileNames[j]:{maxLength}}"
+        
+        for k in range(nVariables):
+            corrValue = crossCorr[j][k]
+            if k == j:
+                tempY = "1"
+            else:
+                tempY = f"{corrValue:.3f}"
+            row += f"{tempY:{maxLength + 2}}"
+        
+        output.append(row)
+    
+    output.append("")
+    
+    # Partial correlations section
+    if nVariables < 3:
+        output.append("NO PARTIAL CORRELATIONS TO CALCULATE")
+    else:
+        output.append(f"PARTIAL CORRELATIONS WITH {fileNames[0]}")
+        output.append("")
+        output.append(" " * 24 + f"{'Partial r':12}{'P value':12}")
+        output.append("")
+        
+        # Add partial correlation results if available
+        if partialCorrelations:
+            for i in range(1, nVariables):
+                if i-1 < len(partialCorrelations):
+                    partialR = partialCorrelations[i-1]['correlation']
+                    pValue = partialCorrelations[i-1]['p_value']
+                    output.append(f"{fileNames[i]:24}{partialR:<12.3f}{pValue:<12.3f}")
+    
+    # Join all lines with newlines '''
+
+    return "\n".join(output)
+
+
+def displayCorrelationResultsQt(results, textWidget):
+    """
+    Display correlation results in a PyQt5 text widget.
+    
+    Parameters:
+    results (dict): Dictionary containing correlation analysis results
+    textWidget (QTextEdit/QPlainTextEdit): PyQt5 text widget to display the results
+    """
+    # Format the results
+    formattedText = formatCalibrateResults(results)
+    
+    # Set the font to a monospaced font for proper alignment
+    font = QFont("Courier New", 10)
+    textWidget.setFont(font)
+    
+    # Display the formatted text
+    textWidget.setPlainText(formattedText)
+
+class CalibrateAnalysisApp(QMainWindow):
+        def __init__(self):
+            super().__init__()
+            self.setWindowTitle("Correlation Analysis")
+            self.resize(800, 600)
+            
+            # Create a tab widget for different views
+            self.tabWidget = QTabWidget()
+            
+            # Text view tab
+            self.textWidget = QTextEdit()
+            self.textWidget.setReadOnly(True)
+            self.tabWidget.addTab(self.textWidget, "Text View")
+            
+            # Set the central widget
+            self.setCentralWidget(self.tabWidget)
+        
+        def loadResults(self, results):
+            # Display text format
+            displayCorrelationResultsQt(results, self.textWidget)
+            print()
+            # Create and add table view
+            #tableWidget = createCorrelationTableWidget(results)
+            #self.tabWidget.addTab(tableWidget, "Table View")
+
+        
 ##

@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>SDSM Help</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 20px; }
+      h1 { color: #00539C; }
+      h2 { color: #007ACC; }
+      ul { list-style-type: none; padding: 0; }
+      li { margin-bottom: 5px; }
+    </style>
+  </head>
+  <body>
+    <div id="TOC">
+      <h1>SDSM Help Contents</h1>
+      <ul>
+        <li>
+          <a href="#IDH_Quality">Quality Control</a>
+          <p>Identifies data file size, missing data codes, and calculates the mean, maximum and minimum values in the file.</p>
+        </li>
+        <li>
+          <a href="#IDH_Transform">Transform Data</a>
+          <p>Transforms single or multi-column data files using standard functions (e.g. natural logs, squares, bends, etc.). 
+          Also extracts ensemble members from a multi-column data file.</p>
+        </li>
+        <li>
+          <a href="#IDH_Screen">Screen Variables</a>
+          <p>Identifies significant predictor variables. Also provides local weather variables and sub-sets.</p>
+        </li>
+        <li>
+          <a href="#IDH_Calibrate">Calibrate Model</a>
+          <p>Estimates model parameters for downscaling a specified local weather variable on regional-scale atmospheric 
+          circulation. Also sets calibration options.</p>
+        </li>
+        <li>
+          <a href="#IDH_WeatherG">Weather Generator</a>
+          <p>Generates ensembles of synthetic weather series from calibrated statistical downscaling models given daily 
+          atmospheric predictor variables (observed or synthetic).</p>
+        </li>
+        <li>
+          <a href="#IDH_SummaryStatistics">Summary Statistics</a>
+          <p>Computes a range of statistics (e.g. mean, variance, peaks over threshold, spell lengths, percentiles, etc.) 
+          given synthetic daily atmospheric predictor variables by the Weather Generator or Generate Scenario operations.</p>
+        </li>
+        <li>
+          <a href="#IDH_FrequencyAnalysis">Frequency Analysis</a>
+          <p>Computes and displays in graphical form a number of statistics for both observed and modeled data. The analysis 
+          includes plotting various statistics, climate-quantile plots, PDF plots, and standard line plots.</p>
+        </li>
+        <li>
+          <a href="#IDH_Generate">Scenario Generator</a>
+          <p>Applies various treatments to weather data so that consequences and decisions can be explored. The analysis 
+          includes generating future scenarios, climate-quantile plots, PDF plots, and analysis line plots.</p>
+        </li>
+        <li>
+          <a href="#IDH_CompareResults">Compare Results</a>
+          <p>Compares summary statistics produced by the Analyse operations using bar chart or line chart plots.</p>
+        </li>
+        <li>
+          <a href="#IDH_TimeSeries">Time Series Analysis</a>
+          <p>Plots various time series data from modeled or observed data files.</p>
+        </li>
+        <li>
+          <a href="#IDH_DataSettings">Data Settings</a>
+          <p>Makes global changes to data handling.</p>
+        </li>
+        <li>
+          <a href="#IDH_SystemSettings">System Settings</a>
+          <p>Makes global changes to the system set-up, and model preferences.</p>
+        </li>
+        <li>
+          <a href="#IDH_Bibliography">Bibliography</a>
+          <p>Comprehensive list of relevant literature.</p>
+        </li>
+      </ul>
+      <hr>
+    </div>
+    
+
+    <div id="IDH_Quality">
+      <h2>Quality Control</h2>
+      <p>Few meteorological stations have complete and/or fully accurate data sets. Handling of missing and imperfect data is, therefore, necessary for most practical situations.</p>
+      <p>Click on the <strong>Select File</strong> button. An <strong>Open</strong> file window will appear: browse through until you have located the directory and file to be quality checked. Click on the required data file then on <strong>Open</strong>. To activate the quality control procedure, click on the <strong>Check File</strong> button at the top of the page.</p>
+      <p><strong>Quality Control</strong> reports the data minimum, maximum, mean, the number of values in the file, the number of missing values (see <strong>Missing Data Identifier</strong>), the number of acceptable values, and the <strong>Missing Data Identifier</strong> value used to check the data. The default reference value may be changed in <strong>Settings</strong>. It also presents a count of the number of values above the threshold (set in <strong>Settings</strong> as <strong>Event Threshold</strong>), the maximum difference between every sequential pair of data points (which could indicate an error in the data, for example if temperature swings from 50 one day to 5 the next) and the values of the two data points at which this maximum difference occurs.</p>
+      <hr>
+    </div>
+
+    <div id="IDH_Transform">
+      <h2>Transform Data</h2>
+      <p>In many instances it may be appropriate to transform predictors and/or predictands prior to model calibration. The <strong>Transform</strong> facility takes specified data files and applies selected transformations (e.g., logarithm, power, inverse, lag, binomial, etc). It can also extract an individual ensemble member from a multi column file (no transformation is applied to the extracted ensemble).</p>
+      <p><strong>Select Input File</strong></p>
+      <p>Click the <strong>Select File</strong> button. An <strong>Open</strong> file window will appear: browse through until you have located the directory and file to be checked. Click on the required data file.</p>
+      <p><strong>Columns in Input File</strong></p>
+      <p>If the data file that is being transformed contains more than one column (for example, a *.OUT ensemble file generated using Weather Generator or Scenario Generator) the value <strong>must</strong> be entered here.</p>
+      <p><strong>Create SIM File</strong></p>
+      <p>Click this option if a SIM file should be created for the transformed data file.</p>
+      <p><strong>Extract Ensemble Member</strong></p>
+      <p>If you wish to extract a single ensemble member from a multi column data file, check the <strong>Extract</strong> box here. Enter the number of the ensemble member you wish to extract and this will be extracted to the selected Save File. A single column file will be created containing the required ensemble member. Note, no transformation is applied to this extracted member.</p>
+      <p><strong>Transformation</strong></p>
+      <p>Select the transformation by checking the appropriate button. Available transformations include: natural logarithms and log10, squares, cubes, fourth powers, inversion, lag interval and binomial, together with the inverse transformations of many of the above. These transformations should be applied to standard predictor variables prior to <strong>Model Calibration</strong>, to produce non linear regression models (e.g., use power transformations for polynomial models).</p>
+      <p><strong>Backward change</strong></p>
+      <p>Computes the difference between the current value (event <em>t</em>) and the previous value (<em>t minus 1</em>) for the entire time series. This transformation might be applied whenever <em>changes</em> in the predictor may be a significant explanatory factor.</p>
+      <p><strong>Lag n</strong></p>
+      <p>Shifts data series forwards or backwards by <em>n</em> time steps to produce lagged predictor variables (where <em>n</em> is an integer, specified by the User). If <em>n</em> is positive, the data are shifted “up”; if <em>n</em> is negative the data are shifted “down”.</p>
+      <p>If <strong>Wrap</strong> is selected, the data are wrapped around; otherwise, when the data are lagged the missing values are replaced with the current <strong>Missing Data Identifier</strong> to keep the file the same length.</p>
+      <p>If lag value (<em>n</em>) is negative, the new file has its last <em>n</em> values or <em>n</em> <strong>Missing Data Identifier</strong> values inserted at the start (again the file maintains its original length), depending on whether wrap is selected or not. Negative <em>n</em> should be used if preceding conditions influence current conditions.</p>
+      <p>If lag value (<em>n</em>) is positive, <strong>Transform</strong> appends either the first <em>n</em> data items to the end of the file or the current missing code (thus keeping the file the same length), depending on whether wrap is selected or not.</p>
+      <p>Lag of zero is a straight copy.</p>
+      <p><strong>Binomial</strong></p>
+      <p>Creates a file containing ones (1) for values greater than the entered threshold, and zeros for values less than or equal to the entered threshold value. Note: the default threshold is the <strong>Event Threshold</strong> value in <u>Settings</u>.</p>
+      <p>Note: blank carriage returns at the end of files are processed; therefore ensure that files do not end with a blank line.</p>
+      <p><strong>Box Cox</strong></p>
+      <p>Applies a Box Cox transformation of the form:</p>
+      <p><img src="HelpImages/1740510105_sdsmhelp-10.png" width="71" height="44" alt="" style="vertical-align:middle" /></p>
+      <p>The data are “right shifted” (by the minimum value) if they contain negative values to ensure all values are positive before applying the transformation. The data are then “left shifted” by the same amount following the transformation. The algorithm uses a trial-and-error approach to “home in” on the optimum lambda (λ) value for data in the range [-2, 2] based on finding a minimum from Hinkley’s (1977) equation:</p>
+      <p><img src="HelpImages/1740510105_sdsmhelp-9.png" width="188" height="44" alt="" style="vertical-align:middle" /></p>
+      <p>The inverse Box Cox option inverts the data based on the entered values. The lambda value must be between -2 and +2 and the Shift value represents the amount the data must be “right shifted” by before applying the transformation. The Shift value is usually zero unless the original data contained negative values that needed “right shifting” before applying a Box Cox transformation as explained above. The inverse Box Cox transformation is defined as:</p>
+      <p><img src="HelpImages/1740510105_sdsmhelp-11.png" width="79" height="36" alt="" style="vertical-align:middle" /></p>
+      <p>The inverse Box Cox option inverts the data based on the entered values.</p>
+      <hr>
+    </div>
+
+    <div id="IDH_Screen">
+      <h2>Screen Variables</h2>
+      <p>Identifying empirical relationships between gridded predictors (such as mean sea level pressure) and single site predictands (such as station precipitation) is central to all statistical downscaling methods.</p>
+      <p>The main purpose of the <strong>Screen Variables</strong> operation is to assist the user in the selection of appropriate downscaling predictor variables. This remains one of the most challenging stages in the development of any statistical downscaling model since the choice of predictors largely determines the character of the downscaled climate scenario. The decision process is also complicated by the fact that the explanatory power of individual predictor variables varies both spatially and temporally.</p>
+      <p><strong>Screen Variables</strong> performs three supporting tasks: seasonal correlation analysis, partial correlation analysis, and scatterplots. Ultimately, however, the User must decide whether or not the identified relationships are physically sensible for the site(s) in question.</p>
+      <p><strong>Select Predictand File</strong></p>
+      <p>The first step in the <strong>Screen Variables</strong> operation is the selection of the predictand and predictor files. The predictand file (e.g., observed daily maximum temperature, daily precipitation totals, etc.) must be supplied by the User, in SDSM format (i.e., single column, ASCII). Click on the <strong>Select Predictand File</strong> button. An <strong>Open</strong> file window will appear—browse through until the appropriate directory has been located. Then click on the required predictand data file.</p>
+      <p><strong>Data</strong></p>
+      <p>The <strong>Data</strong> menu on the left-hand side of the <strong>Screen Variables</strong> window allows the start and end dates of the analysis period to be changed. The default dates are held in the <strong>Settings</strong> page. If the start and end dates lie outside the permissible range, the User will be prompted to enter new values. Enter the start and end date of the required analysis period (this should fall between the first two dates). Note: the software assumes that the predictor and predictand files have the same start date and length.</p>
+      <p><strong>Select analysis period</strong></p>
+      <p>The User must choose a seasonal subset from the pull down window under <strong>Select analysis period</strong>. The available options are Annual (no seasonal sub-setting), Winter (December–February), Spring (March–May), Summer (June–August), Autumn (September–November), and individual months. The default analysis period is Annual.</p>
+      <p><strong>Predictor Variables</strong></p>
+      <p>Locate and select the desired predictor variables by choosing the correct drive from the pull down window in the centre of the screen. The directories available on this drive will then appear in the window directly above the drive window. Browse through until the appropriate directory is located. All files in this window are then listed above. To select a predictor, simply click on the file name—it will be highlighted in blue. To deselect a file, click on it again. The number of predictor variables chosen is shown beneath the window.</p>
+      <p><strong>Predictand</strong></p>
+      <p>The target variable, e.g., daily rainfall or maximum daily temperatures.</p>
+      <p><strong>Autoregression</strong></p>
+      <p>If the analysis is to include an autoregressive term, tick the Autoregressive term box. This forces SDSM to include the lagged predictand (one-day) as a predictor in the analysis.</p>
+      <p><strong>Process</strong></p>
+      <p>If the predictand depends on an intermediate occurrence process (e.g., precipitation amounts depend on wet-/dry-day occurrence) then click on <strong>Conditional</strong>; otherwise, select <strong>Unconditional</strong> (as in the case of maximum temperature).</p>
+      <p><strong>Significance Level</strong></p>
+      <p>Specify the significance level used to test the strength of predictor–predictand correlations. Insignificant correlation scores are omitted from the <strong>Results</strong> screen. The default is <em>p&lt;0.05 (5%)</em>.</p>
+      <p><strong>Analyse</strong></p>
+      <p>The <strong>Analyse</strong> button is used to investigate the percentage of variance explained by specific predictand–predictor pairs.</p>
+      <p><strong>Scatterplot</strong></p>
+      <p>The <strong>Scatter</strong> button is used for visual inspections of inter-variable behavior for specified sub-periods (annual, seasonal, or monthly). The resultant scatterplots indicate the nature of the association (linear, non-linear, etc.), whether data transformations may be needed, and the importance of outliers.</p>
+      <p><strong>Correlation</strong></p>
+      <p>The <strong>Correlation</strong> button is used to investigate the strength of inter-variable correlations for specified sub-periods (annual, seasonal, or monthly).</p>
+      <hr>
+    </div>
+
+    <div id="IDH_Calibrate">
+      <h2>Calibrate Model</h2>
+      <p>The <strong>Calibrate Model</strong> operation takes a user-specified predictand along with a set of predictor variables, and computes the parameters of multiple linear regression equations via the efficient dual simplex algorithm (forced entry method).</p>
+      <p>The User specifies the model structure: whether monthly, seasonal or annual sub-models are required; whether the process is unconditional or conditional. In <strong>Unconditional</strong> models a direct link is assumed between the predictors and predictand (e.g., local wind speeds may be a function of regional airflow indices). In <strong>Conditional</strong> models, there is an intermediate process between regional forcing and local weather (e.g., local precipitation amounts depend on wet-/dry-day occurrence, which in turn depend on regional-scale predictors such as humidity and atmospheric pressure). Furthermore, it is possible to apply standard transformations to the predictand in conditional models (see <strong>Advanced Settings</strong>), and/or to specific predictors (see <strong>Transform</strong>).</p>
+      <p><strong>Select Predictand File</strong></p>
+      <p>To begin model building, click on the <strong>Select Predictand File</strong> button in the top left-hand corner. An <strong>Open</strong> file window appears; browse through until the correct directory and file are reached, then click on the appropriate file name. The name of the file will then appear beneath the button. Note: predictand file names must have the extension *.DAT.</p>
+      <p><strong>Output File</strong></p>
+      <p>Opens the parameter file (*.PAR) to receive meta-data associated with the model calibration, along with downscaling model parameters.</p>
+      <p>To specify the name of the output parameter (*.PAR) file, click on the <strong>Output File</strong> button in the upper right-hand corner. A <strong>Save As</strong> file window appears. For maximum convenience, make sure that the parameter file is saved in the same directory as the predictor and predictand files for observed data. Type in an appropriate file name in the <strong>File name</strong> box then click on the <strong>Save</strong> button. The name of the parameter file will then be displayed beneath the <strong>Output File</strong> button.</p>
+      <p><strong>Data Period</strong></p>
+      <p>The <strong>Data Period</strong> menu on the left-hand side of the Screen Variables window allows the start and end dates of the analysis period to be changed. The default dates are held in the <strong>Settings</strong> page. If the start and end dates lie outside the permissible range, the User will be prompted to enter new values. Enter the start and end date of the required analysis period (this should fall between the first two dates). Note: the software assumes that the predictor and predictand files have the same start date and length.</p>
+      <p><strong>Predictor Variables</strong></p>
+      <p>Locate and select the desired predictor variables by choosing the correct drive from the pull down window in the centre of the screen. The directories available on this drive will then appear in the window directly above the drive window. Browse through until the appropriate directory is located. All files in this window are then listed in the window above. To select a predictor, simply click on the file name—it will be highlighted in blue. To deselect a file, click on it again, and it will no longer be highlighted. The number of predictor variables chosen is shown beneath this window.</p>
+      <p><strong>Model Type</strong></p>
+      <p>Specify whether individual downscaling models should be calibrated for each calendar month, climatological season or for the entire year. To determine the temporal resolution of the downscaling model, check either Monthly, Seasonal or Annual under the <strong>Model Type</strong> box. The default is Monthly. Note: the calibration procedure can take significantly longer for large data sets whenever Seasonal or Annual model types are selected.</p>
+      <p><strong>Process</strong></p>
+      <p>If the predictand depends on an intermediate occurrence process (e.g., precipitation amounts depend on wet-/dry-day occurrence) then click on <strong>Conditional</strong>, otherwise select <strong>Unconditional</strong> (as in the case of maximum temperature). Note: if the process is <strong>Conditional</strong> it is further possible to specify standard transformations in <strong>Advanced Settings</strong>.</p>
+      <p><strong>Autoregression</strong></p>
+      <p>If the model is to include an autoregressive term as a predictor (the lagged predictand by one day), the <strong>Include</strong> box should be ticked. This forces SDSM to include an autoregressive component in the model. If the model is conditional, the autoregressive component is only used for the unconditional part of the process—the conditional part does not include an autoregressive term as the autoregressive component may stem from several days previously.</p>
+      <p><strong>Residual Analysis</strong></p>
+      <p>Allows the User to select a number of residual statistics to be plotted once the calibration process has completed. The scatter plot produces a diagram showing residual versus modeled predictand; the histogram option produces a histogram chart of residuals (the number of bars can be adjusted by altering the value in the Number of categories box).</p>
+      <p><strong>Chow Test</strong></p>
+      <p>Calculates the Chow statistic for the model (i.e., tests for stationarity of the model).</p>
+      <p><strong>Cross Validation</strong></p>
+      <p>Applies a k-fold cross validation to the model. The data are split into <em>n</em> folds (<em>n</em> must be between 2 and 10). A model is constructed on <em>n</em>-1 of these folds and then tested on the excluded fold. This is repeated <em>n</em> times so that k-fold cross validation statistics can be calculated. These are the R-Squared, SE, Durbin-Watson, Spearman Rank and Bias for an unconditional model, and R-Squared, SE and proportion of days correctly identified as wet/dry; and the R-Squared, SE and Spearman Rank of wet days in a conditional process.</p>
+      <p><strong>Calibrate</strong></p>
+      <p>Click on the Calibrate button to initiate the model calibration algorithm. Hit <strong>Esc</strong> to abort the calibration process.</p>
+      <hr>
+    </div>
+
+    <div id="IDH_WeatherG">
+      <h2>Weather Generator</h2>
+      <p>The <strong>Weather Generator</strong> produces <u>ensembles</u> of synthetic daily weather series given <u>observed</u> (or re-analysis) atmospheric predictor variables. The procedure enables the verification of calibrated models (ideally using independent data) as well as the synthesis of artificial time series representing current climate conditions.</p>
+      <p>The User selects a calibrated model and SDSM automatically links all necessary predictor files to regression model weights. The User must also specify the period of record to be synthesized as well as the desired number of ensemble members. Synthetic time series are written to User defined output files for later statistical analysis and/or impacts modelling.</p>
+      <p><strong>Select Parameter File</strong></p>
+      <p>The first step in the synthesis process is the selection of the file containing model parameters and meta-data. Click on the <strong>Select Parameter File</strong> button in the top left-hand corner. An <strong>Open</strong> file window appears—browse through until the correct directory and file are reached, then click on the appropriate file. The file name will then appear beneath the button. Note: parameter file names must have the extension *.PAR.</p>
+      <p><strong>Select Predictor Directory</strong></p>
+      <p>Choose the appropriate directory where the predictors are located.</p>
+      <p><strong>Ensemble Size</strong></p>
+      <p>Decide how many ensembles of synthetic data are needed (up to a maximum of 100) and enter the desired value in the <strong>Ensemble Size</strong> box on the left-hand side of the window (the default is 20).</p>
+      <p><strong>View Details</strong></p>
+      <p>Lists the data files (*.DAT) containing the predictand (first line) and predictors (second line onwards) used to calibrate the statistical downscaling model. The number of predictor variables, <strong>Record Start</strong> date and <strong>Record Length</strong> (days) used for calibration are also displayed.</p>
+      <p><strong>Synthesis Start</strong></p>
+      <p>Enter the start date for simulation (this must be later than, or equal to, the predictor start date).</p>
+      <p><strong>Synthesis Length</strong></p>
+      <p>Enter the number of days for simulation (this must be less than, or equal to, the number of days in the predictor file(s)). The default values for <strong>Synthesis Start</strong> and <strong>Synthesis Length</strong> are used to simulate the period of record used for model calibration. If model verification is to be undertaken using independent data withheld from the calibration process, these values should be amended accordingly. If simulation of observed data based on the complete predictor record is needed, then the <strong>Record Start</strong> and <strong>Record Length</strong> values should be used.</p>
+      <p><strong>Select Output File</strong></p>
+      <p>To save synthetic data to a results file, select an appropriate directory and file name. Click on the <strong>Select Output File</strong> button in the top right-hand corner. An <strong>Open</strong> file window appears—browse until the correct directory is reached, then enter a suitable file name. The chosen file name will then appear beneath the button.</p>
+      <p><strong>Synthesize</strong></p>
+      <p>Click the button to initiate the downscaling model simulation. Press <strong>Esc</strong> to abort the process.</p>
+      <hr>
+    </div>
+
+    <div id="IDH_SummaryStatistics">
+      <h2>Summary Statistics</h2>
+      <p>Provides basic descriptive statistics for either SDSM derived scenarios or observed data. The <strong>Analyse Data</strong> screen can take as input downscaled climate data produced by either the <strong>Weather Generator</strong>, <strong>Scenario Generator</strong> options or <strong>observed</strong> data. In each case, the User must specify the required sub‐period and output file name (i.e. where the results will be saved). For model output, the ensemble member or mean must also be specified. In return, SDSM displays a suite of diagnostics (selected by the User from the <strong>Statistics</strong> page). The default statistics are monthly/seasonal/annual means, maxima, minima, sums, and variances. Note, sum is averaged by the number of years in the data set providing the monthly/seasonal/annual mean sum.</p>
+      <p>You can select the statistics you wish to generate by clicking on the Statistics button at the top of the screen. Note – to calculate monthly, seasonal, and annual statistics, the system begins by allocating the data to a number of ‘bins’ for each time period. These bins are then analysed to derive the selected statistics.</p>
+      <p><strong>Data Source</strong></p>
+      <p>Select whether modelled data or observed data are to be analysed – the default is modelled data.</p>
+      <p><strong>Select Input File</strong></p>
+      <p>The next step in the analysis process is the selection of an appropriate input file to analyse. This can be either a downscaled data (*.OUT) file or a data file containing observed data (for example, a *.TXT file). Click on the <strong>Select File</strong> button on the left-hand side. An <strong>Open</strong> file window appears; browse through until the correct directory and file are reached, then click on the appropriate file name. The file name will appear beneath the button.</p>
+      <p><strong>Select Output File</strong></p>
+      <p>Select an appropriate file to store the results of the analyses.</p>
+      <p><strong>Analysis start date</strong></p>
+      <p>Enter the start date for analysis (this must be later than, or equal to, the simulation start date when working with modelled data). The default is for the full simulation period.</p>
+      <p><strong>Analysis end date</strong></p>
+      <p>Enter the end date for analysis (this must be less than, or equal to, the end date of the modelled data, if appropriate). The default is the full simulation period.</p>
+      <p><strong>Modelled Scenario</strong></p>
+      <p>When analyzing modelled data there are some additional selections that can be made:</p>
+      <p><strong>View details</strong></p>
+      <p>Click the <strong>View Details</strong> button to display details of the simulation experiment (the number of predictors, the season and year length codes, the scenario start date, number of days in the simulation, and the ensemble size).</p>
+      <p><strong>Ensemble Size</strong></p>
+      <p>Check the <strong>Use Ensemble Mean?</strong> box if average statistics are required from all ensemble members, or enter an individual ensemble member number (integers 1 to 100) – up to the <strong>Ensemble Size</strong> specified in the simulation – in the <strong>Ensemble Member</strong> box. The default computes the ensemble mean of each statistic.</p>
+      <p><strong>Analyse</strong></p>
+      <p>Click on the <strong>Analyse</strong> button to initiate the statistical analysis of the data. Hit <strong>Esc</strong> to abort the process.</p>
+      <p><strong>Delta Statistics</strong></p>
+      <p>Click on the <strong>Delta Stats</strong> button to calculate Delta Statistics. Delta statistics take the form:</p>
+      <p><img src="HelpImages/1740510105_sdsmhelp-3.png" width="196" height="47" alt="" style="vertical-align:middle" /></p>
+      <p><img src="HelpImages/1740510105_sdsmhelp-4.png" width="198" height="47" alt="" style="vertical-align:middle" /></p>
+      <p><img src="HelpImages/1740510105_sdsmhelp-5.png" width="198" height="47" alt="" style="vertical-align:middle" /></p>
+      <p>If Percentage Difference is selected in <strong>Statistics</strong>, or:</p>
+      <p><img src="HelpImages/1740510105_sdsmhelp-6.png" width="147" height="24" alt="" style="vertical-align:middle" /></p>
+      <p><img src="HelpImages/1740510105_sdsmhelp-7.png" width="147" height="24" alt="" style="vertical-align:middle" /></p>
+      <p><img src="HelpImages/1740510105_sdsmhelp-8.png" width="147" height="24" alt="" style="vertical-align:middle" /></p>
+      <p>If Absolute Difference is selected.</p>
+      <p><em>V<sub>base</sub></em> is the mean of all ensembles (or a specific ensemble, if selected) for each statistic for the base period. Likewise, <em>V<sub>2020s</sub></em> is the mean of all ensembles (or a specific ensemble) for each statistic for period A, and so on for <em>V<sub>2050s</sub></em> and <em>V<sub>2080s</sub></em>.</p>
+      <hr>
+    </div>
+
+    <div id="IDH_FrequencyAnalysis">
+      <h2>Frequency Analysis</h2>
+      <p>The Frequency Analysis option allows the User to plot various distribution diagnostics for both modelled (ensembles) and observed data.</p>
+      <p><strong>File Selection</strong></p>
+      <p>The first stage in the process is to select an observed data file and/or modelled data file to analyse. By clicking on the appropriate selection button, an input dialogue window appears in which the desired files can be selected.</p>
+      <p><strong>Analysis Period</strong></p>
+      <p>The second stage of the process is to enter the analysis period by entering the appropriate start and end dates in the <strong>Analysis Period</strong> box. Note that observed data are assumed to follow natural calendar years (366 days every fourth year), while modelled data take their year length from the standard SDSM <strong>Settings</strong> page.</p>
+      <p><strong>Data Period</strong></p>
+      <p>Select the appropriate time period for the analysis: all the data, individual months, or seasons.</p>
+      <p><strong>Ensembles</strong></p>
+      <p>If modelled (ensemble) data are being analysed, the User can select which part of the ensemble to include in the analysis by selecting either All Ensembles, Ensemble Mean, Ensemble Member, or All + Ensemble Member in the Ensemble box.</p>
+      <p><strong>Threshold</strong></p>
+      <p>If the <strong>Apply Threshold?</strong> box is ticked, only data which are above the global threshold (see Settings) are included in the analysis.</p>
+      <p><strong>PDF Categories</strong></p>
+      <p>If the User wishes to plot a PDF chart as part of the analysis, the number of categories for the PDF plot can be entered in the <strong>PDF Categories</strong> box: the default is 20.</p>
+      <p><strong>Q-Q Plot</strong></p>
+      <p>A Quantile-Quantile plot is used to compare a modelled data set with an observed data file. The procedure works by sorting each of the data files into order and calculating the percentiles (1 to 99). These are then plotted against one another on a scatter chart with observed data on the y-axis and modelled data on the x-axis. Note, it is assumed that observed data are always based on calendar years (i.e. 365 days normally, 366 days in a leap year), while the length of the modelled data year is set using the Settings screen.</p>
+      <p><strong>PDF Plot</strong></p>
+      <p>The PDF plot provides a Probability Density Function of the selected data files. The data are first sorted into order, then a number of categories are defined (the default being 20) ranging from the smallest to the largest data point. The data are then sorted into these categories and a count is made of the number of data points in each category. The resultant density is plotted on a line chart.</p>
+      <p><strong>Line Plot</strong></p>
+      <p>This plots a simple line chart of the selected data. Note that only a maximum of ten year’s of data can be plotted using this option.</p>
+      <p><strong>Frequency Analysis</strong></p>
+      <p>Four statistical distributions can be fitted to the selected data by clicking on the appropriate selection in the Frequency Analysis box. These distributions can be fitted to the entire data range or to isolated time periods such as specific seasons or months according to the selection in the Data Period box.</p>
+      <p>The four distributions are: GEVs, stretched exponential, Empirical and Gumbel. Results can be viewed in either tabular form by selecting <strong>FA Tabular</strong> or as line charts by selecting <strong>FA Graphical</strong> from the menu buttons at the top of the screen. Results of modelled <strong>FA Tabular</strong> and <strong>FA Graphical</strong> are automatically saved to the main drive of the default directory for further analysis (for example, C: drive). This can cause an error if the default drive cannot be written to (on a shared machine, for example, where write access can be limited).</p>
+      <p><strong>Confidence (%)</strong></p>
+      <p>When plotting extreme value distributions for modelled data with a number of ensembles, it is possible to plot confidence limits (lower and upper percentiles) around the fitted line. For example, entering 5% in the Confidence (%) box provides a 95% confidence boundary on the fit by plotting the upper 97.5 percentile and lower 2.5 percentile around the line. Enter the required confidence percentage in the box. These percentiles are also calculated if <strong>FA Tabular</strong> is chosen.</p>
+      <p><strong>Empirical</strong></p>
+      <p>This option fits a simple empirical distribution to the data by sorting the annual maximums into ascending order and plotting these according to the return period.</p>
+      <p><strong>GEV</strong></p>
+      <p>This fits a Generalised Extreme Value distribution to the data of the form:</p>
+      <p><img src="HelpImages/1740510105_sdsmhelp-1.png" width="192" height="48" alt="" style="vertical-align:middle" /></p>
+      <p><strong>Gumbel</strong></p>
+      <p>Fits a Gumbel distribution to the data using the annual maximum series.</p>
+      <p><strong>Stretched Exponential</strong></p>
+      <p>Fits the data to a Stretched Exponential distribution of the form:</p>
+      <p><img src="HelpImages/1740510105_sdsmhelp-2.png" width="159" height="42" alt="" style="vertical-align:middle" /></p>
+      <p>It is used to calculate the probability that an event is greater than a threshold, <em>r</em>. <em>R</em>0 is the mean of all events while <em>c</em> is determined from the data fitting. The data are truncated to the User entered threshold value.</p>
+      <p><strong>Save Results To</strong></p>
+      <p>The results of the Frequency Analysis can be saved to a *.TXT for further analysis or presentation by clicking the Save Results To button at the bottom of the page and completing the <em>Save Dialogue</em> box that opens. This works with <strong>FA Tabular</strong> only.</p>
+      <hr>
+    </div>
+
+    <div id="IDH_Generate">
+      <h2>Scenario Generator</h2>
+      <p>To access the new functions click on the <em>Scenario Generator</em> tab at the top of the master menu.</p>
+      <p><strong>Select Input File</strong>: This is your text file containing the input daily weather series. This can be up to 200 years long and have up to 100 columns (i.e., ensemble members). The series may be observed data or direct output from the <em>Weather Generator</em>.</p>
+      <p><strong>File Start Date</strong>: This is the date of the first data value in the Input File (entered by the User in dd/mm/yyyy format). This information is needed so that SDSM can adjust settings and weights attached to individual months (see below). The default date is taken from the Standard Start Date in the master <em>Settings</em>.</p>
+      <p><strong>Ensemble Size</strong>: This is the number of ensemble members (columns) in the Input File. If the User enters, for example, 20 and there are 100 members, only the first 20 columns will be treated. If the User enters, for example, 50 and there are only 20 members within the Input File, an error message will be displayed.</p>
+      <p><strong>Output File</strong>: This is the User specified output file name and pathway for the generated daily weather series.</p>
+      <p><strong>Conditional Process</strong>: The box should be checked if the process is conditional (as in the case of precipitation). This enables simultaneous manipulation of the unconditional process (for rainfall – Occurrence of wet-days above the specified Event Threshold below). When left unchecked, only the Mean, Variance and Trend Treatments (see below) are activated.</p>
+      <p><strong>Event Threshold</strong>: This is the threshold that determines occurrence of the conditional process (see above). For example, the threshold might be used to discriminate between wet- and dry-days using zero and non-zero values. In this case, any values greater than the threshold (zero) would be treated as a wet day. Larger thresholds might be used where measurement precision is lower, or if the modelling is focusing on extreme values.</p>
+      <p><strong>Treatments</strong></p>
+      <p>The following Treatments adjust daily input values by User-defined factors and functions, including separate handling of Unconditional and Conditional Processes. Treatments may be applied in isolation or combination to create more complex transformations of the input series.</p>
+      <p><strong>Occurrence</strong></p>
+      <p><strong>Frequency change</strong>: This is the percentage by which the occurrence of the conditional process (e.g., rain days) should be changed. For example, 5 means increase the incidence of the process by 5% more days; -10 means reduce the incidence by 10%. When <em>Stochastic</em> is selected (see below) the days are randomly added or removed from each month relative to the initial frequency profile.</p>
+      <p><strong>Stochastic</strong>: Adds or removes rain days randomly based on the existing likelihood of events in each month. For example, if a month is particularly wet, it has a greater chance of a rain day being added. Conversely, if a month is relatively dry it has a greater chance of a rain day being removed (if the User inputs a negative value to the Frequency change box).</p>
+      <p><strong>Forced</strong>: This overrides the Frequency change value (see above) by forcing the creation or removal of rain days according to the percentages entered for each month in <em>Advanced Settings</em> (Wet Day Percentage Profile). For example, if the user enters 50 (percent) for January in the Advanced Settings and the observed record has only 30% wet days in January, SDSM generates wet days (randomly) for January until 50% of days are wet. Conversely, if January has 60% wet days, SDSM removes wet days (randomly) until 50% of days in January remain wet. SDSM randomly selects wet day amounts from the month when generating new wet days in that month. If there are no wet-days to sample in a given month, SDSM searches for wet-day amounts from neighbouring months.</p>
+      <p><strong>Preserve Total</strong>: When checked, SDSM preserves the original annual mean rainfall total by proportionately scaling all wet-day amounts. Note that if the User reduces the frequency of wet days, the remaining wet day amounts are automatically increased to preserve the annual total, and so too is the standard deviation of wet day amounts. However, if the User also selects a Mean change (see below) this becomes the new annual total that is preserved.</p>
+      <p><strong>Mean</strong></p>
+      <p><strong>Factor</strong>: This is the percentage by which data are changed. For example, 10 increases all values by 10%; conversely, -40 decreases values by 40%. In both cases, the factor is applied only to values larger than the Event Threshold when a Conditional Process is selected.</p>
+      <p><strong>Addition</strong>: This is the absolute amount by which data are changed. For example, 10 adds 10 to each day; -5 removes 5 from each day. In both cases, the factor is applied only to values larger than the Event Threshold when a Conditional Process is selected.</p>
+      <p><strong>Variance</strong></p>
+      <p><strong>Factor</strong>: This is the percentage by which the variance is changed. For example, 50 increases the variance by 50%. The algorithm subtracts the mean of the series from each value, then multiplies by the factor (e.g., 1.50 in this example), and then adds the mean. The factor is applied only to those values greater than the Event Threshold when a Conditional Process is selected. All Conditional variables are transformed to approximate a normal distribution using the Box-Cox method (Sakia, 1992; Hinkley, 1977).</p>
+      <p>Note that in order to change the variance but preserve the coefficient of variation (mean divided by standard deviation) the User needs only to apply the factor to the Mean (see above); the Variance will change by the same amount.</p>
+      <p><strong>Trend</strong></p>
+      <p><strong>Linear</strong>: The entered value is added (or subtracted) cumulatively each year. For example, 10 adds values from 0 to 10 in the first year, 10 to 20 in the second year, 20 to 30 the following year, etc. In this case, each day in the calendar year is adjusted 10/365.25 x the day number (1 to 365 or 366). For a Conditional Process only values exceeding the Event Threshold are adjusted. For example, if the User enters 5, wet-day amounts in the first year are increased from 0 to 5% linearly (for days 1 to 365); amounts in the second year are increased by 5% to 10% linearly; and so forth. This means that in the first year, the first day will be slightly changed; a value in the middle of the year will be increased by around 2.5%; and a value at the end of the year by 5%.</p>
+      <p><strong>Exponential</strong>: The entered value is added (or subtracted) following an exponential function across the entire span of the data. For example, entering +5 will add between 0 (for the first value) to +5 (for the final value) and points in between exponentially. A value of zero cannot be used. For a Conditional Process the treatment is multiplicative rather than additive. For example, +10 causes wet day amounts to be multiplied by 1 to 1.10 from start to end with values in between changing by 1 to 1.10 in an exponential manner.</p>
+      <p><strong>Logistic</strong>: The entered value is added (or subtracted) following a logistic (S-curve) function across the entire span of the data. The entered value is applied additively (unless a Conditional Process is chosen). For example, when 1 is entered the addition ranges between 0 at the start to +1 at the end following the S-curve. Negative values can also be used to deplete the series following an S-curve. For a Conditional Process the treatment is applied multiplicatively. For example, if 5 is entered, values exceeding the Event Threshold are scaled logistically between 1 to 1.05 across the length of the series.</p>
+      <p><strong>Generate</strong></p>
+      <p>Click on the button to apply the treatment. Hit <strong>Esc</strong> to abort the process.</p>
+      <hr>
+    </div>
+
+    <div id="IDH_CompareResults">
+      <h2>Compare Results</h2>
+      <p>The <strong>Compare Results</strong> page enables the User to plot monthly statistics produced by the <strong>Summary Statistics</strong> screen. Having specified the necessary input file, either bar or line charts may be chosen for display purposes. The graphing option allows simultaneous comparison of two data sets and hence rapid assessment of downscaled versus observed, or current versus future climate scenarios.</p>
+      <p><strong>Input File <em>n</em></strong></p>
+      <p>To choose a results (*.TXT) file, click on the <strong>Select First File</strong> button. An <strong>Open</strong> file window appears; browse through until the correct directory and file are reached, then click on the appropriate file name. The file name will appear beneath the button, along with a list of available statistics. Repeat the process by clicking on the <strong>Select Second File</strong> button.</p>
+      <p><strong>Select Statistic</strong></p>
+      <p>Click on the required statistic listed under <strong>Select Statistic</strong>. The live statistic will be highlighted in blue. If necessary, select the same statistic from the second list.</p>
+      <p><strong>Bar</strong></p>
+      <p>Having specified the <strong>Input File</strong>(s) and required statistic, click the <strong>Bar</strong> button to produce a bar chart.</p>
+      <p><strong>Line</strong></p>
+      <p>Having specified the <strong>Input File</strong>(s) and required statistic, click the <strong>Line</strong> button to produce a line chart.</p>
+      <hr>
+    </div>
+
+    <div id="IDH_TimeSeries">
+      <h2>Time Series Analysis</h2>
+      <p>The <strong>Time Series Analysis</strong> page allows the user to produce a time series plot of chosen data file(s): up to a maximum of five files can be plotted simultaneously on the same chart.</p>
+      <p><strong>Time Period</strong></p>
+      <p>Select from <strong>Raw Data</strong>, <strong>Month</strong>, <strong>Season</strong>, <strong>Annual</strong> or <strong>Water Year</strong>. <strong>Raw Data</strong> simply plots the data from the chosen files as a time series for the selected fit period (set by the User as Start and End). No statistics are derived for <strong>Raw Data</strong>.</p>
+      <p>When selecting a <strong>Month</strong>, <strong>Season</strong>, <strong>Annual</strong> or <strong>Water Year Time Period</strong>, SDSM calculates the chosen statistics (in <strong>Select Statistic</strong>) for this time period and plots them on a line graph. For example, if you choose a <strong>Time Period</strong> of January and select <strong>Sum</strong>, SDSM will plot an annual series of January Sums for the selected fit period (i.e. the sum for January 1961, January 1962, January 1963, etc.) as a line chart.</p>
+      <p>Note, <strong>Water Year</strong> runs from October to September and is referred to by the year in which it starts.</p>
+      <p><strong>File Selection</strong></p>
+      <p>Using the Drive, Directory and File Selection boxes, select up to five files to plot. Note, two File Selection windows are provided to allow you to select files from different directories. You can only select up to a maximum of five files from the two File Selection windows in total.</p>
+      <p><strong>Data</strong></p>
+      <p>Select the period that you wish to analyse here. Note, if you attempt to plot a period longer than the available data set, an error message will appear.</p>
+      <p><strong>Save Results To</strong></p>
+      <p>You can choose to save a summary of the calculated results to a data file. This option will not work if you are plotting the <strong>Raw Data</strong> as no summary statistics are calculated for that option. The default is a *.CSV file (a comma-separated text file) that can be opened in a spreadsheet for further analysis. Click on the <strong>Clear</strong> button to deselect the selected file. Note, if you repeat a plot with different selections but leave the selected file the same, the contents of the file will be overwritten with the new results.</p>
+      <p><strong>Season</strong> is referred to by the year in which it falls. Winter (December, January, February) is referred to by the year in which January and February fall.</p>
+      <p><strong>Select Statistic</strong></p>
+      <p>You can select the summary statistics to be plotted by clicking the appropriate check button in this section (default is Sum). SDSM will calculate the chosen statistic for the selected <strong>Time Period</strong> across the range of the fit period and plot these calculated statistics on a time series chart.</p>
+      <p>Note, <strong>Winter/Summer ratio</strong> is calculated as the sum of the winter data (December, January, February) divided by the sum of the summer data (June, July, August). It is referenced to the year in which the summer period falls.</p>
+      <p><strong>Sum, Mean, Maximum</strong>: standard measures for the selected time period.</p>
+      <p><strong>Winter/Summer ratio</strong>: calculated as the sum of the winter data (December, January, February) divided by the sum of the following summer data (June, July, August). It is referenced to the year in which the summer period falls.</p>
+      <p><strong>Maximum dry (wet) spell</strong>: the maximum dry (wet) spell length in days for the given time period.</p>
+      <p><strong>Dry (wet) day persistence</strong>: the total number of consecutive dry (wet) days for a period divided by the total number of dry (wet) days in that period.</p>
+      <p><strong>Mean dry (wet) spell</strong>: mean dry (wet) spell length for the period.</p>
+      <p><strong>Median dry (wet) spell</strong>: median dry (wet) spell length for the period.</p>
+      <p><strong>SD dry (wet) spell</strong>: standard deviation of dry (wet) spell length for the period.</p>
+      <p><strong>Spell length correlation</strong>: calculated as <em>mean wet day persistence</em> minus (1 - <em>mean dry day persistence</em>) for the period.</p>
+      <p><strong>Partial Duration Series</strong>: calculated as the sum of data values less than or equal to the chosen threshold for the selected <strong>Time Period</strong>. The default is the threshold value set in the main <strong>Settings</strong> screen. This value can be adjusted by entering the required threshold in the text box (this will not affect the threshold set in the main <strong>Settings</strong> screen).</p>
+      <p><strong>Percentile</strong> calculates the specified percentile for the chosen <strong>Time Period</strong>. The default is 90% but this can be adjusted by entering the required value in the text box.</p>
+      <p><strong>Standard Precipitation Index</strong> (SPI): This is calculated for monthly time series only, so the <strong>Time Period</strong> selection is ignored when SPI is chosen. It is derived by first calculating the monthly sums of the data, then computing a moving average of these monthly sums (smoothing) across the time period entered by the User. The default moving average period is 3 months. The smoothed data are then normalized by subtracting the mean of all the data in the fit range and dividing by the standard deviation of the smoothed data for each month.</p>
+      <p><strong>Peaks Over Threshold</strong> (POT): counts the number of events greater than the user-specified threshold for the chosen time period.</p>
+      <p><strong>Nth largest</strong>: determines the nth largest value when the data are sorted in descending order for a given time period.</p>
+      <p><strong>Largest n day total</strong>: calculates the n-day total for all possible windows in the time period and presents the largest value.</p>
+      <p><strong>%Prec &gt; annual %ile</strong>: percentage of total precipitation above the annual percentile.</p>
+      <p><strong>% All precip from events &gt; long term %ile</strong>: percentage of all precipitation from events that are greater than the long term percentile.</p>
+      <p><strong>No. of events &gt; long term %ile</strong>: count of the total number of events in the time period that are greater than the long term percentile.</p>
+      <p><strong>Plot</strong></p>
+      <p>Click the <strong>Plot</strong> button to plot the selected statistics as a time series graph.</p>
+      <hr>
+    </div>
+
+
+    <div id="IDH_DataSettings">
+      <h2>Data Settings</h2>
+      <p>Before downscaling, the User should check the date ranges, type and integrity of all input data.</p>
+      <p><strong>Data</strong></p>
+      <p>Specify the <strong>Standard Data Start</strong> and <strong>End Date</strong> for all input data. These dates will appear throughout the operation of SDSM, but may be updated from any page.</p>
+      <p><strong>Miscellaneous</strong></p>
+      <p>The default setting of <strong>Allow Negative Values</strong> enables simulation of negative values by the downscaling model (e.g., for minimum temperature); deselection truncates values at zero (e.g., for sunshine hours).</p>
+      <p>For some variables it is necessary to specify an <strong>Event Threshold</strong>. For example, when calibrating daily precipitation models, the parameter might be set to 0.3 mm/day to treat trace rain days as dry days. Similarly, the threshold for sunny versus cloudy days might be set at 1.0 hours/day to discriminate between overcast and sunny conditions.</p>
+      <p>The <strong>Missing Data Identifier</strong> is a universal code assigned to missing data in all input series. Whenever SDSM encounters this code the value will be skipped (e.g., during model calibration or calculation of summary statistics).</p>
+      <p><strong>Random Number Seed</strong> should be set if you wish the randomly generated sequences (in Scenario Generator and Weather Generator) to be different each time. If you wish to replicate experiments, SDSM can regenerate the same sequence of randomly generated scenarios if you deselect this check box.</p>
+      <hr>
+    </div>
+
+    <div id="IDH_SystemSettings">
+      <h2>System Settings</h2>
+      <p>The <strong>System Settings</strong> page allows the User to change and save further downscaling model preferences.</p>
+      <p><strong>Model Transformation</strong></p>
+      <p>Specifies the transformation applied to the predictand in <strong>Conditional</strong> models. The default (None) is used whenever the predictand is normally distributed (this is often the case for daily temperature). Two of the alternatives (Fourth root and Natural log) are used whenever data are highly skewed (as in the case of daily precipitation). The Inverse Normal transformation converts any data distribution into a normal distribution and then applies a resampling procedure to the data. This means that the maximum simulated event can never exceed the observed maximum in the calibration data. The Box Cox transformation calculates the optimal lambda (λ) value for the data before transforming the data based on this value. The algorithm uses a trial-and-error approach to ‘home in’ on the optimal value – the search space being [-2, 2]. The optimal value is determined by the minimum of Hinkley’s (1977) equation:</p>
+      <p><img src="HelpImages/1740510105_sdsmhelp-9.png" width="188" height="44" alt="" style="vertical-align:middle" /></p>
+      <p>The Box Cox transformation applied is defined as:</p>
+      <p><img src="HelpImages/1740510105_sdsmhelp-10.png" width="71" height="44" alt="" style="vertical-align:middle" /></p>
+      <p>The transformation type is recorded in *.PAR and *.SIM files to ensure that data are consistently handled during subsequent scenario and data analysis operations.</p>
+      <p><strong>Variance Inflation</strong></p>
+      <p>Controls the magnitude of variance inflation in downscaled daily weather variables. This parameter changes the variance by adding or reducing the amount of “white noise” applied to regression model estimates of the local process. The default value produces approximately normal variance inflation (prior to any transformation). Variance inflation is de-activated by setting the parameter to zero. Note: for Fourth root and Natural log <strong>Model Transformations</strong> (see above), this parameter also affects changes in the mean estimate.</p>
+      <p><strong>Bias Correction</strong></p>
+      <p>Compensates for any tendency to over- or under-estimate the mean of conditional processes by the downscaling model (e.g., mean daily rainfall totals). The default value is 1.0, indicating no bias correction.</p>
+      <p><strong>Optimisation Algorithm</strong></p>
+      <p>SDSM provides two means of optimising the model: Dual Simplex (as in earlier versions of SDSM) and Ordinary Least Squares. Although both approaches give comparable results, Ordinary Least Squares is much faster. Stepwise regression works by progressively adding all parameters into the model and selecting the model which models the predictand most strongly according to one of two criteria: either AIC or BIC.</p>
+      <p><strong>Conditional Selection</strong></p>
+      <p>Adjusts the way in which the conditional process models a conditional event. The default (stochastic) setting ensures that events (e.g., wet days) are only modelled when a generated pseudo random number is less than the modelled threshold. Fixed threshold (which can be set by the user) ensures an event is modelled when the conditional process models a value greater than this threshold (i.e., the random nature of the stochastic process is removed).</p>
+      <p><strong>Wet Day Percentage Profile</strong></p>
+      <p>Sets the percentages for each month the User wants to force the conditional process to during Scenario Generator. For example, if the User enters 50 in January, it will force January to have 50% wet days. If January currently has, say, 30% wet days, it will add wet days randomly; if January currently has 60% wet days, SDSM will delete wet days randomly until only 50% of days remain wet.</p>
+      <p>You can save your settings (Data and System) to the same file and load this in from the Data and System Settings windows. Note that SDSM will always try to load from (Insert Here) when it is booted up; if it cannot load data from this file it uses the default SDSM settings.</p>
+      <hr>
+    </div>
+
+    <div id="IDH_Bibliography">
+      <h2>Bibliography</h2>
+      <p>This Bibliography provides references to papers containing full technical details of SDSM, along with example case studies. Additional background material is also recommended for other downscaling methods, as well as selected review papers in which various downscaling methods have been compared.</p>
+      <p>Abdel-Fattah, S.L. 2012. DownScaling the Great Lakes: Techniques for adaptive policy. Unpublished PhD Thesis, McMaster University, Ontario, Canada, 236pp.</p>
+      <p>Abdo, K.S., Fiseha, B.M., Rientjes, T.H.M., Gieske, A.S.M. and Haile, A.T. 2009. Assessment of climate change impacts on the hydrology of Gilgel Abay catchment in Lake Tana basin, Ethiopia. Hydrological Processes, 23, 3661-3669.</p>
+      <p>Abkar, A., Habibnajad, M., Solaimani, K. and Naghavi, H. 2014. Investigation efficiency SDSM model to simulate temperature indexes in arid and semi-arid regions. Iranian Journal of Irrigation and Water Engineering, 4, 1-17.</p>
+      <p>Abraham, L.Z. 2006. Climate change impact on Lake Ziway watershed water availability, Ethiopia. Unpublished MSc Thesis, University of Applied Sciences, Cologne, pp123.</p>
+      <p>Adem, A.A., Melesse, A.M., Tilahun, S.A., Setegn, S.G., Ayana, E.K., Wale, A. and Assefa, T.T. 2014. Climate change projections in the Upper Gilgel Abbay River catchment, Bule Nile Basin Ethiopia. In: Melesse, A.M., ... Abtew, W. and Setgn, S.G. (eds.) Nile River Basin, Chapter 19, 363-388. Springer, Switzerland.</p>
+      <p>Adimo, O.A., Bosco, N.J. and Leonard, W. 2011. Net primary productivity response to climate change in the Mount Kenya ecosystem. In: Filho, W.L. (ed.) Experiences of Climate Change Adaptation in Africa. Chapter 14, Springer.</p>
+      <p>Aguilar, M.Y., Pacheco, T.R., Tobar, J.M. and Quiñónez, J.C. 2009. Vulnerability and adaptation to climate change of rural inhabitants in the central coastal plain of El Salvador. Climate Research, 40, 187-198.</p>
+      <p>Aherne, J., Futter, M.N. and Dillon, P.J. 2008. The impacts of future climate change and sulphur emission reductions on acidification recovery at Plastic Lake, Ontario. Hydrology and Earth System Sciences, 12, 383-392.</p>
+      <p>Ahmadi, A., Moridi, A., Lafdani, E.K. and Kianpisheh, G. 2014. Assessment of climate change impacts on rainfall using large scale climate variables and downscaling models - a case study. Journal of Earth System Science, 123, 1603-1618.</p>
+      <p>Appiah-Adjei, E.K. and Allen, D.M. 2009. Quantifying the impact of climate change on groundwater recharge to fractured-rock aquifers: A case study from Canada. Groundwater and climate in Africa Conference, IAHS Publication 334, 210-218.</p>
+      <p>Appiah-Adjei, E.K., Shu, L., Adjei, K.A. and Lu, C. 2013. Evaluation of climate change impact on sustainability of Tailan underground reservoir in China. Advanced Materials Research, 726-731, 3249-3255.</p>
+      <p>Artlert, K., Chaleeraktrakoon, C. and Nguyen, V.-T.-V. 2013. Modeling and analysis of rainfall processes in the context of climate change for Mekong, Chi and Mun River Basins (Thailand). Journal of Hydro-environment Research, 7, 2-17.</p>
+      <p>Aspen Global Change Institute (AGCI), 2006. Climate Change and Aspen: An Assessment of Impacts and Potential Responses. Appendix B, p107-111. Aspen Global Change Institute, Colorado, pp147.</p>
+      <p>Assefa, K., Woodbury, A. and Holländer, H. 2014. Impact of soil data parameterization on recharge for climate change studies. EGU General Assembly, Vienna, Austria, id 14988.</p>
+      <p>Ayalew, D., Tesfaye, K., Mamo, G., Yitaferu, B. and Bayu, W. 2012. Outlook of future climate in northwestern Ethiopia, 3, xx-xx.</p>
+      <p>Babel, M.S. and Turyatunga, E. 2015. Evaluation of climate change impacts and adaptation measures for maize cultivation in the western Uganda agro-ecological zone. Theoretical and Applied Climatology, 119, 239-254.</p>
+      <p>Bekele, H.M. 2009. Evaluation of climate change impact on Upper Blue Nile Basin reservoir (case study on Gilgel Abay reservoir, Ethiopia). Unpublished MSc thesis, Arba Minch, Ethiopia.</p>
+      <p>Bettolli, M.L., Carmen, M.A.A., Brasesco, G.C., Rudorff, F., Ortiz, A.M., Arroyo, J. and Armoa, Y.J. 2010. Pastura natural de salto (Uruguay): Relacion con la variabilidad climitica y analisis de contextos futuros de cambio climatico. Revista Brasileira de Meteorologia, 25, 248-259.</p>
+      <p>Bishaw, Y. 2012. Evaluation of climate change impact on Omo Gibe basin (case study of Gilgel Gibe III reservoir). Unpublished MSc thesis, Addis Ababa University, Ethiopia.</p>
+      <p>Bootsma, A., Gameda, S. and McKenney, D.W. 2005. Impacts of potential climate change on selected agroclimatic indices in Atlantic Canada. Canadian Journal of Soil Science, 85, 329-343.</p>
+      <p>Chaleeraktrakoon, C. and Khwanket, U. 2013. A Statistical Downscaling Model for Extreme Daily Rainfalls at a Single Site. World Environmental and Water Resources Congress ASCE 2013, pp1058-1067.</p>
+      <p>Chaleeraktrakoon, C. and Punlun, P. 2010. Statistical analysis and downscaling for the minimum, average, and maximum daily temperatures of the Chi and Mun River basins. Thammasat International Journal of Science and Technology, 15, 64-81.</p>
+      <p>Chaowiwat, W. and Likitdecharote, K. 2008. Effect of climate change on potential evapotranspiration case study: Lower Chaopraya Basin. Proceedings of the 1st Nakhon Pathom Rajabhat University (NPRU) Academic Conference, SCI-09, 75-83.</p>
+      <p>Cheema, S.B., Rasul, G., Ali, G. and Kazmi, D.H. 2011. A comparison of minimum temperature trends with model projections. Pakistan Journal of Meteorology, 8, 39-52.</p>
+      <p>Chen A. 2006. The threat of dengue fever in the Caribbean: Impacts and adaptation. Final Report submitted to Assessments of Impacts and Adaptations to Climate Change (AIACC), Project No. SIS 06. International START Secretariat, Washington DC.</p>
+      <p>Chen, A., Taylor, M., Centella, A. and Farrell, D. 2008. Climate trends and scenarios. Report of Working Group I, Climate Change and Biodiversity in Caribbean Island, CANARI Technical Report No.381, December 2008.</p>
+      <p>Chen, H., Guo, J., Guoi, S-L. and Xu, V.-Y. 2014. Comparison of different statistical downscaling methods and evaluation indicators in climate change impact on runoff. Journal of Hydraulic Engineering.</p>
+      <p>Chen, H., Guo, J., Guoi, S-L., Xu, V.-Y. and Singh, V.P. 2009. Analysis of climate change impact on precipitation in Dajiangkou reservoir basin using statistical downscaling method. Hydrological Modelling and Integrated Water Resources Management in Ungauged Mountainous Watersheds. IAHS, 335, 291-299.</p>
+      <p>Chen, H., Xu, C.-Y. and Guo, S. 2012. Comparison and evaluation of multiple GCMs, statistical downscaling and hydrological models in the study of climate change impacts on runoff. Journal of Hydrology, 434-435, 36-45.</p>
+      <p>Chen, J., Brissette, F.P. and Leconte, R. 2011. Uncertainty of downscaling method in quantifying the impact of climate change on hydrology. Journal of Hydrology, 401, 190-202.</p>
+      <p>Chen, J., Brissette, F.P. and Leconte, R. 2012. Coupling statistical and dynamical methods for spatial downscaling of precipitation. Climatic Change, 114, 509-526.</p>
+      <p>Chen, K., Guo, S. and Xu, C. 2012. Comparison of different statistical downscaling methods and evaluation indicators in climate change impact on runoff. Journal of Hydraulic Engineering, 43 (8).</p>
+      <p>Chen, S.T., Yu, P.S. and Tang, Y.H. 2010. Statistical downscaling of daily precipitation using support vector machines and multivariate analysis. Journal of Hydrology, 385, 13-22.</p>
+      <p>Choi, W., Moore, A., Koenig, K. and Rasmussen, P. 2008. Response of hydrological systems to statistically downscaled GCM output in the northern Manitoba (Canada) boreal forest region. Proceedings of the XIIIth IWRA World Water Congress, 1-4 September 2008, Montpellier, France.</p>
+      <p>Chu, J.T., Xia, J., Xu, C.Y. and Singh, V.P. 2010. Statistical downscaling of daily mean temperature, pan evaporation and precipitation for climate change scenarios in Haihe, China. Theoretical and Applied Climatology, 99, 149-161.</p>
+      <p>Chung, E.S., Park, K. and Lee, K.S. 2011. The relative impacts of climate change and urbanization on the hydrological response of a Korean urban watershed. Hydrological Processes, 25, 544-560.</p>
+      <p>Cohen, S. and Neale, T (eds). 2003. Expanding the dialogue on climate change and water management in the Okanagan Basin, British Columbia. Environment Canada.</p>
+      <p>Combalicer, E.A., Cruz, R.V.O., Lee, S. and Im, S. 2010. Assessing climate change impacts on water balance in the Mount Makiling forest, Philippines. Journal of Earth System Science, 119, 265-283.</p>
+      <p>Corzo, G., Jonoski, A., Yimer, G., Xuan, Y. and Solomatine, D. 2009. Downscaling Global Climate Models using modular models and fuzzy committees. Proceedings of the 7th International Symposium Ecohydraulics, Chile.</p>
+      <p>Coulibaly, P. 2004. Downscaling daily extreme temperatures with genetic programming. Geophysical Research Letters, 31, L16203.</p>
+      <p>Coulibaly, P. 2009. Multi-model approach to hydrologic impact of climate change. From headwaters to the ocean: Hydrological changes and watershed management. Proceedings of the International Conference on Hydrological Changes and Management from Headwaters to the Ocean, Kyoto, Japan, pp249-255.</p>
+      <p>Coulibaly, P. and Shi, X. 2005. Identification of the effect of climate change on future design standards of drainage infrastructure in Ontario. Ministry of Transportation of Ontario, Canada.</p>
+      <p>Coulibaly, P., Dibike, Y.B. and Anctil, F. 2005. Downscaling precipitation and temperature with temporal neural networks. Journal of Hydrometeorology, 6, 483-496.</p>
+      <p>Crawford, T. 2007. Future climate change: modelling the implications of shifts in rainfall characteristics for runoff in Northern Ireland. Unpublished Ph.D. thesis, Queen's University Belfast, Northern Ireland.</p>
+      <p>Crawford, T., Betts, N.L. and Favis-Mortlock, D.T. 2007. GCM grid box choice and predictor selection associated with statistical downscaling of daily precipitation over Northern Ireland. Climate Research, 34, 145-160.</p>
+      <p>Crossman, J., Futter, M.N., Oni, S.K., Whitehead, P.G., Jin, L., Butterfield, D., Baulch, H.M. and Dillon, P.J. 2013. Impacts of climate change on hydrology and water quality: Future proofing management strategies in the Lake Simcoe watershed, Canada. Journal of Great Lakes Research, 39, 19-32.</p>
+      <p>Cueto, R.O.G., Martinez, A.T. and Ostos, E.J. 2010. Heat waves and heat days in an arid city in the northwest of Mexico: current trends and in climate change scenarios. International Journal of Biometeorology, 54, 335-345.</p>
+      <p>Dharmarathna, W.R.S.S., Herath, S. and Weerakoon, S.B. 2014. Changing the planting date as a climate change adaptation strategy for rice production in Kurunegala district, Sri Lanka. Sustainability Science, 9, 103-111.</p>
+      <p>Diaz-Nieto, J. and Wilby, R.L. 2005. A comparison of statistical downscaling and climate change factor methods: impacts on low flows in the River Thames, United Kingdom. Climatic Change, 69, 245-268.</p>
+      <p>Dibike, Y.B. and Coulibaly, P. 2005. Hydrologic impact of climate change in the Saguenay watershed: comparison of downscaling methods and hydrologic models. Journal of Hydrology, 307, 145-163.</p>
+      <p>Dibike, Y.B. and Coulibaly, P. 2006. Temporal neural networks for downscaling climate variability and extremes. Neural Networks, 19, 135-144.</p>
+      <p>Dibike, Y.B. and Coulibaly, P. 2007. Validation of hydrologic models for climate scenario simulation: the case of Saguenay watershed in Quebec. Hydrological Processes, 21, 3123-3135.</p>
+      <p>Dibike, Y.B., Gachon, P., St-Hilaire, A., Ouarda, T.B.M.J. and Nguyen, V.T.V. 2008. Uncertainty analysis of statistically downscaled temperature and precipitation regimes in Northern Canada. Theoretical and Applied Climatology, 91, 149-170.</p>
+      <p>Dile, Y.T., Berndtsson, R. and Setegn, S.G. 2013. Hydrological response to climate change for Gilgel Abay River, in the Lake Tana Basin - Upper Bule Nile Basin of Ethiopia. PLOS ONE, 8, doi:10.1371/journal.pone.0079296</p>
+      <p>Ding, X., Zhou, H., Wang, Y. and Jia, J. 2011. Variability and prediction of climatic elements in the Three Gorges Reservoir. Proceedings of an International Symposium on Water Resource and Environmental Protection, Xi’an, China, pp2307-2310.</p>
+      <p>Ding, X., Zhou, H., Wang, Y. and Wang, Y. 2012. Evolution of hydro-climatic elements in the Three Gorges Reservoir under changing environment. Advanced Materials Research, 356-360, 2376-2382.</p>
+      <p>Donovan, B. 2003. An investigation into the relationship between large scale atmospheric variables, wave climate and weather related sea level variations. MSc Thesis, Kings College London, 57pp.</p>
+      <p>Doria, R.O. and Madramootoo, C.A. 2009. Estimation of irrigation requirements for some crops in southern Quebec using CROPWAT. Irrigation and Drainage, 10.1002/ird.497.</p>
+      <p>Doyon, B., Bélanger, D. and Gosselin, P. 2008. The potential impact of climate change on annual and seasonal mortality for three cities in Québec, Canada. International Journal of Health Geographics, 7, 23.</p>
+      <p>Duan, K. and Mei, Y. 2014. A comparison study of three statistical downscaling methods and their model-averaging ensemble for precipitation downscaling in China. Theoretical and Applied Climatology, 116, 707-719.</p>
+      <p>Ebrahim, G.Y., Jonoski, A., van Griensven, A. and Di Baldassarre, G. 2013. Downscaling technique uncertainty in assessing hydrological impact of climate change in the Upper Beles River Basin, Ethiopia. Hydrology Research, 44, 377-398.</p>
+      <p>Egan, C. 2012. An investigation of Dublin’s urban heat island: Past and projected trends. Unpublished MSc Thesis, University of Maynooth, Ireland.</p>
+      <p>Entemadi, H., Samadi, S. and Sharifikia, M. 2014. Uncertainty analysis of statistical downscaling models using general circulation model over an international wetland. Climate Dynamics, 42, 2899-2920.</p>
+      <p>Farajzadeh, M., Oji, R., Cannon, A.J., Ghavidel, Y. and Bavani, A.M. 2014. An evaluation of single-site statistical downscaling techniques in terms of indices of climate extremes for the Midwest of Iran. Theoretical and Applied Climatology, doi:10.1007/s00704-014-1157-4.</p>
+      <p>Fealy, R. 2006. An assessment of the relationship between glacier mass balance and synoptic climate in Norway: Likely future implications of climate change. Unpublished PhD Thesis, University of Maynooth, Ireland.</p>
+      <p>Futter, M.N., Helliwell, R.C., Hutchins, M. and Aherne, J. 2009. Modelling the effects of changing climate and nitrogen deposition on nitrate dynamics in a Scottish mountain catchment. Hydrology Research, 40, 153-166.</p>
+      <p>Gachon, P. and Dibike, Y. 2007. Temperature change signals in northern Canada: convergence of statistical downscaling results using two driving GCMs. International Journal of Climatology, 27, 1623-1641.</p>
+      <p>Gagnon, S., Singh, B., Rousselle, J. and Roy, L. 2005. An application of the Statistical DownScaling Model (SDSM) to simulate climatic data for streamflow modelling in Quebec. Canadian Water Resources Journal, 30, 297-314.</p>
+      <p>Garcia-Cueto, O.R. and Santillan-Soto, N. 2012. Modelling extreme climate events: Two case studies in Mexico. Climate Models. IntechOpen Books, Chapter 7, ISBN 978-953-51-0135-2.</p>
+      <p>Gebri, W.G. and Abate, B. 2014. Trend of lake evaporation considering climate change, the case of Lake Hawasa, Ethiopia. International Journal of Science and Research, 3, 1605-1610.</p>
+      <p>Goldstein, J. and Milton, J. 2003. Regional climate scenarios set development for hydrological impact studies. Proceedings of the 14th Symposium on Global Change and Climate Variations, American Meteorological Society, Long Beach, California.</p>
+      <p>Goodess, C., Osborn, T. and Hulme, M. 2003. The identification and evaluation of suitable scenario development methods for the estimation of future probabilities of extreme weather events. Tyndall Centre for Climate Change Research, Technical Report 4.</p>
+      <p>Gough, W.A., Tam, B.Y., Mohsin, T. and Allen, S.M.J. 2014. Extreme cold weather alerts in Toronto, Ontario, Canada and the impact of changing climate. Urban Climate, 8, 21-29.</p>
+      <p>Guangul, S.G. 2003. Modelling the effect of climate and land-use changes on hydrological processes: An integrated GIS and distributed modelling approach. Published PhD Thesis, Vrije Universiteit, Brussels, Belgium.</p>
+      <p>Guo, B., Zhang, J., Gong, H. and Cheng, X. 2014. Future climate change impacts on the ecohydrology of Guishui River Basin, China. Ecohydrology and Hydrobiology, 14, 55-67.</p>
+      <p>Guo, J., Chen, H., Xu, C.-Y., Guo, S. and Guo, J. 2012. Prediction of variability of precipitation in the Yangtze River Basin under the climate change conditions based on automated statistical downscaling. Stochastic Environmental Research and Risk Assessment, 26, 157-176.</p>
+      <p>Guo, Y.-F., Li, T.T., Cheng, Y.L., Ge, T.X., Chen, C. and Liu, F. 2012. Prediction of heat-related mortality impacts under climate change scenarios in Shanghai. PMID, 46, 1025-1029.</p>
+      <p>Hackney, C.R. 2013. Modelling the effects of climate change and sea level rise on the evolution of incised coastal gullies. University of Southampton, Geography, Doctoral Thesis, 203pp.</p>
+      <p>Hagg, W., Shahgedanova, M., Mayer, C., Lambrecht, A. and Popovnin, V. 2010. A sensitivity study for water availability in the Northern Caucasus based on climate projections. Global and Planetary Change, 73, 161-171.</p>
+      <p>Harpham, C. and Wilby, R.L. 2005. Multi-site downscaling of heavy daily precipitation occurrence and amounts. Journal of Hydrology, 312, 235-255.</p>
+      <p>Hashmi, M.Z., Shamseldin, A. and Melville, B.W. 2011. Statistical downscaling of watershed precipitation using Gene Expression Programming (GEP). Environmental Modelling and Software, 26, 1639-1646.</p>
+      <p>Hashmi, M.Z., Shamseldin, A.Y. and Melville, B.W. 2009. Statistical downscaling of precipitation: state-of-the-art and application of Bayesian multi-model approach for uncertainty assessment. Hydrology and Earth System Sciences, 6, 6535-6579.</p>
+      <p>Hashmi, M.Z., Shamseldin, A.Y. and Melville, B.W. 2011. Comparison of SDSM and LARS-WG for simulation and downscaling of extreme precipitation events in a watershed. Stochastic Environmental Research and Risk Assessment, 25, 475-484.</p>
+      <p>Hashmi, M.Z.R. 2012. Watershed scale climate change projections for use in hydrologic studies: exploring new dimensions. Unpublished PhD Thesis, University of Auckland, New Zealand.</p>
+      <p>Hassan, Z. and Harun, S. 2011. Hydrological response of a catchment to climate change in the Kurau River Basin, Perak, Malaysia. Proceedings of the Third International Conference on Managing Rivers in the 21st Century: Sustainable Solutions for Global Crisis of Flooding, Pollution and Water Scarcity. Penang, Malaysia.</p>
+      <p>Hassan, Z. and Harun, S. 2012. Application of Statistical DownScaling Model for long lead rainfall prediction in Kurau river catchment of Malaysia. Malaysian Journal of Civil Engineering, 24, 1-12.</p>
+      <p>Hassan, Z., Harun, S. and Malek, M.A. 2012. Application of ANNs with the SDSM for the hydrological trend prediction in the sub-catchment of Kurau River, Malaysia. Journal of Environmental Science and Engineering B, 1, 577-585.</p>
+      <p>Hassan, Z., Shamsudin, S., Harun, S., Malek, A. and Hamidon, N. 2015. Suitability of ANN applied as a hydrological model coupled with statistical downscaling model: a case study in the northern area of Peninsular Malaysia. Environmental Earth Sciences, online.</p>
+      <p>Hassan, Z., Shamsudin, S. and Harun, S. 2014. Application of SDSM and LARS-WG for simulating and downscaling of rainfall and temperature. Theoretical and Applied Climatology, 116, 243-257.</p>
+      <p>Haylock, M.R., Cawley, G.C., Harpham, C., Wilby, R.L. and Goodess, C.M. 2006. Downscaling heavy precipitation over the UK: a comparison of dynamical and statistical methods and their future scenarios. International Journal of Climatology, 26, 1397-1415.</p>
+      <p>He, B., Takara, K., Yamashili, Y., Kenichiro, K. and Luo, P. 2011. Statistical analysis of present and future river water temperature in cold regions using downscaled GCMs data. Annuals of Disaster Prevention Research Institute, 54B, 103-111.</p>
+      <p>He, J., Valeo, C., Chu, A. and Neumann, N.F. 2011. Stormwater quantity and quality response to climate change using artificial neural networks. Hydrological Processes, 25, 1298-1312.</p>
+      <p>Herath, S. and Sarukkalige, R. 2014. Spatial and temporal downscaling approach to develop IDF curves for Melbourne airport region. Hydrology and Water Resources Symposium 2014, Barton, ACT: Engineers Australia, 239-246.</p>
+      <p>Hessami, M., Gachon, P., Ouarda, T.B.M.J. and St-Hilaire, A. 2008. Automated regression-based statistical downscaling tool. Environmental Modelling and Software, 23, 813-834.</p>
+      <p>Holloway, T., Spak, S.N., Barker, D., Bretl, M., Moberg, C., Hayhoe, K., Van Dorn, J. and Wuebbles, D. 2008. Change in ozone air pollution over Chicago associated with global climate change. Journal of Geophysical Research-Atmospheres, 113, D22306.</p>
+      <p>Hong, X., Guo, S., Guo, J., Hou, Y. and Wang, L. 2014. Projected changes of extreme precipitation characteristics for the Poyang Lake Basin based on Statistical Downscaling Model. Journal of Water Resources Research, 3, 511-521.</p>
+      <p>Hou, Y., Chen, H., Huang, X. and Xu, C. 2014. A statistical downscaling method based on least squares support vector machines. Journal of Water Resources Research, 3, 72-77.</p>
+      <p>Hu, Y. 2014. Water tower of the Yellow Rover in a changing climate: Toward an integrated assessment. PhD thesis, UNESCO-IHE, Delft, Netherlands.</p>
+      <p>Hu, Y., Maskey, S. and Uhlenbrook, S. 2012. Downscaling daily precipitation over the Yellow River source region in China: a comparison of three statistical downscaling methods. Theoretical and Applied Climatology, 112, 447-460.</p>
+      <p>Hu, Y., Maskey, S. and Uhlenbrook, S. 2012. Expected changes in future temperature extremes and their elevation dependency over the Yellow River source region. Hydrology and Earth System Sciences Discussions, 9, 13609-13634.</p>
+      <p>Hu, Y., Maskey, S. and Uhlenbrook, S. 2013. Expected changes in future temperature extremes and their elevation dependency over the Yellow River source region. Hydrology and Earth Systems Science, 17, 2501-2514.</p>
+      <p>Huang, J., Zhang, J., Zhang, Z., Sun, S. and Yao, J. 2012. Simulation of extreme precipitation indices in the Yangtze River basin by using statistical downscaling method (SDSM). Theoretical and Applied Climatology, 108, 325-343.</p>
+      <p>Huang, J., Zhang, J.C., Zhang, Z.X., Xu, C.Y., Wang, B.L. and Yao, J. 2011. Estimation of future precipitation change in the Yangtze River basin by using statistical downscaling method. Stochastic Environmental Research and Risk Assessment, 25, 781-792.</p>
+      <p>Irwin, S.E., Sarwar, R., King, L.M. and Simonovic, S.P. 2012. Assessment of climatic vulnerability in the Upper Thames River basin: Downscaling with LARS-WG. University of Western Ontario Department of Civil and Environmental Engineering, Report No 081, Canada, 73pp.</p>
+      <p>Jasrotia, A.S., Baru, D. and Nishat, F. 2013. Dynamic modelling for assessing the impact of climate change on the hydrological regime of Chenab basin, NW Himalayas. Proceedings of Symposium H01 on Climate and Land Surface Changes in Hydrology, Gothenburg, Sweden.</p>
+      <p>Jia, Y., Ding, X., Wang, H., Zhou, Z., Qiu, Y. and Niu, C. 2012. Attribution of water resources evolution in the highly water-stressed Hai River Basin of China. Water Resources Research, 48, W02513.</p>
+      <p>Jun, K.S., Chung, E.-S., Sung, J.-Y. and Lee, K.S. 2011. Development of spatial water resources vulnerability index considering climate change impacts. Science of the Total Environment, 409, 5228-5242.</p>
+      <p>Kabiri, R., Bai V, R. and Chan, A. 2013. Regional precipitation scenarios using a spatial-statistical downscaling approach for Klang watershed, Malaysia. Journal of Environmental Research and Development, 8, 126-134.</p>
+      <p>Kabiri, R., Ramani, B.V. and Chan, A. 2012. Climate change impacts on river runoff in Klang watershed in West Malaysia. Proceedings of the 10th WSEAS International Conference on Advances in Environment, Computational Chemistry and Bioscience, Montreux, Switzerland, pp223-228.</p>
+      <p>Karamouz, M., Fallahi, M. and Nazif, S. 2012. Evaluation of climate change impact on regional flood characteristics. Transactions of Civil Engineering, 36, 225-238.</p>
+      <p>Karamouz, M., Fallahi, M., Nazif, S. and Farahani, M.R. 2009. Long lead rainfall prediction using statistical downscaling and artificial neural network modelling. Scientia Iranica Transaction A-Civil Engineering, 16, 165-172.</p>
+      <p>Karamouz, M., Fallahi, M., Nazif, S. and Farahani, M.R. 2012. Long lead runoff simulation using data driven models. International Journal of Civil Engineering, 10, 328-336.</p>
+      <p>Karamouz, M., Hosseinpour, A. and Nazif, S. 2011. Improvement of urban drainage system performance under climate change impact: case study. Journal of Hydrologic Engineering, 16, 395-412.</p>
+      <p>Karamouz, M., Nazif, S. and Zhamatkesh, Z. 2013. Self-organizing Gaussian-based downscaling of climate data for simulation of urban drainage systems. Journal of Irrigation and Drainage Engineering, 139, 98-112.</p>
+      <p>Karamouz, M., Noori, N., Moridi, A. and Ahmadi, A. 2011. Evaluation of floodplain variability considering impacts of climate change. Hydrological Processes, 25, 90-103.</p>
+      <p>Karamouz, M., Taheriyoun, M., Baghvand, A., Tavakolifar, H. and Emami, F. 2010. Optimization of watershed control strategies for reservoir eutrophication management. Journal of Irrigation and Drainage Engineering, 136, 847-861.</p>
+      <p>Kazmi, D.H., Li, J., Rasul, G., Tong, J., Ali, G., Cheema, S.B., Liu, L., Gemmer, M. and Fischer, T. 2014. Statistical downscaling and future scenario generation of temperatures for Pakistan Region. Theoretical and Applied Climatology, doi:10.1007/s00704-014-1176-1</p>
+      <p>Keshta, N., Elshorbagy, A. and Carey, S. 2011. Impacts of climate change on soil moisture and evapotranspiration in reconstructed watersheds in northern Alberta, Canada. Hydrological Processes, 26, 1321-1331.</p>
+      <p>Khadka, D., Babel, M.S., Shrestha, S. and Tripathi, N.K. 2014. Climate change impact on glacier and snow melt and runoff in Tamakoshi basin in the Hindu Kush Himalayan (HKH) region. Journal of Hydrology, 511, 49-60.</p>
+      <p>Khan, M.S. and Coulibaly, P. 2010. Assessing hydrologic impact of climate change with uncertainty estimates: Bayesian neural network approach. Journal of Hydrometeorology, 11, 482-495.</p>
+      <p>Khan, M.S., Coulibaly, P. and Dibike, Y. 2006. Uncertainty analysis of statistical downscaling methods using Canadian Global Climate Model predictors. Hydrological Process, 20, 3085-3104.</p>
+      <p>Khan, M.S., Coulibaly, P. and Dibike, Y. 2006. Uncertainty analysis of statistical downscaling methods. Journal of Hydrology, 319, 357-382.</p>
+      <p>Khan, M.S., Dibike, Y.B. and Coulibaly, P. 2004. Climate change scenario in the Sanguenay watershed: Comparison of downscaled results using CGCM1 and CGCM2 predictors. Proceedings of the 57th Canadian Water Resources Association Annual Congress, June 16-18 2004, Montreal, Canada.</p>
+      <p>Kim, D.G., Lee, Y.W., Kwak, J.W. and Kim, H.S. 2011. Water balance analysis of Upo wetland, Korea under climate change. Proceedings of the 2011 World Environmental and Water Resources Congress. ASCE Conf. Proc. 10.1061/141173(414)482.</p>
+      <p>King, L.M., Irwin, S., Sarwar, R. and Simonovic, S.P. 2012. The effects of climate change on extreme precipitation events in the Upper Thames River basin: A comparison of downscaling approaches. Canadian Water Resources Journal, 37, 253-274.</p>
+      <p>Koukidis, E.N. and Berg, A.A. 2009. Sensitivity of the Statistical DownScaling Model (SDSM) to reanalysis products. Atmosphere-Ocean, 47, 1-18.</p>
+      <p>Kumambala, P.G. and Ervine, A. 2010. Water balance model of Lake Malawi and its sensitivity to climate change. The Open Hydrology Journal, 4, 152-162.</p>
+      <p>Lai, J.-S., Pan, T.-Y., Tung, C.-P., Chang, K.-C., Tan, Y.-C. and Lin, T.-T. 2009. The analysis of vulnerability for Yuan-San-Zhi flood division tunnel under the effect of climate changes. Journal of Taiwan Agricultural Engineering, 55, 65-80.</p>
+      <p>Lavers, D., Prudhomme, C., Hannah, D.M. and Troccoli, A. 2007. Comparison of the potential skill of raw and downscaled GCM output for river flow forecasting: a UK case study. CLIVAR Exchanges, 12, No.4 October 2007.</p>
+      <p>Lazar, B. and Williams, M. 2007. Climate change in Park City: An assessment of climate and snowpack impacts. Stratus Consulting, Boulder.</p>
+      <p>Legesse, S.A. and Prasada Rao, P.V.V. 2013. Statistical downscaling of daily temperature and rainfall data from global circulation models: in South Wollo zone, North Central Ethiopia. National Monthly Refereed Journal of Research in Science and Technology, 2, 27-39.</p>
+      <p>Li, Y. and Zhou, M. 2014. Projections of water requirements of cotton and sugar beet in Xinjiang based on statistical downscaling model. Transactions of the Chinese Society of Agricultural Engineering, 22, S274.3.</p>
+      <p>Li, Z., Zheng, F.-L. and Liu, W.-Z. 2011. Spatiotemporal characteristics of reference evapotranspiration during 1961-2009 and its projected changes during 2011-2099 on the Loess Plateau of China. Agriculture and Forest Meteorology, 154-155, 147-155.</p>
+      <p>Lines, G.S. and Barrow, E. 2004. Regional climate change scenarios in Atlantic Canada utilizing statistical downscaling techniques: Preliminary results. In: Wells, P.G., Dabon, G.R., Percy, J.A., Harvey, J. and Rolston, S.J. (Eds.) Health of the Bay of Fundy: Assessing Key Issues. Environment Canada Occasional Report No.21, Dartmouth.</p>
+      <p>Lines, G.S., Pancura, M. and Lander, C. 2005. Building climate change scenarios of temperature and precipitation in Atlantic Canada using the Statistical DownScaling Model (SDSM). Meteorological Service of Canada, Atlantic Region. Science Report series 2005-9, Dartmouth, Canada, pp41.</p>
+      <p>Liu, L., Liu, Z., Ren, X., Fischer, T. and Xu, Y. 2011. Hydrological impacts of climate change in the Yellow River Basin for the 21st century using hydrological model and statistical downscaling model. Quaternary International, 244, 211-220.</p>
+      <p>Liu, M. and Lu, J. 2015. Response of river hydrology and water quality to climate change in Changle River Watershed, Eastern China. Environmental Science Kournal, 35, 108-117.</p>
+      <p>Liu, W., Fu, G., Liu, C. and Charles, S.P. 2012. A comparison of three multi-site statistical downscaling models for daily rainfall in the North China Plain. Theoretical and Applied Climatology, 111, 585-600.</p>
+      <p>Liu, X. and Coulibaly, P. 2011. Downscaling ensemble weather predictions for improved week-2 hydrologic forecasting. Journal of Hydrometeorology, 12, 1564-1580.</p>
+      <p>Liu, X.L., Coulibaly, P. and Evora, N. 2008. Comparison of data-driven methods for downscaling ensemble weather forecasts. Hydrology and Earth System Sciences, 12, 615-624.</p>
+      <p>Liu, Z., Xu, Z., Charles, S.P., Fu, G. and Liu, L. 2011. Evaluation of two statistical downscaling models for daily precipitation over an arid basin in China. International Journal of Climatology, 31, 2006-2020.</p>
+      <p>London Climate Change Partnership (LCCP), 2002. A climate change impacts in London evaluation study. Final Technical Report, Entec UK Ltd.</p>
+      <p>Lu, X. 2006. Guidance on the Development of Climate Scenarios within the Framework of National Communications from Parties not Included in Annex I (NAI) to the United Nations Framework Convention on Climate Change (UNFCCC). National Communications Support Programme (NCSP), UNDP-UNEP-GEF.</p>
+      <p>Ma, Y., Huang, Y., Chen, X., Li, Y. and Bao, A. 2013. Modelling snowmelt runoff under climate change scenarios in an ungauged mountainous watershed, northwest China. Mathematical Problems in Engineering, Article ID 808565, doi: 10.1155/2013/808565.</p>
+      <p>MacDonald, O. 2004. Coupling glacier mass balance and meltwater yields in the European Alps with future climate change: downscaling from integrations of the HadCM model. Unpublished PhD Thesis, University of Salford, UK.</p>
+      <p>Mahmood, R. and Babel, M.S. 2013. Evaluation of SDSM developed by annual and monthly sub-models for downscaling temperature and precipitation in the Jhelum basin, Pakistan and India. Theoretical and Applied Climatology, 113, 27-44.</p>
+      <p>Mahmood, R. and Babel, M.S. 2014. Future changes in extreme temperature events using the statistical downscaling model (SDSM) in the trans-boundary region of the Jhelum river basin. Weather and Climate Extremes, 5-6, 56-66.</p>
+      <p>McCuin, J.L. 2011. Measuring the effect of misconceptions instruction on the acquisition of fundamental physics concepts involved in the greenhouse effect. PhD thesis, Texas Tech University, 153pp.</p>
+      <p>Meenu, R., Rehana, S. and Mujumdar, P.P. 2013. Assessment of hydrologic impacts of climate change in Tunga-Bhadra river basin, India with HEC-HMS and SDSM. Hydrological Processes, 27, 1572-1589.</p>
+      <p>Mishra, P.K., Khare, D., Mondal, A. and Kundu, S. 2014. Multiple linear regression based statistical downscaling of precipitation in a Canal Command. In: Singh, M. et al. (eds.) Climate Change and Biodiversity; Proceedings of IGU Rohtak Conference, Volume 1, Chapter 6. Advances in Geographical and Environmental Sciences, Springer, Japan.</p>
+      <p>Mohammed, Y. 2009. Climate change impact assessment on soil water availability and crop yield in Anjeni watershed Blue Nile basin. Unpublished MSc thesis, Arba Minch, Ethiopia.</p>
+      <p>Molavi, S., Muttil, N. and Tran, H.D. 2011. Urban flood modelling and climate change: A Melbourne area case study. MODSIM 2011 - 19th International Congress on Modelling and Simulation - Sustaining Our Future: Understanding and Living with Uncertainty, 3608-3614.</p>
+      <p>Mondal, A., Khare, D., Kundu, S., Meena, P., Mishra, P. and Shukla, R. 2014. Impact of climate change on future soil erosion in different slope, land use, and soil-type conditions in a part of the Narmada River Basin, India. Journal of Hydrologic Engineering, 10.1061/(ASCE)HE.1943-5584.0001065, C5014003.</p>
+      <p>Mullan, D., Favis-Mortlock, D. and Fealy, R. 2012. Addressing key limitations associated with modelling soil erosion under the impacts of future climate change. Agricultural and Forest Meteorology, 156, 18-30.</p>
+      <p>Mullan, D., Fealy, R. and Favis-Mortlock, D. 2012. Developing site-specific future temperature scenarios for Northern Ireland: addressing key issues employing a statistical downscaling approach. International Journal of Climatology, 32, 2007-2019.</p>
+      <p>Mullan, D., Zhang, X. and Chen, J. 2014. Validation of non-stationary precipitation series for site-specific impact assessment: comparison of two statistical downscaling techniques. EGU General Assembly, Vienna, Austria, id6942.</p>
+      <p>Mullan, D.J., Favis-Mortlock, D.T. and Fealy, R. 2011. Modelling the impacts of climate change on future rates of soil erosion: Addressing key limitations. International Symposium on Erosion and Landscape Evolution Conference Proceedings, 18-21 September 2011, Anchorage, Alaska.</p>
+      <p>Muluye, G.Y. 2012. Comparison of statistical methods for downscaling daily precipitation. Journal of Hydroinformatics, 14, 1006-1023.</p>
+      <p>Mutasa, C. 2011. Impacts of climate change on groundwater resources: a case study of the Sardon catchment, Spain. Unpublished MSc Thesis, Enschede, The Netherlands.</p>
+      <p>Nasseri, M., Tavakol-Davani, H. and Zahraie, B. 2013. Performance assessment of different data mining methods in statistical downscaling of daily precipitation. Journal of Hydrology, 492, 1-14.</p>
+      <p>Nega, A., Nikraz, H., Herath, S. and Ghadimi, B. 2014. Distress identification, cost analysis and pavement temperature prediction for the long-term pavement performance for Western Australia. IACSIT International Journal of Engineering and Technology, 7, 267-275.</p>
+      <p>Nguyen, V.T.V. and Zareie, A. 2012. Estimation of point-to-area rainfall frequency relations in the context of climate change. Proceedings of the World Environmental and Water Resources Congress, Albuquerque, New Mexico, US, pp1837-1844.</p>
+      <p>Nguyen, V.T.V., Desramaut, N. and Nguyen, T.D. 2010. Optimal rainfall temporal patterns for urban drainage design in the context of climate change. Water Science and Technology, 62, 1170-1176.</p>
+      <p>Noreña, J.E.O., Garcia, C.G. and Conde, A.C. 2011. A proposal for a vulnerability index for hydroelectricity generation in the face of potential climate change in Columbia. Atmosfera, 24, 329-346.</p>
+      <p>Norena, J.E.O., Garcia, C.G., Conde, A.C., Magana, V. and Esqueda, G.S.T. 2009. Vulnerability of water resources in the face of potential climate change: generation of hydroelectric power in Colombia. Atmosfera, 22, 229-252.</p>
+      <p>Nury, A.H. and Alam, M.J.B. 2014. Performance study of global circulation model HadCM3 using SDSM for temperature and rainfall in North-Eastern Bangladesh. Journal of Scientific Research, 6, 87-96.</p>
+      <p>Nyenje, P.M. and Batelaan, O. 2009. Estimating the effects of climate change on groundwater recharge and baseflow in the Ssezibwa catchment, Uganda. Hydrological Sciences Journal, 54, 713-726.</p>
+      <p>O’Connor, P. 2013. Assessment of a decision-centric approach to climate change adaptation. Unpublished Masters thesis. National University of Ireland, Maynooth, 80pp.</p>
+      <p>Oni, S.K., Futter, M.N., Molot, L.A. and Dillon, P.J. 2012. Modelling the long term impact of climate change on the carbon budget of Lake Simcoe, Ontario using INCA-C. Science of the Total Environment, 414, 387-403.</p>
+      <p>Oni, S.K., Futter, M.N., Molot, L.A., Dillon, P.J. and Crossman, J. 2014. Uncertainty assessments and hydrological implications of climate change in two adjacent agricultural catchments of a rapidly urbanizing watershed. Science of the Total Environment, 473, 326-337.</p>
+      <p>Oswald, M.R. 2011. Evaluation of climate change adaptation tools for transportation and land use planning. Masters thesis, University of Delaware, Newark, US, 61pp.</p>
+      <p>Parajuli, K. and Kang, K. 2014. Application of statistical downscaling in GCMs at constructing the map of precipitation in the Mekong River basin. Russian Meteorology and Hydrology, 39, 271-282.</p>
+      <p>Park, K., Chung, E.-S., Kim, S.-U. and Lee, K.S. 2010. Impact analysis of construction of small wastewater treatment plant under climate change. Journal of Korean Society on Water Quality, 26, 268-278.</p>
+      <p>Pervez, M. and Henebry, G.M. 2013. Climate change impacts on the Ganges-Brahmaputra precipitation - downscaled from GCM predictors. American Geophysical Union, Fall Meeting, abstract #GC11E-08.</p>
+      <p>Pervez, M.S. and Henebry, G.M. 2014. Projections of the Ganges-Brahmaputra precipitation - Downscaled from GCM predictors. Journal of Hydrology, 517, 120-134.</p>
+      <p>Pharasi, S. 2006. Development of statistical downscaling methods for the daily precipitation process at a local site. Masters Thesis, Department of Civil Engineering and Applied Mechanics, McGill University, Quebec, Canada.</p>
+      <p>Pour, S.H., Harun, S.B. and Shahid, S. 2014. Genetic programming for the downscaling of extreme rainfall events on the east coast of Peninsular Malaysia. Atmosphere, 5, 914-936.</p>
+      <p>Prudhomme, C. and Davies, H. 2005. Comparison of different sources of uncertainty in climate change impact studies in Great Britain. Climatic and anthropogenic impacts on water resources variability. UNESCO workshop, Montpellier, 22-24 November 2004.</p>
+      <p>Prudhomme, C. and Davies, H. 2009. Assessing uncertainties in climate change impact analyses on the river flow regimes in the UK. Part 1: baseline climate. Climatic Change, 93, 177-195.</p>
+      <p>Prudhomme, C. and Davies, H. 2009. Assessing uncertainties in climate change impact analyses on the river flow regimes in the UK. Part 2: future climate. Climatic Change, 93, 197-222.</p>
+      <p>Prudhomme, C., Piper, B., Osborn, T. and Davies, H. 2005. Climate change uncertainty in water resources planning. UKWIR Report 05/CL/04/4, UK Water Industry Research.</p>
+      <p>Qiu, B. and Jiang, J. 2010. Analysis of trends of future temperature in the Bosten Lake Basin based on a statistical downscaling model. Journal of Resources Ecology, 1, 268-273.</p>
+      <p>Quilbé, R., Rousseau, A.N., Moquet, J.-S., Savary, S., Ricard, S. and Garbouj, M.S. 2008. Hydrological responses of a watershed to historical land use evolution and future land use scenarios under climate change conditions. Hydrology and Earth System Sciences, 12, 101-110.</p>
+      <p>Quilbé, R., Rousseau, A.N., Moquet, J.-S., Trinh, N.B., Dibike, Y., Gachon, P. and Chaumont, D. 2008. Assessing the effect of climate change on river flow using General Circulation Models and hydrological modelling – application to the Chaudiere River, Quebec, Canada. Canadian Water Resources Journal, 33, 73-.</p>
+      <p>Rajabi, A. and Shabanlou, S. 2012. Climate index changes in future by using SDSM in Kermanshah, Iran. Journal of Environmental Research and Development, 7, 37-44.</p>
+      <p>Rajabi, A. and Shabanlou, S. 2013. The analysis of uncertainty of climate change by means of SDSM model case study: Kermanshah. World Applied Sciences Journal, 23, 1392-1398.</p>
+      <p>Rajabi, A., Sedghi, H., Eslamian, S. and Musavi, H. 2010. Comparison of LARS-WG and SDSM downscaling models in Kermanshah (Iran). Ecology, Environment and Conservation, 16, 465-474.</p>
+      <p>Reeves, I. 2008. Climate change impacts and adaptation Saint John, New Brunswick, Canada. Atlantic Coastal Action Plan Saint John, Canada.</p>
+      <p>Reynard, N., Crooks, S., Wilby, R.L. and Kay, A. 2004. Climate change and flood frequency in the UK. Proceedings of the 39th Defra Flood and Coastal Management Conference, University of York, UK.</p>
+      <p>Reynard, N.S., Kay, A.L. and Crooks, S.M. 2007. Flood risk in the UK: current and future. In: Brebbia, C.A. and Katsifarakis, K.L. (eds.) River Basin Management IV. WIT Transactions of Ecology and the Environment, 104, 299-310.</p>
+      <p>Rezaie, E.E. and Bannayan, M. 2012. Rainfed wheat yields under climate change in northeastern Iran. Meteorological Applications, 19, 346-354.</p>
+      <p>Rochdane, S., Reichert, B., Messouli, M., Babqiqi, A. and Khebiza, M.Y. 2012. Climate change impacts on water supply and demand in Rheraya watershed (Morocco), with potential adaptation strategies. Water, 4, 28-44.</p>
+      <p>Rössler, O. 2011. A climate change impact assessment study on mountain soil moisture with emphasis on epistemic uncertainties. Unpublished PhD thesis, University of Bonn, Switzerland.</p>
+      <p>Rössler, O., Diekkrüger, B. and Löffler, J. 2012. Potential drought stress in a Swiss mountain catchment - Ensemble forecasting of high mountain soil moisture reveals a drastic decrease, despite major uncertainties. Water Resources Research, 48, W04521.</p>
+      <p>Rostamian, R., Eslamian, S. and Farzaneh, M.R. 2013. Application of standardised precipitation index for predicting meteorological drought intensity in Beheshtabad watershed, central Iran. International Journal of Hydrology Science and Technology, 3, 63-76.</p>
+      <p>Samadi, S., Carbone, G.J., Mahdavi, M., Sharifi, F. and Bihamta, M.R. 2012. Statistical downscaling of climate data to estimate streamflow in a semi-arid catchment. Hydrology and Earth System Sciences Discussions, 9, 4869-4918.</p>
+      <p>Samadi, S., Carbone, G.J., Mahdavi, M., Sharifi, F. and Bihamta, M.R. 2013. Statistical downscaling of river runoff in a semi arid catchment. Water Resource Management, 27, 117-136.</p>
+      <p>Samadi, S., Ehteramian, K. and Sarraf, B.S. 2011. SDSM ability in simulate predictors for climate detecting over Khorasan province. Procedia – Social and Behavioural Sciences, 19, 741-749.</p>
+      <p>Samadi, S., Habibi, M., Farman, G. and Habibi, M. 2008. Climate risk management in north-east of Iran by statistical downscaling direct on GCMs output. Proceedings of Balkan Water Observation and Information System (BALWOIS) 2008, Ohrid, Republic of Macedonia.</p>
+      <p>Samadi, S., Nokhandan, M. and Farmani, G. 2006. Drought prediction over north-east of Iran using downscaling technique direct on GCM outputs. Proceedings of Balkan Water Observation and Information System (BALWOIS) 2006, Ohrid, Republic of Macedonia.</p>
+      <p>Samadi, S., Wilson, C.A.M.E. and Moradkhani, H. 2013. Uncertainty analysis of statistical downscaling models using Hadley Centre Coupled Model. Theoretical and Applied Climatology, 114, 673-690.</p>
+      <p>Schibek, J. and Allen, D.M. 2006. Comparing modelled responses of two high-permeability unconfined aquifers to predicted climate change. Global and Planetary Change, 50, 50-62.</p>
+      <p>Scibek, J. and Allen, D.M. 2006. Modeled impacts of predicted climate change on recharge and groundwater levels. Water Resources Research, 42, W11405.</p>
+      <p>Sharma, M., Coulibaly, P. and Dibike, Y. 2011. Assessing the need for downscaling RCM data for hydrologic impact study. Journal of Hydrologic Engineering, 16, 534-539.</p>
+      <p>Shrestha, S. and Fang, X. 2012. Application of WARMF model to study the effect of land use change and climate change in the Saugahatchee Creek Watershed. Proceedings of World Environmental and Water Resources Congress 2012: Crossing Boundaries. American Society of Civil Engineers, Albuquerque, New Mexico, pp1794-1805.</p>
+      <p>Shrestha, S. and Trang, B.T.T. 2014. Assessment of the climate-change impacts and evaluation of adaptation measures for paddy productivity in Quang Nam province, Vietnam. Paddy and Water Environment, doi:10.1007/s10333-014-0434-2.</p>
+      <p>Shrestha, S., Deb, P. and Bui, T.T.T. 2014. Adaptation strategies for rice cultivation under climate change in Central Vietnam. Mitigation and Adaptation Strategies for Global Change, doi:10.1007/s11027-014-9567-2.</p>
+      <p>Sigdel, M. and Ma, Y. 2015. Evaluation of future precipitation scenario using statistical downscaling model over humid, subhumid, and arid region of Nepal - a case study. Theoretical and Applied Climatology, online.</p>
+      <p>Souvignet, M. and Heinrich, J. 2011. Statistical downscaling in the arid central Andes: uncertainty analysis of multi-model simulated temperature and precipitation. Theoretical and Applied Climatology, 106, 229-244.</p>
+      <p>Souvignet, M., Gaese, H., Ribbe, L., Kretschmer, N. and Oyarzun, R. 2010. Statistical downscaling of precipitation and temperature in north-central Chile: an assessment of possible climate change impacts in an arid Andean watershed. Hydrological Sciences Journal, 55, 41-57.</p>
+      <p>Sultana, Z. and Coulibaly, P. 2011. Distributed modelling of future changes in hydrological processes of Spence Creek watershed. Hydrological Processes, 25, 1254-1270.</p>
+      <p>Tam, A., Gough, W.A., Kowal, S. and Xie, C.W. 2014. The fate of Hudson Bay lowlands palsas in a changing climate. Arctic Antarctic and Alpine Research, 46, 114-120.</p>
+      <p>Tang, F., Xu, Z. and Zuo, D. 2012. Impact of climate change on runoff in the upper Yellow River basin. Resource Science, 34, (6).</p>
+      <p>Tang, Y.H. 2008. Statistical downscaling of daily precipitation over Shimen reservoir catchment. National Cheng Kung University (NCKU), Taiwan, 81pp.</p>
+      <p>Tatsumi, K., Oizumi, T. and Yamashiki, Y. 2013. Introduction of daily minimum and maximum temperature change signals in the Shikoku region using the statistical downscaling method by GCMs. Hydrological Research Letters, 3, 48-53.</p>
+      <p>Tatsumi, K., Oizumi, T. and Yamashiki, Y. 2014. Assessment of future precipitation indices in the Shikoku region using a statistical downscaling model. Stochastic Environmental Research and Risk Assessment, 28, 1447-1464.</p>
+      <p>Tatsumi, K., Oizumi, T. and Yamashiki, Y. 2014. Effects of climate change on daily minimum and maximum temperatures and cloudiness in the Shikoku region: a statistical downscaling model approach. Theoretical and Applied Climatology, doi:10.1007/s00704-014-1152-9.</p>
+      <p>Tavakol-Davani, H., Nasseri, M. and Zahraie, B. 2013. Improved statistical downscaling of daily precipitation using SDSM platform and data-mining methods. International Journal of Climatology, 33, 2561-2578.</p>
+      <p>Teutschbein, C., Wetterhall, F. and Seibert, J. 2011. Evaluation of different downscaling techniques for hydrological climate-change impact studies at the catchment scale. Climate Dynamics, 37, 2087-2105.</p>
+      <p>Tian, P., Tian, K. and Li, J. 2011. Statistical downscaling of future temperature and precipitation in upstream of the Ganjiang Basin. Journal of Basic Science and Engineering, 19, 57-67.</p>
+      <p>Toews, M.W. and Allen, D.M. 2009. Evaluating different GCMs for predicting spatial recharge in an irrigated arid region. Journal of Hydrology, 374, 265-281.</p>
+      <p>Toews, M.W. and Allen, D.M. 2009. Simulated response of groundwater to predicted recharge in a semi-arid region using a scenario of modelled climate change. Environmental Research Letters, 4, Article# 035003.</p>
+      <p>Tryhorn, L. and DeGaetano, A. 2010. A comparison of techniques for downscaling extreme precipitation over the Northeastern United States. International Journal of Climatology, 31, 1975-1989.</p>
+      <p>Tukimat, N.N.A. and Harun, S. 2011. The projection of future rainfall change over Kedah, Malaysia with the Statistical DownScaling Model. Malaysian Journal of Civil Engineers, 23, 67-79.</p>
+      <p>Tukimat, N.N.A. and Harun, S. 2013. Multi-correlation matrix (M-CM) for the screening complexity in the Statistical Downscaling Model (SDSM). International Journal of Engineering Science and Innovative Technology, 2, 331-343.</p>
+      <p>Tukimat, N.N.A. and Harun, S. 2014. Optimization of water supply reservoir in the framework of climate variation. International Journal of Software Engineering and Its Applications, 8, 361-378.</p>
+      <p>Tukimat, N.N.A., Harun, S. and Shahid, S. 2012. Comparison of different methods of estimating potential evapotranspiration at Muda Irrigation Scheme of Malaysia. Journal of Agricultural and Rural Development in the Tropics and Subtropics, 113, 77-85.</p>
+      <p>Vidal, J-P. and Wade, S.D. 2008. Multimodel projections of catchment-scale precipitation regime. Journal of Hydrology, 353, 143-158.</p>
+      <p>Wang, L., Guo, S., Hong, X., Guo, J. and Liu, Z. 2014. Simulation and prediction of future precipitation and runoff change in the Ganjiang Basin. Journal of Water Resources Research, 3, 522-531.</p>
+      <p>Wang, W., Sun, F., Peng, S., Xu, J., Luo, Y. and Jiao, X. 2013. Simulation of response to water requirement for rice irrigation to climate change. Transactions of the Chinese Society of Agricultural Engineering, 29, 90-98.</p>
+      <p>Wang, W., Xing, W., Shao, Q., Yu, Z., Peng, S., Yang, T., Yong, B., Taylor, J. and Singh, V.P. 2013. Changes in reference evapotranspiration across the Tibetan Plateau: Observations and future projections based on statistical downscaling. Journal of Geophysical Research: Atmospheres, 118, 4049-4068.</p>
+      <p>Wang, W., Yu, Z., Zhang, W., Shao, Q., Zhang, Y., Luo, Y., Jiao, X. and Xu, J. 2014. Responses of rice yield, irrigation water requirement and water use efficiency to climate change in China: Historical simulation and future projections. Agricultural Water Management, 146, 249-261.</p>
+      <p>Wang, X., Yang, T., Shao, Q., Acharya, K., Wang, W. and Yu, Z. 2012. Statistical downscaling of extremes of precipitation and temperature and construction of their future scenarios in an elevated and cold zone. Stochastic Environmental Research and Risk Assessment, 26, 405-418.</p>
+      <p>Weiguang, W., Fengchao, S., Shizhang, P., Junzeng, X., Yufeng, L. and Xiyun, J. 2013. Simulation of response of water requirement for rice irrigation for climate change. Transactions of the Chinese Society of Agricultural Engineering, 14, S162.5.</p>
+      <p>Wetterhall, F., Bárdossy, A., Chen, D., Halldin, S., and Xu, C. 2007. Daily precipitation-downscaling techniques in three Chinese regions. Water Resources Research, 42, W11423, doi:10.1029/2005WR004573.</p>
+      <p>Wetterhall, F., Halldin, S. and Xu, C.Y. 2007. Seasonality properties of four statistical-downscaling methods in central Sweden. Theoretical and Applied Climatology, 87, 123-137.</p>
+      <p>Whitehead, P.G., Futter, M. and Wilby, R.L. 2006. Impacts of climate change on hydrology, nitrogen and carbon in upland and lowland streams: Assessment of adaptation strategies to meet Water Framework Directive objectives. Proceedings of the British Hydrological Society Conference, Durham, UK.</p>
+      <p>Whitehead, P.G., Wade, A. and Butterfield, D. 2008. Potential impacts of climate change on water quality in six UK rivers. Proceedings of the British Hydrological Society 10th National Hydrology Symposium, Exeter, UK.</p>
+      <p>Whitehead, P.G., Wilby, R.L., Butterfield, D., and Wade, A.J. 2006. Impacts of climate change on nitrogen in a lowland chalk stream: An appraisal of adaptation strategies. Science of the Total Environment, 365, 260-273.</p>
+      <p>Wilby, R.L. 2003. Past and projected trends in London’s urban heat island. Weather, 58, 251-260.</p>
+      <p>Wilby, R.L. 2005. Constructing wet season precipitation scenarios for a site in the Anti Atlas Mountains, Morocco. Proceedings of the Conference on Optimising Land and Water Resources in Arid Environments, Agadir, Morocco.</p>
+      <p>Wilby, R.L. 2005. Uncertainty in water resource model parameters used for climate change impact assessment. Hydrological Processes, 19, 3201-3219.</p>
+      <p>Wilby, R.L. 2008. A review of climate change scenarios for northeast Brazil: Informing climate change adaptation and water resources management policies. A Technical Brief for Tearfund. Tearfund, 25pp.</p>
+      <p>Wilby, R.L. 2008. Climate change scenarios for the Republic of Yemen. Report on behalf of the World Bank, 27pp.</p>
+      <p>Wilby, R.L. 2008. Constructing climate change scenarios of urban heat island intensity and air quality. Environment and Planning B: Planning and Design, 35, 902-919.</p>
+      <p>Wilby, R.L. 2008. Dealing with uncertainties of future climate: The special challenge of semi-arid regions. Proceedings of the Water Tribune, Expo Zaragoza, Spain.</p>
+      <p>Wilby, R.L. 2008. Downscaling future skew surge statistics at Sheerness, Kent. Phase 3 studies – synthesis report. Thames Estuary 2100, Environment Agency, 27pp.</p>
+      <p>Wilby, R.L. 2009. An evaluation of climate data and downscaling options for Yemen. Report on behalf of the World Bank, 31pp.</p>
+      <p>Wilby, R.L. 2010. Climate change projections and downscaling for Jordan, Lebanon and Syria. Synthesis Report on behalf of the World Bank, 39pp.</p>
+      <p>Wilby, R.L. 2010. Improving the climate resilience of Tajikistan’s hydropower sector: Climate variability and change in Tajikistan. Report on behalf of the European Bank for Reconstruction and Development, London, 30pp.</p>
+      <p>Wilby, R.L. 2012. A synthesis of climate change scenarios and impacts on Tunisia. Report on behalf of the World Bank, 39pp.</p>
+      <p>Wilby, R.L. and Dawson, C.W. 2013. SDSM-DC: A smarter approach to downscaling for decision-making? American Geophysical Union, Fall Meeting, abstract #GC41E-07.</p>
+      <p>Wilby, R.L. and Dawson, C.W. 2013. Statistical DownScaling Model – Decision Centric (SDSM-DC) Version 5.1 Supplementary Note. Loughborough University, UK, 9pp.</p>
+      <p>Wilby, R.L. and Dawson, C.W. 2013. The Statistical DownScaling Model (SDSM): Insights from one decade of application. International Journal of Climatology, 33, 1707-1719.</p>
+      <p>Wilby, R.L. and Direction de la Météorologie National. 2007. Climate change scenarios for Morocco. Technical Report prepared on behalf of the World Bank, Washington, 23pp.</p>
+      <p>Wilby, R.L. and Harris, I. 2006. A framework for assessing uncertainties in climate change impacts: low flow scenarios for the River Thames, UK. Water Resources Research, 42, W02419, doi:10.1029/2005WR004065.</p>
+      <p>Wilby, R.L., Dawson, C.W. and Barrow, E.M. 2002. SDSM - a decision support tool for the assessment of regional climate change impacts. Environmental and Modelling Software, 17, 145-157.</p>
+      <p>Wilby, R.L., Dawson, C.W., Murphy, C., O’Connor, P. 2014 and Hawkins, E. 2014. The Statistical DownScaling Model – Decision Centric (SDSM-DC): Conceptual basis and applications. Climate Research, 61, 251-268.</p>
+      <p>Wilby, R.L., Tomlinson, O.J. and Dawson, C.W. 2003. Multi-site simulation of precipitation by conditional resampling. Climate Research, 23, 183-194.</p>
+      <p>Wilby, R.L., Whitehead, P.G., Wade, A.J., Butterfield, D., Davis, R. and Watts, G. 2006. Integrated modelling of climate change impacts on the water resources and quality in a lowland catchment: River Kennet, UK. Journal of Hydrology, 330, 204-220.</p>
+      <p>Wise, K. 2009. Climate-based sensitivity of air quality to climate change scenarios for the southwestern United States. International Journal of Climatology, 29, 87-97.</p>
+      <p>Wu, H. and Chen, B. 2014. Uncertainty analysis for propagation effects from statistical downscaling to hydrological modeling. Proceedings of The International Conference on Marine and Freshwater Environments, St. John's NL, Canada, August 6-8, 2014.</p>
+      <p>Xu, Z. and Liu, L. 2012. Detection of climate change and projection of future climate change scenarios in Taihu Lake Basin. Advances in Science and Technology of Water Resources, 32, 1-7.</p>
+      <p>Xu, Z. and Liu, Z. 2014. Climate change scenarios and the impact on runoff. In: Chen, Y. (ed) Water Resources Research in Northwest China, Chapter 9, pp311-357. Springer, Netherlands.</p>
+      <p>Xu, Z.X., Zhao, F.F. and Li, J.Y. 2009. Response of streamflow to climate change in the headwater catchment of the Yellow River basin. Quaternary International, 208, 62-75.</p>
+      <p>Yang, J.-S., Chung, E.-S., Kim, S.-U., Kim, T.-W. and Kim, Y.D. 2011. Prioritization of water management under climate change and urbanization using multi-criteria decision making methods. Hydrology and Earth System Sciences, 16, 801-814.</p>
+      <p>Yang, T., Li, H., Wang, W., Xu, C.-Y. and Yu, Z. 2012. Statistical downscaling of extreme daily precipitation, evaporation, and temperature and construction of future scenarios. Hydrological Processes, 26, 3510-3523.</p>
+      <p>Yimer, G., Jonoski, A. and Griensven, A.V. 2009. Hydrological response of a catchment to climate change in the upper Beles river basin, Upper Blue Nile, Ethiopia. Nile Basin Water Engineering Scientific Magazine, 2, 49-59.</p>
+      <p>Yontchang, G.D. 2012. Assessment and modelling of climate variability and change in Cameroon (central Africa). Unpublished MSc Thesis, University of Reading, UK, 50pp.</p>
+      <p>Youn, S., Chung, E.-S., Kang, W.G. and Sung, J.H. 2012. Probabilistic estimation of the storage capacity of a rainwater harvesting system considering climate change. Resources, Conservation and Recycling, 65, 136-144.</p>
+      <p>Yu, K.X., Xiong, L.H., Dong, L.H. and Wan, M. 2011. Drought analysis based on precipitation generation from GCMs for the Qingjian River Basin. In: Bloschl, G., Takeuchi, K., Jain, S., Farnleitner, A. and Schumann, A. (eds). Risk in Water Resources Management, IAHS 347, 173-179.</p>
+      <p>Zenebe, A., Shiferaw, H., Mezgebu, A., Nyssen, J., Girma, A., Gebresamuel, G., Deckers, J. and Poesen, J. 2014. Impact of climate change on hydrological response in the headwaters of Tekeze basin, Northern Ethiopia. EGU General Assembly, Vienna, Austria, id 5155.</p>
+      <p>Zeray, L., Roehrig, J. and Chekol, D.A. 2006. Climate change impact on Lake Ziway watershed availability, Ethiopia. Proceedings of the Conference on International Agricultural Research for Development, University of Bonn, October 11-13, 2006.</p>
+      <p>Zhang, L., Lu, W., An, Y., Li, D. and Gong, L. 2012. Response of non-point pollutant loads to climate change in the Shitoukoumen reservoir catchment. Environmental Monitoring and Assessment, 184, 581-594.</p>
+      <p>Zhao, H. and Jingren, Z. 2011. Analysis of statistical downscaling of future climate change trends for Changchun City. Rural Hydropower in China, 10, 47-50 [in Chinese].</p>
+      <p>Zhou, F., Zhang, A., Li, R. and Hoeve, E. 2009. Spatio-temporal simulation of permafrost geothermal response to climate change scenarios in a building environment. Cold Regions Science and Technology, 56, 141-151.</p>
+      <p>Zuo, D., Xu, Z., Zhao, J. and Yang, X. 2013. Impact of climate change on runoff in the Wei River Basin, China. Journal of Water Resources Research, 2, 364-370.</p>
+      <p>Zuo, D., Xu, Z., Zhao, J., Abbaspour, K.C. and Yang, H. 2014. Response of runoff to climate change in the Wei River basin, China. Hydrological Sciences Journal, available online.</p>
+      <p>Zuo, D.-P., Xu, Z.-X., Li, J.-Y. and Liu, Z.-F. 2011. Spatiotemporal characteristics of potential evapotranspiration in the Weihe River basin under future climate change. Advances in Water Science, 22, 455-461.</p>
+      <hr>
+    </div>
+
+  </body>
+</html>

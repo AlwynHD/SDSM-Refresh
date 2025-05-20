@@ -113,7 +113,7 @@ def load_settings(config_path="settings.ini"):
 settings, settingsAsArrays = load_settings()
 
 globalSDate = settings["globalsdate"]
-colourMode = settings["colourmode"]
+colourMode = settings.get("colourmode", "default")
 
 moduleName = "Frequency Analysis"
 
@@ -395,7 +395,7 @@ class ContentWidget(QWidget):
         global globalSDate, colourMode
         settings, settingsAsArrays = load_settings()
         globalSDate = settings["globalsdate"]
-        colourMode = settings["colourmode"]
+        colourMode = settings.get("colourmode", "default")
 
         self.changeColourMode(colourMode)
 

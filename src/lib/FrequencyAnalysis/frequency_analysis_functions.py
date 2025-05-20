@@ -1,4 +1,6 @@
 import math
+import csv
+from PyQt5.QtWidgets import QFileDialog, QPushButton
 from math import gamma
 import configparser
 from datetime import datetime, date
@@ -416,6 +418,44 @@ def increaseDate(currentDay, currentMonth, currentYear, currentSeason, yearLengt
     currentSeason = getSeason(currentMonth)
 
     return currentDay, currentMonth, currentYear, currentSeason, yearLength, leapValue
+
+def get_seasonal_value(dataPeriodChoice):
+    season_map = {
+        0:"All Season",
+        1: "January",
+        2: "February",
+        3: "March",
+        4: "April",
+        5: "May",
+        6: "June",
+        7: "July",
+        8: "August",
+        9: "September",
+        10: "October",
+        11: "November",
+        12: "December",
+        13: "Winter",
+        14:"Autumn",
+        15:"Summer",
+        16:"Spring"
+    }
+    return season_map.get(dataPeriodChoice, "Unknown")
+
+# ✅ CSV Export Function (place it here)
+def export_table_to_csv(table_widget):
+    path, _ = QFileDialog.getSaveFileName(None, "Save Table as CSV", "frequency_analysis.csv", "CSV Files (*.csv)")
+    if not path:
+        return
+    with open(path, 'w', newline='', encoding='utf-8') as file:
+        writer = csv.writer(file)
+        headers = [table_widget.horizontalHeaderItem(i).text() for i in range(table_widget.columnCount())]
+        writer.writerow(headers)
+        for row in range(table_widget.rowCount()):
+            row_data = []
+            for col in range(table_widget.columnCount()):
+                item = table_widget.item(row, col)
+                row_data.append(item.text() if item else "")
+            writer.writerow(row_data)
 
 def calcGEVValue(beta, eta, kay, year):
     """

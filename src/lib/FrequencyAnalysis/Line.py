@@ -1,10 +1,14 @@
 import os
 import math
 import matplotlib.pyplot as plt
+from matplotlib.widgets import Button
 from datetime import date
 from typing import Optional, Callable
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QApplication, QFileDialog, QAction
+from PyQt5.QtGui import QIcon
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from src.lib.FrequencyAnalysis.frequency_analysis_functions import (
-    increaseDate, doWeWantThisDatum, getSeason
+    increaseDate, doWeWantThisDatum, getSeason,export_series_to_csv,show_export_button
 )
 
 def linePlot(
@@ -220,10 +224,29 @@ def linePlot(
             z = 3
 
         plt.plot(x, y, color=color, label=label, zorder=z)
+# Add export action to the toolbar (not menu)
+    def add_export_to_toolbar():
+        manager = plt.get_current_fig_manager()
+        if hasattr(manager, 'toolbar') and isinstance(manager.toolbar, NavigationToolbar):
+            # Set icon path (you can use your own icon here)
+            icon_path = 'src/images/exportsvg.svg'  # replace with a valid PNG/SVG path on your system
+    
+            export_action = QAction(QIcon(icon_path), "", manager.toolbar)
+            export_action.setToolTip("Export CSV")  # ✅ Hover text
+            export_action.triggered.connect(lambda: export_series_to_csv(x, series))
+            manager.toolbar.addAction(export_action)  # ✅ this puts it directly on the toolbar
+    
+    # Inject before show
+    add_export_to_toolbar()
 
+    # Bind action
+    
+    
     plt.xlabel("Time step")
     plt.ylabel("Value")
     plt.legend()
     plt.tight_layout()
     plt.show()
+
+    
 
